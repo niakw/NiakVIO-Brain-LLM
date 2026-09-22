@@ -12,6 +12,26 @@ def load_census(root: str | Path) -> list[dict[str, Any]]:
         if isinstance(row, dict) and row.get("provider")
     ]
 
+def target_priority(row: dict[str, Any]) -> tuple[int, str]:
+    """Prefer the cheapest/highest-evidence work, never provider identity."""
+    status = str(row.get("status") or "").casefold()
+    depths = " ".join(str(x) for x in row.get("evidenceDepth") or []).casefold()
+
+    if row.get("candidateProof") or "candidate" in status:
+        rank = 10
+    elif "chain_reached" in depths or "chain reached" in status:
+        rank = 20
+    elif row.get("routeProof") or "route proven" in status:
+        rank = 30
+    elif "provider js broken" in status:
+        rank = 40
+    elif row.get("repairEligible"):
+        rank = 50
+    else:
+        rank = 90
+
+    return rank, str(row.get("provider") or "").casefold()
+
 def select_batch_targets(
     rows: list[dict[str, Any]],
     *,
@@ -39,7 +59,7 @@ def select_batch_targets(
         elif mode == "brain" and brain_required:
             selected.append(row)
 
-    return selected
+    return sorted(selected, key=target_priority)
 
 def batch_summary(rows: list[dict[str, Any]]) -> dict[str, Any]:
     statuses: dict[str, int] = {}
