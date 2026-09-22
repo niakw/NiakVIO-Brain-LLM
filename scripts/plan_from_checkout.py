@@ -6,6 +6,7 @@ import json
 import os
 
 from niakvio_brain_llm.backend import LocalOpenAICompatibleBackend
+from niakvio_brain_llm.document_memory import DocumentStore
 from niakvio_brain_llm.niakvio_adapter import request_from_checkout
 from niakvio_brain_llm.planner import BrainPlanner
 from niakvio_brain_llm.retrieval import ExperienceStore
@@ -15,6 +16,7 @@ def main() -> int:
     parser.add_argument("--niakvio-root", required=True)
     parser.add_argument("--provider", required=True)
     parser.add_argument("--experience", required=True)
+    parser.add_argument("--documents", default="")
     parser.add_argument(
         "--endpoint",
         default=os.environ.get("NIAKVIO_LLM_ENDPOINT", "http://127.0.0.1:8080"),
@@ -34,6 +36,7 @@ def main() -> int:
             temperature=0.0,
         ),
         ExperienceStore.from_jsonl(args.experience),
+        DocumentStore.from_jsonl(args.documents) if args.documents else DocumentStore([]),
     )
     proposal = planner.plan(request)
     print(json.dumps({
