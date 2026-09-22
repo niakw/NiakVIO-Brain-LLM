@@ -8,6 +8,7 @@ from .contracts import RepairProposal, RepairRequest
 from .mutation_guard import validate_mutations
 from .prompting import build_prompt_payload
 from .retrieval import ExperienceStore
+from .schema import REPAIR_PROPOSAL_SCHEMA
 
 SYSTEM_PROMPT = """You are NiakVIO Brain LLM, a bounded repair planner.
 First classify the causal layer as exactly one of: provider, core, harness, network, unknown.
@@ -51,9 +52,12 @@ class BrainPlanner:
             ensure_ascii=True,
             allow_nan=False,
         )
-        proposal = RepairProposal.from_dict(
-            _extract_json(self.backend.complete(system=SYSTEM_PROMPT, user=user))
+        raw = self.backend.complete(
+            system=SYSTEM_PROMPT,
+            user=user,
+            response_schema=REPAIR_PROPOSAL_SCHEMA,
         )
+        proposal = RepairProposal.from_dict(_extract_json(raw))
         if proposal.provider_id and proposal.provider_id != request.provider_id:
             raise ValueError("model changed provider_id")
         proposal.provider_id = request.provider_id
