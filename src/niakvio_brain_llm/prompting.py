@@ -109,7 +109,14 @@ def build_prompt_payload(
     mutation_policy: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     prior = causal_prior or {}
-    policy = mutation_policy or {}\n    model_policy = {key: value for key, value in policy.items() if key != "required_tests"}
+    policy = mutation_policy or {}
+    # Verification tests are deterministic Brain policy. Do not spend LLM
+    # context on re-sending a protocol the model is not allowed to weaken.
+    model_policy = {
+        key: value
+        for key, value in policy.items()
+        if key != "required_tests"
+    }
     high_confidence = float(prior.get("confidence") or 0.0) >= 0.90
     mutation_allowed = bool(policy.get("allow_mutations"))
 
@@ -125,7 +132,8 @@ def build_prompt_payload(
             mutation_allowed=mutation_allowed,
         ),
         "causal_prior": _compact(prior, string_limit=500),
-        "mutation_policy": _compact(model_policy, string_limit=500),\n        "verification_owned_by_brain": True,
+        "mutation_policy": _compact(model_policy, string_limit=500),
+        "verification_owned_by_brain": True,
         "retrieved_experiences": [
             compact_experience(row, text_limit=experience_text_limit)
             for row in experiences[:experience_limit]
