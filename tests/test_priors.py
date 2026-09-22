@@ -31,6 +31,33 @@ class PriorTests(unittest.TestCase):
         )
         self.assertEqual(prior["target_layer"], "harness")
 
+    def test_harness_status_keeps_compatible_canonical_strategy(self):
+        prior = build_causal_prior(
+            RepairRequest(
+                provider_id="demo",
+                failure_class="transport_environment_gap",
+                status="HARNESS/ENV BLOCKED",
+            ),
+            [],
+        )
+        self.assertEqual(prior["target_layer"], "harness")
+        self.assertEqual(
+            prior["strategy_prior"],
+            "compare_browser_native_residential_profiles_without_provider_mutation",
+        )
+
+    def test_harness_status_drops_incompatible_provider_strategy(self):
+        prior = build_causal_prior(
+            RepairRequest(
+                provider_id="demo",
+                failure_class="api_discovery_gap",
+                status="HARNESS MISMATCH",
+            ),
+            [],
+        )
+        self.assertEqual(prior["target_layer"], "harness")
+        self.assertNotIn("strategy_prior", prior)
+
     def test_chain_terminal_taxonomy_is_provider(self):
         prior = build_causal_prior(
             RepairRequest(provider_id="demo", failure_class="chain_terminal_gap"),
