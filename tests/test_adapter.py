@@ -15,17 +15,20 @@ class AdapterTests(unittest.TestCase):
                     "provider": "demo",
                     "status": "CHAIN REACHED",
                     "dominantIssue": "terminal_extractor",
-                    "supportedTypes": ["movie"],
+                    "declaredLanes": ["movie"],
                     "repairEligible": True,
+                    "brainCheckRequired": True,
+                    "evidenceDepth": ["movie=chain_reached"],
                 }]
             }
             (root / "automation" / "provider-census-status.json").write_text(json.dumps(census))
             (root / "automation" / "brain-repair-experience.json").write_text("{}")
             (root / "automation" / "brain-repair-memory.json").write_text("{}")
             req = request_from_checkout(root, "demo")
-            self.assertEqual(req.failure_class, "terminal_extractor")
+            self.assertEqual(req.failure_class, "chain_terminal_gap")
             self.assertEqual(req.supported_types, ["movie"])
             self.assertTrue(req.provider_context["read_only"])
+            self.assertTrue(req.census_prior["brainCheckRequired"])
 
 if __name__ == "__main__":
     unittest.main()
