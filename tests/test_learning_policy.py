@@ -3,19 +3,29 @@ import unittest
 from niakvio_brain_llm.learning_policy import classify_learning_record
 
 class LearningPolicyTests(unittest.TestCase):
-    def test_validated_provider_result_can_become_sft_candidate(self):
+    def test_verified_niakvio_result_can_become_sft_candidate(self):
         policy = classify_learning_record({
             "result": "validated",
             "target_layer": "provider",
             "verified_lanes": ["movie"],
+            "verification_authority": "niakvio",
         })
         self.assertEqual(policy["rag_bucket"], "positive")
         self.assertTrue(policy["sft_candidate"])
+
+    def test_unverified_positive_memory_stays_rag_only(self):
+        policy = classify_learning_record({
+            "result": "validated",
+            "target_layer": "provider",
+        })
+        self.assertEqual(policy["rag_bucket"], "positive")
+        self.assertFalse(policy["sft_candidate"])
 
     def test_failed_result_is_negative_memory_only(self):
         policy = classify_learning_record({
             "result": "failed",
             "target_layer": "provider",
+            "verification_authority": "niakvio",
         })
         self.assertEqual(policy["rag_bucket"], "negative")
         self.assertFalse(policy["sft_candidate"])
@@ -24,6 +34,7 @@ class LearningPolicyTests(unittest.TestCase):
         policy = classify_learning_record({
             "result": "inconclusive",
             "target_layer": "provider",
+            "verification_authority": "niakvio",
         })
         self.assertEqual(policy["rag_bucket"], "transient")
         self.assertFalse(policy["sft_candidate"])
