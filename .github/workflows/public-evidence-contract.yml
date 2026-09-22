@@ -52,6 +52,13 @@ jobs:
             --experience public-experience.jsonl \
             --top-k 3 | tee retrieval-report.json
 
+      - name: Route current census without LLM
+        run: |
+          python brain/scripts/route_current_census.py \
+            --niakvio-root niakvio \
+            --experience public-experience.jsonl \
+            --output routing-report.json
+
       - name: Contract smoke
         run: |
           python - <<'PY'
@@ -89,3 +96,4 @@ jobs:
             public-documents.jsonl
             retrieval-report.json
             document-import-report.json
+            routing-report.json
