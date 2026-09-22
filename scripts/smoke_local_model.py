@@ -43,7 +43,7 @@ def main() -> int:
     args = parser.parse_args()
 
     request = RepairRequest(
-        provider_id="movix-smoke",
+        provider_id="movix",
         failure_class="api_discovery_gap",
         status="NO PROOF",
         supported_types=["movie", "tv"],
