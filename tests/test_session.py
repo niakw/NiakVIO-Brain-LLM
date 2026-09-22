@@ -13,7 +13,12 @@ def response(strategy: str) -> str:
         "strategy": strategy,
         "confidence": 0.8,
         "target_layer": "provider",
-        "mutations": [{"scope": "provider_js", "operation": strategy}],
+        "mutations": [{
+            "scope": "provider_data",
+            "operation": "set",
+            "path": "repair.strategy",
+            "value": strategy
+        }],
         "tests": ["retest"],
         "abstain": False,
     })
