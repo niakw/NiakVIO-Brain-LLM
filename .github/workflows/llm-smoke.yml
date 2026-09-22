@@ -81,7 +81,7 @@ jobs:
             --endpoint http://127.0.0.1:8080 \
             --model qwen2.5-coder-1.5b \
             --experience public-experience.jsonl \
-            | tee qwen-smoke-result.json
+            --output qwen-smoke-result.json
 
       - name: Upload smoke diagnostics
         if: always()
