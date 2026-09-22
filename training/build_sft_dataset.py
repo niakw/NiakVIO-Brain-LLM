@@ -19,6 +19,8 @@ def build_example(row: dict[str, Any]) -> dict[str, Any] | None:
         return None
     if row.get("result") != "validated":
         return None
+    if str(row.get("verification_authority") or "").strip().casefold() != "niakvio":
+        return None
 
     target_layer = str(row.get("target_layer") or "").casefold()
     if target_layer not in VALID_LAYERS:
@@ -81,7 +83,11 @@ def main() -> int:
         + ("\n" if examples else ""),
         encoding="utf-8",
     )
-    print(json.dumps({"examples": len(examples), "validated_only": True}, sort_keys=True))
+    print(json.dumps({
+        "examples": len(examples),
+        "validated_only": True,
+        "verification_authority": "niakvio",
+    }, sort_keys=True))
     return 0
 
 if __name__ == "__main__":
