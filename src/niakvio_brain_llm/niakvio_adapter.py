@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from .contracts import RepairRequest
+from .provider_context import build_provider_context
 
 def _load(path: Path, default: Any) -> Any:
     try:
@@ -78,8 +79,5 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
             {"source": "brain-repair-experience", "value": provider_experience[:4]},
             {"source": "brain-repair-memory", "value": negative_memory[:4]},
         ],
-        provider_context={
-            "source_repo": "niakw/NiakVIO",
-            "read_only": True,
-        },
+        provider_context=build_provider_context(root, provider_id),
     )
