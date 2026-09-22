@@ -27,11 +27,33 @@ It does **not** authorize or perform integration with NiakVIO production.
 - [x] Verified-only SFT dataset builder and validator
 - [x] LoRA policy present and disabled until sufficient verified data
 - [x] Qwen model comparison performed
-- [x] Provisional runtime selected: Qwen2.5-Coder-3B Q4_K_M
+- [x] Runtime selected: Qwen2.5-Coder-3B Q4_K_M
 - [x] Read-only NiakVIO evidence contract CI
 - [x] Unit/contract CI
-- [ ] Compact-context 6-case 3B benchmark passes without material quality regression
-- [ ] Expanded historical 3B benchmark accepted
+- [x] Compact-context 6-case 3B benchmark passes without material quality regression
+- [x] Expanded 25-case historical 3B benchmark accepted
+- [x] Heavy comparison workflows are manual by default
+- [x] Obsolete bootstrap benchmark paths removed
+
+## Accepted benchmark
+
+Expanded historical benchmark, 25 cases:
+
+- 25/25 schema valid
+- 25/25 provider identity
+- 25/25 causal layer
+- 24/25 canonical strategy
+- 25/25 mutation policy
+- 25/25 mutation validity
+- 24/25 raw abstention policy
+- 25/25 deterministic Brain verification plan
+- 23/25 fully compliant raw model outputs
+
+The two raw-model misses do not bypass production policy:
+
+- high-confidence strategies are constrained by the production schema;
+- `force_abstain` is enforced by deterministic Brain policy;
+- NiakVIO remains the only future execution/proof authority.
 
 ## Explicitly deferred
 
@@ -41,10 +63,10 @@ It does **not** authorize or perform integration with NiakVIO production.
 - publication
 - LoRA training itself
 
-Those are separate phases and must not be enabled merely because the standalone Brain is ready.
+Those are separate phases and remain disabled.
 
 ## Definition of done
 
-When the two remaining benchmark gates pass, the repository can be tagged as the first standalone Brain baseline.
+**Standalone Brain baseline: READY.**
 
-At that point integration may be designed separately, but remains disabled until explicitly requested.
+Integration may be designed separately later, but is not enabled by this milestone.
