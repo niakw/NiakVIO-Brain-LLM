@@ -1,0 +1,52 @@
+name: Brain Routing Census
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - bootstrap/brain-llm-v0
+    paths:
+      - ".github/workflows/brain-routing-census.yml"
+      - "scripts/route_batch_from_checkout.py"
+      - "src/niakvio_brain_llm/routing.py"
+      - "src/niakvio_brain_llm/niakvio_adapter.py"
+      - "src/niakvio_brain_llm/batch.py"
+
+permissions:
+  contents: read
+
+jobs:
+  route:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: brain
+
+      - uses: actions/checkout@v4
+        with:
+          repository: niakw/NiakVIO
+          path: niakvio
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: python -m pip install -e brain
+
+      - name: Build public experience memory
+        run: |
+          python brain/scripts/import_public_niakvio.py             --niakvio-root niakvio             --output public-experience.jsonl
+
+      - name: Route all Brain-required providers
+        run: |
+          python brain/scripts/route_batch_from_checkout.py             --niakvio-root niakvio             --experience public-experience.jsonl             --mode brain             --output brain-routing.jsonl             --summary brain-routing-summary.json
+          cat brain-routing-summary.json
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: brain-routing-census
+          path: |
+            brain-routing.jsonl
+            brain-routing-summary.json
