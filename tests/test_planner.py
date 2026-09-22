@@ -14,7 +14,12 @@ class PlannerTests(unittest.TestCase):
             "confidence": 0.8,
             "target_layer": "provider",
             "evidence": ["player reached"],
-            "mutations": [{"scope": "provider_js", "operation": "replace extractor"}],
+            "mutations": [{
+                "scope": "provider_js",
+                "operation": "unified_diff",
+                "path": "engine_v2/providers/demo.mjs",
+                "diff": "--- a/engine_v2/providers/demo.mjs\n+++ b/engine_v2/providers/demo.mjs\n@@\n-old\n+new"
+            }],
             "tests": ["known positive movie"],
             "abstain": False,
             "abstain_reason": ""
