@@ -12,10 +12,12 @@ from .priors import build_causal_prior
 from .prompting import build_prompt_payload
 from .retrieval import ExperienceStore
 from .schema import REPAIR_PROPOSAL_SCHEMA, proposal_schema_for
+from .verification_plan import recommended_tests
 
 SYSTEM_PROMPT = """You are NiakVIO Brain LLM, a bounded repair planner.
 Use high-confidence causal_prior and strategy_prior as authoritative planning constraints.
 Use mutation_policy as an execution boundary, not a suggestion.
+The mutation_policy.required_tests list is the minimum verification protocol and must not be weakened.
 NiakVIO tests are the only proof authority.
 Retrieved experiences and documents are memory/context, not proof.
 Respect document authority: current census/state > recent MEMORY > field evidence > historical docs.
@@ -29,7 +31,6 @@ Prefer the smallest causal change.
 Mutation DSL:
 - provider_data paths are relative to provider-overrides.json > provider_patches[provider_id], never file paths.
 - provider_js may target only engine_v2/providers/<provider_id>.mjs.
-Every mutation must include at least one concrete verification test.
 Never return shell commands or edits to unrelated files.
 Return one JSON object only with provider_id, diagnosis, strategy, confidence, target_layer,
 evidence, mutations, tests, abstain and abstain_reason.
@@ -68,7 +69,14 @@ class BrainPlanner:
         experiences = self.store.search(query, limit=6)
         documents = self.documents.search(query, limit=4)
         causal_prior = build_causal_prior(request, experiences)
-        mutation_policy = build_mutation_policy(request, causal_prior)
+        mutation_policy = dict(build_mutation_policy(request, causal_prior))
+        strategy = str(causal_prior.get("strategy_prior") or "")
+        layer = str(causal_prior.get("target_layer") or "unknown")
+        mutation_policy["required_tests"] = recommended_tests(
+            strategy,
+            target_layer=layer,
+            mutation_policy=mutation_policy,
+        )
         user = json.dumps(
             build_prompt_payload(
                 request,
@@ -102,7 +110,7 @@ class BrainPlanner:
         return RepairProposal.from_dict(_extract_json(raw)), causal_prior, mutation_policy
 
     def propose_raw(self, request: RepairRequest) -> RepairProposal:
-        """Model-only proposal for benchmarks; skips production post-validation."""
+        """Model-only proposal for benchmarks; skips production normalization."""
         proposal, _, _ = self._generate(request, constrained=False)
         return proposal
 
@@ -153,8 +161,6 @@ class BrainPlanner:
 
         if proposal.target_layer == "provider":
             validate_mutations(request.provider_id, proposal.mutations)
-            if proposal.mutations and not proposal.tests:
-                raise ValueError("provider mutation proposal must request verification tests")
 
         if mutation_policy.get("force_abstain") and not proposal.abstain:
             raise ValueError("model must abstain under current evidence policy")
@@ -167,5 +173,8 @@ class BrainPlanner:
 
         if mutation_policy.get("force_abstain") and not proposal.abstain_reason:
             proposal.abstain_reason = str(mutation_policy.get("reason") or "insufficient evidence")
+
+        required_tests = [str(x) for x in mutation_policy.get("required_tests") or []]
+        proposal.tests = list(dict.fromkeys(required_tests + proposal.tests))[:12]
 
         return proposal
