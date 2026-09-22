@@ -19,11 +19,13 @@ evidence, mutations, tests, abstain and abstain_reason.
 
 def _extract_json(text: str) -> dict[str, Any]:
     value = text.strip()
-    if value.startswith("~~~"):
-        lines = value.splitlines()
-        value = "\n".join(lines[1:-1]).strip()
-        if value.startswith("json"):
-            value = value[4:].lstrip()
+    for fence in ("~~~", "```"):
+        if value.startswith(fence):
+            lines = value.splitlines()
+            value = "\n".join(lines[1:-1]).strip()
+            if value.casefold().startswith("json"):
+                value = value[4:].lstrip()
+            break
     parsed = json.loads(value)
     if not isinstance(parsed, dict):
         raise ValueError("model response must be a JSON object")
