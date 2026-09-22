@@ -13,6 +13,7 @@ def response(strategy: str) -> str:
         "strategy": strategy,
         "confidence": 0.8,
         "target_layer": "provider",
+        "evidence": ["provider patch context exists"],
         "mutations": [{
             "scope": "provider_data",
             "operation": "set",
@@ -21,23 +22,30 @@ def response(strategy: str) -> str:
         }],
         "tests": ["retest"],
         "abstain": False,
+        "abstain_reason": "",
     })
+
+def request() -> RepairRequest:
+    return RepairRequest(
+        provider_id="demo",
+        failure_class="unknown_provider_gap",
+        status="CHAIN REACHED",
+        provider_context={"override": "{}"},
+    )
 
 class SessionTests(unittest.TestCase):
     def test_records_external_verification(self):
         session = BrainSession(BrainPlanner(StaticBackend(response("fix-a"))), max_attempts=2)
-        request = RepairRequest(provider_id="demo", failure_class="terminal_extractor")
-        proposal = session.propose(request)
+        proposal = session.propose(request())
         session.record(proposal, VerificationOutcome(result="failed", observations=["still zero"]))
         self.assertEqual(len(session.history), 1)
 
     def test_repeated_hypothesis_is_rejected(self):
         session = BrainSession(BrainPlanner(StaticBackend(response("fix-a"))), max_attempts=3)
-        request = RepairRequest(provider_id="demo", failure_class="terminal_extractor")
-        first = session.propose(request)
+        first = session.propose(request())
         session.record(first, VerificationOutcome(result="failed"))
         with self.assertRaises(RuntimeError):
-            session.propose(request)
+            session.propose(request())
 
 if __name__ == "__main__":
     unittest.main()
