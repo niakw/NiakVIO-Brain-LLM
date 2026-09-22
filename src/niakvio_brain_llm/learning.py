@@ -34,6 +34,7 @@ def sanitized_experience(
         "verified_lanes": outcome.verified_lanes[:8],
         "lesson": "; ".join(outcome.observations[:6])[:1600],
         "proof_authority": False,
+        "verification_authority": "niakvio",
     }
 
 def append_jsonl(path: str | Path, row: dict[str, Any]) -> None:
