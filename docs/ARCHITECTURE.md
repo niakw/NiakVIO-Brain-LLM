@@ -15,40 +15,62 @@ Owns reality and execution:
 
 ### NiakVIO-Brain-LLM
 
-Owns reasoning:
+Owns reasoning and learning:
 
-- normalize a bounded repair request;
-- retrieve similar verified experience;
-- classify causal layer;
-- propose a provider-local mutation or abstain;
-- consume verification feedback;
-- learn sanitized outcomes;
-- prepare LoRA/SFT data only from explicitly validated labels.
+- normalize bounded provider evidence;
+- derive causal failure classes from census depth;
+- retrieve public + sanitized-private experience;
+- route deterministic/probe/LLM work;
+- synthesize bounded provider-local candidates only when useful;
+- derive mandatory verification plans;
+- consume external verification feedback;
+- maintain positive/negative/safety learning memory;
+- prepare LoRA/SFT data only from explicitly validated outcomes.
 
 The LLM has no publication authority.
 
 ## Runtime flow
 
-1. Read current NiakVIO checkout.
-2. Build RepairRequest for one symptomatic provider.
-3. Retrieve the nearest NiakVIO experiences.
-4. Ask the local model for a schema-constrained RepairProposal.
-5. Reject cross-provider/Core mutations.
-6. Return proposal to NiakVIO.
-7. NiakVIO applies it only in a sandbox and performs its ordinary proof gates.
-8. Feed the result back into a bounded BrainSession.
-9. Persist only a sanitized learning record.
+1. Read current NiakVIO evidence from a read-only checkout.
+2. Build a bounded RepairRequest for each symptomatic provider.
+3. Retrieve relevant NiakVIO experiences and documents.
+4. Derive the causal prior and mutation/evidence policy.
+5. Route the case:
+   - skip;
+   - deterministic replay/diagnostic;
+   - gather missing proof;
+   - LLM diagnosis;
+   - LLM provider-local repair.
+6. Load/call the local model only when the route requires it.
+7. Reject cross-provider/Core/ProviderBase mutations and synthetic values.
+8. Add the deterministic proof protocol to the proposal.
+9. A future NiakVIO bridge may execute the candidate only in its existing sandbox.
+10. Feed the external VerificationOutcome into the bounded BrainSession.
+11. Persist only sanitized learning records.
 
-## Integration boundary
+## Batch scaling
 
-The future production bridge can invoke:
+The batch queue is ordered by evidence depth:
 
-    python scripts/plan_from_checkout.py       --niakvio-root /path/to/NiakVIO       --provider <id>       --experience <sanitized.jsonl>
+1. candidate proof;
+2. chain reached;
+3. route proven;
+4. remaining repair-eligible cases.
 
-The result is JSON and remains proposal-only.
+A pre-routing pass can determine that zero LLM calls are necessary and skip model startup entirely.
+
+On the current 46-provider census snapshot, 14 providers require Brain attention and 7 of those are resolved/routed without LLM inference.
+
+## Current integration boundary
+
+This repository is **not connected to NiakVIO production**.
+
+NiakVIO is used read-only for tests and benchmarks. No Brain workflow can currently publish provider changes or update the census.
+
+Integration is a separate future phase.
 
 ## Private memory
 
-A private repository may enrich the sanitized experience store from ChatGPT project
-exports. Raw conversations never become a runtime dependency and never enter this
-public repository.
+A private repository may enrich RAG using sanitized NiakVIO-only technical experiences.
+
+Raw conversations never become a runtime dependency and never enter this public repository.
