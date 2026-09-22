@@ -67,9 +67,11 @@ def build_prompt_payload(
     request: RepairRequest,
     experiences: list[dict[str, Any]],
     documents: list[dict[str, Any]] | None = None,
+    causal_prior: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     return {
         "request": compact_request(request),
+        "causal_prior": _compact(causal_prior or {}),
         "retrieved_experiences": [
             compact_experience(row) for row in experiences[:4]
         ],
