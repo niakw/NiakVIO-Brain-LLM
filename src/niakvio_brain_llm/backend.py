@@ -2,11 +2,17 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from typing import Protocol
+from typing import Any, Protocol
 from urllib.request import Request, urlopen
 
 class ModelBackend(Protocol):
-    def complete(self, *, system: str, user: str) -> str: ...
+    def complete(
+        self,
+        *,
+        system: str,
+        user: str,
+        response_schema: dict[str, Any] | None = None,
+    ) -> str: ...
 
 @dataclass(slots=True)
 class LocalOpenAICompatibleBackend:
@@ -17,8 +23,14 @@ class LocalOpenAICompatibleBackend:
     timeout_seconds: int = 120
     temperature: float = 0.1
 
-    def complete(self, *, system: str, user: str) -> str:
-        payload = {
+    def complete(
+        self,
+        *,
+        system: str,
+        user: str,
+        response_schema: dict[str, Any] | None = None,
+    ) -> str:
+        payload: dict[str, Any] = {
             "model": self.model,
             "temperature": self.temperature,
             "messages": [
@@ -26,6 +38,12 @@ class LocalOpenAICompatibleBackend:
                 {"role": "user", "content": user},
             ],
         }
+        if response_schema:
+            payload["response_format"] = {
+                "type": "json_object",
+                "schema": response_schema,
+            }
+
         request = Request(
             self.base_url.rstrip("/") + "/v1/chat/completions",
             data=json.dumps(payload).encode("utf-8"),
@@ -40,5 +58,11 @@ class LocalOpenAICompatibleBackend:
 class StaticBackend:
     response: str
 
-    def complete(self, *, system: str, user: str) -> str:
+    def complete(
+        self,
+        *,
+        system: str,
+        user: str,
+        response_schema: dict[str, Any] | None = None,
+    ) -> str:
         return self.response
