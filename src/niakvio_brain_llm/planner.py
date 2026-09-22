@@ -5,6 +5,7 @@ from typing import Any
 
 from .backend import ModelBackend
 from .contracts import RepairProposal, RepairRequest
+from .document_memory import DocumentStore
 from .mutation_guard import validate_mutations
 from .prompting import build_prompt_payload
 from .retrieval import ExperienceStore
@@ -12,7 +13,10 @@ from .schema import REPAIR_PROPOSAL_SCHEMA
 
 SYSTEM_PROMPT = """You are NiakVIO Brain LLM, a bounded repair planner.
 First classify the causal layer as exactly one of: provider, core, harness, network, unknown.
-NiakVIO tests are the only proof authority. Retrieved experience is hypothesis material, not proof.
+NiakVIO tests are the only proof authority.
+Retrieved experiences and documents are memory/context, not proof.
+Respect document authority: current census/state > recent MEMORY > field evidence > historical docs.
+Never let stale historical text override current repository state.
 Never mutate outside allowed_mutations or touch forbidden_mutations.
 If target_layer is not provider, do not propose provider mutations: abstain and request the right diagnostic/retest.
 Prefer the smallest causal change. If evidence is insufficient, abstain.
@@ -28,7 +32,7 @@ evidence, mutations, tests, abstain and abstain_reason.
 
 def _extract_json(text: str) -> dict[str, Any]:
     value = text.strip()
-    for fence in ("~~~", "```"):
+    for fence in ("~~~", chr(96) * 3):
         if value.startswith(fence):
             lines = value.splitlines()
             value = "\n".join(lines[1:-1]).strip()
@@ -41,14 +45,22 @@ def _extract_json(text: str) -> dict[str, Any]:
     return parsed
 
 class BrainPlanner:
-    def __init__(self, backend: ModelBackend, store: ExperienceStore | None = None):
+    def __init__(
+        self,
+        backend: ModelBackend,
+        store: ExperienceStore | None = None,
+        documents: DocumentStore | None = None,
+    ):
         self.backend = backend
         self.store = store or ExperienceStore([])
+        self.documents = documents or DocumentStore([])
 
     def plan(self, request: RepairRequest) -> RepairProposal:
-        experiences = self.store.search(request.to_dict(), limit=6)
+        query = request.to_dict()
+        experiences = self.store.search(query, limit=6)
+        documents = self.documents.search(query, limit=4)
         user = json.dumps(
-            build_prompt_payload(request, experiences),
+            build_prompt_payload(request, experiences, documents),
             ensure_ascii=True,
             allow_nan=False,
         )
