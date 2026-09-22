@@ -21,7 +21,7 @@ class LocalOpenAICompatibleBackend:
     base_url: str = "http://127.0.0.1:8080"
     model: str = "niakvio-local"
     timeout_seconds: int = 120
-    temperature: float = 0.1
+    temperature: float = 0.0
 
     def complete(
         self,
