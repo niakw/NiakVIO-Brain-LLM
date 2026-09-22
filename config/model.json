@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "runtime": "llama.cpp",
+  "baseModel": "Qwen2.5-Coder-1.5B-Instruct",
+  "quantizationTarget": "Q4",
+  "backendContract": "openai-compatible-local-http",
+  "temperature": 0.1,
+  "remoteApiRequired": false,
+  "weightsCommittedToGit": false,
+  "role": "bounded diagnosis and repair-candidate planner"
+}
