@@ -18,6 +18,7 @@ def main() -> int:
     )
     parser.add_argument("--request", required=True)
     parser.add_argument("--experience", default="data/experience.jsonl")
+    parser.add_argument("--extra-experience", action="append", default=[])
     parser.add_argument("--documents", default="data/documents.jsonl")
     parser.add_argument(
         "--endpoint",
@@ -33,7 +34,9 @@ def main() -> int:
     raw = json.loads(Path(args.request).read_text(encoding="utf-8"))
     request = RepairRequest(**raw)
 
-    store = ExperienceStore.from_jsonl(args.experience)
+    store = ExperienceStore.from_jsonl_many(
+        [args.experience, *args.extra_experience]
+    )
     documents = DocumentStore.from_jsonl(args.documents)
     backend = LocalOpenAICompatibleBackend(
         base_url=args.endpoint,
