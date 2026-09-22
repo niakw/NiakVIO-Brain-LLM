@@ -2,11 +2,11 @@ name: Local Qwen Smoke
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - bootstrap/brain-llm-v0
+  pull_request:
     paths:
       - ".github/workflows/llm-smoke.yml"
+      - "scripts/smoke_local_model.py"
+      - "config/model.json"
 
 permissions:
   contents: read
