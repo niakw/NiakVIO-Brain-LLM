@@ -6,6 +6,7 @@ from typing import Any
 from .backend import ModelBackend
 from .contracts import RepairProposal, RepairRequest
 from .mutation_guard import validate_mutations
+from .prompting import build_prompt_payload
 from .retrieval import ExperienceStore
 
 SYSTEM_PROMPT = """You are NiakVIO Brain LLM, a bounded repair planner.
@@ -44,10 +45,9 @@ class BrainPlanner:
         self.store = store or ExperienceStore([])
 
     def plan(self, request: RepairRequest) -> RepairProposal:
-        request_data = request.to_dict()
-        experiences = self.store.search(request_data, limit=6)
+        experiences = self.store.search(request.to_dict(), limit=6)
         user = json.dumps(
-            {"request": request_data, "retrieved_experiences": experiences},
+            build_prompt_payload(request, experiences),
             ensure_ascii=True,
             allow_nan=False,
         )
