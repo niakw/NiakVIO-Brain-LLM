@@ -38,6 +38,14 @@ jobs:
             --niakvio-root niakvio \
             --output public-experience.jsonl
 
+      - name: Import MEMORY and technical docs
+        run: |
+          python brain/scripts/import_public_docs.py \
+            --niakvio-root niakvio \
+            --config brain/config/document_sources.json \
+            --output public-documents.jsonl \
+            | tee document-import-report.json
+
       - name: Benchmark retrieval
         run: |
           python brain/benchmark/retrieval_benchmark.py \
@@ -47,6 +55,7 @@ jobs:
       - name: Contract smoke
         run: |
           python - <<'PY'
+          from niakvio_brain_llm.document_memory import DocumentStore
           from niakvio_brain_llm.niakvio_adapter import request_from_checkout
           import json
           from pathlib import Path
@@ -56,7 +65,19 @@ jobs:
           request = request_from_checkout("niakvio", providers[0])
           assert request.provider_id == providers[0]
           assert request.provider_context.get("read_only") is True
-          print(json.dumps({"provider": request.provider_id, "status": request.status}))
+          docs = DocumentStore.from_jsonl("public-documents.jsonl")
+          memory_hits = docs.search(
+              {"provider_id": providers[0], "failure_class": request.failure_class},
+              limit=4,
+          )
+          assert docs.rows, "no NiakVIO documents imported"
+          assert any(row.get("path") == "MEMORY.md" for row in docs.rows), "MEMORY.md not indexed"
+          print(json.dumps({
+              "provider": request.provider_id,
+              "status": request.status,
+              "document_chunks": len(docs.rows),
+              "memory_hits": len(memory_hits),
+          }))
           PY
 
       - name: Upload generated reports
@@ -65,4 +86,6 @@ jobs:
           name: public-niakvio-brain-evidence
           path: |
             public-experience.jsonl
+            public-documents.jsonl
             retrieval-report.json
+            document-import-report.json
