@@ -3,6 +3,38 @@ from __future__ import annotations
 from copy import deepcopy
 from typing import Any
 
+DATA_ROOT_PATTERN = (
+    r"^(capability|official_hub|official_site|manifest_overrides|domain_substitutions|"
+    r"published_types|identity_input|learned_routes|candidate_learned_routes|"
+    r"provider_lego_scripts|provider_lego_options|candidate_api_recipe|api_recipe|"
+    r"route_data_state|runtime_domain_replacements|preserve_embed_urls|notes)"
+    r"(\.[A-Za-z0-9_-]+)*$"
+)
+
+DATA_MUTATION_SCHEMA = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["scope", "operation", "path"],
+    "properties": {
+        "scope": {"type": "string", "const": "provider_data"},
+        "operation": {"type": "string", "enum": ["set", "delete", "append"]},
+        "path": {"type": "string", "maxLength": 240, "pattern": DATA_ROOT_PATTERN},
+        "value": {},
+    },
+}
+
+JS_MUTATION_SCHEMA = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["scope", "operation", "path", "diff"],
+    "properties": {
+        "scope": {"type": "string", "const": "provider_js"},
+        "operation": {"type": "string", "const": "unified_diff"},
+        "path": {"type": "string", "maxLength": 300},
+        "diff": {"type": "string", "minLength": 1, "maxLength": 24000},
+    },
+}
+
 REPAIR_PROPOSAL_SCHEMA = {
     "type": "object",
     "additionalProperties": False,
@@ -36,16 +68,10 @@ REPAIR_PROPOSAL_SCHEMA = {
             "type": "array",
             "maxItems": 8,
             "items": {
-                "type": "object",
-                "properties": {
-                    "scope": {"enum": ["provider_data", "provider_js"]},
-                    "operation": {"enum": ["set", "delete", "append", "unified_diff"]},
-                    "path": {"type": "string", "maxLength": 300},
-                    "value": {},
-                    "diff": {"type": "string", "maxLength": 24000},
-                },
-                "required": ["scope", "operation", "path"],
-                "additionalProperties": False,
+                "oneOf": [
+                    deepcopy(DATA_MUTATION_SCHEMA),
+                    deepcopy(JS_MUTATION_SCHEMA),
+                ]
             },
         },
         "tests": {
@@ -64,6 +90,11 @@ def proposal_schema_for(
 ) -> dict[str, Any]:
     schema = deepcopy(REPAIR_PROPOSAL_SCHEMA)
     schema["properties"]["provider_id"] = {"type": "string", "const": provider_id}
+    js_variant = schema["properties"]["mutations"]["items"]["oneOf"][1]
+    js_variant["properties"]["path"] = {
+        "type": "string",
+        "const": f"engine_v2/providers/{provider_id}.mjs",
+    }
 
     prior = causal_prior or {}
     confidence = float(prior.get("confidence") or 0.0)
