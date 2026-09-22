@@ -1,11 +1,24 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "runtime": "llama.cpp",
-  "baseModel": "Qwen2.5-Coder-1.5B-Instruct",
-  "quantizationTarget": "Q4",
   "backendContract": "openai-compatible-local-http",
   "temperature": 0.1,
   "remoteApiRequired": false,
   "weightsCommittedToGit": false,
-  "role": "bounded diagnosis and repair-candidate planner"
+  "role": "bounded diagnosis and repair-candidate planner",
+  "selectionPolicy": "benchmark_on_niakvio_cases_before_promotion",
+  "candidates": [
+    {
+      "id": "qwen25-coder-1.5b",
+      "baseModel": "Qwen/Qwen2.5-Coder-1.5B-Instruct",
+      "quantizationTarget": "Q4_K_M",
+      "reason": "small code-specialized baseline"
+    },
+    {
+      "id": "qwen35-2b",
+      "baseModel": "Qwen/Qwen3.5-2B",
+      "quantizationTarget": "Q4_K_M",
+      "reason": "newer small reasoning challenger"
+    }
+  ]
 }
