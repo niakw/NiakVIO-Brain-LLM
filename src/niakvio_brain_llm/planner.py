@@ -11,7 +11,7 @@ from .policy import build_mutation_policy
 from .priors import build_causal_prior
 from .prompting import build_prompt_payload
 from .retrieval import ExperienceStore
-from .schema import proposal_schema_for
+from .schema import REPAIR_PROPOSAL_SCHEMA, proposal_schema_for
 
 SYSTEM_PROMPT = """You are NiakVIO Brain LLM, a bounded repair planner.
 Use high-confidence causal_prior and strategy_prior as authoritative planning constraints.
@@ -60,13 +60,15 @@ class BrainPlanner:
         self.store = store or ExperienceStore([])
         self.documents = documents or DocumentStore([])
 
-    def plan(self, request: RepairRequest) -> RepairProposal:
+    def _prepare(
+        self,
+        request: RepairRequest,
+    ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, Any], dict[str, Any], str]:
         query = request.to_dict()
         experiences = self.store.search(query, limit=6)
         documents = self.documents.search(query, limit=4)
         causal_prior = build_causal_prior(request, experiences)
         mutation_policy = build_mutation_policy(request, causal_prior)
-
         user = json.dumps(
             build_prompt_payload(
                 request,
@@ -78,16 +80,37 @@ class BrainPlanner:
             ensure_ascii=True,
             allow_nan=False,
         )
+        return experiences, documents, causal_prior, mutation_policy, user
+
+    def _generate(
+        self,
+        request: RepairRequest,
+        *,
+        constrained: bool,
+    ) -> tuple[RepairProposal, dict[str, Any], dict[str, Any]]:
+        _, _, causal_prior, mutation_policy, user = self._prepare(request)
+        schema = (
+            proposal_schema_for(request.provider_id, causal_prior, mutation_policy)
+            if constrained
+            else REPAIR_PROPOSAL_SCHEMA
+        )
         raw = self.backend.complete(
             system=SYSTEM_PROMPT,
             user=user,
-            response_schema=proposal_schema_for(
-                request.provider_id,
-                causal_prior,
-                mutation_policy,
-            ),
+            response_schema=schema,
         )
-        proposal = RepairProposal.from_dict(_extract_json(raw))
+        return RepairProposal.from_dict(_extract_json(raw)), causal_prior, mutation_policy
+
+    def propose_raw(self, request: RepairRequest) -> RepairProposal:
+        """Model-only proposal for benchmarks; skips production post-validation."""
+        proposal, _, _ = self._generate(request, constrained=False)
+        return proposal
+
+    def plan(self, request: RepairRequest) -> RepairProposal:
+        proposal, causal_prior, mutation_policy = self._generate(
+            request,
+            constrained=True,
+        )
 
         if proposal.provider_id and proposal.provider_id != request.provider_id:
             raise ValueError("model changed provider_id")
