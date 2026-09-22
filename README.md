@@ -36,7 +36,7 @@ Selected standalone runtime:
 Measured 6-case raw NiakVIO benchmark:
 
 - causal layer: 6/6
-- canonical strategy: 5/6
+- canonical strategy: 6/6
 - mutation-policy compliance: 6/6
 - mutation structural validity: 6/6
 - abstention-policy compliance: 6/6
