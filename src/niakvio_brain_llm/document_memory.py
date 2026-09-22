@@ -75,10 +75,13 @@ class DocumentStore:
         return cls(rows)
 
     def search(self, query: dict[str, Any], *, limit: int = 4) -> list[dict[str, Any]]:
-        qv = _tokens(query)
         provider = str(query.get("provider_id") or "").casefold()
         failure = str(query.get("failure_class") or "").casefold()
         status = str(query.get("status") or "").casefold()
+        supported = " ".join(str(x) for x in query.get("supported_types") or [])
+        # Retrieval is based on problem values only. JSON field names such as
+        # provider_id/failure_class are not semantic evidence.
+        qv = _tokens(" ".join(part for part in (provider, failure, status, supported) if part))
 
         scored = []
         for row, vector in zip(self.rows, self._vectors):
@@ -101,8 +104,6 @@ class DocumentStore:
                 continue
 
             authority = max(0.0, min(1.0, float(row.get("authority") or 0) / 100.0))
-            # Authority refines relevant matches; it never makes an irrelevant
-            # document relevant by itself.
             score = relevance * (0.90 + (0.10 * authority))
             scored.append((score, relevance, authority, row))
 
