@@ -11,22 +11,32 @@ SYSTEM = (
     "bounded repair. NiakVIO verification is the only proof authority."
 )
 
+VALID_LAYERS = {"provider", "core", "harness", "network", "unknown"}
+
 def build_example(row: dict[str, Any]) -> dict[str, Any] | None:
     if row.get("result") not in {"validated", "abstained"}:
         return None
+
+    target_layer = str(row.get("target_layer") or "").casefold()
+    if target_layer not in VALID_LAYERS:
+        # Historical RAG memory is useful without being safe supervised truth.
+        return None
+
     request = {
         "provider_id": row.get("provider_id"),
         "failure_class": row.get("failure_class"),
         "status": row.get("status_before"),
+        "supported_types": row.get("supported_types") or [],
     }
     answer = {
         "provider_id": row.get("provider_id"),
         "diagnosis": row.get("diagnosis", ""),
         "strategy": row.get("strategy", ""),
         "confidence": 1.0 if row.get("result") == "validated" else 0.6,
+        "target_layer": target_layer,
         "evidence": row.get("evidence", []),
         "mutations": row.get("mutations", []),
-        "tests": row.get("tests", []),
+        "tests": row.get("requested_tests") or row.get("tests") or [],
         "abstain": row.get("result") == "abstained",
         "abstain_reason": row.get("lesson", "") if row.get("result") == "abstained" else "",
     }
