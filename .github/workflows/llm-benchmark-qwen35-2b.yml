@@ -2,18 +2,6 @@ name: Qwen 3.5 2B NiakVIO Benchmark
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - bootstrap/brain-llm-v0
-    paths:
-      - ".github/workflows/llm-benchmark-qwen35-2b.yml"
-      - "benchmark/golden_cases.jsonl"
-      - "benchmark/golden_model_benchmark.py"
-      - "config/llm-benchmark-trigger.txt"
-
-concurrency:
-  group: brain-llm-benchmark-qwen35-2b-${{ github.ref }}
-  cancel-in-progress: true
 
 permissions:
   contents: read
