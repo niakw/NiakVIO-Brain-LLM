@@ -53,13 +53,27 @@ def compact_experience(row: dict[str, Any]) -> dict[str, Any]:
     )
     return {key: _compact(row.get(key)) for key in keep if key in row}
 
+def compact_document(row: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "path": _clip(row.get("path"), 180),
+        "heading": _clip(row.get("heading"), 220),
+        "role": _clip(row.get("role"), 100),
+        "authority": row.get("authority"),
+        "text": _clip(row.get("text"), 1500),
+        "_document_score": row.get("_document_score"),
+    }
+
 def build_prompt_payload(
     request: RepairRequest,
     experiences: list[dict[str, Any]],
+    documents: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     return {
         "request": compact_request(request),
         "retrieved_experiences": [
             compact_experience(row) for row in experiences[:4]
+        ],
+        "retrieved_documents": [
+            compact_document(row) for row in (documents or [])[:4]
         ],
     }
