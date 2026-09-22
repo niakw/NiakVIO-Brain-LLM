@@ -2,20 +2,6 @@ name: Brain Batch Smoke
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - bootstrap/brain-llm-v0
-    paths:
-      - ".github/workflows/brain-batch-smoke.yml"
-      - "scripts/plan_batch_from_checkout.py"
-      - "scripts/route_batch_from_checkout.py"
-      - "src/niakvio_brain_llm/batch.py"
-      - "src/niakvio_brain_llm/routing.py"
-      - "src/niakvio_brain_llm/niakvio_adapter.py"
-
-concurrency:
-  group: brain-batch-smoke-${{ github.ref }}
-  cancel-in-progress: true
 
 permissions:
   contents: read
