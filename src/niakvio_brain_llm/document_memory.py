@@ -30,7 +30,6 @@ def chunk_markdown(text: str, *, path: str, authority: int, role: str) -> list[d
         body = "\n".join(buffer).strip()
         if not body:
             return
-        # Keep chunks small enough for a 1.5-2B model.
         for start in range(0, len(body), 3200):
             part = body[start:start + 3200]
             chunks.append({
@@ -87,20 +86,36 @@ class DocumentStore:
             haystack = (
                 str(row.get("heading") or "") + "\n" + str(row.get("text") or "")
             ).casefold()
-            exact = 0.0
-            if provider and provider in haystack:
-                exact += 0.30
-            if failure and failure in haystack:
-                exact += 0.24
-            if status and status in haystack:
-                exact += 0.08
-            authority = max(0.0, min(1.0, float(row.get("authority") or 0) / 100.0))
-            score = (0.58 * lexical) + exact + (0.12 * authority)
-            scored.append((score, authority, row))
+            hay_tokens = set(_tokens(haystack))
 
-        ranked = sorted(scored, key=lambda item: (item[0], item[1]), reverse=True)
+            exact = 0.0
+            if provider and provider in hay_tokens:
+                exact += 0.34
+            if failure and failure in haystack:
+                exact += 0.28
+            if status and status in haystack:
+                exact += 0.06
+
+            relevance = (0.62 * lexical) + exact
+            if relevance < 0.08:
+                continue
+
+            authority = max(0.0, min(1.0, float(row.get("authority") or 0) / 100.0))
+            # Authority refines relevant matches; it never makes an irrelevant
+            # document relevant by itself.
+            score = relevance * (0.90 + (0.10 * authority))
+            scored.append((score, relevance, authority, row))
+
+        ranked = sorted(
+            scored,
+            key=lambda item: (item[0], item[1], item[2]),
+            reverse=True,
+        )
         return [
-            dict(row, _document_score=round(score, 4))
-            for score, _, row in ranked[:limit]
-            if score > 0.10
+            dict(
+                row,
+                _document_score=round(score, 4),
+                _document_relevance=round(relevance, 4),
+            )
+            for score, relevance, _, row in ranked[:limit]
         ]
