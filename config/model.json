@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "runtime": "llama.cpp",
   "backendContract": "openai-compatible-local-http",
   "temperature": 0.1,
@@ -7,18 +7,36 @@
   "weightsCommittedToGit": false,
   "role": "bounded diagnosis and repair-candidate planner",
   "selectionPolicy": "benchmark_on_niakvio_cases_before_promotion",
+  "provisionalRuntime": "qwen25-coder-3b",
+  "provisionalReason": "best measured 6-case raw NiakVIO benchmark; pending expanded historical benchmark",
   "candidates": [
     {
       "id": "qwen25-coder-1.5b",
       "baseModel": "Qwen/Qwen2.5-Coder-1.5B-Instruct",
       "quantizationTarget": "Q4_K_M",
+      "status": "baseline",
       "reason": "small code-specialized baseline"
+    },
+    {
+      "id": "qwen25-coder-3b",
+      "baseModel": "Qwen/Qwen2.5-Coder-3B-Instruct",
+      "quantizationTarget": "Q4_K_M",
+      "status": "provisional-runtime",
+      "reason": "best current causal discipline and mutation-policy compliance"
     },
     {
       "id": "qwen35-2b",
       "baseModel": "Qwen/Qwen3.5-2B",
       "quantizationTarget": "Q4_K_M",
-      "reason": "newer small reasoning challenger"
+      "status": "challenger",
+      "reasoningMode": "bounded",
+      "reason": "newer small model; correct causal layer but weaker mutation/abstention discipline"
+    },
+    {
+      "id": "qwen38-27b",
+      "baseModel": "Qwen/Qwen3.8-27B",
+      "status": "teacher-candidate",
+      "reason": "too large for default hosted CPU runtime; potential critic/distillation teacher"
     }
   ]
 }
