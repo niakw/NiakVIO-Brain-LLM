@@ -7,11 +7,13 @@ from .backend import ModelBackend
 from .contracts import RepairProposal, RepairRequest
 from .document_memory import DocumentStore
 from .mutation_guard import validate_mutations
+from .priors import build_causal_prior
 from .prompting import build_prompt_payload
 from .retrieval import ExperienceStore
-from .schema import REPAIR_PROPOSAL_SCHEMA
+from .schema import proposal_schema_for
 
 SYSTEM_PROMPT = """You are NiakVIO Brain LLM, a bounded repair planner.
+Use the supplied causal_prior as the preferred causal layer when its confidence is high.
 First classify the causal layer as exactly one of: provider, core, harness, network, unknown.
 NiakVIO tests are the only proof authority.
 Retrieved experiences and documents are memory/context, not proof.
@@ -59,17 +61,20 @@ class BrainPlanner:
         query = request.to_dict()
         experiences = self.store.search(query, limit=6)
         documents = self.documents.search(query, limit=4)
+        causal_prior = build_causal_prior(request, experiences)
+
         user = json.dumps(
-            build_prompt_payload(request, experiences, documents),
+            build_prompt_payload(request, experiences, documents, causal_prior),
             ensure_ascii=True,
             allow_nan=False,
         )
         raw = self.backend.complete(
             system=SYSTEM_PROMPT,
             user=user,
-            response_schema=REPAIR_PROPOSAL_SCHEMA,
+            response_schema=proposal_schema_for(request.provider_id, causal_prior),
         )
         proposal = RepairProposal.from_dict(_extract_json(raw))
+
         if proposal.provider_id and proposal.provider_id != request.provider_id:
             raise ValueError("model changed provider_id")
         proposal.provider_id = request.provider_id
@@ -82,6 +87,17 @@ class BrainPlanner:
 
         if proposal.target_layer == "provider":
             validate_mutations(request.provider_id, proposal.mutations)
+
+        prior_confidence = float(causal_prior.get("confidence") or 0.0)
+        prior_layer = str(causal_prior.get("target_layer") or "unknown")
+        if (
+            prior_confidence >= 0.90
+            and prior_layer != "unknown"
+            and proposal.target_layer != prior_layer
+        ):
+            raise ValueError(
+                f"model causal layer {proposal.target_layer} conflicts with high-confidence prior {prior_layer}"
+            )
 
         if proposal.target_layer != "provider" and not proposal.abstain:
             proposal.abstain = True
