@@ -6,12 +6,18 @@ def classify_learning_record(row: dict[str, Any]) -> dict[str, Any]:
     result = str(row.get("result") or "inconclusive")
     layer = str(row.get("target_layer") or "unknown")
     verified_lanes = [str(x) for x in row.get("verified_lanes") or []]
+    authority = str(row.get("verification_authority") or "").strip().casefold()
 
     if result == "validated":
+        verified_training_truth = layer != "unknown" and authority == "niakvio"
         return {
             "rag_bucket": "positive",
-            "sft_candidate": layer != "unknown",
-            "promotion_reason": "verified repair outcome",
+            "sft_candidate": verified_training_truth,
+            "promotion_reason": (
+                "verified NiakVIO repair outcome"
+                if verified_training_truth
+                else "positive memory lacks current NiakVIO verification authority"
+            ),
             "weight": 1.0 + min(len(verified_lanes), 3) * 0.1,
         }
 
