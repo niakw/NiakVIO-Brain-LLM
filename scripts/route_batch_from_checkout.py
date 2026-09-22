@@ -15,6 +15,7 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--niakvio-root", required=True)
     parser.add_argument("--experience", required=True)
+    parser.add_argument("--extra-experience", action="append", default=[])
     parser.add_argument("--mode", choices=("repair", "diagnostic", "brain"), default="repair")
     parser.add_argument("--provider", action="append", default=[])
     parser.add_argument("--limit", type=int, default=0)
@@ -30,7 +31,9 @@ def main() -> int:
     if args.limit > 0:
         selected = selected[: args.limit]
 
-    store = ExperienceStore.from_jsonl(args.experience)
+    store = ExperienceStore.from_jsonl_many(
+        [args.experience, *args.extra_experience]
+    )
     rows = []
     modes: Counter[str] = Counter()
 
@@ -65,6 +68,7 @@ def main() -> int:
         "routing_modes": dict(sorted(modes.items())),
         "llm_targets": llm_targets,
         "llm_needed": llm_targets > 0,
+        "experience_sources": 1 + len(args.extra_experience),
     }
     Path(args.summary).write_text(
         json.dumps(summary, indent=2, ensure_ascii=True) + "\n",
