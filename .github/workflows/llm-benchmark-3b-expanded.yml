@@ -1,0 +1,96 @@
+name: Qwen 3B Expanded NiakVIO Benchmark
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - bootstrap/brain-llm-v0
+    paths:
+      - ".github/workflows/llm-benchmark-3b-expanded.yml"
+      - "benchmark/build_public_golden_cases.py"
+      - "benchmark/golden_model_benchmark.py"
+      - "config/llm-benchmark-trigger.txt"
+
+concurrency:
+  group: brain-llm-benchmark-3b-expanded-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  qwen3b-expanded:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: brain
+
+      - uses: actions/checkout@v4
+        with:
+          repository: niakw/NiakVIO
+          path: niakvio
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: python -m pip install -e brain
+
+      - name: Build current NiakVIO memories and expanded cases
+        run: |
+          python brain/scripts/import_public_niakvio.py             --niakvio-root niakvio             --output public-experience.jsonl
+          python brain/scripts/import_public_docs.py             --niakvio-root niakvio             --config brain/config/document_sources.json             --output public-documents.jsonl
+          python brain/benchmark/build_public_golden_cases.py             --seed niakvio/automation/brain-historical-experience-seed.json             --output expanded-golden-cases.jsonl
+          wc -l expanded-golden-cases.jsonl
+
+      - uses: actions/cache@v4
+        id: llama-cache
+        with:
+          path: llama.cpp
+          key: llama-cpp-server-linux-v1
+
+      - if: steps.llama-cache.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libcurl4-openssl-dev
+          git clone --depth 1 https://github.com/ggml-org/llama.cpp.git
+          cmake -S llama.cpp -B llama.cpp/build             -DGGML_NATIVE=OFF             -DLLAMA_CURL=ON             -DCMAKE_BUILD_TYPE=Release
+          cmake --build llama.cpp/build --config Release -j2 --target llama-server
+
+      - if: steps.llama-cache.outputs.cache-hit == 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libcurl4-openssl-dev
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/llama.cpp
+            ~/.cache/huggingface
+          key: qwen25-coder-3b-q4-km-v1
+
+      - name: Start Qwen2.5 Coder 3B
+        run: |
+          ./llama.cpp/build/bin/llama-server             -hf Qwen/Qwen2.5-Coder-3B-Instruct-GGUF:Q4_K_M             --host 127.0.0.1             --port 8080             -c 4096             -np 1             > llama-server.log 2>&1 &
+          for i in $(seq 1 180); do
+            curl -fsS http://127.0.0.1:8080/health >/dev/null 2>&1 && exit 0
+            sleep 2
+          done
+          cat llama-server.log
+          exit 1
+
+      - name: Run expanded raw benchmark
+        run: |
+          python brain/benchmark/golden_model_benchmark.py             --cases expanded-golden-cases.jsonl             --experience public-experience.jsonl             --documents public-documents.jsonl             --endpoint http://127.0.0.1:8080             --model qwen2.5-coder-3b             | tee expanded-golden-benchmark-3b.json
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: qwen25-3b-niakvio-expanded-benchmark
+          path: |
+            expanded-golden-cases.jsonl
+            expanded-golden-benchmark-3b.json
+            llama-server.log
