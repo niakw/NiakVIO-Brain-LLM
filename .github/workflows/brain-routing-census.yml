@@ -2,15 +2,6 @@ name: Brain Routing Census
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - bootstrap/brain-llm-v0
-    paths:
-      - ".github/workflows/brain-routing-census.yml"
-      - "scripts/route_batch_from_checkout.py"
-      - "src/niakvio_brain_llm/routing.py"
-      - "src/niakvio_brain_llm/niakvio_adapter.py"
-      - "src/niakvio_brain_llm/batch.py"
 
 permissions:
   contents: read
