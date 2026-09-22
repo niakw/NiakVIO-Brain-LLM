@@ -16,7 +16,7 @@ def response(strategy: str) -> str:
         "mutations": [{
             "scope": "provider_data",
             "operation": "set",
-            "path": "repair.strategy",
+            "path": "notes",
             "value": strategy
         }],
         "tests": ["retest"],
