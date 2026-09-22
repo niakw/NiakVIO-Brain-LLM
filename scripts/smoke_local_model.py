@@ -8,6 +8,7 @@ from typing import Any
 
 from niakvio_brain_llm.backend import LocalOpenAICompatibleBackend
 from niakvio_brain_llm.contracts import RepairRequest, TARGET_LAYERS
+from niakvio_brain_llm.document_memory import DocumentStore
 from niakvio_brain_llm.planner import BrainPlanner
 from niakvio_brain_llm.retrieval import ExperienceStore
 
@@ -37,6 +38,7 @@ def main() -> int:
     parser.add_argument("--endpoint", default="http://127.0.0.1:8080")
     parser.add_argument("--model", default="qwen")
     parser.add_argument("--experience", required=True)
+    parser.add_argument("--documents", required=True)
     parser.add_argument("--output", required=True)
     args = parser.parse_args()
 
@@ -62,6 +64,7 @@ def main() -> int:
     planner = BrainPlanner(
         backend,
         ExperienceStore.from_jsonl(args.experience),
+        DocumentStore.from_jsonl(args.documents),
     )
 
     report: dict[str, Any] = {
