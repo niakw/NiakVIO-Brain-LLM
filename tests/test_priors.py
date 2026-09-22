@@ -6,10 +6,10 @@ from niakvio_brain_llm.priors import build_causal_prior
 class PriorTests(unittest.TestCase):
     def test_exact_provider_history_becomes_provider_prior(self):
         prior = build_causal_prior(
-            RepairRequest(provider_id="movix", failure_class="api_discovery_gap"),
+            RepairRequest(provider_id="movix", failure_class="provider_specific_gap"),
             [{
                 "experience_id": "hist-movix",
-                "failure_class": "api_discovery_gap",
+                "failure_class": "provider_specific_gap",
                 "providers": ["movix"],
                 "strategy": "discover_api",
             }],
@@ -30,6 +30,22 @@ class PriorTests(unittest.TestCase):
             }],
         )
         self.assertEqual(prior["target_layer"], "harness")
+
+    def test_chain_terminal_taxonomy_is_provider(self):
+        prior = build_causal_prior(
+            RepairRequest(provider_id="demo", failure_class="chain_terminal_gap"),
+            [],
+        )
+        self.assertEqual(prior["target_layer"], "provider")
+        self.assertGreaterEqual(prior["confidence"], 0.95)
+
+    def test_pre_network_gate_taxonomy_is_core(self):
+        prior = build_causal_prior(
+            RepairRequest(provider_id="global", failure_class="media_type_pre_network_gate"),
+            [],
+        )
+        self.assertEqual(prior["target_layer"], "core")
+        self.assertGreaterEqual(prior["confidence"], 0.95)
 
 if __name__ == "__main__":
     unittest.main()
