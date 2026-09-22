@@ -5,7 +5,7 @@ from niakvio_brain_llm.learning import sanitized_experience
 from niakvio_brain_llm.session import VerificationOutcome
 
 class LearningTests(unittest.TestCase):
-    def test_learning_record_omits_raw_context(self):
+    def test_learning_record_omits_raw_context_and_marks_verifier(self):
         request = RepairRequest(
             provider_id="demo",
             failure_class="terminal_extractor",
@@ -28,6 +28,7 @@ class LearningTests(unittest.TestCase):
         self.assertNotIn("must-not-persist", encoded)
         self.assertNotIn("raw patch omitted", encoded)
         self.assertEqual(row["result"], "validated")
+        self.assertEqual(row["verification_authority"], "niakvio")
 
 if __name__ == "__main__":
     unittest.main()
