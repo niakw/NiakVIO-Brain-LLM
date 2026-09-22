@@ -1,0 +1,68 @@
+name: Public NiakVIO Evidence Contract
+
+on:
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: "31 3 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Brain LLM
+        uses: actions/checkout@v4
+        with:
+          path: brain
+
+      - name: Checkout NiakVIO read-only
+        uses: actions/checkout@v4
+        with:
+          repository: niakw/NiakVIO
+          path: niakvio
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Brain package
+        run: python -m pip install -e brain
+
+      - name: Import public experience
+        run: |
+          python brain/scripts/import_public_niakvio.py \
+            --niakvio-root niakvio \
+            --output public-experience.jsonl
+
+      - name: Benchmark retrieval
+        run: |
+          python brain/benchmark/retrieval_benchmark.py \
+            --experience public-experience.jsonl \
+            --top-k 3 | tee retrieval-report.json
+
+      - name: Contract smoke
+        run: |
+          python - <<'PY'
+          from niakvio_brain_llm.niakvio_adapter import request_from_checkout
+          import json
+          from pathlib import Path
+          census = json.loads(Path("niakvio/automation/provider-census-status.json").read_text())
+          providers = [r.get("provider") for r in census.get("providers", []) if r.get("provider")]
+          assert providers, "no current providers found"
+          request = request_from_checkout("niakvio", providers[0])
+          assert request.provider_id == providers[0]
+          assert request.provider_context.get("read_only") is True
+          print(json.dumps({"provider": request.provider_id, "status": request.status}))
+          PY
+
+      - name: Upload generated reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: public-niakvio-brain-evidence
+          path: |
+            public-experience.jsonl
+            retrieval-report.json
