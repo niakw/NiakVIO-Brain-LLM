@@ -4,19 +4,30 @@ from typing import Any
 
 from .contracts import RepairRequest
 
-# Stable NiakVIO failure classes carry a causal + strategy prior. This is not
-# provider-specific repair logic: it is the project-wide taxonomy learned from
-# validated historical cases.
+# Project-wide causal taxonomy learned from validated NiakVIO architecture/history.
+# These are failure classes, never provider-specific exceptions.
 STATIC_FAILURE_PRIORS: dict[str, dict[str, Any]] = {
     "media-type-pre-network-gate": {
         "target_layer": "core",
         "confidence": 0.99,
         "strategy_prior": "normalize_client_media_type_before_provider_capability_gate",
     },
-    "transport-environment-gap": {
-        "target_layer": "harness",
-        "confidence": 0.99,
-        "strategy_prior": "compare_browser_native_residential_profiles_without_provider_mutation",
+    "provider-backend-isolation": {
+        "target_layer": "provider",
+        "confidence": 0.96,
+    },
+    "api-discovery-gap": {
+        "target_layer": "provider",
+        "confidence": 0.96,
+        "strategy_prior": "discover_api_from_current_page_and_bundles",
+    },
+    "playback-identity-gap": {
+        "target_layer": "core",
+        "confidence": 0.96,
+    },
+    "runtime-compatibility-gap": {
+        "target_layer": "core",
+        "confidence": 0.96,
     },
     "client-capability-projection-gap": {
         "target_layer": "core",
@@ -26,8 +37,57 @@ STATIC_FAILURE_PRIORS: dict[str, dict[str, Any]] = {
         "target_layer": "core",
         "confidence": 0.96,
     },
+    "provider-identity-collision": {
+        "target_layer": "core",
+        "confidence": 0.96,
+    },
+    "transport-environment-gap": {
+        "target_layer": "harness",
+        "confidence": 0.99,
+        "strategy_prior": "compare_browser_native_residential_profiles_without_provider_mutation",
+    },
+    "typed-api-execution": {
+        "target_layer": "provider",
+        "confidence": 0.96,
+    },
+    "provider-reconstruction-integrity": {
+        "target_layer": "core",
+        "confidence": 0.96,
+    },
+    "identity-mismatch": {
+        "target_layer": "provider",
+        "confidence": 0.96,
+    },
+    "media-validation-gap": {
+        "target_layer": "core",
+        "confidence": 0.96,
+    },
+    "runtime-timeout-gap": {
+        "target_layer": "core",
+        "confidence": 0.96,
+    },
+    "structured-parse-gap": {
+        "target_layer": "core",
+        "confidence": 0.96,
+    },
+    "state-authority-gap": {
+        "target_layer": "core",
+        "confidence": 0.96,
+    },
+    "activation-proof-gap": {
+        "target_layer": "core",
+        "confidence": 0.96,
+    },
     "client-lifecycle-gap": {
         "target_layer": "core",
+        "confidence": 0.96,
+    },
+    "proof-freshness-gap": {
+        "target_layer": "core",
+        "confidence": 0.96,
+    },
+    "provider-transport-gap": {
+        "target_layer": "provider",
         "confidence": 0.96,
     },
     "route-proven-gap": {
@@ -48,17 +108,20 @@ STATIC_FAILURE_PRIORS: dict[str, dict[str, Any]] = {
     "media-extraction-gap": {
         "target_layer": "provider",
         "confidence": 0.96,
-        "strategy_prior": "terminal_media_extractor_with_playback_validation",
-    },
-    "api-discovery-gap": {
-        "target_layer": "provider",
-        "confidence": 0.96,
-        "strategy_prior": "discover_api_from_current_page_and_bundles",
+        "strategy_prior": "proven_request_program_and_terminal_extraction",
     },
 }
 
 def _canon(value: object) -> str:
     return "-".join(str(value or "").strip().casefold().replace("_", "-").split())
+
+def taxonomy_prior(failure_class: object) -> dict[str, Any] | None:
+    prior = STATIC_FAILURE_PRIORS.get(_canon(failure_class))
+    return dict(prior) if prior else None
+
+def taxonomy_layer(failure_class: object) -> str | None:
+    prior = taxonomy_prior(failure_class)
+    return str(prior["target_layer"]) if prior else None
 
 def build_causal_prior(
     request: RepairRequest,
@@ -76,7 +139,7 @@ def build_causal_prior(
         return {"target_layer": "unknown", "confidence": 0.99, "source": "lifecycle_disabled"}
 
     failure = _canon(request.failure_class)
-    static = STATIC_FAILURE_PRIORS.get(failure)
+    static = taxonomy_prior(failure)
     if static:
         prior = dict(static)
         prior["source"] = "failure_class_taxonomy"
