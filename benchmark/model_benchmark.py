@@ -7,6 +7,7 @@ from pathlib import Path
 
 from niakvio_brain_llm.backend import LocalOpenAICompatibleBackend
 from niakvio_brain_llm.contracts import RepairRequest
+from niakvio_brain_llm.document_memory import DocumentStore
 from niakvio_brain_llm.planner import BrainPlanner
 from niakvio_brain_llm.retrieval import ExperienceStore
 
@@ -37,6 +38,7 @@ def request_for(row: dict) -> RepairRequest:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--experience", required=True)
+    parser.add_argument("--documents", default="")
     parser.add_argument("--endpoint", default="http://127.0.0.1:8080")
     parser.add_argument("--model", default="niakvio-local")
     parser.add_argument("--max-cases", type=int, default=8)
@@ -44,6 +46,7 @@ def main() -> int:
 
     rows = load_rows(args.experience)
     selected = rows[: max(1, args.max_cases)]
+    documents = DocumentStore.from_jsonl(args.documents) if args.documents else DocumentStore([])
     backend = LocalOpenAICompatibleBackend(
         base_url=args.endpoint,
         model=args.model,
@@ -59,7 +62,7 @@ def main() -> int:
 
     for index, row in enumerate(selected):
         peers = rows[:index] + rows[index + 1:]
-        planner = BrainPlanner(backend, ExperienceStore(peers))
+        planner = BrainPlanner(backend, ExperienceStore(peers), documents)
         request = request_for(row)
         try:
             proposal = planner.plan(request)
