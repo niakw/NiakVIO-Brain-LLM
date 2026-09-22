@@ -1,0 +1,2 @@
+{"id":"terminal-extractor","request":{"provider_id":"example-a","failure_class":"terminal_extractor","status":"CHAIN REACHED","supported_types":["movie"]},"expected_strategies":["repair_terminal_extractor"]}
+{"id":"waf-harness","request":{"provider_id":"example-b","failure_class":"provider_waf_challenge","status":"HARNESS MISMATCH","supported_types":["movie","tv"]},"expected_strategies":["abstain_provider_mutation"]}
