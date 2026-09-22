@@ -7,12 +7,14 @@ from .backend import ModelBackend
 from .contracts import RepairProposal, RepairRequest
 from .retrieval import ExperienceStore
 
-SYSTEM_PROMPT = """You are NiakVIO Brain LLM, a bounded provider-repair planner.
+SYSTEM_PROMPT = """You are NiakVIO Brain LLM, a bounded repair planner.
+First classify the causal layer as exactly one of: provider, core, harness, network, unknown.
 NiakVIO tests are the only proof authority. Retrieved experience is hypothesis material, not proof.
 Never mutate outside allowed_mutations or touch forbidden_mutations.
+If target_layer is not provider, do not propose provider mutations: abstain and request the right diagnostic/retest.
 Prefer the smallest causal change. If evidence is insufficient, abstain.
-Return one JSON object only with provider_id, diagnosis, strategy, confidence, evidence,
-mutations, tests, abstain and abstain_reason.
+Return one JSON object only with provider_id, diagnosis, strategy, confidence, target_layer,
+evidence, mutations, tests, abstain and abstain_reason.
 """
 
 def _extract_json(text: str) -> dict[str, Any]:
@@ -46,6 +48,17 @@ class BrainPlanner:
         if proposal.provider_id and proposal.provider_id != request.provider_id:
             raise ValueError("model changed provider_id")
         proposal.provider_id = request.provider_id
+
         if any(str(m.get("scope") or "") not in request.allowed_mutations for m in proposal.mutations):
             raise ValueError("model proposed mutation outside allowed scope")
+
+        if proposal.target_layer != "provider" and proposal.mutations:
+            raise ValueError("non-provider diagnosis cannot mutate provider code/data")
+
+        if proposal.target_layer != "provider" and not proposal.abstain:
+            proposal.abstain = True
+            proposal.abstain_reason = proposal.abstain_reason or (
+                f"causal layer is {proposal.target_layer}; provider mutation withheld"
+            )
+
         return proposal
