@@ -5,6 +5,7 @@ from typing import Any
 
 from .backend import ModelBackend
 from .contracts import RepairProposal, RepairRequest
+from .mutation_guard import validate_mutations
 from .retrieval import ExperienceStore
 
 SYSTEM_PROMPT = """You are NiakVIO Brain LLM, a bounded repair planner.
@@ -13,6 +14,12 @@ NiakVIO tests are the only proof authority. Retrieved experience is hypothesis m
 Never mutate outside allowed_mutations or touch forbidden_mutations.
 If target_layer is not provider, do not propose provider mutations: abstain and request the right diagnostic/retest.
 Prefer the smallest causal change. If evidence is insufficient, abstain.
+
+Mutation DSL:
+- provider_data: {\"scope\":\"provider_data\",\"operation\":\"set|delete|append\",\"path\":\"dot.path\",\"value\":...}
+- provider_js: {\"scope\":\"provider_js\",\"operation\":\"unified_diff\",\"path\":\"engine_v2/providers/<provider_id>.mjs\",\"diff\":\"...\"}
+
+Never return shell commands or edits to unrelated files.
 Return one JSON object only with provider_id, diagnosis, strategy, confidence, target_layer,
 evidence, mutations, tests, abstain and abstain_reason.
 """
@@ -56,6 +63,9 @@ class BrainPlanner:
 
         if proposal.target_layer != "provider" and proposal.mutations:
             raise ValueError("non-provider diagnosis cannot mutate provider code/data")
+
+        if proposal.target_layer == "provider":
+            validate_mutations(request.provider_id, proposal.mutations)
 
         if proposal.target_layer != "provider" and not proposal.abstain:
             proposal.abstain = True
