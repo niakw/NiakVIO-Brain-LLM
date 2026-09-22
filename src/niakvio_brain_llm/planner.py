@@ -24,9 +24,11 @@ If target_layer is not provider, do not propose provider mutations: abstain and 
 Prefer the smallest causal change. If evidence is insufficient, abstain.
 
 Mutation DSL:
-- provider_data: {\"scope\":\"provider_data\",\"operation\":\"set|delete|append\",\"path\":\"dot.path\",\"value\":...}
-- provider_js: {\"scope\":\"provider_js\",\"operation\":\"unified_diff\",\"path\":\"engine_v2/providers/<provider_id>.mjs\",\"diff\":\"...\"}
+- provider_data paths are relative to provider-overrides.json > provider_patches[provider_id], never file paths.
+- provider_data example: {"scope":"provider_data","operation":"set","path":"candidate_api_recipe.base","value":"https://api.example"}
+- provider_js: {"scope":"provider_js","operation":"unified_diff","path":"engine_v2/providers/<provider_id>.mjs","diff":"..."}
 
+Every mutation must include at least one concrete verification test.
 Never return shell commands or edits to unrelated files.
 Return one JSON object only with provider_id, diagnosis, strategy, confidence, target_layer,
 evidence, mutations, tests, abstain and abstain_reason.
@@ -87,6 +89,8 @@ class BrainPlanner:
 
         if proposal.target_layer == "provider":
             validate_mutations(request.provider_id, proposal.mutations)
+            if proposal.mutations and not proposal.tests:
+                raise ValueError("provider mutation proposal must request verification tests")
 
         prior_confidence = float(causal_prior.get("confidence") or 0.0)
         prior_layer = str(causal_prior.get("target_layer") or "unknown")
