@@ -10,6 +10,7 @@ on:
       - "benchmark/golden_cases.jsonl"
       - "benchmark/golden_model_benchmark.py"
       - "src/niakvio_brain_llm/prompting.py"
+      - "src/niakvio_brain_llm/planner.py"
       - "config/llm-benchmark-trigger.txt"
 
 concurrency:
