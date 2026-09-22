@@ -2,21 +2,6 @@ name: NiakVIO LLM Golden Benchmark
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - bootstrap/brain-llm-v0
-    paths:
-      - ".github/workflows/llm-benchmark.yml"
-      - "benchmark/golden_cases.jsonl"
-      - "benchmark/golden_model_benchmark.py"
-      - "scripts/import_public_niakvio.py"
-      - "scripts/import_public_docs.py"
-      - "config/model.json"
-      - "config/llm-benchmark-trigger.txt"
-
-concurrency:
-  group: brain-llm-benchmark-${{ github.ref }}
-  cancel-in-progress: true
 
 permissions:
   contents: read
