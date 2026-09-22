@@ -19,6 +19,7 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--niakvio-root", required=True)
     parser.add_argument("--experience", required=True)
+    parser.add_argument("--extra-experience", action="append", default=[])
     parser.add_argument("--documents", required=True)
     parser.add_argument("--mode", choices=("repair", "diagnostic", "brain"), default="repair")
     parser.add_argument("--provider", action="append", default=[])
@@ -50,7 +51,9 @@ def main() -> int:
         timeout_seconds=240,
         temperature=0.0,
     )
-    store = ExperienceStore.from_jsonl(args.experience)
+    store = ExperienceStore.from_jsonl_many(
+        [args.experience, *args.extra_experience]
+    )
     planner = BrainPlanner(
         backend,
         store,
@@ -106,6 +109,7 @@ def main() -> int:
         "llm_call_rate": (llm_calls / len(selected)) if selected else 0.0,
         "routing_modes": dict(sorted(routing_modes.items())),
         "ordered_by": "evidence_depth",
+        "experience_sources": 1 + len(args.extra_experience),
     }
     print(json.dumps(summary, sort_keys=True))
     return 2 if args.strict and summary["errors"] else 0
