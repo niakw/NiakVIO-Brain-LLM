@@ -7,27 +7,28 @@ from .backend import ModelBackend
 from .contracts import RepairProposal, RepairRequest
 from .document_memory import DocumentStore
 from .mutation_guard import validate_mutations
+from .policy import build_mutation_policy
 from .priors import build_causal_prior
 from .prompting import build_prompt_payload
 from .retrieval import ExperienceStore
 from .schema import proposal_schema_for
 
 SYSTEM_PROMPT = """You are NiakVIO Brain LLM, a bounded repair planner.
-Use the supplied causal_prior as the preferred causal layer when its confidence is high.
-First classify the causal layer as exactly one of: provider, core, harness, network, unknown.
+Use high-confidence causal_prior and strategy_prior as authoritative planning constraints.
+Use mutation_policy as an execution boundary, not a suggestion.
 NiakVIO tests are the only proof authority.
 Retrieved experiences and documents are memory/context, not proof.
 Respect document authority: current census/state > recent MEMORY > field evidence > historical docs.
 Never let stale historical text override current repository state.
 Never mutate outside allowed_mutations or touch forbidden_mutations.
-If target_layer is not provider, do not propose provider mutations: abstain and request the right diagnostic/retest.
-Prefer the smallest causal change. If evidence is insufficient, abstain.
+If mutation_policy forbids mutation, mutations must be empty.
+Never invent placeholder URLs, example domains, fake endpoints, fake diffs or unobserved current facts.
+If a fresh value required for a patch is absent, abstain and request the exact diagnostic/probe needed.
+Prefer the smallest causal change.
 
 Mutation DSL:
 - provider_data paths are relative to provider-overrides.json > provider_patches[provider_id], never file paths.
-- provider_data example: {"scope":"provider_data","operation":"set","path":"candidate_api_recipe.base","value":"https://api.example"}
-- provider_js: {"scope":"provider_js","operation":"unified_diff","path":"engine_v2/providers/<provider_id>.mjs","diff":"..."}
-
+- provider_js may target only engine_v2/providers/<provider_id>.mjs.
 Every mutation must include at least one concrete verification test.
 Never return shell commands or edits to unrelated files.
 Return one JSON object only with provider_id, diagnosis, strategy, confidence, target_layer,
@@ -64,16 +65,27 @@ class BrainPlanner:
         experiences = self.store.search(query, limit=6)
         documents = self.documents.search(query, limit=4)
         causal_prior = build_causal_prior(request, experiences)
+        mutation_policy = build_mutation_policy(request, causal_prior)
 
         user = json.dumps(
-            build_prompt_payload(request, experiences, documents, causal_prior),
+            build_prompt_payload(
+                request,
+                experiences,
+                documents,
+                causal_prior,
+                mutation_policy,
+            ),
             ensure_ascii=True,
             allow_nan=False,
         )
         raw = self.backend.complete(
             system=SYSTEM_PROMPT,
             user=user,
-            response_schema=proposal_schema_for(request.provider_id, causal_prior),
+            response_schema=proposal_schema_for(
+                request.provider_id,
+                causal_prior,
+                mutation_policy,
+            ),
         )
         proposal = RepairProposal.from_dict(_extract_json(raw))
 
@@ -81,8 +93,37 @@ class BrainPlanner:
             raise ValueError("model changed provider_id")
         proposal.provider_id = request.provider_id
 
+        prior_confidence = float(causal_prior.get("confidence") or 0.0)
+        prior_layer = str(causal_prior.get("target_layer") or "unknown")
+        prior_strategy = str(causal_prior.get("strategy_prior") or "")
+
+        if (
+            prior_confidence >= 0.90
+            and prior_layer != "unknown"
+            and proposal.target_layer != prior_layer
+        ):
+            raise ValueError(
+                f"model causal layer {proposal.target_layer} conflicts with high-confidence prior {prior_layer}"
+            )
+        if (
+            prior_confidence >= 0.90
+            and prior_strategy
+            and proposal.strategy != prior_strategy
+        ):
+            raise ValueError(
+                f"model strategy {proposal.strategy} conflicts with high-confidence prior {prior_strategy}"
+            )
+
+        allowed_scopes = set(mutation_policy.get("allowed_scopes") or [])
+        if proposal.mutations and not mutation_policy.get("allow_mutations"):
+            raise ValueError("model proposed mutation while evidence policy forbids mutation")
         if any(str(m.get("scope") or "") not in request.allowed_mutations for m in proposal.mutations):
-            raise ValueError("model proposed mutation outside allowed scope")
+            raise ValueError("model proposed mutation outside request scope")
+        if allowed_scopes and any(
+            str(m.get("scope") or "") not in allowed_scopes
+            for m in proposal.mutations
+        ):
+            raise ValueError("model proposed mutation outside evidence-backed scope")
 
         if proposal.target_layer != "provider" and proposal.mutations:
             raise ValueError("non-provider diagnosis cannot mutate provider code/data")
@@ -92,21 +133,16 @@ class BrainPlanner:
             if proposal.mutations and not proposal.tests:
                 raise ValueError("provider mutation proposal must request verification tests")
 
-        prior_confidence = float(causal_prior.get("confidence") or 0.0)
-        prior_layer = str(causal_prior.get("target_layer") or "unknown")
-        if (
-            prior_confidence >= 0.90
-            and prior_layer != "unknown"
-            and proposal.target_layer != prior_layer
-        ):
-            raise ValueError(
-                f"model causal layer {proposal.target_layer} conflicts with high-confidence prior {prior_layer}"
-            )
+        if mutation_policy.get("force_abstain") and not proposal.abstain:
+            raise ValueError("model must abstain under current evidence policy")
 
         if proposal.target_layer != "provider" and not proposal.abstain:
             proposal.abstain = True
             proposal.abstain_reason = proposal.abstain_reason or (
                 f"causal layer is {proposal.target_layer}; provider mutation withheld"
             )
+
+        if mutation_policy.get("force_abstain") and not proposal.abstain_reason:
+            proposal.abstain_reason = str(mutation_policy.get("reason") or "insufficient evidence")
 
         return proposal
