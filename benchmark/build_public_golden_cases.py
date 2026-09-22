@@ -6,34 +6,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-# High-confidence causal labels derived from NiakVIO's historical architecture.
-# Ambiguous cases are intentionally excluded from this benchmark.
-LAYER_BY_FAILURE = {
-    "media_type_pre_network_gate": "core",
-    "provider_backend_isolation": "provider",
-    "api_discovery_gap": "provider",
-    "playback_identity_gap": "core",
-    "runtime_compatibility_gap": "core",
-    "client_capability_projection_gap": "core",
-    "materializer_non_idempotence": "core",
-    "provider_identity_collision": "core",
-    "transport_environment_gap": "harness",
-    "typed_api_execution": "provider",
-    "provider_reconstruction_integrity": "core",
-    "identity_mismatch": "provider",
-    "media_validation_gap": "core",
-    "runtime_timeout_gap": "core",
-    "structured_parse_gap": "core",
-    "state_authority_gap": "core",
-    "activation_proof_gap": "core",
-    "client_lifecycle_gap": "core",
-    "proof_freshness_gap": "core",
-    "provider_transport_gap": "provider",
-    "route_proven_gap": "provider",
-    "chain_terminal_gap": "provider",
-    "candidate_replay_gap": "provider",
-    "media_extraction_gap": "provider",
-}
+from niakvio_brain_llm.priors import taxonomy_layer
 
 def load_cases(path: Path) -> list[dict[str, Any]]:
     data = json.loads(path.read_text(encoding="utf-8"))
@@ -44,7 +17,7 @@ def load_cases(path: Path) -> list[dict[str, Any]]:
 
 def build_case(case: dict[str, Any]) -> dict[str, Any] | None:
     failure = str(case.get("failureClass") or "")
-    layer = LAYER_BY_FAILURE.get(failure)
+    layer = taxonomy_layer(failure)
     strategy = str(case.get("solutionClass") or "")
     if not layer or not strategy:
         return None
