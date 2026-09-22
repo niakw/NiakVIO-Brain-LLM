@@ -86,7 +86,7 @@ jobs:
             ~/.cache/huggingface
           key: qwen35-2b-q4-km-v1
 
-      - name: Start Qwen3.5 2B without long thinking
+      - name: Start Qwen3.5 2B with bounded thinking
         run: |
           ./llama.cpp/build/bin/llama-server \
             -hf bartowski/Qwen_Qwen3.5-2B-GGUF:Q4_K_M \
@@ -94,8 +94,9 @@ jobs:
             --port 8080 \
             -c 8192 \
             -np 1 \
-            --reasoning off \
-            --reasoning-format none \
+            --reasoning on \
+            --reasoning-format auto \
+            --reasoning-budget 128 \
             > llama-server.log 2>&1 &
           for i in $(seq 1 180); do
             curl -fsS http://127.0.0.1:8080/health >/dev/null 2>&1 && exit 0
