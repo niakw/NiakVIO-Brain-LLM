@@ -4,6 +4,19 @@ from typing import Any
 
 from .contracts import RepairRequest
 
+STATIC_FAILURE_PRIORS: dict[str, tuple[str, float]] = {
+    "media-type-pre-network-gate": ("core", 0.99),
+    "transport-environment-gap": ("harness", 0.99),
+    "client-capability-projection-gap": ("core", 0.96),
+    "materializer-non-idempotence": ("core", 0.96),
+    "client-lifecycle-gap": ("core", 0.96),
+    "route-proven-gap": ("provider", 0.96),
+    "chain-terminal-gap": ("provider", 0.96),
+    "candidate-replay-gap": ("provider", 0.96),
+    "media-extraction-gap": ("provider", 0.96),
+    "api-discovery-gap": ("provider", 0.96),
+}
+
 def _canon(value: object) -> str:
     return "-".join(str(value or "").strip().casefold().replace("_", "-").split())
 
@@ -23,6 +36,15 @@ def build_causal_prior(
         return {"target_layer": "unknown", "confidence": 0.99, "source": "lifecycle_disabled"}
 
     failure = _canon(request.failure_class)
+    static = STATIC_FAILURE_PRIORS.get(failure)
+    if static:
+        layer, confidence = static
+        return {
+            "target_layer": layer,
+            "confidence": confidence,
+            "source": "failure_class_taxonomy",
+        }
+
     exact = [
         row for row in experiences
         if _canon(row.get("failure_class") or row.get("failureClass")) == failure
