@@ -2,7 +2,7 @@
   "schemaVersion": 4,
   "runtime": "llama.cpp",
   "backendContract": "openai-compatible-local-http",
-  "temperature": 0.1,
+  "temperature": 0,
   "remoteApiRequired": false,
   "weightsCommittedToGit": false,
   "role": "bounded diagnosis and repair-candidate planner",
