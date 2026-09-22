@@ -1,71 +1,66 @@
-# Brain checkpoint — model selection
+# Brain model selection
 
-## Qwen2.5-Coder-1.5B Q4_K_M
+## Selected runtime
 
-Raw model benchmark, 6 NiakVIO golden cases:
+**Qwen2.5-Coder-3B-Instruct Q4_K_M** is the standalone runtime baseline.
 
-- schema valid: 6/6
-- provider identity: 6/6
+Selection is based on NiakVIO-specific benchmarks, not model generation number.
+
+## 1.5B reference
+
+Qwen2.5-Coder-1.5B was efficient and strong on causal classification, but materially weaker on abstention discipline.
+
+It remains a useful small-model reference, not the selected runtime.
+
+## Qwen3.5-2B challenger
+
+Qwen3.5-2B classified causal layers correctly but was weaker on mutation-policy and abstention discipline in the current benchmark.
+
+It remains a challenger for future re-evaluation.
+
+## Qwen3.8
+
+Qwen3.8 is currently too large for the intended default hosted CPU path.
+
+It may later serve as:
+
+- a teacher for distillation;
+- an offline critic/reference model;
+- a generator of candidate training examples that still require NiakVIO verification.
+
+## Accepted 3B results
+
+### Compact 6-case benchmark
+
 - causal layer: 6/6
-- canonical strategy: 5/6
-- mutation-policy compliance: 6/6
-- mutation structural validity: 6/6
-- verification-plan compliance: 5/6
-- abstention-policy compliance: 1/6
+- canonical strategy: 6/6
+- mutation policy: 6/6
+- mutation validity: 6/6
+- abstention policy: 6/6
 
-Strength: efficient, correct causal classification, mostly correct strategy.
-Weakness: too eager; often fails to mark required abstention.
+### Expanded 25-case historical benchmark
 
-## Qwen2.5-Coder-3B Q4_K_M
+- causal layer: 25/25
+- canonical strategy: 24/25
+- mutation policy: 25/25
+- mutation validity: 25/25
+- raw abstention policy: 24/25
+- deterministic Brain verification plan: 25/25
+- fully compliant raw output: 23/25
 
-Same raw benchmark:
+The two misses are bounded by deterministic production policy and cannot directly mutate or publish NiakVIO.
 
-- schema valid: 6/6
-- provider identity: 6/6
-- causal layer: 6/6
-- canonical strategy: 5/6
-- mutation-policy compliance: 6/6
-- mutation structural validity: 6/6
-- verification-plan compliance: 1/6
-- abstention-policy compliance: 6/6
+## Runtime principle
 
-Strength: best current control discipline while preserving causal/strategy quality.
+The deterministic Brain owns:
 
-The missing verification-plan behavior is no longer delegated to the model in production: the Brain derives mandatory tests deterministically from the causal strategy.
+- causal authority boundaries;
+- mutation permission;
+- forced abstention;
+- verification planning;
+- routing;
+- final learning promotion.
 
-Measured 6-case inference wall time was roughly 10.5 minutes on the hosted CPU runner with the older, larger prompt context.
+Qwen owns bounded diagnosis/synthesis where deterministic routing decides an LLM is useful.
 
-## Qwen3.5-2B Q4_K_M
-
-The initial run was invalid because default thinking consumed the context before final structured JSON.
-
-The corrected bounded-thinking run produced:
-
-- schema valid: 6/6
-- provider identity: 5/6
-- causal layer: 6/6
-- canonical strategy: 5/6
-- mutation-policy compliance: 4/6
-- mutation structural validity: 4/6
-- verification-plan compliance: 6/6
-- abstention-policy compliance: 2/6
-
-Measured 6-case inference wall time was roughly 8.6 minutes.
-
-It is only about 18% faster in this test while materially weaker on mutation and abstention discipline.
-
-## Current provisional choice
-
-**Qwen2.5-Coder-3B Q4_K_M** is the provisional runtime model.
-
-It is not final until:
-
-1. the compact-context 6-case benchmark shows no quality regression;
-2. the expanded historical benchmark is acceptable;
-3. CI/read-only boundaries remain green.
-
-## Decision rule
-
-A newer/larger model is promoted only if it materially improves raw reasoning and evidence discipline without unacceptable latency/RAM cost.
-
-Guarded-production success alone is insufficient because deterministic schema constraints can mask model weaknesses.
+NiakVIO remains the future execution/proof authority.
