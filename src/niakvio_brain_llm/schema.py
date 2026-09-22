@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from copy import deepcopy
+from typing import Any
+
 REPAIR_PROPOSAL_SCHEMA = {
     "type": "object",
     "additionalProperties": False,
@@ -54,3 +57,22 @@ REPAIR_PROPOSAL_SCHEMA = {
         "abstain_reason": {"type": "string", "maxLength": 1000},
     },
 }
+
+def proposal_schema_for(
+    provider_id: str,
+    causal_prior: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    schema = deepcopy(REPAIR_PROPOSAL_SCHEMA)
+    schema["properties"]["provider_id"] = {"type": "string", "const": provider_id}
+
+    prior = causal_prior or {}
+    confidence = float(prior.get("confidence") or 0.0)
+    layer = str(prior.get("target_layer") or "unknown")
+
+    if confidence >= 0.90 and layer in {"provider", "core", "harness", "network"}:
+        schema["properties"]["target_layer"]["enum"] = [layer]
+        if layer != "provider":
+            schema["properties"]["mutations"]["maxItems"] = 0
+            schema["properties"]["abstain"] = {"type": "boolean", "const": True}
+
+    return schema
