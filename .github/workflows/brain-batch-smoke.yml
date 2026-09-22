@@ -1,0 +1,112 @@
+name: Brain Batch Smoke
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  batch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: brain
+
+      - uses: actions/checkout@v4
+        with:
+          repository: niakw/NiakVIO
+          path: niakvio
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: python -m pip install -e brain
+
+      - name: Build memories
+        run: |
+          python brain/scripts/import_public_niakvio.py             --niakvio-root niakvio             --output public-experience.jsonl
+          python brain/scripts/import_public_docs.py             --niakvio-root niakvio             --config brain/config/document_sources.json             --output public-documents.jsonl
+
+      - name: Pre-route queues without LLM
+        id: preroute
+        run: |
+          python brain/scripts/route_batch_from_checkout.py             --niakvio-root niakvio             --experience public-experience.jsonl             --mode repair             --limit 2             --output repair-routing.jsonl             --summary repair-routing-summary.json
+
+          python brain/scripts/route_batch_from_checkout.py             --niakvio-root niakvio             --experience public-experience.jsonl             --mode diagnostic             --limit 2             --output diagnostic-routing.jsonl             --summary diagnostic-routing-summary.json
+
+          python - <<'PY'
+          import json, os
+          total = 0
+          for name in ("repair-routing-summary.json", "diagnostic-routing-summary.json"):
+              total += int(json.load(open(name))["llm_targets"])
+          with open(os.environ["GITHUB_OUTPUT"], "a") as handle:
+              handle.write(f"llm_needed={'true' if total else 'false'}\n")
+              handle.write(f"llm_targets={total}\n")
+          print(f"LLM targets: {total}")
+          PY
+
+      - uses: actions/cache@v4
+        if: steps.preroute.outputs.llm_needed == 'true'
+        id: llama-cache
+        with:
+          path: llama.cpp
+          key: llama-cpp-server-linux-v1
+
+      - if: steps.preroute.outputs.llm_needed == 'true' && steps.llama-cache.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libcurl4-openssl-dev
+          git clone --depth 1 https://github.com/ggml-org/llama.cpp.git
+          cmake -S llama.cpp -B llama.cpp/build             -DGGML_NATIVE=OFF             -DLLAMA_CURL=ON             -DCMAKE_BUILD_TYPE=Release
+          cmake --build llama.cpp/build --config Release -j2 --target llama-server
+
+      - if: steps.preroute.outputs.llm_needed == 'true' && steps.llama-cache.outputs.cache-hit == 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libcurl4-openssl-dev
+
+      - uses: actions/cache@v4
+        if: steps.preroute.outputs.llm_needed == 'true'
+        with:
+          path: |
+            ~/.cache/llama.cpp
+            ~/.cache/huggingface
+          key: qwen25-coder-3b-q4-km-v1
+
+      - name: Start provisional Brain model
+        if: steps.preroute.outputs.llm_needed == 'true'
+        run: |
+          ./llama.cpp/build/bin/llama-server             -hf Qwen/Qwen2.5-Coder-3B-Instruct-GGUF:Q4_K_M             --host 127.0.0.1             --port 8080             -c 4096             -np 1             > llama-server.log 2>&1 &
+          for i in $(seq 1 180); do
+            curl -fsS http://127.0.0.1:8080/health >/dev/null 2>&1 && exit 0
+            sleep 2
+          done
+          cat llama-server.log
+          exit 1
+
+      - name: Repair queue smoke
+        run: |
+          python brain/scripts/plan_batch_from_checkout.py             --niakvio-root niakvio             --experience public-experience.jsonl             --documents public-documents.jsonl             --mode repair             --limit 2             --endpoint http://127.0.0.1:8080             --model qwen2.5-coder-3b             --output repair-batch.jsonl
+
+      - name: Diagnostic queue smoke
+        run: |
+          python brain/scripts/plan_batch_from_checkout.py             --niakvio-root niakvio             --experience public-experience.jsonl             --documents public-documents.jsonl             --mode diagnostic             --limit 2             --endpoint http://127.0.0.1:8080             --model qwen2.5-coder-3b             --output diagnostic-batch.jsonl
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: brain-batch-smoke
+          if-no-files-found: ignore
+          path: |
+            repair-routing.jsonl
+            repair-routing-summary.json
+            diagnostic-routing.jsonl
+            diagnostic-routing-summary.json
+            repair-batch.jsonl
+            diagnostic-batch.jsonl
+            llama-server.log

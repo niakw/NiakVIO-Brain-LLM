@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "enabled": false,
+  "baseModel": "Qwen/Qwen2.5-Coder-3B-Instruct",
+  "purpose": "NiakVIO repair specialization from verified outcomes only",
+  "dataset": "artifacts/training/sft.jsonl",
+  "minimumVerifiedExamples": 100,
+  "targetLayers": [
+    "provider",
+    "core",
+    "harness",
+    "network"
+  ],
+  "forbiddenSources": [
+    "raw_chat",
+    "unverified_history",
+    "model_self_claim",
+    "inconclusive",
+    "failed",
+    "abstained"
+  ],
+  "promotionGate": {
+    "requireGoldenBenchmarkImprovement": true,
+    "requireNoSafetyRegression": true,
+    "requireNiakVIOVerification": true
+  }
+}

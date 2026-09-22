@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NiakVIO sanitized repair experience",
+  "type": "object",
+  "required": ["provider_id", "failure_class", "strategy", "result"],
+  "properties": {
+    "provider_id": {"type": "string"},
+    "failure_class": {"type": "string"},
+    "status_before": {"type": "string"},
+    "diagnosis": {"type": "string"},
+    "strategy": {"type": "string"},
+    "mutation_scopes": {"type": "array", "items": {"type": "string"}},
+    "result": {"enum": ["validated", "failed", "abstained"]},
+    "lesson": {"type": "string"}
+  },
+  "additionalProperties": true
+}

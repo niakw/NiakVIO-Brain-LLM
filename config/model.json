@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 4,
+  "runtime": "llama.cpp",
+  "backendContract": "openai-compatible-local-http",
+  "temperature": 0.1,
+  "remoteApiRequired": false,
+  "weightsCommittedToGit": false,
+  "role": "bounded diagnosis and repair-candidate planner",
+  "selectedRuntime": "qwen25-coder-3b",
+  "selectionStatus": "standalone-baseline",
+  "selectionReason": "best measured NiakVIO causal discipline, mutation safety and hosted CPU practicality",
+  "benchmark": {
+    "golden6": {
+      "causalLayer": 1,
+      "canonicalStrategy": 1,
+      "mutationPolicy": 1,
+      "mutationValidity": 1,
+      "abstentionPolicy": 1
+    },
+    "expanded25": {
+      "schemaValid": 1,
+      "providerIdentity": 1,
+      "causalLayer": 1,
+      "canonicalStrategy": 0.96,
+      "mutationPolicy": 1,
+      "mutationValidity": 1,
+      "abstentionPolicy": 0.96,
+      "brainVerificationPlan": 1,
+      "fullyCompliantRaw": 0.92
+    }
+  },
+  "candidates": [
+    {
+      "id": "qwen25-coder-3b",
+      "baseModel": "Qwen/Qwen2.5-Coder-3B-Instruct",
+      "quantizationTarget": "Q4_K_M",
+      "status": "selected-runtime",
+      "reason": "25/25 causal layer; 24/25 strategy; 25/25 mutation safety on expanded historical benchmark"
+    },
+    {
+      "id": "qwen25-coder-1.5b",
+      "baseModel": "Qwen/Qwen2.5-Coder-1.5B-Instruct",
+      "quantizationTarget": "Q4_K_M",
+      "status": "baseline-reference",
+      "reason": "smaller but weaker abstention discipline"
+    },
+    {
+      "id": "qwen35-2b",
+      "baseModel": "Qwen/Qwen3.5-2B",
+      "quantizationTarget": "Q4_K_M",
+      "status": "challenger",
+      "reasoningMode": "bounded",
+      "reason": "correct causal reasoning but weaker mutation/abstention discipline in current tests"
+    },
+    {
+      "id": "qwen38-27b",
+      "baseModel": "Qwen/Qwen3.8-27B",
+      "status": "teacher-candidate",
+      "reason": "too large for default hosted CPU runtime; potential critic/distillation teacher"
+    }
+  ]
+}
