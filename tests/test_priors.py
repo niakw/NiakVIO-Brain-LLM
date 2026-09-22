@@ -1,7 +1,7 @@
 import unittest
 
 from niakvio_brain_llm.contracts import RepairRequest
-from niakvio_brain_llm.priors import build_causal_prior
+from niakvio_brain_llm.priors import build_causal_prior, taxonomy_layer
 
 class PriorTests(unittest.TestCase):
     def test_exact_provider_history_becomes_provider_prior(self):
@@ -46,6 +46,36 @@ class PriorTests(unittest.TestCase):
         )
         self.assertEqual(prior["target_layer"], "core")
         self.assertGreaterEqual(prior["confidence"], 0.95)
+
+    def test_historical_core_classes_are_normalized(self):
+        for failure in (
+            "playback_identity_gap",
+            "runtime_compatibility_gap",
+            "provider_identity_collision",
+            "provider_reconstruction_integrity",
+            "media_validation_gap",
+            "runtime_timeout_gap",
+            "structured_parse_gap",
+            "state_authority_gap",
+            "activation_proof_gap",
+            "proof_freshness_gap",
+        ):
+            with self.subTest(failure=failure):
+                self.assertEqual(taxonomy_layer(failure), "core")
+
+    def test_historical_provider_classes_are_normalized(self):
+        for failure in (
+            "provider_backend_isolation",
+            "typed_api_execution",
+            "identity_mismatch",
+            "provider_transport_gap",
+            "route_proven_gap",
+            "chain_terminal_gap",
+            "candidate_replay_gap",
+            "media_extraction_gap",
+        ):
+            with self.subTest(failure=failure):
+                self.assertEqual(taxonomy_layer(failure), "provider")
 
 if __name__ == "__main__":
     unittest.main()
