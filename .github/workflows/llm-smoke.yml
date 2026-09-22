@@ -2,14 +2,20 @@ name: Local Qwen Smoke
 
 on:
   workflow_dispatch:
-  pull_request:
   push:
     branches:
       - bootstrap/brain-llm-v0
     paths:
       - ".github/workflows/llm-smoke.yml"
       - "scripts/smoke_local_model.py"
-      - "config/model.json"
+      - "scripts/import_public_niakvio.py"
+      - "scripts/import_public_docs.py"
+      - "src/niakvio_brain_llm/**"
+      - "config/**"
+
+concurrency:
+  group: brain-llm-smoke-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -48,7 +54,15 @@ jobs:
             --config brain/config/document_sources.json \
             --output public-documents.jsonl
 
+      - name: Cache llama.cpp build
+        id: llama-cache
+        uses: actions/cache@v4
+        with:
+          path: llama.cpp
+          key: llama-cpp-server-linux-v1
+
       - name: Build llama.cpp
+        if: steps.llama-cache.outputs.cache-hit != 'true'
         run: |
           sudo apt-get update
           sudo apt-get install -y libcurl4-openssl-dev
@@ -58,6 +72,20 @@ jobs:
             -DLLAMA_CURL=ON \
             -DCMAKE_BUILD_TYPE=Release
           cmake --build llama.cpp/build --config Release -j2 --target llama-server
+
+      - name: Ensure runtime curl dependency
+        if: steps.llama-cache.outputs.cache-hit == 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libcurl4-openssl-dev
+
+      - name: Cache local model download
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/llama.cpp
+            ~/.cache/huggingface
+          key: qwen25-coder-15b-q4-km-v1
 
       - name: Start official Qwen Coder 1.5B Q4
         run: |
