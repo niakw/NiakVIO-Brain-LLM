@@ -13,7 +13,8 @@ METRICS = (
     "mutation_policy_ok",
     "mutation_valid",
     "abstain_policy_ok",
-    "verification_plan_ok",
+    "brain_verification_plan_ok",
+    "model_tests_present",
     "fully_compliant",
 )
 
@@ -38,10 +39,13 @@ def main() -> int:
     merged = {
         "model": sorted(models)[0] if len(models) == 1 else sorted(models),
         "cases": total,
-        "mode": "merged_sharded_raw_model_benchmark",
+        "mode": "merged_sharded_raw_model_reasoning_plus_deterministic_brain_policy",
         "rates": {
             metric: (counts[metric] / total if total else 0.0)
             for metric in METRICS
+        },
+        "notes": {
+            "model_tests_present": "diagnostic only; deterministic Brain owns verification planning",
         },
         "results": all_results,
     }
