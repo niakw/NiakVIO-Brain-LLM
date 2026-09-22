@@ -7,6 +7,13 @@ on:
       - bootstrap/brain-llm-v0
     paths:
       - ".github/workflows/llm-benchmark-3b-expanded-sharded.yml"
+      - "benchmark/build_public_golden_cases.py"
+      - "benchmark/golden_model_benchmark.py"
+      - "benchmark/merge_benchmark_reports.py"
+      - "src/niakvio_brain_llm/priors.py"
+      - "src/niakvio_brain_llm/prompting.py"
+      - "src/niakvio_brain_llm/planner.py"
+      - "src/niakvio_brain_llm/policy.py"
 
 permissions:
   contents: read
