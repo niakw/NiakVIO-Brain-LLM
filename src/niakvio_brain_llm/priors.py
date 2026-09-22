@@ -5,7 +5,7 @@ from typing import Any
 from .contracts import RepairRequest
 
 def _canon(value: object) -> str:
-    return str(value or "").strip().casefold().replace("_", "-")
+    return "-".join(str(value or "").strip().casefold().replace("_", "-").split())
 
 def build_causal_prior(
     request: RepairRequest,
