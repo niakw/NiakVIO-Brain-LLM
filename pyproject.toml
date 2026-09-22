@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "niakvio-brain-llm"
+version = "0.1.0"
+description = "Offline-capable LLM planner and learning layer for NiakVIO"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.scripts]
+niakvio-brain = "niakvio_brain_llm.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
