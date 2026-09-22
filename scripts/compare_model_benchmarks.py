@@ -14,7 +14,7 @@ QUALITY_KEYS = (
     "mutation_policy_ok",
     "mutation_valid",
     "abstain_policy_ok",
-    "verification_plan_ok",
+    "brain_verification_plan_ok",
     "fully_compliant",
 )
 
@@ -26,7 +26,7 @@ WEIGHTS = {
     "mutation_policy_ok": 0.15,
     "mutation_valid": 0.10,
     "abstain_policy_ok": 0.10,
-    "verification_plan_ok": 0.05,
+    "brain_verification_plan_ok": 0.05,
     "fully_compliant": 0.10,
 }
 
@@ -53,6 +53,7 @@ def main() -> int:
             "model": report.get("model") or path.stem,
             "quality_score": round(score(report), 4),
             "rates": report.get("rates") or {},
+            "model_tests_present": (report.get("rates") or {}).get("model_tests_present"),
             "path": str(path),
         })
 
@@ -60,6 +61,7 @@ def main() -> int:
     print(json.dumps({
         "weights": WEIGHTS,
         "ranking": rows,
+        "note": "model_tests_present is diagnostic only; deterministic Brain owns verification planning",
     }, indent=2, ensure_ascii=True))
     return 0
 
