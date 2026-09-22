@@ -22,6 +22,7 @@ def main() -> int:
     parser.add_argument("--provider", action="append", default=[])
     parser.add_argument("--limit", type=int, default=0)
     parser.add_argument("--output", required=True)
+    parser.add_argument("--strict", action="store_true")
     parser.add_argument(
         "--endpoint",
         default=os.environ.get("NIAKVIO_LLM_ENDPOINT", "http://127.0.0.1:8080"),
@@ -54,12 +55,13 @@ def main() -> int:
     )
 
     rows = []
-    for census_row in selected:
+    for position, census_row in enumerate(selected, start=1):
         provider = str(census_row["provider"])
         request = request_from_checkout(args.niakvio_root, provider)
         try:
             proposal = planner.plan(request)
             rows.append({
+                "position": position,
                 "provider": provider,
                 "status": request.status,
                 "failure_class": request.failure_class,
@@ -68,6 +70,7 @@ def main() -> int:
             })
         except Exception as exc:
             rows.append({
+                "position": position,
                 "provider": provider,
                 "status": request.status,
                 "failure_class": request.failure_class,
@@ -89,9 +92,10 @@ def main() -> int:
         "planned": sum(1 for row in rows if row["ok"]),
         "errors": sum(1 for row in rows if not row["ok"]),
         "model_processes": 1,
+        "ordered_by": "evidence_depth",
     }
     print(json.dumps(summary, sort_keys=True))
-    return 0 if summary["errors"] == 0 else 2
+    return 2 if args.strict and summary["errors"] else 0
 
 if __name__ == "__main__":
     raise SystemExit(main())
