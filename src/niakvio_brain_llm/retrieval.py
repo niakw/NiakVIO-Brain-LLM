@@ -74,14 +74,34 @@ class ExperienceStore:
 
     @classmethod
     def from_jsonl(cls, path: str | Path) -> "ExperienceStore":
+        return cls.from_jsonl_many([path])
+
+    @classmethod
+    def from_jsonl_many(cls, paths: list[str | Path]) -> "ExperienceStore":
         rows: list[dict[str, Any]] = []
-        source = Path(path)
-        if source.exists():
+        seen: set[str] = set()
+
+        for raw_path in paths:
+            source = Path(raw_path)
+            if not source.exists():
+                continue
             for line in source.read_text(encoding="utf-8").splitlines():
-                if line.strip():
-                    value = json.loads(line)
-                    if isinstance(value, dict):
-                        rows.append(value)
+                if not line.strip():
+                    continue
+                value = json.loads(line)
+                if not isinstance(value, dict):
+                    continue
+                experience_id = str(value.get("experience_id") or "").strip()
+                identity = (
+                    "id:" + experience_id
+                    if experience_id
+                    else "json:" + json.dumps(value, ensure_ascii=True, sort_keys=True)
+                )
+                if identity in seen:
+                    continue
+                seen.add(identity)
+                rows.append(value)
+
         return cls(rows)
 
     def search(self, query: dict[str, Any], *, limit: int = 6) -> list[dict[str, Any]]:
