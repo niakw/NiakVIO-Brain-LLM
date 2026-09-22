@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Local model/runtime caches
+*.gguf
+*.safetensors
+llama.cpp/
+.cache/
+.huggingface/
+
+# Generated Brain data
+artifacts/
+data/*.jsonl
+!data/*.example.jsonl
+public-experience.jsonl
+public-documents.jsonl
+*-benchmark*.json
+*-routing*.json
+*-batch*.jsonl
+llama-server.log
+
+# Editors / OS
+.DS_Store
+.idea/
+.vscode/
