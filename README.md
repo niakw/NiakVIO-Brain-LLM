@@ -25,7 +25,7 @@ NiakVIO evidence (read-only)
 
 ## Runtime model
 
-Current provisional runtime:
+Selected standalone runtime:
 
 - `Qwen2.5-Coder-3B-Instruct`
 - `Q4_K_M`
@@ -41,7 +41,18 @@ Measured 6-case raw NiakVIO benchmark:
 - mutation structural validity: 6/6
 - abstention-policy compliance: 6/6
 
-The 3B model remains provisional until the expanded historical benchmark is complete.
+Expanded 25-case historical benchmark:
+
+- schema/provider identity: 25/25
+- causal layer: 25/25
+- canonical strategy: 24/25
+- mutation-policy compliance: 25/25
+- mutation structural validity: 25/25
+- abstention-policy compliance: 24/25
+- deterministic Brain verification plan: 25/25
+- raw fully compliant: 23/25
+
+The two raw-model misses are bounded by production guards: the deterministic Brain constrains high-confidence strategy and forces abstention when current evidence is insufficient.
 
 Other tracked candidates:
 
@@ -63,7 +74,7 @@ Current flow:
 4. deterministic routing;
 5. start/call Qwen only for `llm_diagnose` or `llm_repair` cases.
 
-Current census routing measurement: 14 Brain-required providers, 7 deterministic and 7 requiring LLM escalation.
+Current census routing measurement: 14 Brain-required providers, 7 deterministic and 7 requiring LLM escalation. If a batch contains no LLM targets, model startup is skipped entirely.
 
 ## Learning
 
