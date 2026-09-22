@@ -4,10 +4,25 @@ from niakvio_brain_llm.batch import batch_summary, select_batch_targets
 
 ROWS = [
     {
-        "provider": "repairable",
+        "provider": "route",
+        "status": "ROUTE PROVEN",
+        "brainCheckRequired": True,
+        "repairEligible": True,
+        "routeProof": ["route"],
+    },
+    {
+        "provider": "chain",
         "status": "CHAIN REACHED",
         "brainCheckRequired": True,
         "repairEligible": True,
+        "evidenceDepth": ["movie=chain_reached"],
+    },
+    {
+        "provider": "candidate",
+        "status": "CANDIDATE OK",
+        "brainCheckRequired": True,
+        "repairEligible": True,
+        "candidateProof": ["candidate"],
     },
     {
         "provider": "harness",
@@ -24,19 +39,22 @@ ROWS = [
 ]
 
 class BatchTests(unittest.TestCase):
-    def test_repair_queue_only_contains_mutation_eligible(self):
+    def test_repair_queue_prioritizes_evidence_depth(self):
         rows = select_batch_targets(ROWS, mode="repair")
-        self.assertEqual([row["provider"] for row in rows], ["repairable"])
+        self.assertEqual(
+            [row["provider"] for row in rows],
+            ["candidate", "chain", "route"],
+        )
 
     def test_diagnostic_queue_is_non_repair_brain_work(self):
         rows = select_batch_targets(ROWS, mode="diagnostic")
         self.assertEqual([row["provider"] for row in rows], ["harness"])
 
-    def test_brain_queue_contains_both(self):
+    def test_brain_queue_contains_repair_and_diagnostic(self):
         rows = select_batch_targets(ROWS, mode="brain")
         self.assertEqual(
-            [row["provider"] for row in rows],
-            ["repairable", "harness"],
+            {row["provider"] for row in rows},
+            {"candidate", "chain", "route", "harness"},
         )
 
     def test_summary_counts_statuses(self):
