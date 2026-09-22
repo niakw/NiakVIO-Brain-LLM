@@ -68,10 +68,12 @@ def build_prompt_payload(
     experiences: list[dict[str, Any]],
     documents: list[dict[str, Any]] | None = None,
     causal_prior: dict[str, Any] | None = None,
+    mutation_policy: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     return {
         "request": compact_request(request),
         "causal_prior": _compact(causal_prior or {}),
+        "mutation_policy": _compact(mutation_policy or {}),
         "retrieved_experiences": [
             compact_experience(row) for row in experiences[:4]
         ],
