@@ -45,8 +45,13 @@ jobs:
 
       - name: Build current NiakVIO memories
         run: |
-          python brain/scripts/import_public_niakvio.py             --niakvio-root niakvio             --output public-experience.jsonl
-          python brain/scripts/import_public_docs.py             --niakvio-root niakvio             --config brain/config/document_sources.json             --output public-documents.jsonl
+          python brain/scripts/import_public_niakvio.py \
+            --niakvio-root niakvio \
+            --output public-experience.jsonl
+          python brain/scripts/import_public_docs.py \
+            --niakvio-root niakvio \
+            --config brain/config/document_sources.json \
+            --output public-documents.jsonl
 
       - name: Cache llama.cpp
         id: llama-cache
@@ -61,7 +66,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libcurl4-openssl-dev
           git clone --depth 1 https://github.com/ggml-org/llama.cpp.git
-          cmake -S llama.cpp -B llama.cpp/build             -DGGML_NATIVE=OFF             -DLLAMA_CURL=ON             -DCMAKE_BUILD_TYPE=Release
+          cmake -S llama.cpp -B llama.cpp/build \
+            -DGGML_NATIVE=OFF \
+            -DLLAMA_CURL=ON \
+            -DCMAKE_BUILD_TYPE=Release
           cmake --build llama.cpp/build --config Release -j2 --target llama-server
 
       - name: Ensure curl runtime
@@ -78,9 +86,17 @@ jobs:
             ~/.cache/huggingface
           key: qwen35-2b-q4-km-v1
 
-      - name: Start Qwen3.5 2B
+      - name: Start Qwen3.5 2B without long thinking
         run: |
-          ./llama.cpp/build/bin/llama-server             -hf bartowski/Qwen_Qwen3.5-2B-GGUF:Q4_K_M             --host 127.0.0.1             --port 8080             -c 4096             -np 1             > llama-server.log 2>&1 &
+          ./llama.cpp/build/bin/llama-server \
+            -hf bartowski/Qwen_Qwen3.5-2B-GGUF:Q4_K_M \
+            --host 127.0.0.1 \
+            --port 8080 \
+            -c 8192 \
+            -np 1 \
+            --reasoning off \
+            --reasoning-format none \
+            > llama-server.log 2>&1 &
           for i in $(seq 1 180); do
             curl -fsS http://127.0.0.1:8080/health >/dev/null 2>&1 && exit 0
             sleep 2
@@ -90,7 +106,13 @@ jobs:
 
       - name: Run raw NiakVIO golden benchmark
         run: |
-          python brain/benchmark/golden_model_benchmark.py             --cases brain/benchmark/golden_cases.jsonl             --experience public-experience.jsonl             --documents public-documents.jsonl             --endpoint http://127.0.0.1:8080             --model qwen3.5-2b             | tee golden-benchmark-qwen35-2b.json
+          python brain/benchmark/golden_model_benchmark.py \
+            --cases brain/benchmark/golden_cases.jsonl \
+            --experience public-experience.jsonl \
+            --documents public-documents.jsonl \
+            --endpoint http://127.0.0.1:8080 \
+            --model qwen3.5-2b \
+            | tee golden-benchmark-qwen35-2b.json
 
       - name: Upload benchmark
         if: always()
