@@ -1,6 +1,4 @@
-import tempfile
 import unittest
-from pathlib import Path
 
 from niakvio_brain_llm.document_memory import DocumentStore, chunk_markdown
 
@@ -25,6 +23,20 @@ class DocumentMemoryTests(unittest.TestCase):
             "failure_class": "terminal_extractor",
         }, limit=1)
         self.assertEqual(found[0]["path"], "MEMORY.md")
+
+    def test_high_authority_irrelevant_memory_is_not_injected(self):
+        rows = chunk_markdown(
+            "## Unrelated\nDesktop timer compatibility for an unrelated provider.",
+            path="MEMORY.md",
+            authority=100,
+            role="durable_recovery_memory",
+        )
+        store = DocumentStore(rows)
+        found = store.search({
+            "provider_id": "movix",
+            "failure_class": "api_discovery_gap",
+        })
+        self.assertEqual(found, [])
 
     def test_markdown_is_chunked_by_major_heading(self):
         rows = chunk_markdown(
