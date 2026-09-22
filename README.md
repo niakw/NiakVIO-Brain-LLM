@@ -4,31 +4,122 @@ Independent AI/LLM layer for NiakVIO provider repair.
 
 ## Goal
 
-Build an offline-capable NiakVIO-specialized repair model without coupling its development to the production `niakw/NiakVIO` repository.
+Build an offline-capable NiakVIO-specialized repair brain without coupling its development to the production `niakw/NiakVIO` repository.
 
 The LLM is **never the proof authority**. It diagnoses and proposes bounded repair candidates; NiakVIO remains responsible for sandbox execution, playable-media proof, identity checks, regression guards, census status and publication.
 
 ## Architecture
 
 ```text
-NiakVIO evidence
-  -> context normalizer
-  -> experience retrieval (RAG)
-  -> local LLM planner
-  -> structured RepairProposal
-  -> NiakVIO sandbox/verifier
-  -> outcome
-  -> sanitized experience memory
+NiakVIO evidence (read-only)
+  -> causal normalizer
+  -> experience/document retrieval (RAG)
+  -> deterministic router
+       -> skip / probe / harness-core diagnostic
+       -> local LLM only when synthesis is useful
+  -> bounded RepairProposal
+  -> deterministic mutation + verification policy
+  -> external NiakVIO verifier (future integration only)
+  -> sanitized positive / negative / safety memory
 ```
 
-Initial target model: `Qwen2.5-Coder-1.5B-Instruct`, quantized for CPU inference through llama.cpp. The model backend is replaceable.
+## Runtime model
+
+Current provisional runtime:
+
+- `Qwen2.5-Coder-3B-Instruct`
+- `Q4_K_M`
+- `llama.cpp`
+- local/OpenAI-compatible HTTP interface
+- no third-party inference API required
+
+Measured 6-case raw NiakVIO benchmark:
+
+- causal layer: 6/6
+- canonical strategy: 5/6
+- mutation-policy compliance: 6/6
+- mutation structural validity: 6/6
+- abstention-policy compliance: 6/6
+
+The 3B model remains provisional until the expanded historical benchmark is complete.
+
+Other tracked candidates:
+
+- Qwen2.5-Coder-1.5B — smaller baseline
+- Qwen3.5-2B — newer challenger, weaker mutation/abstention discipline in current tests
+- Qwen3.8-27B — future teacher/critic candidate, not default hosted CPU runtime
+
+Official Qwen family authority: the QwenLM GitHub organization.
+
+## Scaling model
+
+The Brain does not load or call the LLM for every provider.
+
+Current flow:
+
+1. read census and project evidence;
+2. classify the causal failure class;
+3. prioritize higher-evidence providers;
+4. deterministic routing;
+5. start/call Qwen only for `llm_diagnose` or `llm_repair` cases.
+
+Current census routing measurement: 14 Brain-required providers, 7 deterministic and 7 requiring LLM escalation.
+
+## Learning
+
+The model never trains on its own claims.
+
+- validated repair -> positive RAG memory -> possible SFT/LoRA candidate;
+- failed repair -> negative RAG memory only;
+- safe abstention -> safety memory only;
+- inconclusive -> transient memory only.
+
+SFT accepts only explicitly promoted, validated learning records.
+
+## Private memory boundary
+
+Raw ChatGPT conversations never enter this public repository.
+
+Expected future path:
+
+```text
+ChatGPT/project export
+  -> NiakVIO-private
+  -> NiakVIO-only filtering + sanitization
+  -> structured technical JSONL
+  -> Brain-LLM RAG
+```
+
+Private records remain non-authoritative until current NiakVIO verification proves them.
 
 ## Repository boundaries
 
-- This repository owns: LLM contracts, retrieval, prompting, model adapters, training data format, LoRA/fine-tuning tooling and benchmarks.
-- `niakw/NiakVIO` owns: providers, live probes, repair execution, census, safety gates and publication.
-- Private ChatGPT/project history must not be copied here raw. A future private memory pipeline should export sanitized training/experience records only.
+This repository owns:
 
-## Status
+- model/runtime selection;
+- RAG and document memory;
+- causal priors and routing;
+- prompting/contracts;
+- bounded mutation policy;
+- batch planning;
+- learning-memory policy;
+- SFT/LoRA dataset preparation;
+- benchmarks.
 
-Bootstrap v0: contracts + lightweight RAG + local HTTP backend + planner + CI. No writes to the NiakVIO repository.
+`niakw/NiakVIO` owns:
+
+- provider source/data;
+- live probes;
+- sandbox execution;
+- playback/identity proof;
+- census;
+- regression gates;
+- publication.
+
+## Integration state
+
+**Not connected to NiakVIO production.**
+
+NiakVIO is currently checked out read-only by tests/benchmarks only. No integration workflow, provider mutation or publication path is enabled from this repository.
+
+Integration will be a separate phase after the standalone Brain is declared ready.
