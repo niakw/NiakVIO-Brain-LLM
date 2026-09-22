@@ -9,6 +9,7 @@ on:
       - ".github/workflows/llm-benchmark-3b.yml"
       - "benchmark/golden_cases.jsonl"
       - "benchmark/golden_model_benchmark.py"
+      - "src/niakvio_brain_llm/prompting.py"
       - "config/llm-benchmark-trigger.txt"
 
 concurrency:
