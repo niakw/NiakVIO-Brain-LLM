@@ -9,6 +9,8 @@ on:
       - ".github/workflows/llm-benchmark.yml"
       - "benchmark/golden_cases.jsonl"
       - "benchmark/golden_model_benchmark.py"
+      - "scripts/import_public_niakvio.py"
+      - "scripts/import_public_docs.py"
       - "src/niakvio_brain_llm/**"
       - "config/**"
 
