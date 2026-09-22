@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "sources": [
+    {
+      "path": "PROVIDER_CENSUS_STATUS.md",
+      "authority": 100,
+      "role": "current_census"
+    },
+    {
+      "path": "MEMORY.md",
+      "authority": 95,
+      "role": "durable_recovery_memory"
+    },
+    {
+      "path": "automation/USER-PROVIDER-EVIDENCE-LEDGER.md",
+      "authority": 92,
+      "role": "field_evidence"
+    },
+    {
+      "path": "automation/SECONDARY-TASKS-DURABLE.md",
+      "authority": 88,
+      "role": "durable_constraints"
+    },
+    {
+      "path": "automation/OPEN-TASKS-20260911.md",
+      "authority": 82,
+      "role": "operational_recovery"
+    },
+    {
+      "path": "automation/PROVIDER-HISTORY-MATRIX.md",
+      "authority": 78,
+      "role": "historical_provider_state"
+    },
+    {
+      "path": "automation/CORE-REGRESSION-AUDIT.md",
+      "authority": 76,
+      "role": "core_regression"
+    },
+    {
+      "path": "CHANGELOG.md",
+      "authority": 65,
+      "role": "change_history"
+    },
+    {
+      "path": "docs/desktop/README.md",
+      "authority": 60,
+      "role": "platform_context"
+    }
+  ]
+}
