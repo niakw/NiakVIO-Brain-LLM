@@ -128,18 +128,32 @@ def build_causal_prior(
     experiences: list[dict[str, Any]],
 ) -> dict[str, Any]:
     status = _canon(request.status)
-
-    if "harness-mismatch" in status:
-        return {"target_layer": "harness", "confidence": 0.99, "source": "current_status"}
-    if "harness/env-blocked" in status or "harness-env-blocked" in status:
-        return {"target_layer": "harness", "confidence": 0.95, "source": "current_status"}
-    if "provider-network-blocked" in status:
-        return {"target_layer": "network", "confidence": 0.99, "source": "current_status"}
-    if status == "disabled" or "disabled" in status:
-        return {"target_layer": "unknown", "confidence": 0.99, "source": "lifecycle_disabled"}
-
     failure = _canon(request.failure_class)
     static = taxonomy_prior(failure)
+
+    def status_prior(layer: str, confidence: float, source: str = "current_status") -> dict[str, Any]:
+        prior: dict[str, Any] = {
+            "target_layer": layer,
+            "confidence": confidence,
+            "source": source,
+        }
+        # Current status owns the causal layer. A taxonomy strategy may survive
+        # only when it belongs to the same layer; never carry a provider repair
+        # strategy into a harness/network override.
+        if static and static.get("target_layer") == layer:
+            if static.get("strategy_prior"):
+                prior["strategy_prior"] = static["strategy_prior"]
+        return prior
+
+    if "harness-mismatch" in status:
+        return status_prior("harness", 0.99)
+    if "harness/env-blocked" in status or "harness-env-blocked" in status:
+        return status_prior("harness", 0.95)
+    if "provider-network-blocked" in status:
+        return status_prior("network", 0.99)
+    if status == "disabled" or "disabled" in status:
+        return status_prior("unknown", 0.99, "lifecycle_disabled")
+
     if static:
         prior = dict(static)
         prior["source"] = "failure_class_taxonomy"
