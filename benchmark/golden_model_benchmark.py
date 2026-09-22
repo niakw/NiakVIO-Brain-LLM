@@ -13,6 +13,7 @@ from niakvio_brain_llm.planner import BrainPlanner
 from niakvio_brain_llm.policy import build_mutation_policy
 from niakvio_brain_llm.priors import build_causal_prior
 from niakvio_brain_llm.retrieval import ExperienceStore
+from niakvio_brain_llm.verification_plan import recommended_tests
 
 def main() -> int:
     parser = argparse.ArgumentParser()
@@ -48,7 +49,8 @@ def main() -> int:
         "mutation_policy_ok": 0,
         "mutation_valid": 0,
         "abstain_policy_ok": 0,
-        "verification_plan_ok": 0,
+        "brain_verification_plan_ok": 0,
+        "model_tests_present": 0,
         "fully_compliant": 0,
     }
     rows = []
@@ -98,29 +100,36 @@ def main() -> int:
             if policy.get("force_abstain")
             else True
         )
-        verification_plan_ok = bool(proposal.tests) if (
-            proposal.mutations or policy.get("force_abstain")
-        ) else True
 
-        metrics = {
+        brain_tests = recommended_tests(
+            proposal.strategy or str(prior.get("strategy_prior") or ""),
+            target_layer=proposal.target_layer,
+            mutation_policy=policy,
+        )
+        brain_verification_plan_ok = bool(brain_tests)
+        model_tests_present = bool(proposal.tests)
+
+        scored_metrics = {
             "provider_id_ok": provider_id_ok,
             "layer_ok": layer_ok,
             "strategy_ok": strategy_ok,
             "mutation_policy_ok": mutation_policy_ok,
             "mutation_valid": mutation_valid,
             "abstain_policy_ok": abstain_policy_ok,
-            "verification_plan_ok": verification_plan_ok,
+            "brain_verification_plan_ok": brain_verification_plan_ok,
         }
-        for key, value in metrics.items():
+        for key, value in scored_metrics.items():
             counts[key] += int(value)
+        counts["model_tests_present"] += int(model_tests_present)
 
-        fully_compliant = all(metrics.values())
+        fully_compliant = all(scored_metrics.values())
         counts["fully_compliant"] += int(fully_compliant)
 
         rows.append({
             "id": case["id"],
             "schema_valid": True,
-            **metrics,
+            **scored_metrics,
+            "model_tests_present": model_tests_present,
             "fully_compliant": fully_compliant,
             "expected_layer": expected_layer,
             "actual_layer": proposal.target_layer,
@@ -129,6 +138,7 @@ def main() -> int:
             "confidence": proposal.confidence,
             "abstain": proposal.abstain,
             "mutation_count": len(proposal.mutations),
+            "brain_required_tests": brain_tests,
             "policy": policy,
         })
 
@@ -136,10 +146,14 @@ def main() -> int:
     result = {
         "model": args.model,
         "cases": total,
-        "mode": "raw_model_with_rag_priors_but_without_production_schema_constraints",
+        "mode": "raw_model_reasoning_plus_deterministic_brain_verification_policy",
         "rates": {
             key: (value / total if total else 0.0)
             for key, value in counts.items()
+        },
+        "notes": {
+            "model_tests_present": "diagnostic only; verification planning is owned by deterministic Brain policy",
+            "fully_compliant": "does not require the model to invent verification tests",
         },
         "results": rows,
     }
