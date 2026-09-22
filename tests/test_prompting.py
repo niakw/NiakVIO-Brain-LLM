@@ -49,5 +49,23 @@ class PromptingTests(unittest.TestCase):
         self.assertEqual(len(payload["retrieved_documents"]), 1)
         self.assertLess(len(payload["retrieved_documents"][0]["text"]), 700)
 
+    def test_brain_owned_required_tests_are_hidden_from_model(self):
+        payload = build_prompt_payload(
+            RepairRequest(provider_id="demo", failure_class="chain_terminal_gap"),
+            [],
+            [],
+            {"target_layer": "provider", "confidence": 0.96},
+            {
+                "allow_mutations": False,
+                "force_abstain": True,
+                "required_tests": [
+                    "replay_proven_chain_to_terminal_media",
+                    "validate_media_signature_duration_and_identity",
+                ],
+            },
+        )
+        self.assertNotIn("required_tests", payload["mutation_policy"])
+        self.assertTrue(payload["verification_owned_by_brain"])
+
 if __name__ == "__main__":
     unittest.main()
