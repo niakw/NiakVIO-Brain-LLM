@@ -64,14 +64,22 @@ class PrivateChatMemoryTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 import_private_chat_project(project)
 
-    def test_redacts_tokens_and_email(self):
+    def test_redacts_sensitive_personal_and_secret_values(self):
         value = redact_sensitive(
             "Authorization: Bearer abcdefghijklmnopqrstuvwxyz "
             "github_pat_abcdefghijklmnopqrstuvwxyz "
-            "mail test@example.com"
+            "mail test@example.com "
+            "phone +33 6 12 34 56 78 "
+            "ip 82.10.20.30 "
+            "path /Users/tommy/project "
+            "password=supersecret"
         )
         self.assertNotIn("abcdefghijklmnopqrstuvwxyz", value)
         self.assertNotIn("test@example.com", value)
+        self.assertNotIn("+33 6 12 34 56 78", value)
+        self.assertNotIn("82.10.20.30", value)
+        self.assertNotIn("/Users/tommy", value)
+        self.assertNotIn("supersecret", value)
 
 
 if __name__ == "__main__":
