@@ -70,6 +70,7 @@ jobs:
           assert all(row.get("private_memory") is True for row in store.rows)
           assert all(row.get("proof_authority") is False for row in store.rows)
           assert not any(row.get("role") == "private_chat_tool" for row in store.rows)
+          assert all("conversation_title" not in row for row in store.rows)
 
           hits = store.search({
               "provider_id": "movix",
