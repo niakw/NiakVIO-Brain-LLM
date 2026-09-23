@@ -9,7 +9,7 @@ permissions:
 jobs:
   batch:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
         with:
@@ -21,23 +21,57 @@ jobs:
           path: niakvio
           persist-credentials: false
 
+      - name: Checkout niakvio-private read-only
+        uses: actions/checkout@v4
+        with:
+          repository: niakw/niakvio-private
+          ref: main
+          token: ${{ secrets.NIAKVIO_PRIVATE_READ_TOKEN }}
+          path: private
+          fetch-depth: 1
+          persist-credentials: false
+          sparse-checkout: |
+            raw/chatgpt-project/g-p-6a7f1d27495c819182b4081bfccdafd8
+          sparse-checkout-cone-mode: true
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
       - run: python -m pip install -e brain
 
-      - name: Build memories
+      - name: Build public and private memories
         run: |
-          python brain/scripts/import_public_niakvio.py             --niakvio-root niakvio             --output public-experience.jsonl
-          python brain/scripts/import_public_docs.py             --niakvio-root niakvio             --config brain/config/document_sources.json             --output public-documents.jsonl
+          python brain/scripts/import_public_niakvio.py \
+            --niakvio-root niakvio \
+            --output public-experience.jsonl
+          python brain/scripts/import_public_docs.py \
+            --niakvio-root niakvio \
+            --config brain/config/document_sources.json \
+            --output public-documents.jsonl
+          python brain/scripts/import_private_chat_project.py \
+            --project-root private/raw/chatgpt-project/g-p-6a7f1d27495c819182b4081bfccdafd8 \
+            --output private-chat-documents.jsonl \
+            | tee private-memory-report.json
 
       - name: Pre-route queues without LLM
         id: preroute
         run: |
-          python brain/scripts/route_batch_from_checkout.py             --niakvio-root niakvio             --experience public-experience.jsonl             --mode repair             --limit 2             --output repair-routing.jsonl             --summary repair-routing-summary.json
+          python brain/scripts/route_batch_from_checkout.py \
+            --niakvio-root niakvio \
+            --experience public-experience.jsonl \
+            --mode repair \
+            --limit 2 \
+            --output repair-routing.jsonl \
+            --summary repair-routing-summary.json
 
-          python brain/scripts/route_batch_from_checkout.py             --niakvio-root niakvio             --experience public-experience.jsonl             --mode diagnostic             --limit 2             --output diagnostic-routing.jsonl             --summary diagnostic-routing-summary.json
+          python brain/scripts/route_batch_from_checkout.py \
+            --niakvio-root niakvio \
+            --experience public-experience.jsonl \
+            --mode diagnostic \
+            --limit 2 \
+            --output diagnostic-routing.jsonl \
+            --summary diagnostic-routing-summary.json
 
           python - <<'PY'
           import json, os
@@ -62,7 +96,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libcurl4-openssl-dev
           git clone --depth 1 https://github.com/ggml-org/llama.cpp.git
-          cmake -S llama.cpp -B llama.cpp/build             -DGGML_NATIVE=OFF             -DLLAMA_CURL=ON             -DCMAKE_BUILD_TYPE=Release
+          cmake -S llama.cpp -B llama.cpp/build \
+            -DGGML_NATIVE=OFF \
+            -DLLAMA_CURL=ON \
+            -DCMAKE_BUILD_TYPE=Release
           cmake --build llama.cpp/build --config Release -j2 --target llama-server
 
       - if: steps.preroute.outputs.llm_needed == 'true' && steps.llama-cache.outputs.cache-hit == 'true'
@@ -78,10 +115,16 @@ jobs:
             ~/.cache/huggingface
           key: qwen25-coder-3b-q4-km-v1
 
-      - name: Start provisional Brain model
+      - name: Start Brain model
         if: steps.preroute.outputs.llm_needed == 'true'
         run: |
-          ./llama.cpp/build/bin/llama-server             -hf Qwen/Qwen2.5-Coder-3B-Instruct-GGUF:Q4_K_M             --host 127.0.0.1             --port 8080             -c 4096             -np 1             > llama-server.log 2>&1 &
+          ./llama.cpp/build/bin/llama-server \
+            -hf Qwen/Qwen2.5-Coder-3B-Instruct-GGUF:Q4_K_M \
+            --host 127.0.0.1 \
+            --port 8080 \
+            -c 4096 \
+            -np 1 \
+            > llama-server.log 2>&1 &
           for i in $(seq 1 180); do
             curl -fsS http://127.0.0.1:8080/health >/dev/null 2>&1 && exit 0
             sleep 2
@@ -89,13 +132,51 @@ jobs:
           cat llama-server.log
           exit 1
 
-      - name: Repair queue smoke
+      - name: Repair queue smoke with private chat memory
         run: |
-          python brain/scripts/plan_batch_from_checkout.py             --niakvio-root niakvio             --experience public-experience.jsonl             --documents public-documents.jsonl             --mode repair             --limit 2             --endpoint http://127.0.0.1:8080             --model qwen2.5-coder-3b             --output repair-batch.jsonl
+          python brain/scripts/plan_batch_from_checkout.py \
+            --niakvio-root niakvio \
+            --experience public-experience.jsonl \
+            --documents public-documents.jsonl \
+            --extra-documents private-chat-documents.jsonl \
+            --mode repair \
+            --limit 2 \
+            --endpoint http://127.0.0.1:8080 \
+            --model qwen2.5-coder-3b \
+            --output repair-batch.jsonl
 
-      - name: Diagnostic queue smoke
+      - name: Diagnostic queue smoke with private chat memory
         run: |
-          python brain/scripts/plan_batch_from_checkout.py             --niakvio-root niakvio             --experience public-experience.jsonl             --documents public-documents.jsonl             --mode diagnostic             --limit 2             --endpoint http://127.0.0.1:8080             --model qwen2.5-coder-3b             --output diagnostic-batch.jsonl
+          python brain/scripts/plan_batch_from_checkout.py \
+            --niakvio-root niakvio \
+            --experience public-experience.jsonl \
+            --documents public-documents.jsonl \
+            --extra-documents private-chat-documents.jsonl \
+            --mode diagnostic \
+            --limit 2 \
+            --endpoint http://127.0.0.1:8080 \
+            --model qwen2.5-coder-3b \
+            --output diagnostic-batch.jsonl
+
+      - name: Report memory wiring
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          if Path("private-memory-report.json").exists():
+              report = json.loads(Path("private-memory-report.json").read_text())
+              print(json.dumps({
+                  "private_chat_documents": report["documents"],
+                  "private_chat_conversations": report["conversations"],
+                  "private_memory_used_by_planner": True,
+                  "private_content_uploaded": False,
+              }))
+          PY
+
+      - name: Remove ephemeral private memory
+        if: always()
+        run: rm -f private-chat-documents.jsonl private-memory-report.json
 
       - uses: actions/upload-artifact@v4
         if: always()
