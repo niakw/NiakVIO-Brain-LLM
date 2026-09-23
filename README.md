@@ -146,8 +146,10 @@ This repository owns:
 
 ## Integration state
 
-**Not connected to NiakVIO production.**
+**Connected to NiakVIO as a bounded Learning advisor.**
 
-NiakVIO is currently checked out read-only by tests/benchmarks only. No integration workflow, provider mutation or publication path is enabled from this repository.
+NiakVIO production now pins Brain LLM commit `c752f5c21ded26c578eaeacb492611f3fdb137a9` from its Learning workflow. The workflow builds the public/private retrieval context, routes the current repair cohort, starts the local Qwen runtime only when deterministic routing requires LLM synthesis, and converts model output into an allowlisted prior for the deterministic Brain planner.
 
-Integration will be a separate phase after the standalone Brain is declared ready.
+The authority boundary remains strict: this repository does not directly mutate or publish NiakVIO providers. Brain LLM guidance is advisory; NiakVIO Learning executes bounded strategies, while current-byte Repair/Retest, playable-media proof, identity checks, regression gates, census status and publication remain authoritative in `niakw/NiakVIO`.
+
+The integration deliberately fails back to deterministic Brain behavior when the local model is unnecessary or unavailable.
