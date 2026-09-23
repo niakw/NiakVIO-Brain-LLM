@@ -109,7 +109,6 @@ def _document(
         "project": PROJECT_NAME,
         "project_id": PROJECT_ID,
         "conversation_id": conversation_id,
-        "conversation_title": title,
         "captured_at": captured_at,
         "path": source_ref,
         "heading": heading,
