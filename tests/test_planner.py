@@ -3,6 +3,7 @@ import unittest
 
 from niakvio_brain_llm.backend import StaticBackend
 from niakvio_brain_llm.contracts import RepairRequest
+from niakvio_brain_llm.document_memory import DocumentStore
 from niakvio_brain_llm.planner import BrainPlanner
 
 class PlannerTests(unittest.TestCase):
@@ -70,6 +71,34 @@ class PlannerTests(unittest.TestCase):
         )
         self.assertTrue(proposal.abstain)
         self.assertEqual(proposal.target_layer, "harness")
+
+    def test_private_chat_document_reaches_planner_prompt(self):
+        planner = BrainPlanner(
+            StaticBackend("{}"),
+            documents=DocumentStore([{
+                "kind": "document",
+                "document_id": "private-1",
+                "source": "niakvio-private-chat",
+                "private_memory": True,
+                "proof_authority": False,
+                "path": "conversations/c1/index.json",
+                "heading": "architecture",
+                "role": "private_chat_signal",
+                "authority": 55,
+                "text": "Movix api discovery gap current route and provider repair strategy",
+            }]),
+        )
+        _, documents, _, _, user = planner._prepare(
+            RepairRequest(
+                provider_id="movix",
+                failure_class="api_discovery_gap",
+                status="CHAIN REACHED",
+            )
+        )
+        self.assertTrue(documents)
+        self.assertEqual(documents[0]["source"], "niakvio-private-chat")
+        self.assertIn("niakvio-private-chat", user)
+        self.assertIn("Movix api discovery gap", user)
 
     def test_raw_proposal_skips_production_post_validation(self):
         response = json.dumps({
