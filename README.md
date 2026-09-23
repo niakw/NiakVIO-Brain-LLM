@@ -87,21 +87,25 @@ The model never trains on its own claims.
 
 SFT accepts only explicitly promoted, validated learning records.
 
-## Private memory boundary
+## Private chat memory
 
-Raw ChatGPT conversations never enter this public repository.
+The Brain can now read the private NiakVIO ChatGPT project from `niakw/niakvio-private` using a read-only repository token.
 
-Expected future path:
+Runtime flow:
 
 ```text
-ChatGPT/project export
-  -> NiakVIO-private
-  -> NiakVIO-only filtering + sanitization
-  -> structured technical JSONL
-  -> Brain-LLM RAG
+niakvio-private / raw ChatGPT project backup
+  -> strict NiakVIO Project-ID validation
+  -> signals + USER/ASSISTANT technical transcript filtering
+  -> token/email/header redaction
+  -> ephemeral private document index
+  -> merge with public MEMORY/docs
+  -> Brain RAG
 ```
 
-Private records remain non-authoritative until current NiakVIO verification proves them.
+The private index is generated inside the runner and is never committed or uploaded as a public artifact. TOOL transcript blocks are not indexed. Private chat memory is historical context only: `proof_authority=false` and current NiakVIO verification always wins.
+
+The source secret is `NIAKVIO_PRIVATE_READ_TOKEN` and is used read-only against `niakvio-private`.
 
 ## Repository boundaries
 
