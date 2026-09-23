@@ -168,7 +168,8 @@ jobs:
               report = json.loads(Path("private-memory-report.json").read_text())
               print(json.dumps({
                   "private_chat_documents": report["documents"],
-                  "private_chat_conversations": report["conversations"],
+                  "private_chat_source_conversations": report["source_conversations"],
+                  "private_chat_indexed_conversations": report["indexed_conversations"],
                   "private_memory_used_by_planner": True,
                   "private_content_uploaded": False,
               }))
