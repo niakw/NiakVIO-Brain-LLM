@@ -90,7 +90,6 @@ def _chunk_text(text: str, limit: int = 1800) -> list[str]:
 def _document(
     *,
     conversation_id: str,
-    title: str,
     source_ref: str,
     heading: str,
     text: str,
@@ -141,7 +140,6 @@ def import_private_chat_project(project_root: str | Path) -> list[dict[str, Any]
             continue
         meta = json.loads(meta_path.read_text(encoding="utf-8"))
         conversation_id = str(meta.get("id") or conversation_dir.name)
-        title = str(meta.get("title") or conversation_id)
         captured_at = str(meta.get("capturedAt") or "")
         signals = meta.get("signals") or {}
 
@@ -163,7 +161,6 @@ def import_private_chat_project(project_root: str | Path) -> list[dict[str, Any]
                 ):
                     rows.append(_document(
                         conversation_id=conversation_id,
-                        title=title,
                         source_ref=f"conversations/{conversation_id}/index.json",
                         heading=f"{signal_kind} · chunk {chunk_index}",
                         text=chunk,
@@ -189,8 +186,7 @@ def import_private_chat_project(project_root: str | Path) -> list[dict[str, Any]
                         sequence,
                         _document(
                             conversation_id=conversation_id,
-                            title=title,
-                            source_ref=f"conversations/{conversation_id}/{part_path.name}",
+                                source_ref=f"conversations/{conversation_id}/{part_path.name}",
                             heading=f"{role.upper()} {timestamp} · chunk {chunk_index}",
                             text=chunk,
                             authority=40 if role == "assistant" else 38,
