@@ -14,7 +14,10 @@ def main() -> int:
     parser.add_argument("--output", required=True)
     args = parser.parse_args()
 
-    rows = import_private_chat_project(args.project_root)
+    project_root = Path(args.project_root)
+    rows = import_private_chat_project(project_root)
+    source_index = json.loads((project_root / "index.json").read_text(encoding="utf-8"))
+    source_conversations = len(source_index.get("conversations") or {})
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(
@@ -29,7 +32,8 @@ def main() -> int:
     print(json.dumps({
         "project": "NiakVIO",
         "documents": len(rows),
-        "conversations": len(conversations),
+        "source_conversations": source_conversations,
+        "indexed_conversations": len(conversations),
         "signal_documents": signal_rows,
         "transcript_documents": transcript_rows,
         "raw_tool_messages_indexed": False,
