@@ -20,6 +20,7 @@ def main() -> int:
     parser.add_argument("--experience", default="data/experience.jsonl")
     parser.add_argument("--extra-experience", action="append", default=[])
     parser.add_argument("--documents", default="data/documents.jsonl")
+    parser.add_argument("--extra-documents", action="append", default=[])
     parser.add_argument(
         "--endpoint",
         default=os.environ.get("NIAKVIO_LLM_ENDPOINT", "http://127.0.0.1:8080"),
@@ -37,7 +38,7 @@ def main() -> int:
     store = ExperienceStore.from_jsonl_many(
         [args.experience, *args.extra_experience]
     )
-    documents = DocumentStore.from_jsonl(args.documents)
+    documents = DocumentStore.from_jsonl_many([args.documents, *args.extra_documents])
     backend = LocalOpenAICompatibleBackend(
         base_url=args.endpoint,
         model=args.model,
