@@ -1,43 +1,61 @@
 # NiakVIO-private memory contract
 
-The public Brain repository must never ingest raw ChatGPT conversations.
+The Brain may read the private NiakVIO ChatGPT project from `niakw/niakvio-private` as a historical RAG source.
 
-## Boundary
+## Source boundary
 
-`NiakVIO-private` owns raw/private project material.
+Only this project is accepted:
 
-It may export only sanitized structured repair experiences to Brain-LLM.
+`g-p-6a7f1d27495c819182b4081bfccdafd8`
 
-Each exported record must:
+Expected source path:
 
-- declare `project: NiakVIO`;
-- contain a failure class and strategy;
-- contain only technical provider/Core/harness evidence useful to repair;
-- exclude unrelated projects and personal context;
-- exclude raw message/transcript bodies;
-- remain non-authoritative until replayed against current NiakVIO bytes.
+`raw/chatgpt-project/g-p-6a7f1d27495c819182b4081bfccdafd8/`
 
-## Recommended source flow
+The source repository is read-only to Brain workflows through:
 
-1. Obtain the official ChatGPT account/project export.
-2. Keep raw exports only in the private repository.
-3. Filter only conversations that belong to NiakVIO.
-4. Remove unrelated chats, personal data, secrets, credentials and tokens.
-5. Convert useful technical episodes into the structured sanitized experience schema.
-6. Export only sanitized JSONL to Brain-LLM.
+`NIAKVIO_PRIVATE_READ_TOKEN`
 
-Allowed direction:
+The Brain never writes to `niakvio-private`.
 
-`ChatGPT export -> NiakVIO-private -> sanitize/extract -> structured JSONL -> NiakVIO-Brain-LLM RAG`
+## Runtime indexing
 
-Never:
+Private chat data is not copied into this public repository.
 
-`raw conversations -> public Brain repo`
+At runtime the Brain:
 
-There is intentionally no dependency on an unofficial ChatGPT web-session API.
+1. validates the Project ID and project name;
+2. reads per-conversation `index.json` signals;
+3. indexes technical USER/ASSISTANT transcript chunks as secondary context;
+4. excludes TOOL transcript blocks;
+5. redacts recognizable tokens, authorization values and email addresses;
+6. creates an ephemeral private document JSONL;
+7. merges that store with public MEMORY/technical documents;
+8. deletes the ephemeral private index at the end of the job.
 
-## Training
+No private chat JSONL is uploaded as a workflow artifact.
 
-Private sanitized records may enrich RAG immediately.
+## Authority
 
-They become LoRA/SFT candidates only after a current NiakVIO verification outcome explicitly validates the causal label and repair result.
+Private chat memory is **context, never proof**.
+
+Every private-memory row is marked:
+
+- `private_memory=true`;
+- `proof_authority=false`.
+
+Current NiakVIO census, live evidence and deterministic verification always override historical conversation text.
+
+## Learning / LoRA
+
+Private chat memory may improve retrieval immediately.
+
+It does **not** become positive SFT/LoRA truth by itself. A historical chat-derived strategy can enter supervised training only after a current NiakVIO verification outcome validates the causal label and repair result.
+
+Failed attempts remain negative RAG memory, not supervised truth.
+
+## Privacy
+
+The importer is scoped to the NiakVIO project only. Other ChatGPT projects are rejected by Project ID validation.
+
+The public Brain repository must never contain raw private conversation backups or generated private-memory indexes.
