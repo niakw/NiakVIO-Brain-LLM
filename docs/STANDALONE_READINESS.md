@@ -24,6 +24,9 @@ It does **not** authorize or perform integration with NiakVIO production.
 - [x] Positive / negative / safety / transient learning tiers
 - [x] Private NiakVIO-only sanitized-memory contract
 - [x] Public + sanitized-private RAG merge
+- [x] Read-only niakvio-private ChatGPT memory source
+- [x] Ephemeral private-memory index with PII/secret redaction
+- [x] Private-memory A/B benchmark shows no regression on 25 cases
 - [x] Verified-only SFT dataset builder and validator
 - [x] LoRA policy present and disabled until sufficient verified data
 - [x] Qwen model comparison performed
@@ -70,3 +73,18 @@ Those are separate phases and remain disabled.
 **Standalone Brain baseline: READY.**
 
 Integration may be designed separately later, but is not enabled by this milestone.
+
+
+## Private-memory validation
+
+A/B benchmark run `35898406320` compared the same 25 historical cases with and without private chat memory.
+
+- public-only fully compliant: 24/25
+- public + private fully compliant: 24/25
+- causal layer: 25/25 in both modes
+- canonical strategy: 25/25 in both modes
+- mutation safety: 25/25 in both modes
+- private memory retrieved: 11/25 cases, 25 hits
+- regression: none
+
+Public-repository privacy audit and 77 unit/contract tests are green on the final memory wiring.
