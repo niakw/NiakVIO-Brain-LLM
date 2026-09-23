@@ -63,7 +63,9 @@ jobs:
           from niakvio_brain_llm.document_memory import DocumentStore
 
           report = json.loads(Path("private-memory-report.json").read_text())
-          assert report["conversations"] >= 1
+          assert report["source_conversations"] >= 1
+          assert report["indexed_conversations"] >= 1
+          assert report["indexed_conversations"] <= report["source_conversations"]
           assert report["documents"] >= report["conversations"]
           assert report["raw_tool_messages_indexed"] is False
           assert report["proof_authority"] is False
