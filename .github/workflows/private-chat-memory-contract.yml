@@ -1,0 +1,103 @@
+name: Private NiakVIO Chat Memory Contract
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/private-chat-memory-contract.yml"
+      - "src/niakvio_brain_llm/private_chat_memory.py"
+      - "scripts/import_private_chat_project.py"
+  schedule:
+    - cron: "47 4 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: private-niakvio-chat-memory-contract
+  cancel-in-progress: true
+
+jobs:
+  memory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout Brain LLM
+        uses: actions/checkout@v4
+        with:
+          path: brain
+
+      - name: Checkout niakvio-private read-only
+        uses: actions/checkout@v4
+        with:
+          repository: niakw/niakvio-private
+          ref: main
+          token: ${{ secrets.NIAKVIO_PRIVATE_READ_TOKEN }}
+          path: private
+          fetch-depth: 1
+          persist-credentials: false
+          sparse-checkout: |
+            raw/chatgpt-project/g-p-6a7f1d27495c819182b4081bfccdafd8
+          sparse-checkout-cone-mode: true
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Brain package
+        run: python -m pip install -e brain
+
+      - name: Build ephemeral private chat memory
+        run: |
+          python brain/scripts/import_private_chat_project.py \
+            --project-root private/raw/chatgpt-project/g-p-6a7f1d27495c819182b4081bfccdafd8 \
+            --output private-chat-documents.jsonl \
+            | tee private-memory-report.json
+
+      - name: Validate private chat retrieval
+        run: |
+          python - <<'PY'
+          import json
+          import re
+          from pathlib import Path
+          from niakvio_brain_llm.document_memory import DocumentStore
+
+          report = json.loads(Path("private-memory-report.json").read_text())
+          assert report["conversations"] >= 1
+          assert report["documents"] >= report["conversations"]
+          assert report["raw_tool_messages_indexed"] is False
+          assert report["proof_authority"] is False
+
+          store = DocumentStore.from_jsonl("private-chat-documents.jsonl")
+          assert store.rows, "private chat memory is empty"
+          assert all(row.get("private_memory") is True for row in store.rows)
+          assert all(row.get("proof_authority") is False for row in store.rows)
+          assert not any(row.get("role") == "private_chat_tool" for row in store.rows)
+
+          hits = store.search({
+              "provider_id": "movix",
+              "failure_class": "api_discovery_gap",
+              "status": "CHAIN REACHED",
+              "supported_types": ["movie", "tv"],
+          }, limit=6)
+          assert hits, "private chat memory returned no NiakVIO retrieval hits"
+
+          sensitive = re.compile(
+              r"github_pat_[A-Za-z0-9_]+|gh[pousr]_[A-Za-z0-9]{20,}|"
+              r"Bearer\s+[A-Za-z0-9._~+/=-]{12,}|"
+              r"[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}",
+              re.I,
+          )
+          assert not any(sensitive.search(str(row.get("text") or "")) for row in store.rows)
+
+          print(json.dumps({
+              "private_documents": len(store.rows),
+              "retrieval_hits": len(hits),
+              "top_roles": [row.get("role") for row in hits[:3]],
+              "private_content_uploaded": False,
+          }))
+          PY
+
+      - name: Remove ephemeral private index
+        if: always()
+        run: rm -f private-chat-documents.jsonl
