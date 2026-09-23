@@ -107,6 +107,17 @@ The private index is generated inside the runner and is never committed or uploa
 
 The source secret is `NIAKVIO_PRIVATE_READ_TOKEN` and is used read-only against `niakvio-private`.
 
+
+A 25-case A/B benchmark comparing public-only memory vs public + private chat memory showed **no regression**:
+
+- causal layer: 25/25 in both modes;
+- canonical strategy: 25/25 in both modes;
+- mutation safety: 25/25 in both modes;
+- raw fully compliant: 24/25 in both modes;
+- private memory was retrieved in 11/25 cases (25 hits total).
+
+The private memory therefore enriches context without changing already-correct bounded decisions on the current golden set.
+
 ## Repository boundaries
 
 This repository owns:
