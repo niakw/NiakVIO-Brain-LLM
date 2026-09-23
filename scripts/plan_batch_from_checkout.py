@@ -21,6 +21,7 @@ def main() -> int:
     parser.add_argument("--experience", required=True)
     parser.add_argument("--extra-experience", action="append", default=[])
     parser.add_argument("--documents", required=True)
+    parser.add_argument("--extra-documents", action="append", default=[])
     parser.add_argument("--mode", choices=("repair", "diagnostic", "brain"), default="repair")
     parser.add_argument("--provider", action="append", default=[])
     parser.add_argument("--limit", type=int, default=0)
@@ -57,7 +58,7 @@ def main() -> int:
     planner = BrainPlanner(
         backend,
         store,
-        DocumentStore.from_jsonl(args.documents),
+        DocumentStore.from_jsonl_many([args.documents, *args.extra_documents]),
     )
     orchestrator = BrainOrchestrator(planner, store)
 
@@ -110,6 +111,7 @@ def main() -> int:
         "routing_modes": dict(sorted(routing_modes.items())),
         "ordered_by": "evidence_depth",
         "experience_sources": 1 + len(args.extra_experience),
+        "document_sources": 1 + len(args.extra_documents),
     }
     print(json.dumps(summary, sort_keys=True))
     return 2 if args.strict and summary["errors"] else 0
