@@ -41,18 +41,18 @@ Measured 6-case raw NiakVIO benchmark:
 - mutation structural validity: 6/6
 - abstention-policy compliance: 6/6
 
-Expanded 25-case historical benchmark:
+Current expanded 25-case historical benchmark:
 
 - schema/provider identity: 25/25
 - causal layer: 25/25
-- canonical strategy: 24/25
+- canonical strategy: 25/25
 - mutation-policy compliance: 25/25
 - mutation structural validity: 25/25
 - abstention-policy compliance: 24/25
 - deterministic Brain verification plan: 25/25
-- raw fully compliant: 23/25
+- raw fully compliant: 24/25
 
-The two raw-model misses are bounded by production guards: the deterministic Brain constrains high-confidence strategy and forces abstention when current evidence is insufficient.
+The one remaining raw-model abstention miss is bounded by deterministic production `force_abstain` policy.
 
 Other tracked candidates:
 
@@ -106,6 +106,8 @@ niakvio-private / raw ChatGPT project backup
 The private index is generated inside the runner and is never committed or uploaded as a public artifact. TOOL transcript blocks are not indexed. Private chat memory is historical context only: `proof_authority=false` and current NiakVIO verification always wins.
 
 The source secret is `NIAKVIO_PRIVATE_READ_TOKEN` and is used read-only against `niakvio-private`.
+
+A 25-case A/B benchmark retrieved private-memory context in **11/25 cases** with **no quality or safety regression**: public-only and public+private both scored 25/25 causal layer, 25/25 strategy, 25/25 mutation safety and 24/25 raw fully compliant. On this corpus, the chat memory adds historical depth but no measurable score increase, so it remains supplemental rather than being given extra authority.
 
 
 A 25-case A/B benchmark comparing public-only memory vs public + private chat memory showed **no regression**:
