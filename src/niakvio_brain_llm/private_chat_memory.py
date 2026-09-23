@@ -29,7 +29,14 @@ SENSITIVE_PATTERNS = [
     (re.compile(r"(?i)(authorization\s*[:=]\s*)([^\s'\"]{8,})"), r"\1[REDACTED]"),
     (re.compile(r"(?i)(api[_-]?key\s*[:=]\s*)([^\s'\"]{8,})"), r"\1[REDACTED]"),
     (re.compile(r"(?i)(token\s*[:=]\s*)([^\s'\"]{8,})"), r"\1[REDACTED]"),
+    (re.compile(r"(?i)(password\s*[:=]\s*)([^\s'\"]{6,})"), r"\1[REDACTED]"),
+    (re.compile(r"(?i)(secret\s*[:=]\s*)([^\s'\"]{6,})"), r"\1[REDACTED]"),
+    (re.compile(r"(?i)(cookie\s*[:=]\s*)([^\n]{8,})"), r"\1[REDACTED]"),
     (re.compile(r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", re.I), "[REDACTED_EMAIL]"),
+    (re.compile(r"(?<!\d)(?:\+33|0)[1-9](?:[ .-]?\d{2}){4}(?!\d)"), "[REDACTED_PHONE]"),
+    (re.compile(r"(?<![\d.])(?:\d{1,3}\.){3}\d{1,3}(?![\d.])"), "[REDACTED_IP]"),
+    (re.compile(r"/Users/[^/\s]+"), "/Users/[REDACTED_USER]"),
+    (re.compile(r"/home/[^/\s]+"), "/home/[REDACTED_USER]"),
 ]
 
 MESSAGE_HEADING = re.compile(r"^##\s+(USER|ASSISTANT|TOOL)\s+·\s+(.+?)\s*$", re.M)
