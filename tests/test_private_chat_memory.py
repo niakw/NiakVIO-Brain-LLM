@@ -53,6 +53,7 @@ class PrivateChatMemoryTests(unittest.TestCase):
             self.assertIn("private_chat_assistant", roles)
             self.assertNotIn("private_chat_tool", roles)
             self.assertTrue(all(row["proof_authority"] is False for row in rows))
+            self.assertTrue(all("conversation_title" not in row for row in rows))
 
     def test_rejects_wrong_project(self):
         with tempfile.TemporaryDirectory() as tmp:
