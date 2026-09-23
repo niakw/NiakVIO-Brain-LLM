@@ -8,6 +8,8 @@ from typing import Any, Iterable
 
 PROJECT_ID = "g-p-6a7f1d27495c819182b4081bfccdafd8"
 PROJECT_NAME = "NiakVIO"
+MAX_TRANSCRIPT_CHUNKS_PER_CONVERSATION = 24
+SIGNAL_CHUNK_LIMIT = 2200
 
 TECHNICAL_TERMS = {
     "niakvio", "provider", "providers", "providerbase", "stream", "streams",
@@ -141,39 +143,62 @@ def import_private_chat_project(project_root: str | Path) -> list[dict[str, Any]
             for signal_kind, values in signals.items():
                 if not isinstance(values, list):
                     continue
-                for position, value in enumerate(values):
-                    text = str(value).strip()
-                    if not text or technical_score(text) < 1:
-                        continue
+                useful = [
+                    str(value).strip()
+                    for value in values
+                    if str(value).strip() and technical_score(str(value)) >= 1
+                ]
+                if not useful:
+                    continue
+                merged = "\n".join(useful)
+                for chunk_index, chunk in enumerate(
+                    _chunk_text(merged, limit=SIGNAL_CHUNK_LIMIT),
+                    start=1,
+                ):
                     rows.append(_document(
                         conversation_id=conversation_id,
                         title=title,
                         source_ref=f"conversations/{conversation_id}/index.json",
-                        heading=f"{signal_kind} #{position + 1}",
-                        text=text,
+                        heading=f"{signal_kind} · chunk {chunk_index}",
+                        text=chunk,
                         authority=55,
                         role="private_chat_signal",
                         captured_at=captured_at,
                     ))
 
+        transcript_candidates: list[tuple[int, int, dict[str, Any]]] = []
+        sequence = 0
         for part_path in sorted(conversation_dir.glob("part-*.md")):
             markdown = part_path.read_text(encoding="utf-8", errors="replace")
             for role, timestamp, body in _split_message_sections(markdown):
                 if role == "tool":
                     continue
-                if technical_score(body) < 2:
+                score = technical_score(body)
+                if score < 3:
                     continue
                 for chunk_index, chunk in enumerate(_chunk_text(body), start=1):
-                    rows.append(_document(
-                        conversation_id=conversation_id,
-                        title=title,
-                        source_ref=f"conversations/{conversation_id}/{part_path.name}",
-                        heading=f"{role.upper()} {timestamp} · chunk {chunk_index}",
-                        text=chunk,
-                        authority=40 if role == "assistant" else 38,
-                        role=f"private_chat_{role}",
-                        captured_at=captured_at,
+                    sequence += 1
+                    transcript_candidates.append((
+                        score,
+                        sequence,
+                        _document(
+                            conversation_id=conversation_id,
+                            title=title,
+                            source_ref=f"conversations/{conversation_id}/{part_path.name}",
+                            heading=f"{role.upper()} {timestamp} · chunk {chunk_index}",
+                            text=chunk,
+                            authority=40 if role == "assistant" else 38,
+                            role=f"private_chat_{role}",
+                            captured_at=captured_at,
+                        ),
                     ))
+
+        selected_transcript = sorted(
+            transcript_candidates,
+            key=lambda item: (-item[0], item[1]),
+        )[:MAX_TRANSCRIPT_CHUNKS_PER_CONVERSATION]
+        selected_transcript.sort(key=lambda item: item[1])
+        rows.extend(item[2] for item in selected_transcript)
 
     deduped: dict[str, dict[str, Any]] = {}
     for row in rows:
