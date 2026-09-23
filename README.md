@@ -153,3 +153,11 @@ NiakVIO production now pins Brain LLM commit `c752f5c21ded26c578eaeacb492611f3fd
 The authority boundary remains strict: this repository does not directly mutate or publish NiakVIO providers. Brain LLM guidance is advisory; NiakVIO Learning executes bounded strategies, while current-byte Repair/Retest, playable-media proof, identity checks, regression gates, census status and publication remain authoritative in `niakw/NiakVIO`.
 
 The integration deliberately fails back to deterministic Brain behavior when the local model is unnecessary or unavailable.
+
+## NiakVIO sanitized guidance bridge
+
+The `NiakVIO Private-Guided Advisor` workflow is the only public bridge from
+private NiakVIO chat memory to production Repair. Private transcripts stay
+ephemeral inside the workflow. The published `niakvio-guidance` branch contains
+one allowlisted, non-authoritative hypothesis-ordering file only; current NiakVIO
+tests remain the sole proof and publication authority.

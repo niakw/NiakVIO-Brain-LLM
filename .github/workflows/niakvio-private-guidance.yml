@@ -1,0 +1,231 @@
+name: NiakVIO Private-Guided Advisor
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/triggers/niakvio-guidance.json"
+      - ".github/workflows/niakvio-private-guidance.yml"
+      - "scripts/publish_niakvio_guidance.py"
+  workflow_dispatch:
+    inputs:
+      niakvio_sha:
+        description: "Exact NiakVIO main SHA to advise"
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+concurrency:
+  group: niakvio-private-guidance
+  cancel-in-progress: true
+
+jobs:
+  guidance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout Brain LLM
+        uses: actions/checkout@v4
+        with:
+          path: brain
+          fetch-depth: 0
+
+      - name: Select exact NiakVIO source
+        id: source
+        shell: bash
+        env:
+          INPUT_SHA: ${{ inputs.niakvio_sha || '' }}
+        run: |
+          set -euo pipefail
+          sha="${INPUT_SHA:-}"
+          if [ -z "$sha" ] && [ -f brain/.github/triggers/niakvio-guidance.json ]; then
+            sha="$(python - <<'PY'
+          import json
+          from pathlib import Path
+          d=json.loads(Path("brain/.github/triggers/niakvio-guidance.json").read_text())
+          print(str(d.get("niakvio_sha") or "").strip().lower())
+          PY
+            )"
+          fi
+          [[ "$sha" =~ ^[0-9a-f]{40}$ ]] || { echo "exact NiakVIO SHA required" >&2; exit 2; }
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "FIELD_NIAKVIO_GUIDANCE_SOURCE sha=$sha"
+
+      - name: Checkout exact NiakVIO source
+        uses: actions/checkout@v4
+        with:
+          repository: niakw/NiakVIO
+          ref: ${{ steps.source.outputs.sha }}
+          path: niakvio
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Checkout private NiakVIO project read-only
+        uses: actions/checkout@v4
+        with:
+          repository: niakw/niakvio-private
+          ref: main
+          token: ${{ secrets.NIAKVIO_PRIVATE_READ_TOKEN }}
+          path: private
+          fetch-depth: 1
+          persist-credentials: false
+          sparse-checkout: |
+            raw/chatgpt-project/g-p-6a7f1d27495c819182b4081bfccdafd8
+          sparse-checkout-cone-mode: true
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Brain package
+        run: python -m pip install -e brain
+
+      - name: Build bounded public and private memory
+        shell: bash
+        run: |
+          set -euo pipefail
+          project="private/raw/chatgpt-project/g-p-6a7f1d27495c819182b4081bfccdafd8"
+          test -s "$project/project.json"
+          test -s "$project/index.json"
+          python brain/scripts/import_public_niakvio.py --niakvio-root niakvio --output public-experience.jsonl
+          python brain/scripts/import_public_docs.py             --niakvio-root niakvio             --config brain/config/document_sources.json             --output public-documents.jsonl
+          python brain/scripts/import_private_chat_project.py             --project-root "$project"             --output private-documents.jsonl             | tee private-memory-report.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          d=json.loads(Path("private-memory-report.json").read_text())
+          assert int(d.get("source_conversations") or 0) > 0, d
+          assert int(d.get("indexed_conversations") or 0) > 0, d
+          assert int(d.get("documents") or 0) > 0, d
+          assert d.get("proof_authority") is False, d
+          print("FIELD_NIAKVIO_PRIVATE_MEMORY available=true "
+                f"source={d['source_conversations']} indexed={d['indexed_conversations']} documents={d['documents']}")
+          PY
+
+      - name: Route current Repair queue
+        id: route
+        shell: bash
+        run: |
+          set -euo pipefail
+          python brain/scripts/route_batch_from_checkout.py             --niakvio-root niakvio             --experience public-experience.jsonl             --mode brain             --output routing.jsonl             --summary routing-summary.json
+          python - <<'PY'
+          import json,os
+          d=json.load(open("routing-summary.json"))
+          with open(os.environ["GITHUB_OUTPUT"],"a") as f:
+              f.write("llm_needed="+("true" if d.get("llm_needed") else "false")+"\n")
+              f.write("llm_targets="+str(int(d.get("llm_targets") or 0))+"\n")
+          print("FIELD_NIAKVIO_GUIDANCE_ROUTE "
+                f"providers={int(d.get('provider_count') or 0)} llm_targets={int(d.get('llm_targets') or 0)}")
+          PY
+
+      - uses: actions/cache@v4
+        if: steps.route.outputs.llm_needed == 'true'
+        id: llama-bin-cache
+        with:
+          path: llama-prebuilt
+          key: llama-cpp-b11140-ubuntu-x64
+
+      - name: Download official llama.cpp binary
+        if: steps.route.outputs.llm_needed == 'true' && steps.llama-bin-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p llama-prebuilt
+          curl -fL --retry 3             https://github.com/ggml-org/llama.cpp/releases/download/b11140/llama-b11140-bin-ubuntu-x64.tar.gz             -o llama-b11140.tar.gz
+          tar -xzf llama-b11140.tar.gz -C llama-prebuilt
+          test -n "$(find llama-prebuilt -type f -name llama-server -print -quit)"
+
+      - uses: actions/cache@v4
+        if: steps.route.outputs.llm_needed == 'true'
+        with:
+          path: |
+            ~/.cache/llama.cpp
+            ~/.cache/huggingface
+          key: qwen25-coder-3b-q4-km-v1
+
+      - name: Start bounded local Qwen advisor
+        if: steps.route.outputs.llm_needed == 'true'
+        run: |
+          SERVER="$(find llama-prebuilt -type f -name llama-server -print -quit)"
+          test -n "$SERVER"
+          chmod +x "$SERVER"
+          "$SERVER"             -hf Qwen/Qwen2.5-Coder-3B-Instruct-GGUF:Q4_K_M             --host 127.0.0.1             --port 8080             -c 4096             -np 1             > llama-server.log 2>&1 &
+          for i in $(seq 1 180); do
+            curl -fsS http://127.0.0.1:8080/health >/dev/null 2>&1 && exit 0
+            sleep 2
+          done
+          cat llama-server.log
+          exit 1
+
+      - name: Produce private-informed batch
+        shell: bash
+        run: |
+          set -euo pipefail
+          python brain/scripts/plan_batch_from_checkout.py             --niakvio-root niakvio             --experience public-experience.jsonl             --documents public-documents.jsonl             --extra-documents private-documents.jsonl             --mode brain             --endpoint http://127.0.0.1:8080             --model qwen2.5-coder-3b             --output private-guided-batch.jsonl
+
+      - name: Sanitize advisor output
+        shell: bash
+        run: |
+          set -euo pipefail
+          brain_sha="$(git -C brain rev-parse HEAD)"
+          python brain/scripts/publish_niakvio_guidance.py             --input private-guided-batch.jsonl             --output niakvio-guidance.json             --niakvio-sha "${{ steps.source.outputs.sha }}"             --brain-llm-sha "$brain_sha"
+          python - <<'PY'
+          import json,re
+          d=json.load(open("niakvio-guidance.json"))
+          assert d["privateContentRetained"] is False
+          assert d["proofAuthority"] is False
+          assert d["directMutationAuthority"] is False
+          assert d["publicationAuthority"] is False
+          serialized=json.dumps(d)
+          assert not re.search(r"https?://|authorization[=:]|cookie[=:]|token[=:]",serialized,re.I)
+          allowed={"providerId","failureClass","targetLayer","strategy","profile","confidence","priorOnly"}
+          assert all(set(row)<=allowed for row in d["rows"])
+          print("FIELD_NIAKVIO_GUIDANCE_SANITIZED "
+                f"providers={d['providerCount']} rows={len(d['rows'])} private_content=false")
+          PY
+
+      - name: Delete ephemeral private/model context
+        if: always()
+        run: |
+          rm -f private-documents.jsonl private-guided-batch.jsonl public-documents.jsonl public-experience.jsonl
+          rm -rf private
+
+      - name: Publish minimal sanitized guidance ref
+        shell: bash
+        env:
+          BRANCH: niakvio-guidance
+        run: |
+          set -euo pipefail
+          cp niakvio-guidance.json "$RUNNER_TEMP/niakvio-guidance.json"
+          git -C brain config user.name "niakvio-brain-llm"
+          git -C brain config user.email "actions@users.noreply.github.com"
+          git -C brain fetch origin "+refs/heads/$BRANCH:refs/remotes/origin/$BRANCH" || true
+          expected_sha=""
+          if git -C brain rev-parse --verify "refs/remotes/origin/$BRANCH" >/dev/null 2>&1; then
+            expected_sha="$(git -C brain rev-parse "refs/remotes/origin/$BRANCH")"
+          fi
+          git -C brain switch --orphan "niakvio-guidance-$GITHUB_RUN_ID"
+          git -C brain rm -rf . >/dev/null 2>&1 || true
+          mkdir -p brain/guidance
+          cp "$RUNNER_TEMP/niakvio-guidance.json" brain/guidance/niakvio-guidance.json
+          git -C brain add guidance/niakvio-guidance.json
+          git -C brain commit -m "guidance: refresh NiakVIO advisor prior"
+          tracked="$(git -C brain ls-files)"
+          test "$tracked" = "guidance/niakvio-guidance.json"
+          if [ -n "$expected_sha" ]; then
+            git -C brain push --force-with-lease="$BRANCH:$expected_sha" origin HEAD:"$BRANCH"
+          else
+            git -C brain push origin HEAD:"$BRANCH"
+          fi
+          echo "FIELD_NIAKVIO_GUIDANCE_PUBLISH files=1 private_content=false"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: niakvio-guidance-${{ github.run_id }}
+          path: |
+            niakvio-guidance.json
+            private-memory-report.json
+            routing-summary.json
+          retention-days: 14
+          if-no-files-found: warn
