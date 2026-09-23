@@ -64,14 +64,30 @@ class DocumentStore:
 
     @classmethod
     def from_jsonl(cls, path: str | Path) -> "DocumentStore":
+        return cls.from_jsonl_many([path])
+
+    @classmethod
+    def from_jsonl_many(cls, paths: list[str | Path]) -> "DocumentStore":
         rows: list[dict[str, Any]] = []
-        source = Path(path)
-        if source.exists():
+        seen: set[str] = set()
+
+        for raw_path in paths:
+            source = Path(raw_path)
+            if not source.exists():
+                continue
             for line in source.read_text(encoding="utf-8").splitlines():
-                if line.strip():
-                    value = json.loads(line)
-                    if isinstance(value, dict) and value.get("kind") == "document":
-                        rows.append(value)
+                if not line.strip():
+                    continue
+                value = json.loads(line)
+                if not isinstance(value, dict) or value.get("kind") != "document":
+                    continue
+                identity = str(value.get("document_id") or "").strip()
+                if not identity:
+                    identity = json.dumps(value, ensure_ascii=True, sort_keys=True)
+                if identity in seen:
+                    continue
+                seen.add(identity)
+                rows.append(value)
         return cls(rows)
 
     def search(self, query: dict[str, Any], *, limit: int = 4) -> list[dict[str, Any]]:
