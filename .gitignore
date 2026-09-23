@@ -21,6 +21,8 @@ data/*.jsonl
 !data/*.example.jsonl
 public-experience.jsonl
 public-documents.jsonl
+private-chat-documents.jsonl
+private-memory-report.json
 *-benchmark*.json
 *-routing*.json
 *-batch*.jsonl
