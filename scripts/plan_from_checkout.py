@@ -19,6 +19,7 @@ def main() -> int:
     parser.add_argument("--experience", required=True)
     parser.add_argument("--extra-experience", action="append", default=[])
     parser.add_argument("--documents", default="")
+    parser.add_argument("--extra-documents", action="append", default=[])
     parser.add_argument(
         "--endpoint",
         default=os.environ.get("NIAKVIO_LLM_ENDPOINT", "http://127.0.0.1:8080"),
@@ -33,9 +34,10 @@ def main() -> int:
     store = ExperienceStore.from_jsonl_many(
         [args.experience, *args.extra_experience]
     )
+    document_paths = ([args.documents] if args.documents else []) + list(args.extra_documents)
     documents = (
-        DocumentStore.from_jsonl(args.documents)
-        if args.documents
+        DocumentStore.from_jsonl_many(document_paths)
+        if document_paths
         else DocumentStore([])
     )
     planner = BrainPlanner(
