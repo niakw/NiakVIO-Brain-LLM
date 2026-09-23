@@ -93,6 +93,9 @@ def compact_document(
     text_limit: int,
 ) -> dict[str, Any]:
     return {
+        "source": _clip(row.get("source"), 80),
+        "private_memory": bool(row.get("private_memory")),
+        "proof_authority": bool(row.get("proof_authority")),
         "path": _clip(row.get("path"), 160),
         "heading": _clip(row.get("heading"), 180),
         "role": _clip(row.get("role"), 80),
