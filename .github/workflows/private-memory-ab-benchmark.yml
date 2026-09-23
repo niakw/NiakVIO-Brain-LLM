@@ -82,20 +82,20 @@ jobs:
             | tee private-memory-report.json
 
       - uses: actions/cache@v4
-        id: llama-cache
+        id: llama-bin-cache
         with:
-          path: llama.cpp
-          key: llama-cpp-server-linux-v1
+          path: llama-prebuilt
+          key: llama-cpp-b11140-ubuntu-x64
 
-      - if: steps.llama-cache.outputs.cache-hit != 'true'
+      - name: Download official llama.cpp Ubuntu x64 binary
+        if: steps.llama-bin-cache.outputs.cache-hit != 'true'
         run: |
-          pkg-config --exists libcurl || sudo apt-get install -y libcurl4-openssl-dev
-          git clone --depth 1 https://github.com/ggml-org/llama.cpp.git
-          cmake -S llama.cpp -B llama.cpp/build \
-            -DGGML_NATIVE=OFF \
-            -DLLAMA_CURL=ON \
-            -DCMAKE_BUILD_TYPE=Release
-          cmake --build llama.cpp/build --config Release -j2 --target llama-server
+          mkdir -p llama-prebuilt
+          curl -fL --retry 3 \
+            https://github.com/ggml-org/llama.cpp/releases/download/b11140/llama-b11140-bin-ubuntu-x64.tar.gz \
+            -o llama-b11140.tar.gz
+          tar -xzf llama-b11140.tar.gz -C llama-prebuilt
+          test -n "$(find llama-prebuilt -type f -name llama-server -print -quit)"
 
       - uses: actions/cache@v4
         with:
@@ -106,7 +106,10 @@ jobs:
 
       - name: Start Qwen2.5 Coder 3B
         run: |
-          ./llama.cpp/build/bin/llama-server \
+          SERVER="$(find llama-prebuilt -type f -name llama-server -print -quit)"
+          test -n "$SERVER"
+          chmod +x "$SERVER"
+          "$SERVER" \
             -hf Qwen/Qwen2.5-Coder-3B-Instruct-GGUF:Q4_K_M \
             --host 127.0.0.1 \
             --port 8080 \
