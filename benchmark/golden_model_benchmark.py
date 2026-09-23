@@ -20,6 +20,7 @@ def main() -> int:
     parser.add_argument("--cases", required=True)
     parser.add_argument("--experience", required=True)
     parser.add_argument("--documents", required=True)
+    parser.add_argument("--extra-documents", action="append", default=[])
     parser.add_argument("--endpoint", default="http://127.0.0.1:8080")
     parser.add_argument("--model", default="niakvio-local")
     args = parser.parse_args()
@@ -38,7 +39,7 @@ def main() -> int:
             temperature=0.0,
         ),
         store,
-        DocumentStore.from_jsonl(args.documents),
+        DocumentStore.from_jsonl_many([args.documents, *args.extra_documents]),
     )
 
     counts = {
@@ -61,6 +62,11 @@ def main() -> int:
         expected_strategies = set(case.get("expected_strategies") or [])
 
         experiences = store.search(request.to_dict(), limit=6)
+        retrieved_documents = planner.documents.search(request.to_dict(), limit=4)
+        private_document_hits = sum(
+            1 for row in retrieved_documents
+            if row.get("private_memory") is True
+        )
         prior = build_causal_prior(request, experiences)
         policy = build_mutation_policy(request, prior)
 
@@ -140,6 +146,8 @@ def main() -> int:
             "mutation_count": len(proposal.mutations),
             "brain_required_tests": brain_tests,
             "policy": policy,
+            "retrieved_document_count": len(retrieved_documents),
+            "private_document_hits": private_document_hits,
         })
 
     total = len(cases)
@@ -151,6 +159,11 @@ def main() -> int:
             key: (value / total if total else 0.0)
             for key, value in counts.items()
         },
+        "document_sources": 1 + len(args.extra_documents),
+        "private_document_hit_cases": sum(
+            1 for row in rows
+            if int(row.get("private_document_hits") or 0) > 0
+        ),
         "notes": {
             "model_tests_present": "diagnostic only; verification planning is owned by deterministic Brain policy",
             "fully_compliant": "does not require the model to invent verification tests",
