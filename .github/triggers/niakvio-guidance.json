@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "841f065577388a3944148ea13b0e81fb0801b61b",
-  "reason": "recompute current guidance after provider-local failed-experiment memory ingestion, advisor-only preflight alignment, and duplicate-fingerprint rejection",
+  "niakvio_sha": "2e7cb3120c1968911294ca84426239a9c36439f3",
+  "reason": "rotate advisor experiments after 14/14 current guidance fingerprints executed without playable acceptance",
   "requested_repair_queue": [
     "4khdhub",
     "allanime",
