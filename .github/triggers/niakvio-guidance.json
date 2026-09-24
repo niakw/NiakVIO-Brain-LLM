@@ -1,13 +1,15 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "f6ef220c777226a8bceccdac408cad8676a45487",
-  "reason": "force provider-specific executable experiment decisions for current 12-provider Repair queue",
+  "niakvio_sha": "b4402a5499ce3a001bdf8c91d094c229fe68ece6",
+  "reason": "recompute provider-specific executable guidance from current 14-provider refined network signatures",
   "requested_repair_queue": [
     "4khdhub",
     "allanime",
     "allwish",
     "anime-ultime",
     "animesalt",
+    "animesultra",
+    "animevost-fr",
     "animevostfr",
     "flemmix",
     "mallumv",
