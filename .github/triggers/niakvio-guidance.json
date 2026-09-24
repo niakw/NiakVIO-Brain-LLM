@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "e673b689c05a2922c908af40a8972bf2cc4537a9",
-  "reason": "refresh private-guided advisor on reconciled provider publication with bounded two-slot local Qwen planning",
+  "niakvio_sha": "4609bb20d80d6fafb5d6abd708a524d711e1c6c2",
+  "reason": "refresh private-guided advisor after lifecycle-order repair and rejected-census rollback",
   "requested_repair_queue": [
     "4khdhub",
     "allanime",
