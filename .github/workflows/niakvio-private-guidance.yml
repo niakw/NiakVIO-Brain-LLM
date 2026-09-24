@@ -170,7 +170,7 @@ jobs:
         run: |
           set -euo pipefail
           brain_sha="$(git -C brain rev-parse HEAD)"
-          python brain/scripts/publish_niakvio_guidance.py             --input private-guided-batch.jsonl             --output niakvio-guidance.json             --niakvio-sha "${{ steps.source.outputs.sha }}"             --brain-llm-sha "$brain_sha"
+          python brain/scripts/publish_niakvio_guidance.py             --input private-guided-batch.jsonl             --output niakvio-guidance.json             --niakvio-root niakvio             --niakvio-sha "${{ steps.source.outputs.sha }}"             --brain-llm-sha "$brain_sha"
           python - <<'PY'
           import json,re
           d=json.load(open("niakvio-guidance.json"))
