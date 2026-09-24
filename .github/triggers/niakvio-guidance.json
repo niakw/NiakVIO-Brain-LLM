@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "b4402a5499ce3a001bdf8c91d094c229fe68ece6",
-  "reason": "recompute provider-specific executable guidance from current 14-provider refined network signatures",
+  "niakvio_sha": "4081d03133ecc3ac25aef1f60079d6c2a2bcc43d",
+  "reason": "recompute guidance after fixing LLM advisor profile materialization; use current refined 14-provider network evidence",
   "requested_repair_queue": [
     "4khdhub",
     "allanime",
