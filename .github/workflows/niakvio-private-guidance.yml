@@ -111,7 +111,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python brain/scripts/route_batch_from_checkout.py             --niakvio-root niakvio             --experience public-experience.jsonl             --mode brain             --output routing.jsonl             --summary routing-summary.json
+          python brain/scripts/route_batch_from_checkout.py             --niakvio-root niakvio             --experience public-experience.jsonl             --mode brain             --advisor-only             --output routing.jsonl             --summary routing-summary.json
           python - <<'PY'
           import json,os
           d=json.load(open("routing-summary.json"))
