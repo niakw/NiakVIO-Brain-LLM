@@ -25,7 +25,11 @@ def classify_census_failure(row: dict[str, Any]) -> str:
     depths = " ".join(str(x) for x in row.get("evidenceDepth") or []).casefold()
     dominant = str(row.get("dominantIssue") or "").strip()
 
-    if "harness mismatch" in status or "harness/env blocked" in status:
+    if (
+        "harness mismatch" in status
+        or "harness/env blocked" in status
+        or "client transport gap" in status
+    ):
         return "transport_environment_gap"
 
     if row.get("candidateProof") or "candidate ok" in status:

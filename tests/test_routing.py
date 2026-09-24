@@ -25,6 +25,33 @@ class RoutingTests(unittest.TestCase):
         self.assertEqual(decision.target_layer, "harness")
         self.assertFalse(decision.requires_llm)
 
+    def test_confirmed_cross_network_browser_native_gap_uses_llm_architecture_diagnosis(self):
+        decision = route_request(
+            RepairRequest(
+                provider_id="demo",
+                failure_class="transport_environment_gap",
+                status="CLIENT TRANSPORT GAP",
+                census_prior={"harnessTransportClass": "browser-profile-only-both-networks"},
+            )
+        )
+        self.assertEqual(decision.mode, "llm_diagnose")
+        self.assertEqual(decision.target_layer, "harness")
+        self.assertEqual(decision.strategy, "native_tls_browser_differential_v1")
+        self.assertTrue(decision.requires_llm)
+        self.assertEqual(decision.allowed_mutations, [])
+
+    def test_legacy_harness_mismatch_with_confirmed_differential_also_uses_llm(self):
+        decision = route_request(
+            RepairRequest(
+                provider_id="demo",
+                failure_class="transport_environment_gap",
+                status="HARNESS MISMATCH",
+                census_prior={"harnessTransportClass": "browser-profile-only-both-networks"},
+            )
+        )
+        self.assertEqual(decision.mode, "llm_diagnose")
+        self.assertTrue(decision.requires_llm)
+
     def test_api_discovery_without_fresh_url_probes_first(self):
         store = ExperienceStore([{
             "experience_id": "movix",

@@ -41,6 +41,7 @@ def route_request(
     strategy = str(prior.get("strategy_prior") or "")
     status = _canon(request.status)
     failure = _canon(request.failure_class)
+    transport_class = _canon((request.census_prior or {}).get("harnessTransportClass"))
 
     # A healthy provider should never pay LLM inference cost unless an explicit
     # regression/failure was attached to the request.
@@ -67,8 +68,30 @@ def route_request(
             next_actions=["classify causal layer", "request discriminating evidence"],
         )
 
-    # Known non-provider failures are cheaper and safer to route directly to
-    # the relevant diagnostic/test path than to ask a model to rediscover it.
+    # Once the deterministic browser/native differential has already isolated
+    # a Core/client transport gap, repeating the same harness probes adds no new
+    # information. Ask the model for a bounded architecture diagnosis instead;
+    # non-provider mutation remains forbidden by policy and planner guards.
+    if layer == "harness" and (
+        "client-transport-gap" in status
+        or transport_class == "browser-profile-only-both-networks"
+    ):
+        return RoutingDecision(
+            mode="llm_diagnose",
+            reason="deterministic transport differential is complete; synthesize the bounded Core/client adaptation",
+            target_layer=layer,
+            strategy=strategy,
+            prior_confidence=confidence,
+            requires_llm=True,
+            allowed_mutations=[],
+            next_actions=[
+                strategy or "design Core/client transport adaptation",
+                "define discriminating native-client validation",
+            ],
+        )
+
+    # Known non-provider failures that have not exhausted deterministic
+    # diagnostics are cheaper and safer to route directly to their test path.
     if layer != "provider":
         return RoutingDecision(
             mode="deterministic",

@@ -58,6 +58,20 @@ class PriorTests(unittest.TestCase):
         self.assertEqual(prior["target_layer"], "harness")
         self.assertNotIn("strategy_prior", prior)
 
+    def test_client_transport_gap_uses_specific_architecture_strategy(self):
+        prior = build_causal_prior(
+            RepairRequest(
+                provider_id="demo",
+                failure_class="transport_environment_gap",
+                status="CLIENT TRANSPORT GAP",
+                census_prior={"harnessTransportClass": "browser-profile-only-both-networks"},
+            ),
+            [],
+        )
+        self.assertEqual(prior["target_layer"], "harness")
+        self.assertEqual(prior["strategy_prior"], "native_tls_browser_differential_v1")
+        self.assertGreaterEqual(prior["confidence"], 0.99)
+
     def test_chain_terminal_taxonomy_is_provider(self):
         prior = build_causal_prior(
             RepairRequest(provider_id="demo", failure_class="chain_terminal_gap"),

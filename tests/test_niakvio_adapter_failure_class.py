@@ -26,6 +26,13 @@ class AdapterFailureClassTests(unittest.TestCase):
         }
         self.assertEqual(classify_census_failure(row), "transport_environment_gap")
 
+    def test_client_transport_gap_is_not_provider_failure(self):
+        row = {
+            "status": "CLIENT TRANSPORT GAP",
+            "dominantIssue": "provider_network_exception",
+        }
+        self.assertEqual(classify_census_failure(row), "transport_environment_gap")
+
     def test_candidate_proof_uses_replay_gap(self):
         row = {
             "status": "CANDIDATE OK",

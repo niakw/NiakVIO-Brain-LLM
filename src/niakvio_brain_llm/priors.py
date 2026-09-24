@@ -130,6 +130,7 @@ def build_causal_prior(
     status = _canon(request.status)
     failure = _canon(request.failure_class)
     static = taxonomy_prior(failure)
+    transport_class = _canon((request.census_prior or {}).get("harnessTransportClass"))
 
     def status_prior(layer: str, confidence: float, source: str = "current_status") -> dict[str, Any]:
         prior: dict[str, Any] = {
@@ -145,8 +146,18 @@ def build_causal_prior(
                 prior["strategy_prior"] = static["strategy_prior"]
         return prior
 
+    if "client-transport-gap" in status:
+        prior = status_prior("harness", 0.99)
+        if transport_class == "browser-profile-only-both-networks":
+            prior["strategy_prior"] = "native_tls_browser_differential_v1"
+        elif transport_class == "browser-profile-only":
+            prior["strategy_prior"] = "browser_session_transport_bridge_v1"
+        return prior
     if "harness-mismatch" in status:
-        return status_prior("harness", 0.99)
+        prior = status_prior("harness", 0.99)
+        if transport_class == "browser-profile-only-both-networks":
+            prior["strategy_prior"] = "native_tls_browser_differential_v1"
+        return prior
     if "harness/env-blocked" in status or "harness-env-blocked" in status:
         return status_prior("harness", 0.95)
     if "provider-network-blocked" in status:
