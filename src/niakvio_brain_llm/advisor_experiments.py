@@ -99,7 +99,7 @@ def _failed_fingerprints(request: RepairRequest) -> set[str]:
         if not isinstance(row, dict):
             continue
         fp = str(row.get("llmAdvisorExperimentFingerprint") or "").strip().casefold()
-        if len(fp) != 64 or any(ch not in "0123456789abcdef" for ch in fp):
+        if len(fp) != 64 or any(not (ch.isdigit() or ch in "abcdef") for ch in fp):
             continue
         if int(row.get("consecutiveFailures") or 0) <= 0:
             continue
