@@ -34,6 +34,7 @@ def main() -> int:
     )
     parser.add_argument("--output", required=True)
     parser.add_argument("--strict", action="store_true")
+    parser.add_argument("--max-tokens", type=int, default=768)
     parser.add_argument(
         "--advisor-only",
         action="store_true",
@@ -63,6 +64,7 @@ def main() -> int:
         model=args.model,
         timeout_seconds=240,
         temperature=0.0,
+        max_tokens=max(256, min(int(args.max_tokens), 2048)),
     )
     store = ExperienceStore.from_jsonl_many(
         [args.experience, *args.extra_experience]

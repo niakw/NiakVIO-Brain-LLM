@@ -30,6 +30,7 @@ def main() -> int:
         default=os.environ.get("NIAKVIO_LLM_MODEL", "niakvio-local"),
     )
     parser.add_argument("--timeout", type=int, default=240)
+    parser.add_argument("--max-tokens", type=int, default=1024)
     args = parser.parse_args()
 
     raw = json.loads(Path(args.request).read_text(encoding="utf-8"))
@@ -44,6 +45,7 @@ def main() -> int:
         model=args.model,
         timeout_seconds=args.timeout,
         temperature=0.0,
+        max_tokens=max(256, min(int(args.max_tokens), 4096)),
     )
     planner = BrainPlanner(backend, store, documents)
     outcome = BrainOrchestrator(planner, store).run(request)

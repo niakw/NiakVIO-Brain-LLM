@@ -11,12 +11,16 @@ for token in (
     'thread_name_prefix="niakvio-llm"',
     'rows.sort(key=lambda row: int(row["position"]))',
     '"parallel_workers": workers',
+    "--advisor-only",
+    "--max-tokens",
 ):
     assert token in src, token
 
 assert "-c 8192" in wf
 assert "-np 2" in wf
 assert "--workers 2" in wf
+assert "--advisor-only" in wf
+assert "--max-tokens 768" in wf
 assert wf.index("-np 2") < wf.index("--workers 2")
 
 print("bounded concurrent private-guidance batch contract passed")

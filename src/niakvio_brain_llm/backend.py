@@ -22,6 +22,7 @@ class LocalOpenAICompatibleBackend:
     model: str = "niakvio-local"
     timeout_seconds: int = 120
     temperature: float = 0.0
+    max_tokens: int = 1024
 
     def complete(
         self,
@@ -33,6 +34,7 @@ class LocalOpenAICompatibleBackend:
         payload: dict[str, Any] = {
             "model": self.model,
             "temperature": self.temperature,
+            "max_tokens": max(128, int(self.max_tokens)),
             "messages": [
                 {"role": "system", "content": system},
                 {"role": "user", "content": user},
