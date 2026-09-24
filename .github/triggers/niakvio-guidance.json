@@ -1,5 +1,19 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "b3508f8405a4f0341810d9fb34303654b91f6093",
-  "reason": "refresh private-guided advisor for current scaled Repair after Brain/Tailscale control-plane changes"
+  "niakvio_sha": "439847e957fdec2a719b41c470ff7dc43a95604e",
+  "reason": "refresh private-guided advisor for exact 12-provider repairQueue after transport cleanup, sharding and AnimeSama route correction",
+  "requested_repair_queue": [
+    "4khdhub",
+    "allanime",
+    "allwish",
+    "anime-ultime",
+    "animesalt",
+    "animevostfr",
+    "flemmix",
+    "mallumv",
+    "moviebox",
+    "moviesmod",
+    "vidfast",
+    "yflix"
+  ]
 }
