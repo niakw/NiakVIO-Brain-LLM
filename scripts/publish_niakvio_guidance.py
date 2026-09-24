@@ -66,7 +66,22 @@ def sanitize_experiment(value:Any,*,strategy:str)->dict[str,Any]:
  }
 def experiment_fingerprint(exp):
  return hashlib.sha256(json.dumps(exp,ensure_ascii=True,sort_keys=True,separators=(",",":")).encode("ascii")).hexdigest()
-def sanitize(rows,*,niakvio_sha,brain_llm_sha,min_confidence=.80):
+def load_blocked_fingerprints(root:Path|None)->dict[str,set[str]]:
+ if root is None:return {}
+ try:d=json.loads((root/"automation"/"brain-repair-memory.json").read_text(encoding="utf-8"))
+ except (OSError,json.JSONDecodeError):return {}
+ out:dict[str,set[str]]={}
+ for row in d.get("entries") or []:
+  if not isinstance(row,dict):continue
+  provider=canon(row.get("providerId"));fp=str(row.get("llmAdvisorExperimentFingerprint") or "").strip().casefold()
+  if not provider or not re.fullmatch(r"[0-9a-f]{64}",fp):continue
+  try:failures=int(row.get("consecutiveFailures") or 0)
+  except (TypeError,ValueError):failures=0
+  outcome=canon(row.get("lastOutcome"))
+  if failures<=0 or outcome in {"accepted","verified","success"}:continue
+  out.setdefault(provider,set()).add(fp)
+ return out
+def sanitize(rows,*,niakvio_sha,brain_llm_sha,min_confidence=.80,blocked_fingerprints:dict[str,set[str]]|None=None):
  niakvio_sha=str(niakvio_sha).strip().casefold(); brain_llm_sha=str(brain_llm_sha).strip().casefold()
  if not SHA40.fullmatch(niakvio_sha) or not SHA40.fullmatch(brain_llm_sha): raise ValueError("exact 40-hex source SHAs are required")
  guidance=[];seen=set()
@@ -79,11 +94,13 @@ def sanitize(rows,*,niakvio_sha,brain_llm_sha,min_confidence=.80):
   except (TypeError,ValueError):confidence=0.
   if proposal.get("abstain") is True or target!="provider" or confidence<min_confidence or profile not in ALLOWED_PROFILES: continue
   exp=sanitize_experiment(proposal.get("experiment"),strategy=strategy); fp=experiment_fingerprint(exp); key=(provider,profile,fp)
+  if fp in (blocked_fingerprints or {}).get(provider,set()): continue
   if key in seen: continue
   seen.add(key)
   guidance.append({"providerId":provider,"failureClass":failure,"targetLayer":"provider","strategy":strategy,"profile":profile,"confidence":round(confidence,6),"priorOnly":True,"experiment":exp,"experimentFingerprint":fp})
  return {"schemaVersion":2,"sourceNiakvioSha":niakvio_sha,"brainLlmSha":brain_llm_sha,"publicationAuthority":False,"directMutationAuthority":False,"proofAuthority":False,"rawMutationContentRetained":False,"privateContentRetained":False,"minConfidence":min_confidence,"providerCount":len({r["providerId"] for r in guidance}),"rows":guidance}
 def main():
- p=argparse.ArgumentParser();p.add_argument("--input",type=Path,required=True);p.add_argument("--output",type=Path,required=True);p.add_argument("--niakvio-sha",required=True);p.add_argument("--brain-llm-sha",required=True);p.add_argument("--min-confidence",type=float,default=.80);a=p.parse_args()
- out=sanitize(load_jsonl(a.input),niakvio_sha=a.niakvio_sha,brain_llm_sha=a.brain_llm_sha,min_confidence=a.min_confidence);a.output.parent.mkdir(parents=True,exist_ok=True);a.output.write_text(json.dumps(out,indent=2,sort_keys=True)+"\n",encoding="utf-8");print(json.dumps({"provider_count":out["providerCount"],"rows":len(out["rows"]),"experiment_specs":len(out["rows"]),"private_content_retained":False},sort_keys=True));return 0
+ p=argparse.ArgumentParser();p.add_argument("--input",type=Path,required=True);p.add_argument("--output",type=Path,required=True);p.add_argument("--niakvio-sha",required=True);p.add_argument("--brain-llm-sha",required=True);p.add_argument("--niakvio-root",type=Path);p.add_argument("--min-confidence",type=float,default=.80);a=p.parse_args()
+ blocked=load_blocked_fingerprints(a.niakvio_root)
+ out=sanitize(load_jsonl(a.input),niakvio_sha=a.niakvio_sha,brain_llm_sha=a.brain_llm_sha,min_confidence=a.min_confidence,blocked_fingerprints=blocked);a.output.parent.mkdir(parents=True,exist_ok=True);a.output.write_text(json.dumps(out,indent=2,sort_keys=True)+"\n",encoding="utf-8");print(json.dumps({"provider_count":out["providerCount"],"rows":len(out["rows"]),"experiment_specs":len(out["rows"]),"blocked_fingerprints":sum(len(v) for v in blocked.values()),"private_content_retained":False},sort_keys=True));return 0
 if __name__=="__main__": raise SystemExit(main())
