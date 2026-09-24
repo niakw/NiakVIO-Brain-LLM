@@ -35,6 +35,25 @@ JS_MUTATION_SCHEMA = {
     },
 }
 
+EXPERIMENT_SPEC_SCHEMA = {
+    "type": "object",
+    "additionalProperties": False,
+    "properties": {
+        "route_policy": {"type":"string","enum":["owned_only","owned_plus_peer","owned_plus_peer_generic"]},
+        "recipe_policy": {"type":"string","enum":["current_only","current_plus_provider","current_plus_provider_peer"]},
+        "role_order": {"type":"array","maxItems":7,"uniqueItems":True,"items":{"type":"string","enum":["search","detail","episode","player","source","api","other"]}},
+        "terminal_only": {"type":"boolean"},
+        "alias_search": {"type":"boolean"},
+        "response_salvage": {"type":"boolean"},
+        "document_request_mining": {"type":"boolean"},
+        "session_bootstrap": {"type":"boolean"},
+        "max_depth": {"type":"integer","minimum":2,"maximum":6},
+        "max_pages": {"type":"integer","minimum":6,"maximum":36},
+        "max_embeds": {"type":"integer","minimum":6,"maximum":36},
+        "max_recipe_passes": {"type":"integer","minimum":1,"maximum":6},
+    },
+}
+
 REPAIR_PROPOSAL_SCHEMA = {
     "type": "object",
     "additionalProperties": False,
@@ -64,6 +83,7 @@ REPAIR_PROPOSAL_SCHEMA = {
             "maxItems": 12,
             "items": {"type": "string", "maxLength": 500},
         },
+        "experiment": deepcopy(EXPERIMENT_SPEC_SCHEMA),
         "mutations": {
             "type": "array",
             "maxItems": 8,

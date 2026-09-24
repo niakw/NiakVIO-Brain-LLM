@@ -30,6 +30,7 @@ class RepairProposal:
     target_layer: str = "unknown"
     evidence: list[str] = field(default_factory=list)
     mutations: list[dict[str, Any]] = field(default_factory=list)
+    experiment: dict[str, Any] = field(default_factory=dict)
     tests: list[str] = field(default_factory=list)
     abstain: bool = False
     abstain_reason: str = ""
@@ -48,6 +49,7 @@ class RepairProposal:
             target_layer=target_layer,
             evidence=[str(x) for x in value.get("evidence") or []][:12],
             mutations=[x for x in value.get("mutations") or [] if isinstance(x, dict)][:8],
+            experiment=dict(value.get("experiment") or {}) if isinstance(value.get("experiment"), dict) else {},
             tests=[str(x) for x in value.get("tests") or []][:12],
             abstain=bool(value.get("abstain", False)),
             abstain_reason=str(value.get("abstain_reason") or ""),

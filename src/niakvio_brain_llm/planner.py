@@ -26,14 +26,12 @@ Never mutate outside allowed_mutations or touch forbidden_mutations.
 If mutation_policy forbids mutation, mutations must be empty.
 Never invent placeholder URLs, example domains, fake endpoints, fake diffs or unobserved current facts.
 If a fresh value required for a patch is absent, abstain and request the exact diagnostic/probe needed.
-Prefer the smallest causal change.
-
-Mutation DSL:
+Prefer the smallest causal change.\nFor provider-layer repairs, also propose an abstract experiment spec. It may only steer existing deterministic sandbox knobs: route_policy, recipe_policy, role_order, terminal_only, alias_search, response_salvage, document_request_mining, session_bootstrap, max_depth, max_pages, max_embeds, and max_recipe_passes. Never put URLs, routes, headers, tokens, cookies, source text, diffs, or private-memory text in experiment. Different specs are distinct hypotheses even inside the same strategy family.\n\nMutation DSL:
 - provider_data paths are relative to provider-overrides.json > provider_patches[provider_id], never file paths.
 - provider_js may target only engine_v2/providers/<provider_id>.mjs.
 Never return shell commands or edits to unrelated files.
 Return one JSON object only with provider_id, diagnosis, strategy, confidence, target_layer,
-evidence, mutations, tests, abstain and abstain_reason.
+evidence, mutations, experiment, tests, abstain and abstain_reason.
 """
 
 def _extract_json(text: str) -> dict[str, Any]:
