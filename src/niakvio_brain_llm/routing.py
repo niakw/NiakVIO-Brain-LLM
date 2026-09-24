@@ -4,6 +4,7 @@ from dataclasses import asdict, dataclass, field
 from typing import Any
 
 from .contracts import RepairRequest
+from .advisor_experiments import next_advisor_experiment
 from .policy import NO_MUTATION_STRATEGIES, build_mutation_policy
 from .priors import build_causal_prior
 from .retrieval import ExperienceStore
@@ -29,37 +30,6 @@ def _canon(value: object) -> str:
 
 
 
-ADVISOR_STRATEGY_PROFILES = {
-    "provider-owned-origin-header-and-domain-replay": "provider_origin_failover_v1",
-    "search-detail-player-terminal-traversal": "proven_route_terminal_traversal_v1",
-    "terminal-media-extractor-with-playback-validation": "chain_terminal_extractor_v1",
-    "same-provider-candidate-program-replay": "retained_candidate_replay_v1",
-    "proven-request-program-and-terminal-extraction": "player_media_extractor_v1",
-    "discover-api-from-current-page-and-bundles": "search_contract_inference_v1",
-}
-
-
-def _advisor_strategy_exhausted(request: RepairRequest, strategy: str) -> bool:
-    profile = ADVISOR_STRATEGY_PROFILES.get(_canon(strategy), "")
-    if not profile:
-        return False
-    history = (request.provider_context or {}).get("advisor_experiment_history")
-    if not isinstance(history, list):
-        return False
-    for row in history:
-        if not isinstance(row, dict):
-            continue
-        if str(row.get("profile") or "").strip().casefold() != profile:
-            continue
-        fingerprint = str(row.get("llmAdvisorExperimentFingerprint") or "").strip().casefold()
-        if not fingerprint:
-            continue
-        if int(row.get("consecutiveFailures") or 0) <= 0:
-            continue
-        if str(row.get("lastOutcome") or "").strip().casefold() in {"accepted", "verified", "success"}:
-            continue
-        return True
-    return False
 
 def route_request(
     request: RepairRequest,
@@ -135,7 +105,37 @@ def route_request(
             next_actions=[strategy or f"run {layer} diagnostic/retest"],
         )
 
-    # Replay/verification strategies do not need a patch-generating LLM.
+    # External/private guidance is deterministic while the causal strategy is
+    # already known. Rotate through bounded experiment knobs from current
+    # provider-local negative memory; invoke Qwen only after that bounded
+    # experiment space is exhausted or causality itself is ambiguous.
+    if request.advisor_only and confidence >= 0.90 and strategy:
+        experiment = next_advisor_experiment(request, strategy)
+        if experiment:
+            return RoutingDecision(
+                mode="deterministic_advisor",
+                reason="high-confidence provider taxonomy owns the strategy; execute the next untried bounded advisor experiment",
+                target_layer=layer,
+                strategy=strategy,
+                prior_confidence=confidence,
+                requires_llm=False,
+                allowed_mutations=[],
+                next_actions=["materialize next untried bounded experiment"],
+            )
+        return RoutingDecision(
+            mode="llm_repair",
+            reason="bounded deterministic advisor experiment space is exhausted",
+            target_layer=layer,
+            strategy=strategy,
+            prior_confidence=confidence,
+            requires_llm=True,
+            allowed_mutations=[],
+            next_actions=["keep causal layer", "synthesize a novel strategy-compatible experiment"],
+        )
+
+    # Replay/verification remains deterministic in normal repair execution.
+    # Advisor-only mode is handled above so an exhausted replay profile can
+    # receive a fresh bounded experiment without provider mutation authority.
     if strategy in NO_MUTATION_STRATEGIES:
         return RoutingDecision(
             mode="deterministic",
@@ -144,34 +144,6 @@ def route_request(
             strategy=strategy,
             prior_confidence=confidence,
             next_actions=[strategy],
-        )
-
-    # External/private guidance needs only a bounded strategy+experiment prior.
-    # When the current taxonomy already owns both causal layer and canonical
-    # strategy at high confidence, asking the model to repeat that strategy is
-    # wasted inference. Synthesize the default executable experiment
-    # deterministically and reserve the LLM for genuinely ambiguous/novel cases.
-    if request.advisor_only and confidence >= 0.90 and strategy:
-        if _advisor_strategy_exhausted(request, strategy):
-            return RoutingDecision(
-                mode="llm_repair",
-                reason="canonical advisor experiment already failed on current provider state; synthesize a materially new bounded experiment",
-                target_layer=layer,
-                strategy=strategy,
-                prior_confidence=confidence,
-                requires_llm=True,
-                allowed_mutations=[],
-                next_actions=["keep causal strategy", "propose a novel bounded experiment"],
-            )
-        return RoutingDecision(
-            mode="deterministic_advisor",
-            reason="high-confidence provider taxonomy already owns the advisor strategy",
-            target_layer=layer,
-            strategy=strategy,
-            prior_confidence=confidence,
-            requires_llm=False,
-            allowed_mutations=[],
-            next_actions=["materialize bounded default experiment"],
         )
     if request.advisor_only:
         return RoutingDecision(
