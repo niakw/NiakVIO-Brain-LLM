@@ -6,6 +6,8 @@ import tempfile
 from pathlib import Path
 
 from niakvio_brain_llm.niakvio_adapter import _provider_negative_memory
+from niakvio_brain_llm.advisor_experiments import experiment_fingerprint as runtime_fingerprint, next_advisor_experiment
+from niakvio_brain_llm.contracts import RepairRequest
 
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = importlib.util.spec_from_file_location(
@@ -73,3 +75,30 @@ assert out["providerCount"] == 0, out
 assert out["rows"] == [], out
 
 print("advisor negative-memory ingestion/publication guard contract passed")
+
+# The runtime selector and publisher must hash the same normalized experiment.
+request = RepairRequest(provider_id="demo", failure_class="route_proven_gap", status="ROUTE PROVEN", advisor_only=True)
+runtime_experiment = next_advisor_experiment(request, "search_detail_player_terminal_traversal")
+assert runtime_fingerprint(runtime_experiment) == publish.experiment_fingerprint(
+    publish.sanitize_experiment(runtime_experiment, strategy="search-detail-player-terminal-traversal")
+)
+
+blocked_fp = runtime_fingerprint(runtime_experiment)
+rotated = next_advisor_experiment(
+    RepairRequest(
+        provider_id="demo",
+        failure_class="route_proven_gap",
+        status="ROUTE PROVEN",
+        advisor_only=True,
+        census_prior={"dominantIssue": "provider_waf_challenge"},
+        provider_context={"advisor_experiment_history": [{
+            "llmAdvisorExperimentFingerprint": blocked_fp,
+            "consecutiveFailures": 1,
+            "lastOutcome": "rejected",
+            "lastReason": "provider_waf_challenge",
+        }]},
+    ),
+    "search_detail_player_terminal_traversal",
+)
+assert runtime_fingerprint(rotated) != blocked_fp
+assert rotated["session_bootstrap"] is True
