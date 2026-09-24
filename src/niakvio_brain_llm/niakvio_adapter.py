@@ -16,6 +16,81 @@ def _load(path: Path, default: Any) -> Any:
 def _canon(value: object) -> str:
     return " ".join(str(value or "").strip().casefold().replace("_", " ").split())
 
+def _provider_targeted_observation(payload: Any, provider_id: str) -> dict[str, Any]:
+    providers = payload.get("providers") if isinstance(payload, dict) else None
+    if not isinstance(providers, dict):
+        return {}
+    wanted = _canon(provider_id)
+    row = next(
+        (
+            value for key, value in providers.items()
+            if _canon(key) == wanted and isinstance(value, dict)
+        ),
+        {},
+    )
+    if not row:
+        return {}
+
+    network_out: dict[str, list[dict[str, Any]]] = {}
+    network = row.get("network") if isinstance(row.get("network"), dict) else {}
+    for lane, values in list(network.items())[:8]:
+        if not isinstance(values, list):
+            continue
+        safe_rows: list[dict[str, Any]] = []
+        for value in values[:16]:
+            if not isinstance(value, dict):
+                continue
+            safe_rows.append({
+                "method": str(value.get("method") or "")[:12],
+                "host": str(value.get("host") or "")[:120],
+                "path": str(value.get("path") or "")[:180],
+                "status": value.get("status"),
+            })
+        if safe_rows:
+            network_out[str(lane)[:40]] = safe_rows
+
+    return {
+        "debugStages": row.get("debugStages") or {},
+        "statuses": row.get("statuses") or {},
+        "verifiedLanes": [str(x)[:40] for x in (row.get("verifiedLanes") or [])[:8]],
+        "playableLanes": [str(x)[:40] for x in (row.get("playableLanes") or [])[:8]],
+        "contradictions": int(row.get("contradictions") or 0),
+        "sampleTitles": {
+            str(lane)[:40]: [str(x)[:120] for x in values[:8]]
+            for lane, values in (row.get("sampleTitles") or {}).items()
+            if isinstance(values, list)
+        },
+        "network": network_out,
+    }
+
+def _provider_refined_groups(payload: Any, provider_id: str, *, census_run_id: str) -> list[dict[str, Any]]:
+    if not isinstance(payload, dict):
+        return []
+    source_run = str(payload.get("sourceRunId") or payload.get("sourcePlanRunId") or "")
+    if census_run_id and source_run and source_run != census_run_id:
+        return []
+    wanted = _canon(provider_id)
+    out: list[dict[str, Any]] = []
+    for group in payload.get("groups") or []:
+        if not isinstance(group, dict):
+            continue
+        providers = {_canon(value) for value in group.get("providers") or []}
+        if wanted not in providers:
+            continue
+        out.append({
+            "groupId": str(group.get("groupId") or "")[:180],
+            "parentGroupId": str(group.get("parentGroupId") or "")[:180],
+            "repairScope": str(group.get("repairScope") or "")[:80],
+            "capabilityStrategy": str(group.get("capabilityStrategy") or "")[:100],
+            "transportSignature": str(group.get("transportSignature") or "")[:120],
+            "evidenceDepths": [str(x)[:80] for x in (group.get("evidenceDepths") or [])[:12]],
+            "dominantIssues": [str(x)[:100] for x in (group.get("dominantIssues") or [])[:12]],
+            "debugStages": [str(x)[:120] for x in (group.get("debugStages") or [])[:12]],
+            "networkShape": [str(x)[:240] for x in (group.get("networkShape") or [])[:24]],
+            "splitReason": str(group.get("splitReason") or "")[:120],
+        })
+    return out[:4]
+
 def classify_census_failure(row: dict[str, Any]) -> str:
     explicit = str(row.get("failureClass") or "").strip()
     if explicit:
@@ -57,6 +132,8 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
     census = _load(root / "automation" / "provider-census-status.json", {})
     experience = _load(root / "automation" / "brain-repair-experience.json", {})
     memory = _load(root / "automation" / "brain-repair-memory.json", {})
+    targeted = _load(root / "automation" / "provider-targeted-regression-recovery-latest.json", {})
+    refined = _load(root / "automation" / "provider-repair-batch-refined-latest.json", {})
 
     row: dict[str, Any] = {}
     for candidate in census.get("providers") or []:
@@ -96,6 +173,13 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
     if not isinstance(supported, list):
         supported = []
 
+    targeted_observation = _provider_targeted_observation(targeted, provider_id)
+    refined_groups = _provider_refined_groups(
+        refined,
+        provider_id,
+        census_run_id=str(census.get("runId") or ""),
+    )
+
     census_prior = {
         "status": row.get("status"),
         "underlyingStatus": row.get("underlyingStatus"),
@@ -121,6 +205,14 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
         census_prior=census_prior,
         observations=[
             {"source": "census_current", "value": census_prior},
+            *(
+                [{"source": "targeted-regression-current", "value": targeted_observation}]
+                if targeted_observation else []
+            ),
+            *(
+                [{"source": "refined-repair-batch-current", "value": refined_groups}]
+                if refined_groups else []
+            ),
             {"source": "brain-repair-experience", "value": provider_experience[:4]},
             {"source": "brain-repair-memory", "value": negative_memory[:4]},
         ],
