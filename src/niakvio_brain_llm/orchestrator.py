@@ -4,6 +4,7 @@ from dataclasses import asdict, dataclass
 from typing import Any
 
 from .contracts import RepairProposal, RepairRequest
+from .advisor_experiments import next_advisor_experiment
 from .planner import BrainPlanner
 from .retrieval import ExperienceStore
 from .routing import RoutingDecision, route_request
@@ -36,15 +37,18 @@ class BrainOrchestrator:
         routing = route_request(request, self.store)
 
         if request.advisor_only and routing.mode == "deterministic_advisor":
+            experiment = next_advisor_experiment(request, routing.strategy)
+            if not experiment:
+                raise RuntimeError("deterministic advisor routed without an available experiment")
             proposal = RepairProposal(
                 provider_id=request.provider_id,
-                diagnosis="high-confidence NiakVIO causal taxonomy prior",
+                diagnosis="high-confidence NiakVIO causal taxonomy prior with provider-local negative-memory rotation",
                 strategy=routing.strategy,
                 confidence=routing.prior_confidence,
                 target_layer="provider",
                 evidence=[],
                 mutations=[],
-                experiment={},
+                experiment=experiment,
                 tests=[],
                 abstain=False,
                 abstain_reason="",
