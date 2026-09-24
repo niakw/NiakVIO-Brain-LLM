@@ -95,6 +95,20 @@ class RoutingTests(unittest.TestCase):
         self.assertTrue(decision.requires_llm)
         self.assertEqual(decision.allowed_mutations, ["provider_data"])
 
+    def test_advisor_only_provider_strategy_uses_llm_without_mutation_authority(self):
+        decision = route_request(
+            RepairRequest(
+                provider_id="demo",
+                failure_class="route_proven_gap",
+                status="ROUTE PROVEN",
+                advisor_only=True,
+            )
+        )
+        self.assertEqual(decision.mode, "llm_repair")
+        self.assertTrue(decision.requires_llm)
+        self.assertEqual(decision.target_layer, "provider")
+        self.assertEqual(decision.allowed_mutations, [])
+
     def test_unknown_failure_uses_llm_diagnosis_without_mutations(self):
         decision = route_request(
             RepairRequest(provider_id="demo", failure_class="novel_unknown_failure")

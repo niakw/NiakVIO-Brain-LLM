@@ -35,6 +35,11 @@ def main() -> int:
     parser.add_argument("--output", required=True)
     parser.add_argument("--strict", action="store_true")
     parser.add_argument(
+        "--advisor-only",
+        action="store_true",
+        help="Ask the LLM only for sanitized strategy/experiment guidance; deterministic NiakVIO owns mutations and proof.",
+    )
+    parser.add_argument(
         "--endpoint",
         default=os.environ.get("NIAKVIO_LLM_ENDPOINT", "http://127.0.0.1:8080"),
     )
@@ -72,6 +77,7 @@ def main() -> int:
     def plan_one(position: int, census_row: dict) -> dict:
         provider = str(census_row["provider"])
         request = request_from_checkout(args.niakvio_root, provider)
+        request.advisor_only = bool(args.advisor_only)
         try:
             outcome = orchestrator.run(request)
             return {

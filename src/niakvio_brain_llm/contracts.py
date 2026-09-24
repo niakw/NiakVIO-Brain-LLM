@@ -17,6 +17,7 @@ class RepairRequest:
     allowed_mutations: list[str] = field(default_factory=lambda: ["provider_data", "provider_js"])
     forbidden_mutations: list[str] = field(default_factory=lambda: ["core", "provider_base"])
     max_hypotheses: int = 3
+    advisor_only: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

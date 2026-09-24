@@ -35,6 +35,21 @@ class PolicyTests(unittest.TestCase):
         self.assertTrue(policy["allow_mutations"])
         self.assertEqual(policy["allowed_scopes"], ["provider_data"])
 
+    def test_advisor_only_provider_planning_never_emits_mutation_authority(self):
+        request = RepairRequest(
+            provider_id="demo",
+            failure_class="route_proven_gap",
+            provider_context={"override": "{}", "authored_module": "code"},
+            advisor_only=True,
+        )
+        policy = build_mutation_policy(request, {
+            "target_layer": "provider",
+            "strategy_prior": "search_detail_player_terminal_traversal",
+        })
+        self.assertFalse(policy["allow_mutations"])
+        self.assertFalse(policy["force_abstain"])
+        self.assertEqual(policy["allowed_scopes"], [])
+
     def test_candidate_replay_never_mutates(self):
         request = RepairRequest(
             provider_id="demo",

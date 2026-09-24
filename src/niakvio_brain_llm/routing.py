@@ -113,6 +113,22 @@ def route_request(
             next_actions=[strategy],
         )
 
+    # External/private guidance needs only a bounded strategy+experiment prior.
+    # The deterministic NiakVIO Brain owns candidate generation, mutation and
+    # proof, so do not make the advisor emit source/data patches that will be
+    # discarded by the sanitized guidance publisher.
+    if request.advisor_only:
+        return RoutingDecision(
+            mode="llm_repair",
+            reason="advisor-only provider synthesis; deterministic Brain owns mutation and proof",
+            target_layer=layer,
+            strategy=strategy,
+            prior_confidence=confidence,
+            requires_llm=True,
+            allowed_mutations=[],
+            next_actions=["propose bounded provider strategy and experiment"],
+        )
+
     # Do not spend an LLM call asking it to invent evidence. Gather the missing
     # current proof first and call the model only after the request is enriched.
     if policy.get("force_abstain"):

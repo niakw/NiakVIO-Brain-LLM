@@ -68,6 +68,14 @@ def build_mutation_policy(
             "reason": "strategy is verification/replay only",
         }
 
+    if request.advisor_only:
+        return {
+            "allow_mutations": False,
+            "allowed_scopes": [],
+            "force_abstain": False,
+            "reason": "advisor-only planning; deterministic Brain owns candidate mutation and proof",
+        }
+
     context = request.provider_context or {}
     allowed = set(request.allowed_mutations)
 
