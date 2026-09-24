@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "4609bb20d80d6fafb5d6abd708a524d711e1c6c2",
-  "reason": "refresh private-guided advisor after lifecycle-order repair and rejected-census rollback",
+  "niakvio_sha": "f6ef220c777226a8bceccdac408cad8676a45487",
+  "reason": "force provider-specific executable experiment decisions for current 12-provider Repair queue",
   "requested_repair_queue": [
     "4khdhub",
     "allanime",
