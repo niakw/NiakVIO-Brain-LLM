@@ -28,6 +28,39 @@ def _canon(value: object) -> str:
     return "-".join(str(value or "").strip().casefold().replace("_", "-").split())
 
 
+
+ADVISOR_STRATEGY_PROFILES = {
+    "provider-owned-origin-header-and-domain-replay": "provider_origin_failover_v1",
+    "search-detail-player-terminal-traversal": "proven_route_terminal_traversal_v1",
+    "terminal-media-extractor-with-playback-validation": "chain_terminal_extractor_v1",
+    "same-provider-candidate-program-replay": "retained_candidate_replay_v1",
+    "proven-request-program-and-terminal-extraction": "player_media_extractor_v1",
+    "discover-api-from-current-page-and-bundles": "search_contract_inference_v1",
+}
+
+
+def _advisor_strategy_exhausted(request: RepairRequest, strategy: str) -> bool:
+    profile = ADVISOR_STRATEGY_PROFILES.get(_canon(strategy), "")
+    if not profile:
+        return False
+    history = (request.provider_context or {}).get("advisor_experiment_history")
+    if not isinstance(history, list):
+        return False
+    for row in history:
+        if not isinstance(row, dict):
+            continue
+        if str(row.get("profile") or "").strip().casefold() != profile:
+            continue
+        fingerprint = str(row.get("llmAdvisorExperimentFingerprint") or "").strip().casefold()
+        if not fingerprint:
+            continue
+        if int(row.get("consecutiveFailures") or 0) <= 0:
+            continue
+        if str(row.get("lastOutcome") or "").strip().casefold() in {"accepted", "verified", "success"}:
+            continue
+        return True
+    return False
+
 def route_request(
     request: RepairRequest,
     store: ExperienceStore | None = None,
@@ -119,6 +152,17 @@ def route_request(
     # wasted inference. Synthesize the default executable experiment
     # deterministically and reserve the LLM for genuinely ambiguous/novel cases.
     if request.advisor_only and confidence >= 0.90 and strategy:
+        if _advisor_strategy_exhausted(request, strategy):
+            return RoutingDecision(
+                mode="llm_repair",
+                reason="canonical advisor experiment already failed on current provider state; synthesize a materially new bounded experiment",
+                target_layer=layer,
+                strategy=strategy,
+                prior_confidence=confidence,
+                requires_llm=True,
+                allowed_mutations=[],
+                next_actions=["keep causal strategy", "propose a novel bounded experiment"],
+            )
         return RoutingDecision(
             mode="deterministic_advisor",
             reason="high-confidence provider taxonomy already owns the advisor strategy",
