@@ -3,6 +3,7 @@ from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 src=(ROOT/"scripts/plan_batch_from_checkout.py").read_text(encoding="utf-8")
 wf=(ROOT/".github/workflows/niakvio-private-guidance.yml").read_text(encoding="utf-8")
+route=(ROOT/"scripts/route_batch_from_checkout.py").read_text(encoding="utf-8")
 
 for token in (
     "ThreadPoolExecutor",
@@ -16,6 +17,10 @@ for token in (
     "--timeout-seconds",
 ):
     assert token in src, token
+
+assert 'parser.add_argument("--advisor-only", action="store_true")' in route
+assert "request.advisor_only = bool(args.advisor_only)" in route
+assert "--mode brain             --advisor-only" in wf
 
 assert "-c 8192" in wf
 assert "-np 2" in wf
