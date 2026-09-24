@@ -110,7 +110,7 @@ class RoutingTests(unittest.TestCase):
         self.assertEqual(decision.strategy, "search_detail_player_terminal_traversal")
         self.assertEqual(decision.allowed_mutations, [])
 
-    def test_advisor_only_exhausted_current_strategy_calls_llm_for_new_experiment(self):
+    def test_advisor_only_failed_current_strategy_rotates_without_llm(self):
         decision = route_request(
             RepairRequest(
                 provider_id="demo",
@@ -127,10 +127,23 @@ class RoutingTests(unittest.TestCase):
                 },
             )
         )
-        self.assertEqual(decision.mode, "llm_repair")
-        self.assertTrue(decision.requires_llm)
+        self.assertEqual(decision.mode, "deterministic_advisor")
+        self.assertFalse(decision.requires_llm)
         self.assertEqual(decision.strategy, "search_detail_player_terminal_traversal")
         self.assertEqual(decision.allowed_mutations, [])
+
+    def test_advisor_only_candidate_replay_gets_bounded_experiment(self):
+        decision = route_request(
+            RepairRequest(
+                provider_id="demo",
+                failure_class="candidate_replay_gap",
+                status="CANDIDATE OK",
+                advisor_only=True,
+            )
+        )
+        self.assertEqual(decision.mode, "deterministic_advisor")
+        self.assertFalse(decision.requires_llm)
+        self.assertEqual(decision.strategy, "same_provider_candidate_program_replay")
 
     def test_unknown_failure_uses_llm_diagnosis_without_mutations(self):
         decision = route_request(
