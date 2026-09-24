@@ -91,6 +91,33 @@ def _provider_refined_groups(payload: Any, provider_id: str, *, census_run_id: s
         })
     return out[:4]
 
+def _provider_negative_memory(payload: Any, provider_id: str) -> list[dict[str, Any]]:
+    """Return bounded provider-local failed experiment memory from current NiakVIO state."""
+    if not isinstance(payload, dict):
+        return []
+    wanted = _canon(provider_id)
+    entries = payload.get("entries")
+    if not isinstance(entries, list):
+        return []
+    out: list[dict[str, Any]] = []
+    for value in entries:
+        if not isinstance(value, dict) or _canon(value.get("providerId")) != wanted:
+            continue
+        out.append({
+            "failureClass": str(value.get("failureClass") or "")[:120],
+            "profile": str(value.get("profile") or "")[:120],
+            "llmAdvisorExperimentFingerprint": str(value.get("llmAdvisorExperimentFingerprint") or "")[:80],
+            "experimentVariant": value.get("experimentVariant"),
+            "experimentGeneration": value.get("experimentGeneration"),
+            "consecutiveFailures": int(value.get("consecutiveFailures") or 0),
+            "failures": int(value.get("failures") or 0),
+            "successes": int(value.get("successes") or 0),
+            "lastOutcome": str(value.get("lastOutcome") or "")[:120],
+            "lastReason": str(value.get("lastReason") or "")[:240],
+            "executionObserved": value.get("executionObserved") is True,
+        })
+    return out[:32]
+
 def classify_census_failure(row: dict[str, Any]) -> str:
     explicit = str(row.get("failureClass") or "").strip()
     if explicit:
@@ -152,14 +179,7 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
                 if value:
                     provider_experience.append(value)
 
-    negative_memory: list[Any] = []
-    if isinstance(memory, dict):
-        for key in ("providers", "entries", "memory"):
-            block = memory.get(key)
-            if isinstance(block, dict):
-                value = block.get(provider_id) or block.get(wanted)
-                if value:
-                    negative_memory.append(value)
+    negative_memory = _provider_negative_memory(memory, provider_id)
 
     supported = (
         row.get("declaredLanes")
@@ -197,6 +217,9 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
         "harnessTransportEvidence": row.get("harnessTransportEvidence") or [],
     }
 
+    provider_context = build_provider_context(root, provider_id)
+    provider_context["advisor_experiment_history"] = negative_memory
+
     return RepairRequest(
         provider_id=provider_id,
         failure_class=str(failure),
@@ -216,5 +239,5 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
             {"source": "brain-repair-experience", "value": provider_experience[:4]},
             {"source": "brain-repair-memory", "value": negative_memory[:4]},
         ],
-        provider_context=build_provider_context(root, provider_id),
+        provider_context=provider_context,
     )
