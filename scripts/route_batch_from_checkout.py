@@ -19,6 +19,7 @@ def main() -> int:
     parser.add_argument("--mode", choices=("repair", "diagnostic", "brain"), default="repair")
     parser.add_argument("--provider", action="append", default=[])
     parser.add_argument("--limit", type=int, default=0)
+    parser.add_argument("--advisor-only", action="store_true")
     parser.add_argument("--output", required=True)
     parser.add_argument("--summary", required=True)
     args = parser.parse_args()
@@ -40,6 +41,7 @@ def main() -> int:
     for position, census_row in enumerate(selected, start=1):
         provider = str(census_row["provider"])
         request = request_from_checkout(args.niakvio_root, provider)
+        request.advisor_only = bool(args.advisor_only)
         routing = route_request(request, store)
         modes[routing.mode] += 1
         rows.append({
@@ -64,6 +66,7 @@ def main() -> int:
     )
     summary = {
         "mode": args.mode,
+        "advisor_only": bool(args.advisor_only),
         **batch_summary(selected),
         "routing_modes": dict(sorted(modes.items())),
         "llm_targets": llm_targets,
