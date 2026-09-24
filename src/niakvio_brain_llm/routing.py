@@ -114,13 +114,25 @@ def route_request(
         )
 
     # External/private guidance needs only a bounded strategy+experiment prior.
-    # The deterministic NiakVIO Brain owns candidate generation, mutation and
-    # proof, so do not make the advisor emit source/data patches that will be
-    # discarded by the sanitized guidance publisher.
+    # When the current taxonomy already owns both causal layer and canonical
+    # strategy at high confidence, asking the model to repeat that strategy is
+    # wasted inference. Synthesize the default executable experiment
+    # deterministically and reserve the LLM for genuinely ambiguous/novel cases.
+    if request.advisor_only and confidence >= 0.90 and strategy:
+        return RoutingDecision(
+            mode="deterministic_advisor",
+            reason="high-confidence provider taxonomy already owns the advisor strategy",
+            target_layer=layer,
+            strategy=strategy,
+            prior_confidence=confidence,
+            requires_llm=False,
+            allowed_mutations=[],
+            next_actions=["materialize bounded default experiment"],
+        )
     if request.advisor_only:
         return RoutingDecision(
             mode="llm_repair",
-            reason="advisor-only provider synthesis; deterministic Brain owns mutation and proof",
+            reason="advisor-only provider synthesis requires a novel or incomplete strategy",
             target_layer=layer,
             strategy=strategy,
             prior_confidence=confidence,

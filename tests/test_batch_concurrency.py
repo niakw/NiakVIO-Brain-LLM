@@ -13,6 +13,7 @@ for token in (
     '"parallel_workers": workers',
     "--advisor-only",
     "--max-tokens",
+    "--timeout-seconds",
 ):
     assert token in src, token
 
@@ -20,7 +21,8 @@ assert "-c 8192" in wf
 assert "-np 2" in wf
 assert "--workers 2" in wf
 assert "--advisor-only" in wf
-assert "--max-tokens 768" in wf
+assert "--max-tokens 512" in wf
+assert "--timeout-seconds 90" in wf
 assert wf.index("-np 2") < wf.index("--workers 2")
 
 print("bounded concurrent private-guidance batch contract passed")

@@ -95,7 +95,7 @@ class RoutingTests(unittest.TestCase):
         self.assertTrue(decision.requires_llm)
         self.assertEqual(decision.allowed_mutations, ["provider_data"])
 
-    def test_advisor_only_provider_strategy_uses_llm_without_mutation_authority(self):
+    def test_advisor_only_high_confidence_provider_strategy_is_deterministic(self):
         decision = route_request(
             RepairRequest(
                 provider_id="demo",
@@ -104,9 +104,10 @@ class RoutingTests(unittest.TestCase):
                 advisor_only=True,
             )
         )
-        self.assertEqual(decision.mode, "llm_repair")
-        self.assertTrue(decision.requires_llm)
+        self.assertEqual(decision.mode, "deterministic_advisor")
+        self.assertFalse(decision.requires_llm)
         self.assertEqual(decision.target_layer, "provider")
+        self.assertEqual(decision.strategy, "search_detail_player_terminal_traversal")
         self.assertEqual(decision.allowed_mutations, [])
 
     def test_unknown_failure_uses_llm_diagnosis_without_mutations(self):

@@ -35,6 +35,22 @@ class BrainOrchestrator:
     def run(self, request: RepairRequest) -> BrainOutcome:
         routing = route_request(request, self.store)
 
+        if request.advisor_only and routing.mode == "deterministic_advisor":
+            proposal = RepairProposal(
+                provider_id=request.provider_id,
+                diagnosis="high-confidence NiakVIO causal taxonomy prior",
+                strategy=routing.strategy,
+                confidence=routing.prior_confidence,
+                target_layer="provider",
+                evidence=[],
+                mutations=[],
+                experiment={},
+                tests=[],
+                abstain=False,
+                abstain_reason="",
+            )
+            return BrainOutcome(routing=routing, proposal=proposal)
+
         if not routing.requires_llm:
             return BrainOutcome(routing=routing)
 

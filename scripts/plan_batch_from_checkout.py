@@ -35,6 +35,7 @@ def main() -> int:
     parser.add_argument("--output", required=True)
     parser.add_argument("--strict", action="store_true")
     parser.add_argument("--max-tokens", type=int, default=768)
+    parser.add_argument("--timeout-seconds", type=int, default=90)
     parser.add_argument(
         "--advisor-only",
         action="store_true",
@@ -62,7 +63,7 @@ def main() -> int:
     backend = LocalOpenAICompatibleBackend(
         base_url=args.endpoint,
         model=args.model,
-        timeout_seconds=240,
+        timeout_seconds=max(30, min(int(args.timeout_seconds), 240)),
         temperature=0.0,
         max_tokens=max(256, min(int(args.max_tokens), 2048)),
     )

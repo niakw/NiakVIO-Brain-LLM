@@ -44,6 +44,25 @@ class OrchestratorTests(unittest.TestCase):
         self.assertEqual(outcome.routing.mode, "probe")
         self.assertIsNone(outcome.proposal)
 
+    def test_advisor_only_high_confidence_prior_synthesizes_without_llm(self):
+        planner = BrainPlanner(ExplodingBackend())
+        outcome = BrainOrchestrator(planner).run(
+            RepairRequest(
+                provider_id="demo",
+                failure_class="route_proven_gap",
+                status="ROUTE PROVEN",
+                advisor_only=True,
+            )
+        )
+        self.assertEqual(outcome.routing.mode, "deterministic_advisor")
+        self.assertIsNotNone(outcome.proposal)
+        self.assertEqual(
+            outcome.proposal.strategy,
+            "search_detail_player_terminal_traversal",
+        )
+        self.assertEqual(outcome.proposal.mutations, [])
+        self.assertEqual(outcome.proposal.experiment, {})
+
     def test_llm_repair_calls_model_only_with_routed_scope(self):
         store = ExperienceStore([{
             "failure_class": "api_discovery_gap",
