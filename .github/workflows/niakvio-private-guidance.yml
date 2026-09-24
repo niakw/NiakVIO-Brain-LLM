@@ -203,14 +203,26 @@ jobs:
           BRANCH: niakvio-guidance
         run: |
           set -euo pipefail
-          cp niakvio-guidance.json "$RUNNER_TEMP/niakvio-guidance.json"
           git -C brain config user.name "niakvio-brain-llm"
           git -C brain config user.email "actions@users.noreply.github.com"
           git -C brain fetch origin "+refs/heads/$BRANCH:refs/remotes/origin/$BRANCH" || true
           expected_sha=""
+          selected="$RUNNER_TEMP/niakvio-guidance.json"
           if git -C brain rev-parse --verify "refs/remotes/origin/$BRANCH" >/dev/null 2>&1; then
             expected_sha="$(git -C brain rev-parse "refs/remotes/origin/$BRANCH")"
+            previous="$RUNNER_TEMP/niakvio-guidance.previous.json"
+            if git -C brain show "refs/remotes/origin/$BRANCH:guidance/niakvio-guidance.json" > "$previous" 2>/dev/null; then
+              python brain/scripts/select_guidance_publication.py \
+                --previous "$previous" \
+                --candidate niakvio-guidance.json \
+                --output "$selected"
+            else
+              cp niakvio-guidance.json "$selected"
+            fi
+          else
+            cp niakvio-guidance.json "$selected"
           fi
+          cp "$selected" niakvio-guidance.json
           git -C brain switch --orphan "niakvio-guidance-$GITHUB_RUN_ID"
           git -C brain rm -rf . >/dev/null 2>&1 || true
           mkdir -p brain/guidance
