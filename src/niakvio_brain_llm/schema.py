@@ -135,6 +135,23 @@ def proposal_schema_for(
                 "type": "string",
                 "const": strategy,
             }
+        if layer == "provider":
+            if "experiment" not in schema["required"]:
+                schema["required"].append("experiment")
+            schema["properties"]["experiment"]["required"] = [
+                "route_policy",
+                "recipe_policy",
+                "role_order",
+                "terminal_only",
+                "alias_search",
+                "response_salvage",
+                "document_request_mining",
+                "session_bootstrap",
+                "max_depth",
+                "max_pages",
+                "max_embeds",
+                "max_recipe_passes",
+            ]
 
     policy = mutation_policy or {}
     allow_mutations = bool(policy.get("allow_mutations", True))

@@ -17,6 +17,19 @@ class SchemaTests(unittest.TestCase):
         self.assertEqual(props["role_order"]["maxItems"],7)
         self.assertIn("experiment",REPAIR_PROPOSAL_SCHEMA["properties"])
 
+    def test_high_confidence_provider_prior_requires_full_experiment(self):
+        schema = proposal_schema_for(
+            "demo",
+            causal_prior={
+                "confidence": 0.96,
+                "target_layer": "provider",
+                "strategy_prior": "search-detail-player-terminal-traversal",
+            },
+        )
+        self.assertIn("experiment", schema["required"])
+        required = set(schema["properties"]["experiment"]["required"])
+        self.assertEqual(required, set(EXPERIMENT_SPEC_SCHEMA["properties"]))
+
     def test_provider_prior_constrains_layer_strategy_identity_and_scope(self):
         schema = proposal_schema_for(
             "movix",
