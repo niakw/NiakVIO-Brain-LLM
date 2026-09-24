@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "4081d03133ecc3ac25aef1f60079d6c2a2bcc43d",
-  "reason": "recompute guidance after fixing LLM advisor profile materialization; use current refined 14-provider network evidence",
+  "niakvio_sha": "841f065577388a3944148ea13b0e81fb0801b61b",
+  "reason": "recompute current guidance after provider-local failed-experiment memory ingestion, advisor-only preflight alignment, and duplicate-fingerprint rejection",
   "requested_repair_queue": [
     "4khdhub",
     "allanime",
