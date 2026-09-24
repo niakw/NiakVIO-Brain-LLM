@@ -161,3 +161,12 @@ private NiakVIO chat memory to production Repair. Private transcripts stay
 ephemeral inside the workflow. The published `niakvio-guidance` branch contains
 one allowlisted, non-authoritative hypothesis-ordering file only; current NiakVIO
 tests remain the sole proof and publication authority.
+
+
+### Bounded batch concurrency
+
+Private-guided NiakVIO planning uses one local Qwen process with two llama.cpp parallel
+slots and two provider workers. Provider requests remain isolated/read-only, results
+are sorted back to deterministic evidence-depth order, and all publication/proof
+authority remains outside the model. This prevents independent provider planning
+from serializing behind a single LLM slot as repair cohorts grow.

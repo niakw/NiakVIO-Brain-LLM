@@ -5,6 +5,7 @@ import argparse
 import json
 import os
 from collections import Counter
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 from niakvio_brain_llm.backend import LocalOpenAICompatibleBackend
@@ -25,6 +26,12 @@ def main() -> int:
     parser.add_argument("--mode", choices=("repair", "diagnostic", "brain"), default="repair")
     parser.add_argument("--provider", action="append", default=[])
     parser.add_argument("--limit", type=int, default=0)
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=int(os.environ.get("NIAKVIO_LLM_WORKERS", "2")),
+        help="Bounded provider planning concurrency; output order remains deterministic.",
+    )
     parser.add_argument("--output", required=True)
     parser.add_argument("--strict", action="store_true")
     parser.add_argument(
@@ -62,18 +69,12 @@ def main() -> int:
     )
     orchestrator = BrainOrchestrator(planner, store)
 
-    rows = []
-    routing_modes: Counter[str] = Counter()
-    llm_calls = 0
-
-    for position, census_row in enumerate(selected, start=1):
+    def plan_one(position: int, census_row: dict) -> dict:
         provider = str(census_row["provider"])
         request = request_from_checkout(args.niakvio_root, provider)
         try:
             outcome = orchestrator.run(request)
-            routing_modes[outcome.routing.mode] += 1
-            llm_calls += int(outcome.routing.requires_llm)
-            rows.append({
+            return {
                 "position": position,
                 "provider": provider,
                 "status": request.status,
@@ -81,16 +82,44 @@ def main() -> int:
                 "ok": True,
                 "routing": outcome.routing.to_dict(),
                 "proposal": outcome.proposal.to_dict() if outcome.proposal else None,
-            })
+            }
         except Exception as exc:
-            rows.append({
+            return {
                 "position": position,
                 "provider": provider,
                 "status": request.status,
                 "failure_class": request.failure_class,
                 "ok": False,
                 "error": type(exc).__name__ + ": " + str(exc),
-            })
+            }
+
+    workers = max(1, min(int(args.workers or 1), 8, len(selected) or 1))
+    rows: list[dict] = []
+    if workers == 1:
+        rows = [
+            plan_one(position, census_row)
+            for position, census_row in enumerate(selected, start=1)
+        ]
+    else:
+        with ThreadPoolExecutor(max_workers=workers, thread_name_prefix="niakvio-llm") as pool:
+            futures = {
+                pool.submit(plan_one, position, census_row): position
+                for position, census_row in enumerate(selected, start=1)
+            }
+            for future in as_completed(futures):
+                rows.append(future.result())
+        rows.sort(key=lambda row: int(row["position"]))
+
+    routing_modes: Counter[str] = Counter()
+    llm_calls = 0
+    for row in rows:
+        routing = row.get("routing")
+        if not isinstance(routing, dict):
+            continue
+        mode = str(routing.get("mode") or "")
+        if mode:
+            routing_modes[mode] += 1
+        llm_calls += int(bool(routing.get("requires_llm")))
 
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -106,6 +135,7 @@ def main() -> int:
         "planned": sum(1 for row in rows if row["ok"]),
         "errors": sum(1 for row in rows if not row["ok"]),
         "model_processes": 1,
+        "parallel_workers": workers,
         "llm_calls": llm_calls,
         "llm_call_rate": (llm_calls / len(selected)) if selected else 0.0,
         "routing_modes": dict(sorted(routing_modes.items())),

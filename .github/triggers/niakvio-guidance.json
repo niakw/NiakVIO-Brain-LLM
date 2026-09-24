@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "439847e957fdec2a719b41c470ff7dc43a95604e",
-  "reason": "refresh private-guided advisor for exact 12-provider repairQueue after transport cleanup, sharding and AnimeSama route correction",
+  "niakvio_sha": "e673b689c05a2922c908af40a8972bf2cc4537a9",
+  "reason": "refresh private-guided advisor on reconciled provider publication with bounded two-slot local Qwen planning",
   "requested_repair_queue": [
     "4khdhub",
     "allanime",
