@@ -170,3 +170,19 @@ slots and two provider workers. Provider requests remain isolated/read-only, res
 are sorted back to deterministic evidence-depth order, and all publication/proof
 authority remains outside the model. This prevents independent provider planning
 from serializing behind a single LLM slot as repair cohorts grow.
+
+
+## Executable experiment guidance
+
+The public Brain bridge now carries a bounded abstract experiment spec in
+addition to the strategy family. The spec contains only enums, booleans and
+small integers controlling existing sandbox behavior (route/recipe evidence
+policy, role ordering, terminal-only traversal, recovery toggles and crawl
+budgets). It never contains URLs, headers, cookies, tokens, source text, diffs,
+mutation payloads or private-chat text.
+
+Each spec has a stable SHA-256 fingerprint. NiakVIO can therefore learn that one
+experiment failed without suppressing every future experiment in the same
+strategy family. The model still has no publication or proof authority:
+NiakVIO sandbox execution, current-byte playback, identity and regression gates
+remain authoritative.

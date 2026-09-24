@@ -1,6 +1,6 @@
 import unittest
 
-from niakvio_brain_llm.schema import REPAIR_PROPOSAL_SCHEMA, proposal_schema_for
+from niakvio_brain_llm.schema import EXPERIMENT_SPEC_SCHEMA, REPAIR_PROPOSAL_SCHEMA, proposal_schema_for
 
 class SchemaTests(unittest.TestCase):
     def test_mutation_variants_are_scope_specific(self):
@@ -8,6 +8,14 @@ class SchemaTests(unittest.TestCase):
         scopes = {variant["properties"]["scope"]["const"] for variant in variants}
         self.assertEqual(scopes, {"provider_data", "provider_js"})
         self.assertFalse(REPAIR_PROPOSAL_SCHEMA["additionalProperties"])
+
+    def test_experiment_spec_is_abstract_and_bounded(self):
+        self.assertFalse(EXPERIMENT_SPEC_SCHEMA["additionalProperties"])
+        props=EXPERIMENT_SPEC_SCHEMA["properties"]
+        self.assertEqual(props["max_depth"]["maximum"],6)
+        self.assertEqual(props["max_pages"]["maximum"],36)
+        self.assertEqual(props["role_order"]["maxItems"],7)
+        self.assertIn("experiment",REPAIR_PROPOSAL_SCHEMA["properties"])
 
     def test_provider_prior_constrains_layer_strategy_identity_and_scope(self):
         schema = proposal_schema_for(

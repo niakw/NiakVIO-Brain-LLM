@@ -178,8 +178,13 @@ jobs:
           assert d["publicationAuthority"] is False
           serialized=json.dumps(d)
           assert not re.search(r"https?://|authorization[=:]|cookie[=:]|token[=:]",serialized,re.I)
-          allowed={"providerId","failureClass","targetLayer","strategy","profile","confidence","priorOnly"}
-          assert all(set(row)<=allowed for row in d["rows"])
+          allowed={"providerId","failureClass","targetLayer","strategy","profile","confidence","priorOnly","experiment","experimentFingerprint"}
+          exp_allowed={"routePolicy","recipePolicy","roleOrder","terminalOnly","aliasSearch","responseSalvage","documentRequestMining","sessionBootstrap","maxDepth","maxPages","maxEmbeds","maxRecipePasses"}
+          assert d.get("schemaVersion")==2
+          for row in d["rows"]:
+              assert set(row)<=allowed
+              assert set(row.get("experiment") or {})==exp_allowed
+              assert re.fullmatch(r"[0-9a-f]{64}",str(row.get("experimentFingerprint") or ""))
           print("FIELD_NIAKVIO_GUIDANCE_SANITIZED "
                 f"providers={d['providerCount']} rows={len(d['rows'])} private_content=false")
           PY

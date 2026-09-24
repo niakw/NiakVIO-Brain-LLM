@@ -21,6 +21,7 @@ class PlannerTests(unittest.TestCase):
                 "path": "engine_v2/providers/demo.mjs",
                 "diff": "--- a/engine_v2/providers/demo.mjs\n+++ b/engine_v2/providers/demo.mjs\n@@\n-old\n+new"
             }],
+            "experiment": {"route_policy":"owned_plus_peer","recipe_policy":"current_plus_provider","role_order":["player","source","api"],"terminal_only":True,"response_salvage":True,"max_depth":5,"max_pages":20,"max_embeds":24,"max_recipe_passes":4},
             "tests": ["known positive movie"],
             "abstain": False,
             "abstain_reason": ""
@@ -35,6 +36,8 @@ class PlannerTests(unittest.TestCase):
         )
         self.assertEqual(proposal.strategy, "repair_terminal_extractor")
         self.assertEqual(proposal.target_layer, "provider")
+        self.assertEqual(proposal.experiment["route_policy"],"owned_plus_peer")
+        self.assertTrue(proposal.experiment["terminal_only"])
 
     def test_rejects_forbidden_scope(self):
         response = json.dumps({
