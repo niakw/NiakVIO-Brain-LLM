@@ -110,6 +110,28 @@ class RoutingTests(unittest.TestCase):
         self.assertEqual(decision.strategy, "search_detail_player_terminal_traversal")
         self.assertEqual(decision.allowed_mutations, [])
 
+    def test_advisor_only_exhausted_current_strategy_calls_llm_for_new_experiment(self):
+        decision = route_request(
+            RepairRequest(
+                provider_id="demo",
+                failure_class="route_proven_gap",
+                status="ROUTE PROVEN",
+                advisor_only=True,
+                provider_context={
+                    "advisor_experiment_history": [{
+                        "profile": "proven_route_terminal_traversal_v1",
+                        "llmAdvisorExperimentFingerprint": "a" * 64,
+                        "consecutiveFailures": 2,
+                        "lastOutcome": "rejected",
+                    }],
+                },
+            )
+        )
+        self.assertEqual(decision.mode, "llm_repair")
+        self.assertTrue(decision.requires_llm)
+        self.assertEqual(decision.strategy, "search_detail_player_terminal_traversal")
+        self.assertEqual(decision.allowed_mutations, [])
+
     def test_unknown_failure_uses_llm_diagnosis_without_mutations(self):
         decision = route_request(
             RepairRequest(provider_id="demo", failure_class="novel_unknown_failure")
