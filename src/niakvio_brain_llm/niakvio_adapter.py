@@ -146,7 +146,11 @@ def classify_census_failure(row: dict[str, Any]) -> str:
     if "provider network blocked" in status:
         return "provider_transport_gap"
 
-    if "provider_network_http_error" in dominant:
+    if any(token in dominant for token in (
+        "provider_network_http_error",
+        "provider_network_exception",
+        "provider_waf_challenge",
+    )):
         return "provider_transport_gap"
 
     return dominant or str(row.get("status") or "unknown")
