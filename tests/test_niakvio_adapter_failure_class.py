@@ -127,6 +127,21 @@ class AdapterFailureClassTests(unittest.TestCase):
                 {row["source"] for row in request.observations},
             )
 
+    def test_provider_waf_without_route_proof_is_transport_gap(self):
+        row = {
+            "status": "NO PROOF",
+            "dominantIssue": "provider_waf_challenge×2",
+            "evidenceDepth": ["movie=none", "tv=none"],
+        }
+        self.assertEqual(classify_census_failure(row), "provider_transport_gap")
+
+    def test_provider_network_exception_without_route_proof_is_transport_gap(self):
+        row = {
+            "status": "NO PROOF",
+            "dominantIssue": "provider_network_exception",
+        }
+        self.assertEqual(classify_census_failure(row), "provider_transport_gap")
+
     def test_candidate_proof_uses_replay_gap(self):
         row = {
             "status": "CANDIDATE OK",
