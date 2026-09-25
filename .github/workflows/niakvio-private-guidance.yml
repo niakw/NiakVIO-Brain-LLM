@@ -7,6 +7,7 @@ on:
       - ".github/triggers/niakvio-guidance.json"
       - ".github/workflows/niakvio-private-guidance.yml"
       - "scripts/publish_niakvio_guidance.py"
+      - "scripts/publish_niakvio_force_mutations.py"
       - "scripts/plan_batch_from_checkout.py"
       - "src/niakvio_brain_llm/**"
   workflow_dispatch:
@@ -159,11 +160,12 @@ jobs:
           cat llama-server.log
           exit 1
 
-      - name: Produce private-informed batch
+      - name: Produce private-informed advisor and Force batches
         shell: bash
         run: |
           set -euo pipefail
           python brain/scripts/plan_batch_from_checkout.py             --niakvio-root niakvio             --experience public-experience.jsonl             --documents public-documents.jsonl             --extra-documents private-documents.jsonl             --mode brain             --endpoint http://127.0.0.1:8080             --model qwen2.5-coder-3b             --workers 2             --advisor-only             --max-tokens 512             --timeout-seconds 90             --output private-guided-batch.jsonl
+          python brain/scripts/plan_batch_from_checkout.py             --niakvio-root niakvio             --experience public-experience.jsonl             --documents public-documents.jsonl             --extra-documents private-documents.jsonl             --mode repair             --endpoint http://127.0.0.1:8080             --model qwen2.5-coder-3b             --workers 2             --max-tokens 1024             --timeout-seconds 120             --output private-force-batch.jsonl
 
       - name: Sanitize advisor output
         shell: bash
@@ -171,6 +173,7 @@ jobs:
           set -euo pipefail
           brain_sha="$(git -C brain rev-parse HEAD)"
           python brain/scripts/publish_niakvio_guidance.py             --input private-guided-batch.jsonl             --output niakvio-guidance.json             --niakvio-root niakvio             --niakvio-sha "${{ steps.source.outputs.sha }}"             --brain-llm-sha "$brain_sha"
+          python brain/scripts/publish_niakvio_force_mutations.py             --input private-force-batch.jsonl             --output niakvio-force-mutations.json             --niakvio-root niakvio             --niakvio-sha "${{ steps.source.outputs.sha }}"             --brain-llm-sha "$brain_sha"
           python - <<'PY'
           import json,re
           d=json.load(open("niakvio-guidance.json"))
@@ -189,12 +192,27 @@ jobs:
               assert re.fullmatch(r"[0-9a-f]{64}",str(row.get("experimentFingerprint") or ""))
           print("FIELD_NIAKVIO_GUIDANCE_SANITIZED "
                 f"providers={d['providerCount']} rows={len(d['rows'])} private_content=false")
+          force=json.load(open("niakvio-force-mutations.json"))
+          assert force.get("schemaVersion")==1
+          assert force.get("sandboxMutationAuthority") is True
+          assert force.get("publicationAuthority") is False
+          assert force.get("proofAuthority") is False
+          assert force.get("privateContentRetained") is False
+          allowed_scopes={"provider_data","provider_patch","provider_js"}
+          for row in force.get("rows") or []:
+              assert row.get("targetLayer")=="provider"
+              assert re.fullmatch(r"[0-9a-f]{64}",str(row.get("mutationFingerprint") or ""))
+              mutations=row.get("mutations") or []
+              assert mutations
+              assert all(str(m.get("scope") or "") in allowed_scopes for m in mutations)
+          print("FIELD_NIAKVIO_FORCE_MUTATIONS_SANITIZED "
+                f"providers={force['providerCount']} rows={len(force['rows'])} publication=false")
           PY
 
       - name: Delete ephemeral private/model context
         if: always()
         run: |
-          rm -f private-documents.jsonl private-guided-batch.jsonl public-documents.jsonl public-experience.jsonl
+          rm -f private-documents.jsonl private-guided-batch.jsonl private-force-batch.jsonl public-documents.jsonl public-experience.jsonl
           rm -rf private
 
       - name: Publish minimal sanitized guidance ref
@@ -227,16 +245,18 @@ jobs:
           git -C brain rm -rf . >/dev/null 2>&1 || true
           mkdir -p brain/guidance
           cp "$RUNNER_TEMP/niakvio-guidance.json" brain/guidance/niakvio-guidance.json
-          git -C brain add guidance/niakvio-guidance.json
-          git -C brain commit -m "guidance: refresh NiakVIO advisor prior"
-          tracked="$(git -C brain ls-files)"
-          test "$tracked" = "guidance/niakvio-guidance.json"
+          cp niakvio-force-mutations.json brain/guidance/niakvio-force-mutations.json
+          git -C brain add guidance/niakvio-guidance.json guidance/niakvio-force-mutations.json
+          git -C brain commit -m "guidance: refresh NiakVIO advisor and Force mutation prior"
+          tracked="$(git -C brain ls-files | sort)"
+          expected_tracked="$(printf '%s\n' guidance/niakvio-force-mutations.json guidance/niakvio-guidance.json | sort)"
+          test "$tracked" = "$expected_tracked"
           if [ -n "$expected_sha" ]; then
             git -C brain push --force-with-lease="$BRANCH:$expected_sha" origin HEAD:"$BRANCH"
           else
             git -C brain push origin HEAD:"$BRANCH"
           fi
-          echo "FIELD_NIAKVIO_GUIDANCE_PUBLISH files=1 private_content=false"
+          echo "FIELD_NIAKVIO_GUIDANCE_PUBLISH files=2 private_content=false force_mutations=true"
 
       - uses: actions/upload-artifact@v4
         if: always()
@@ -244,6 +264,7 @@ jobs:
           name: niakvio-guidance-${{ github.run_id }}
           path: |
             niakvio-guidance.json
+            niakvio-force-mutations.json
             private-memory-report.json
             routing-summary.json
           retention-days: 14
