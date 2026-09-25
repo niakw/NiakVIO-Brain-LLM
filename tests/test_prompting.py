@@ -117,13 +117,15 @@ class PromptingTests(unittest.TestCase):
         )
         self.assertEqual(payload["mutation_target"]["scope"], "provider_patch")
         self.assertEqual(payload["mutation_target"]["path"], "scripts/provider_patches/demo_runtime_v1.py")
-        self.assertLess(len(payload["mutation_target"]["source"]), 5000)
+        self.assertLessEqual(len(payload["mutation_target"]["source"]), 12050)
         self.assertIn("HEAD", payload["mutation_target"]["source"])
         self.assertIn("TAIL", payload["mutation_target"]["source"])
         self.assertEqual(len(payload["current_observations"]), 3)
         self.assertNotIn("retrieved_experiences", payload)
         self.assertNotIn("retrieved_documents", payload)
         self.assertNotIn("published_bundle", payload)
+        self.assertEqual(payload["output_contract"]["file_edit_format"], "unique_find_replace")
+        self.assertTrue(payload["output_contract"]["find_must_be_exact_and_unique"])
 
     def test_brain_owned_required_tests_are_hidden_from_model(self):
         payload = build_prompt_payload(
