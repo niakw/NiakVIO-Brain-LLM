@@ -21,7 +21,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: niakvio-private-guidance
+  group: niakvio-private-guidance-v2
   cancel-in-progress: true
 
 jobs:
