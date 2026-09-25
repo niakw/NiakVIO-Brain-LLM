@@ -16,7 +16,7 @@ for token in (
     "--max-tokens",
     "--timeout-seconds",
     "retry_backend = LocalOpenAICompatibleBackend",
-    "timeout_seconds=240",
+    "timeout_seconds=120",
     "max_tokens=max(128, min(int(args.max_tokens), 160))",
 ):
     assert token in src, token
@@ -33,8 +33,8 @@ assert "-c 32768" in wf
 assert "-np 1" in wf
 assert "--workers 1" in wf
 assert "--advisor-only" in wf
-assert "--max-tokens 220" in wf
-assert "--timeout-seconds 210" in wf
+assert "--max-tokens 160" in wf
+assert "--timeout-seconds 75" in wf
 assert wf.index("-np 1") < wf.index("--workers 1")
 
 print("bounded concurrent private-guidance batch contract passed")
