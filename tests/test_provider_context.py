@@ -70,5 +70,29 @@ class ProviderContextTests(unittest.TestCase):
             self.assertIn("publishedRuntime", published_context["providerBlocks"][1]["source"])
             self.assertNotIn("B" * 100, published_context["providerBlocks"][0]["source"])
 
+    def test_hyphenated_provider_reads_published_bloc(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "providers").mkdir(parents=True)
+            (root / "provider-overrides.json").write_text(json.dumps({"provider_patches": {}}))
+            (root / "provider-hubs.json").write_text("{}")
+            (root / "providers" / "anime-ultime--nuvio--abc.js").write_text(
+                "/* STARTFIX:PROVIDER.ANIME-ULTIME.RUNTIME.V1 */\n"
+                "const route = '/current';\n"
+                "/* CLOSEFIX:PROVIDER.ANIME-ULTIME.RUNTIME.V1 */\n"
+            )
+            (root / "manifest.json").write_text(json.dumps({
+                "scrapers": [{
+                    "id": "anime-ultime",
+                    "version": "1.0.1",
+                    "filename": "providers/anime-ultime--nuvio--abc.js",
+                }],
+            }))
+            context = build_provider_context(root, "anime-ultime")
+            blocks = context["published_bundle"]["providerBlocks"]
+            self.assertEqual(len(blocks), 1)
+            self.assertEqual(blocks[0]["id"], "PROVIDER.ANIME-ULTIME.RUNTIME.V1")
+            self.assertIn("/current", blocks[0]["source"])
+
 if __name__ == "__main__":
     unittest.main()
