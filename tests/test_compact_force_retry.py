@@ -59,6 +59,8 @@ class CompactForceRetryTest(unittest.TestCase):
         self.assertIn(".run(retry_request, compact_force=True)", script)
         self.assertIn("timeout_seconds=120", script)
         self.assertIn("compact_force_schema_for(", planner)
+        self.assertIn("build_force_prompt_payload(", planner)
+        self.assertIn('schema = {"type": "object"}', planner)
         self.assertIn("COMPACT_FORCE_SYSTEM_PROMPT", planner)
         self.assertIn("Emit at most one mutation.", planner)
         workflow = (ROOT / ".github" / "workflows" / "niakvio-private-guidance.yml").read_text(encoding="utf-8")
