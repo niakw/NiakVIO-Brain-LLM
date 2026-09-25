@@ -17,7 +17,7 @@ for token in (
     "--timeout-seconds",
     "retry_backend = LocalOpenAICompatibleBackend",
     "timeout_seconds=120",
-    "max_tokens=max(128, min(int(args.max_tokens), 160))",
+    "max_tokens=max(128, min(int(args.max_tokens), 256))",
 ):
     assert token in src, token
 
@@ -33,7 +33,7 @@ assert "-c 32768" in wf
 assert "-np 1" in wf
 assert "--workers 1" in wf
 assert "--advisor-only" in wf
-assert "--max-tokens 160" in wf
+assert "--max-tokens 256" in wf
 assert "--timeout-seconds 75" in wf
 assert wf.index("-np 1") < wf.index("--workers 1")
 
