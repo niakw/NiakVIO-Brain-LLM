@@ -6,7 +6,7 @@ class SchemaTests(unittest.TestCase):
     def test_mutation_variants_are_scope_specific(self):
         variants = REPAIR_PROPOSAL_SCHEMA["properties"]["mutations"]["items"]["oneOf"]
         scopes = {variant["properties"]["scope"]["const"] for variant in variants}
-        self.assertEqual(scopes, {"provider_data", "provider_js"})
+        self.assertEqual(scopes, {"provider_data", "provider_patch", "provider_js"})
         self.assertFalse(REPAIR_PROPOSAL_SCHEMA["additionalProperties"])
 
     def test_experiment_spec_is_abstract_and_bounded(self):
@@ -53,6 +53,21 @@ class SchemaTests(unittest.TestCase):
         variants = schema["properties"]["mutations"]["items"]["oneOf"]
         self.assertEqual(len(variants), 1)
         self.assertEqual(variants[0]["properties"]["scope"]["const"], "provider_data")
+
+    def test_registered_provider_patch_paths_are_constrained(self):
+        schema = proposal_schema_for(
+            "demo",
+            {"target_layer": "provider", "confidence": 0.96, "strategy_prior": "search-detail-player-terminal-traversal"},
+            {"allow_mutations": True, "allowed_scopes": ["provider_patch"], "force_abstain": False},
+            {"registered_patch_scripts": ["scripts/provider_patches/demo_runtime_v1.py"]},
+        )
+        variants = schema["properties"]["mutations"]["items"]["oneOf"]
+        self.assertEqual(len(variants), 1)
+        self.assertEqual(variants[0]["properties"]["scope"]["const"], "provider_patch")
+        self.assertEqual(
+            variants[0]["properties"]["path"]["enum"],
+            ["scripts/provider_patches/demo_runtime_v1.py"],
+        )
 
     def test_harness_policy_forbids_mutation_and_forces_abstain(self):
         schema = proposal_schema_for(
