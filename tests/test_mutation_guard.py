@@ -47,6 +47,31 @@ class MutationGuardTests(unittest.TestCase):
                 "diff": "--- a\n+++ b\n@@\n-old\n+new",
             })
 
+    def test_registered_provider_patch_allowed(self):
+        validate_mutation(
+            "demo",
+            {
+                "scope": "provider_patch",
+                "operation": "unified_diff",
+                "path": "scripts/provider_patches/demo_runtime_v1.py",
+                "diff": "--- a/scripts/provider_patches/demo_runtime_v1.py\n+++ b/scripts/provider_patches/demo_runtime_v1.py\n@@ -1 +1 @@\n-old\n+new",
+            },
+            allowed_patch_paths={"scripts/provider_patches/demo_runtime_v1.py"},
+        )
+
+    def test_unregistered_provider_patch_rejected(self):
+        with self.assertRaises(ValueError):
+            validate_mutation(
+                "demo",
+                {
+                    "scope": "provider_patch",
+                    "operation": "unified_diff",
+                    "path": "scripts/provider_patches/other_runtime_v1.py",
+                    "diff": "--- a/scripts/provider_patches/other_runtime_v1.py\n+++ b/scripts/provider_patches/other_runtime_v1.py\n@@ -1 +1 @@\n-old\n+new",
+                },
+                allowed_patch_paths={"scripts/provider_patches/demo_runtime_v1.py"},
+            )
+
     def test_placeholder_diff_rejected(self):
         with self.assertRaises(ValueError):
             validate_mutation("demo", {
