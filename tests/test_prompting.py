@@ -53,6 +53,15 @@ class PromptingTests(unittest.TestCase):
             provider_id="demo",
             failure_class="route_proven_gap",
             provider_context={
+                "published_bundle": {
+                    "filename": "providers/demo--nuvio--abc.js",
+                    "version": "1.2.3",
+                    "providerBlocks": [
+                        {"id": "PROVIDER.DEMO.RUNTIME.V1", "source": "P" * 10000},
+                        {"id": "PROVIDER.DEMO.CONFIG.V1", "source": "Q" * 10000},
+                        {"id": "PROVIDER.DEMO.EXTRA.V1", "source": "R" * 10000},
+                    ],
+                },
                 "registered_patch_sources": {
                     "scripts/provider_patches/demo_runtime_v1.py": "A" * 10000,
                     "scripts/provider_patches/demo_extra_v1.py": "B" * 10000,
@@ -71,8 +80,14 @@ class PromptingTests(unittest.TestCase):
             {"allow_mutations": True, "allowed_scopes": ["provider_patch"]},
         )
         context = payload["request"]["provider_context"]
+        self.assertEqual(len(context["published_bundle"]["providerBlocks"]), 2)
+        self.assertLessEqual(
+            max(len(v["source"]) for v in context["published_bundle"]["providerBlocks"]),
+            3412,
+        )
+        self.assertEqual(context["published_bundle"]["filename"], "providers/demo--nuvio--abc.js")
         self.assertEqual(len(context["registered_patch_sources"]), 2)
-        self.assertLessEqual(max(len(v) for v in context["registered_patch_sources"].values()), 2412)
+        self.assertLessEqual(max(len(v) for v in context["registered_patch_sources"].values()), 2212)
         self.assertLess(len(context["authored_module"]), 1300)
         self.assertLess(len(context["override"]), 1000)
         self.assertLess(len(context["hub"]), 550)
