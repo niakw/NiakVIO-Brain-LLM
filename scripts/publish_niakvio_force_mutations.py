@@ -39,6 +39,77 @@ def fingerprint(value: object) -> str:
     ).encode("ascii")
     return hashlib.sha256(raw).hexdigest()
 
+def _provider_override(root: Path, provider: str) -> Any:
+    try:
+        data=json.loads((root/"provider-overrides.json").read_text(encoding="utf-8"))
+    except (OSError,json.JSONDecodeError):
+        return None
+    patches=data.get("provider_patches") if isinstance(data,dict) else None
+    if not isinstance(patches,dict):
+        return None
+    wanted=canon(provider)
+    for key,value in patches.items():
+        if canon(key)==wanted:
+            return value
+    return None
+
+
+def mutation_context_fingerprint(
+    root: Path,
+    provider: str,
+    mutations: list[dict[str, Any]],
+) -> str:
+    surfaces: list[dict[str, Any]]=[]
+    override_needed=False
+    for mutation in mutations:
+        scope=str(mutation.get("scope") or "")
+        path=str(mutation.get("path") or "")
+        if scope=="provider_data":
+            override_needed=True
+            continue
+        if scope in {"provider_patch","provider_js"}:
+            target=root/path
+            if not target.is_file():
+                raise ValueError(f"{provider}: mutation context path missing: {path}")
+            surfaces.append({
+                "scope":scope,
+                "path":path,
+                "sha256":hashlib.sha256(target.read_bytes()).hexdigest(),
+            })
+    if override_needed:
+        surfaces.append({
+            "scope":"provider_data",
+            "path":"provider-overrides.json:provider_patches",
+            "value":_provider_override(root,provider),
+        })
+    return fingerprint(surfaces)
+
+
+def load_force_memory(root: Path) -> set[tuple[str,str,str]]:
+    path=root/"automation"/"brain-llm-force-memory.json"
+    try:
+        data=json.loads(path.read_text(encoding="utf-8"))
+    except (OSError,json.JSONDecodeError):
+        return set()
+    blocked:set[tuple[str,str,str]]=set()
+    for row in data.get("entries") or []:
+        if not isinstance(row,dict):
+            continue
+        provider=canon(row.get("providerId"))
+        mutation_fp=str(row.get("mutationFingerprint") or "").strip().casefold()
+        context_fp=str(row.get("mutationContextFingerprint") or "").strip().casefold()
+        if (
+            provider
+            and re.fullmatch(r"[0-9a-f]{64}",mutation_fp)
+            and re.fullmatch(r"[0-9a-f]{64}",context_fp)
+            and (
+                int(row.get("consecutiveFailures") or 0)>0
+                or int(row.get("successes") or 0)>0
+            )
+        ):
+            blocked.add((provider,mutation_fp,context_fp))
+    return blocked
+
 
 def sanitize(
     rows: list[dict[str, Any]],
@@ -56,6 +127,7 @@ def sanitize(
     output: list[dict[str, Any]] = []
     seen: set[tuple[str, str]] = set()
     seen_providers: set[str] = set()
+    blocked_force = load_force_memory(niakvio_root)
 
     for row in rows:
         if row.get("ok") is not True:
@@ -109,6 +181,9 @@ def sanitize(
             continue
 
         mutation_fp = fingerprint(mutations)
+        context_fp = mutation_context_fingerprint(niakvio_root, provider, mutations)
+        if (provider, mutation_fp, context_fp) in blocked_force:
+            continue
         if provider in seen_providers:
             raise ValueError(
                 f"{provider}: multiple concrete Force candidates require isolated candidate sandboxing"
@@ -128,6 +203,7 @@ def sanitize(
                 "mutations": mutations,
                 "tests": [str(x)[:500] for x in (proposal.get("tests") or [])[:12]],
                 "mutationFingerprint": mutation_fp,
+                "mutationContextFingerprint": context_fp,
             }
         )
 
