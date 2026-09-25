@@ -68,7 +68,7 @@ def _published_provider_context(root: Path, provider_id: str) -> dict[str, Any] 
     if not path.is_file():
         return None
     source = path.read_text(encoding="utf-8", errors="replace")
-    canonical = re.escape(provider_id.upper().replace("-", "[-_]"))
+    canonical = re.escape(provider_id.upper()).replace(r"\-", "[-_]")
     pattern = re.compile(
         rf"/\* STARTFIX:(PROVIDER\.{canonical}\.[A-Z0-9_.-]+) \*/"
         rf"(.*?)"
