@@ -29,7 +29,7 @@ def _provider_entry(data: Any, provider_id: str) -> Any:
         for key, value in data.items():
             if str(key).strip().casefold() == wanted:
                 return value
-        for container_key in ("providers", "overrides", "hubs", "entries"):
+        for container_key in ("providers", "overrides", "provider_patches", "hubs", "entries"):
             nested = data.get(container_key)
             if isinstance(nested, dict):
                 for key, value in nested.items():
