@@ -28,6 +28,28 @@ class ProviderContextTests(unittest.TestCase):
                 },
             }))
             (root / "provider-hubs.json").write_text("{}")
+            (root / "providers").mkdir(parents=True)
+            published = (
+                "/* BEGIN NIAKVIO_PROVIDER */\n"
+                "/* STARTFIX:PROVIDER.DEMO.CONFIG.V1 */\n"
+                "/* FIXDATA:PROVIDER.DEMO.CONFIG.V1:" + ("B" * 500) + " */\n"
+                "const publishedConfig = 1;\n"
+                "/* CLOSEFIX:PROVIDER.DEMO.CONFIG.V1 */\n"
+                "/* STARTFIX:PROVIDER.DEMO.RUNTIME.V1 */\n"
+                "const publishedRuntime = 'current';\n"
+                "/* CLOSEFIX:PROVIDER.DEMO.RUNTIME.V1 */\n"
+                "/* END NIAKVIO_PROVIDER */\n"
+            )
+            (root / "providers" / "demo--nuvio--abc.js").write_text(published)
+            (root / "manifest.json").write_text(json.dumps({
+                "scrapers": [{
+                    "id": "demo",
+                    "version": "1.2.3",
+                    "filename": "providers/demo--nuvio--abc.js",
+                    "supportedTypes": ["movie", "tv"],
+                    "formats": ["m3u8"],
+                }],
+            }))
             context = build_provider_context(root, "demo")
             self.assertIn("const a = 1", context["authored_module"])
             self.assertNotIn("A" * 100, context["authored_module"])
@@ -41,6 +63,12 @@ class ProviderContextTests(unittest.TestCase):
                 "def apply(value)",
                 context["registered_patch_sources"]["scripts/provider_patches/demo_runtime_v1.py"],
             )
+            published_context = context["published_bundle"]
+            self.assertEqual(published_context["filename"], "providers/demo--nuvio--abc.js")
+            self.assertEqual(published_context["version"], "1.2.3")
+            self.assertEqual(len(published_context["providerBlocks"]), 2)
+            self.assertIn("publishedRuntime", published_context["providerBlocks"][1]["source"])
+            self.assertNotIn("B" * 100, published_context["providerBlocks"][0]["source"])
 
 if __name__ == "__main__":
     unittest.main()
