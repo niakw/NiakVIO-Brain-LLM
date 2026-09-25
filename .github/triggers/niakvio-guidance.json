@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "a3806223ed1448fc0d63c02f0c61ed31776a5c2b",
-  "reason": "current exact NiakVIO Force-mutation generation after four-slot timeout fix and privacy hygiene guard",
+  "niakvio_sha": "c6f157a28bc98457acba6a5eaf7d26a1854f57c5",
+  "reason": "final Force mutation generation after 5.21.73 cache bump and Qwen contention fix; require non-empty provider-local mutation prior",
   "requested_repair_queue": [
     "4khdhub",
     "allanime",
@@ -17,6 +17,5 @@
     "moviesmod",
     "vidfast",
     "yflix"
-  ],
-  "require_force_mutations": true
+  ]
 }
