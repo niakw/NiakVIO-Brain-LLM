@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "5c7b38e3c2a0f2413c97d1864eee3839da8c7ff0",
-  "reason": "rotate exhausted advisor experiments after Force 36085407669 rejected stale guidance; use corrected drift and negative-memory contracts",
+  "niakvio_sha": "f5fcbf95064c353e828bfcb37d62c46b61993c25",
+  "reason": "refresh exact advisor prior after bounding residential WAF probe so final Force runs on current NiakVIO HEAD",
   "requested_repair_queue": [
     "4khdhub",
     "allanime",
