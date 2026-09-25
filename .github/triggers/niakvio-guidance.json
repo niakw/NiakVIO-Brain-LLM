@@ -1,21 +1,8 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "eb5ee2534f4351176b5a1d5f2ae324b368d7ed69",
-  "reason": "micro-edit Force planner validation against exact canonical Repair SHA after provider_worker alternate-signature fix; require non-empty provider-local edit compiled to validated diff",
+  "niakvio_sha": "833e350a45e9bf0dd5b52ded736241b1927bce36",
+  "reason": "targeted MalluMV advisor regeneration after current Deep proved content_lookup_completed_no_streams; deterministic chain_terminal strategies exhausted and stale eb5ee guidance rejected",
   "requested_repair_queue": [
-    "4khdhub",
-    "allanime",
-    "allwish",
-    "anime-ultime",
-    "animesalt",
-    "animesultra",
-    "animevost-fr",
-    "animevostfr",
-    "flemmix",
-    "mallumv",
-    "moviebox",
-    "moviesmod",
-    "vidfast",
-    "yflix"
+    "mallumv"
   ]
 }
