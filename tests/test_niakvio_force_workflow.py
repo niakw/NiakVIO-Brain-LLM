@@ -8,7 +8,7 @@ assert "--advisor-only" in workflow
 assert "routing-force-summary.json" in workflow
 assert "force_llm_needed=" in workflow
 assert "-c 32768" in workflow
-assert "-np 2" in workflow
+assert "-np 1" in workflow
 assert "private-force-batch.jsonl" in workflow
 assert "publish_niakvio_force_mutations.py" in workflow
 assert "guidance/niakvio-force-mutations.json" in workflow
@@ -17,9 +17,9 @@ assert 'publicationAuthority") is False' in workflow
 assert "provider_patch" in workflow
 
 print("NiakVIO private guidance Force-mutation workflow contract passed")
-assert "--workers 2" in workflow
-assert "--max-tokens 320" in workflow
-assert "--timeout-seconds 150" in workflow
+assert "--workers 1" in workflow
+assert "--max-tokens 220" in workflow
+assert "--timeout-seconds 210" in workflow
 assert "--max-tokens 160" in workflow
 assert "--timeout-seconds 45" in workflow
 force_command = workflow.index("--mode repair             --endpoint")
