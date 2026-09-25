@@ -19,8 +19,10 @@ for token in (
     "--max-tokens",
     "--timeout-seconds",
     "retry_backend = LocalOpenAICompatibleBackend",
-    "timeout_seconds=120",
-    "max_tokens=max(128, min(int(args.max_tokens), 256))",
+    "timeout_seconds=150",
+    "retry_budgets = (",
+    "max(int(args.max_tokens), 768)",
+    "1280",
 ):
     assert token in src, token
 
@@ -34,14 +36,14 @@ assert "force_llm_needed=" in wf
 assert "--limit 4" not in wf
 assert "requested_repair_queue" in wf
 assert "niakvio-guidance-targets.txt" in wf
-assert "produced zero executable mutations" in wf
+assert "FIELD_NIAKVIO_FORCE_MUTATIONS_READY ready=false" in wf
 
 assert "-c 32768" in wf
 assert "-np 1" in wf
 assert "--workers 1" in wf
 assert "--advisor-only" in wf
-assert "--max-tokens 256" in wf
-assert "--timeout-seconds 75" in wf
+assert "--max-tokens 768" in wf
+assert "--timeout-seconds 90" in wf
 assert wf.index("-np 1") < wf.index("--workers 1")
 
 print("bounded concurrent private-guidance batch contract passed")
