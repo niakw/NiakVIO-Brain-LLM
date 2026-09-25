@@ -117,6 +117,54 @@ REPAIR_PROPOSAL_SCHEMA = {
     },
 }
 
+
+def compact_force_schema_for(
+    provider_id: str,
+    causal_prior: dict[str, Any] | None = None,
+    mutation_policy: dict[str, Any] | None = None,
+    provider_context: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Minimal timeout-retry schema.
+
+    Production safety remains local: BrainPlanner still validates causal layer,
+    strategy, mutation policy and mutation guards after parsing. The model only
+    has to emit the smallest executable provider mutation instead of repeating
+    evidence/tests/experiment metadata already owned by deterministic NiakVIO.
+    """
+    full = proposal_schema_for(
+        provider_id,
+        causal_prior,
+        mutation_policy,
+        provider_context,
+    )
+    return {
+        "type": "object",
+        "additionalProperties": False,
+        "required": [
+            "provider_id",
+            "diagnosis",
+            "strategy",
+            "confidence",
+            "target_layer",
+            "mutations",
+            "abstain",
+            "abstain_reason",
+        ],
+        "properties": {
+            "provider_id": deepcopy(full["properties"]["provider_id"]),
+            "diagnosis": {"type": "string", "maxLength": 320},
+            "strategy": deepcopy(full["properties"]["strategy"]),
+            "confidence": deepcopy(full["properties"]["confidence"]),
+            "target_layer": deepcopy(full["properties"]["target_layer"]),
+            "mutations": {
+                **deepcopy(full["properties"]["mutations"]),
+                "maxItems": min(1, int(full["properties"]["mutations"].get("maxItems", 1))),
+            },
+            "abstain": deepcopy(full["properties"]["abstain"]),
+            "abstain_reason": {"type": "string", "maxLength": 420},
+        },
+    }
+
 def proposal_schema_for(
     provider_id: str,
     causal_prior: dict[str, Any] | None = None,
