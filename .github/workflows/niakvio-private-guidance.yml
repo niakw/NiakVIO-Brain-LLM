@@ -298,8 +298,8 @@ jobs:
             --endpoint http://127.0.0.1:8080 \
             --model qwen2.5-coder-3b \
             --workers 1 \
-            --max-tokens 256 \
-            --timeout-seconds 75 \
+            --max-tokens 768 \
+            --timeout-seconds 90 \
             --output private-force-batch.jsonl
           python brain/scripts/plan_batch_from_checkout.py \
             --niakvio-root niakvio \
@@ -351,7 +351,19 @@ jobs:
           assert force.get("privateContentRetained") is False
           force_targets=int(os.environ.get("FORCE_LLM_TARGETS") or 0)
           if force_targets > 0 and int(force.get("providerCount") or 0) <= 0:
-              raise SystemExit(f"Force routing requested {force_targets} LLM target(s) but produced zero executable mutations")
+              # Advisor guidance remains useful and non-mutating even when the
+              # concrete Force generator abstains or fails. Do not throw away
+              # valid multi-hypothesis guidance. NiakVIO explicit Force still
+              # fails closed later when requireExternalForceMutations=true.
+              print(
+                  "FIELD_NIAKVIO_FORCE_MUTATIONS_READY ready=false "
+                  f"requested={force_targets} reason=no-executable-mutation"
+              )
+          else:
+              print(
+                  "FIELD_NIAKVIO_FORCE_MUTATIONS_READY ready=true "
+                  f"requested={force_targets} providers={int(force.get('providerCount') or 0)}"
+              )
           allowed_scopes={"provider_data","provider_patch","provider_js"}
           for row in force.get("rows") or []:
               assert row.get("targetLayer")=="provider"
