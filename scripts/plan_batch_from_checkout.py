@@ -105,7 +105,7 @@ def main() -> int:
                     retry = BrainOrchestrator(
                         BrainPlanner(retry_backend, store, documents),
                         store,
-                    ).run(retry_request)
+                    ).run(retry_request, compact_force=True)
                     return {
                         "position": position,
                         "provider": provider,
