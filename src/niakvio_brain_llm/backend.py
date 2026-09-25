@@ -69,7 +69,26 @@ class LocalOpenAICompatibleBackend:
                 raise
             fallback = dict(payload)
             fallback.pop("response_format", None)
-            value = invoke(fallback)
+            try:
+                value = invoke(fallback)
+            except HTTPError as fallback_exc:
+                body = ""
+                try:
+                    body = fallback_exc.read(1600).decode("utf-8", errors="replace")
+                except Exception:
+                    body = ""
+                # Never expose prompt/private memory; only the bounded server
+                # error payload is retained, with URL/credential shapes redacted.
+                import re
+                body = re.sub(r"https?://[^\\s\"']+", "<url>", body)
+                body = re.sub(
+                    r"(?i)(authorization|cookie|token|secret|password|api[_-]?key)[^,}]{0,180}",
+                    r"\\1:<omitted>",
+                    body,
+                )
+                raise RuntimeError(
+                    f"llama.cpp fallback HTTP {fallback_exc.code}: {body[:1200]}"
+                ) from fallback_exc
         return str(value["choices"][0]["message"]["content"])
 
 @dataclass(slots=True)
