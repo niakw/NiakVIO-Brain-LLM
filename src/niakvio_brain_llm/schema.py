@@ -35,6 +35,18 @@ JS_MUTATION_SCHEMA = {
     },
 }
 
+PROVIDER_PATCH_MUTATION_SCHEMA = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["scope", "operation", "path", "diff"],
+    "properties": {
+        "scope": {"type": "string", "const": "provider_patch"},
+        "operation": {"type": "string", "const": "unified_diff"},
+        "path": {"type": "string", "maxLength": 300},
+        "diff": {"type": "string", "minLength": 1, "maxLength": 24000},
+    },
+}
+
 EXPERIMENT_SPEC_SCHEMA = {
     "type": "object",
     "additionalProperties": False,
@@ -90,6 +102,7 @@ REPAIR_PROPOSAL_SCHEMA = {
             "items": {
                 "oneOf": [
                     deepcopy(DATA_MUTATION_SCHEMA),
+                    deepcopy(PROVIDER_PATCH_MUTATION_SCHEMA),
                     deepcopy(JS_MUTATION_SCHEMA),
                 ]
             },
@@ -108,6 +121,7 @@ def proposal_schema_for(
     provider_id: str,
     causal_prior: dict[str, Any] | None = None,
     mutation_policy: dict[str, Any] | None = None,
+    provider_context: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     schema = deepcopy(REPAIR_PROPOSAL_SCHEMA)
     schema["properties"]["provider_id"] = {"type": "string", "const": provider_id}
@@ -121,6 +135,21 @@ def proposal_schema_for(
         "type": "string",
         "const": f"engine_v2/providers/{provider_id}.mjs",
     }
+
+    patch_variant = next(
+        variant for variant in mutation_variants
+        if variant["properties"]["scope"].get("const") == "provider_patch"
+    )
+    patch_paths = [
+        str(value).strip()
+        for value in (provider_context or {}).get("registered_patch_scripts") or []
+        if str(value).strip().startswith("scripts/provider_patches/")
+    ][:8]
+    if patch_paths:
+        patch_variant["properties"]["path"] = {
+            "type": "string",
+            "enum": list(dict.fromkeys(patch_paths)),
+        }
 
     prior = causal_prior or {}
     confidence = float(prior.get("confidence") or 0.0)
