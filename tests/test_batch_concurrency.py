@@ -24,8 +24,10 @@ for token in (
 assert 'parser.add_argument("--advisor-only", action="store_true")' in route
 assert "request.advisor_only = bool(args.advisor_only)" in route
 assert "--mode brain             --advisor-only" in wf
-assert "--mode repair             --output routing-force.jsonl" in wf
+assert "--mode repair             --limit 4             --output routing-force.jsonl" in wf
 assert "force_llm_needed=" in wf
+assert wf.count("--limit 4") >= 4
+assert "produced zero executable mutations" in wf
 
 assert "-c 32768" in wf
 assert "-np 1" in wf
