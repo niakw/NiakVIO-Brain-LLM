@@ -159,6 +159,32 @@ class PlannerTests(unittest.TestCase):
                 compact_force=True,
             )
 
+    def test_compact_force_file_edit_rejects_oversized_replace(self):
+        response = json.dumps({
+            "edit": {
+                "scope": "provider_patch",
+                "path": "scripts/provider_patches/demo_runtime_v1.py",
+                "find": "return 'old'",
+                "replace": "x" * 641,
+            },
+            "abstain_reason": "",
+        })
+        with self.assertRaisesRegex(ValueError, "oversized"):
+            BrainPlanner(StaticBackend(response)).plan(
+                RepairRequest(
+                    provider_id="demo",
+                    failure_class="chain_terminal_gap",
+                    status="CHAIN REACHED",
+                    provider_context={
+                        "registered_patch_scripts": ["scripts/provider_patches/demo_runtime_v1.py"],
+                        "registered_patch_sources": {
+                            "scripts/provider_patches/demo_runtime_v1.py": "def a():\n    return 'old'\n",
+                        },
+                    },
+                ),
+                compact_force=True,
+            )
+
     def test_private_chat_document_reaches_planner_prompt(self):
         planner = BrainPlanner(
             StaticBackend("{}"),
