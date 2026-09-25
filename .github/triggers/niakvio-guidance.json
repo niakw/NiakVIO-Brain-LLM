@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "2e7cb3120c1968911294ca84426239a9c36439f3",
-  "reason": "rotate advisor experiments after 14/14 current guidance fingerprints executed without playable acceptance",
+  "niakvio_sha": "5c7b38e3c2a0f2413c97d1864eee3839da8c7ff0",
+  "reason": "rotate exhausted advisor experiments after Force 36085407669 rejected stale guidance; use corrected drift and negative-memory contracts",
   "requested_repair_queue": [
     "4khdhub",
     "allanime",
