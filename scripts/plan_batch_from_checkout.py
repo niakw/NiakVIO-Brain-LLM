@@ -154,23 +154,41 @@ def main() -> int:
                 or "jsondecodeerror" in type(exc).__name__.casefold()
             )
             if retryable and not args.advisor_only:
-                retry_backend = LocalOpenAICompatibleBackend(
-                    base_url=args.endpoint,
-                    model=args.model,
-                    timeout_seconds=120,
-                    temperature=0.0,
-                    max_tokens=max(128, min(int(args.max_tokens), 256)),
+                # Compact Force may still need a few hundred tokens because the
+                # bounded find/replace payload itself can contain up to ~1k
+                # characters. A 256-token retry can truncate a valid response
+                # before its closing braces. Retry twice with a larger but still
+                # bounded budget; never salvage or auto-close malformed JSON.
+                retry_budgets = (
+                    max(512, min(max(int(args.max_tokens), 768), 1024)),
+                    1280,
                 )
-                retry_request = request_from_checkout(args.niakvio_root, provider)
-                retry_request.advisor_only = False
-                try:
-                    retry = BrainOrchestrator(
-                        BrainPlanner(retry_backend, store, documents),
-                        store,
-                    ).run(retry_request, compact_force=True)
-                    return [_row(position, 1, provider, retry_request, retry)]
-                except Exception as retry_exc:
-                    exc = retry_exc
+                for retry_index, retry_tokens in enumerate(retry_budgets, start=1):
+                    retry_backend = LocalOpenAICompatibleBackend(
+                        base_url=args.endpoint,
+                        model=args.model,
+                        timeout_seconds=150,
+                        temperature=0.0,
+                        max_tokens=retry_tokens,
+                    )
+                    retry_request = request_from_checkout(args.niakvio_root, provider)
+                    retry_request.advisor_only = False
+                    try:
+                        retry = BrainOrchestrator(
+                            BrainPlanner(retry_backend, store, documents),
+                            store,
+                        ).run(retry_request, compact_force=True)
+                        return [_row(position, retry_index, provider, retry_request, retry)]
+                    except Exception as retry_exc:
+                        exc = retry_exc
+                        retryable = (
+                            isinstance(retry_exc, TimeoutError)
+                            or "timed out" in str(retry_exc).casefold()
+                            or "unterminated string" in str(retry_exc).casefold()
+                            or "jsondecodeerror" in type(retry_exc).__name__.casefold()
+                        )
+                        if not retryable:
+                            break
             planned.append({
                 "position": position,
                 "hypothesis_index": len(planned) + 1,
