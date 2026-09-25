@@ -44,6 +44,60 @@ def _provider_entry(data: Any, provider_id: str) -> Any:
                         return value
     return None
 
+def _published_provider_context(root: Path, provider_id: str) -> dict[str, Any] | None:
+    manifest = _load_json(root / "manifest.json")
+    rows = manifest.get("scrapers") if isinstance(manifest, dict) else None
+    if not isinstance(rows, list):
+        return None
+    wanted = provider_id.strip().casefold()
+    row = next(
+        (
+            value
+            for value in rows
+            if isinstance(value, dict)
+            and str(value.get("id") or "").strip().casefold() == wanted
+        ),
+        None,
+    )
+    if not isinstance(row, dict):
+        return None
+    filename = str(row.get("filename") or "").strip()
+    if not filename.startswith(("providers/", "provider-disabled/")):
+        return None
+    path = root / filename
+    if not path.is_file():
+        return None
+    source = path.read_text(encoding="utf-8", errors="replace")
+    canonical = re.escape(provider_id.upper().replace("-", "[-_]"))
+    pattern = re.compile(
+        rf"/\* STARTFIX:(PROVIDER\.{canonical}\.[A-Z0-9_.-]+) \*/"
+        rf"(.*?)"
+        rf"/\* CLOSEFIX:\1 \*/",
+        re.IGNORECASE | re.DOTALL,
+    )
+    blocks: list[dict[str, str]] = []
+    for match in pattern.finditer(source):
+        block_id = str(match.group(1) or "").upper()
+        body = match.group(0)
+        # Preserve both the beginning and the terminal resolver/export tail of
+        # large runtime Blocs; either side can contain the actual failure cause.
+        cleaned = sanitize_source(body, limit=9000)
+        if len(body.strip()) > 9000:
+            head = sanitize_source(body[:6500], limit=6600)
+            tail = sanitize_source(body[-2200:], limit=2300)
+            cleaned = head + "\n/* published Bloc middle clipped */\n" + tail
+        blocks.append({"id": block_id, "source": cleaned})
+        if len(blocks) >= 4:
+            break
+    return {
+        "filename": filename,
+        "version": str(row.get("version") or ""),
+        "supportedTypes": list(row.get("supportedTypes") or []),
+        "formats": list(row.get("formats") or []),
+        "providerBlocks": blocks,
+    }
+
+
 def build_provider_context(root: str | Path, provider_id: str) -> dict[str, Any]:
     root = Path(root)
     context: dict[str, Any] = {
@@ -51,6 +105,10 @@ def build_provider_context(root: str | Path, provider_id: str) -> dict[str, Any]
         "read_only": True,
         "provider_id": provider_id,
     }
+
+    published = _published_provider_context(root, provider_id)
+    if published is not None:
+        context["published_bundle"] = published
 
     authored = root / "engine_v2" / "providers" / f"{provider_id}.mjs"
     if authored.exists():
