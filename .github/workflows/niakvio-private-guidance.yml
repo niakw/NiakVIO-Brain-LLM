@@ -16,6 +16,10 @@ on:
         description: "Exact NiakVIO main SHA to advise"
         required: false
         default: ""
+      target_providers:
+        description: "Optional comma-separated exact Repair cohort; empty uses trigger requested_repair_queue, then current repairQueue"
+        required: false
+        default: ""
 
 permissions:
   contents: write
@@ -65,6 +69,56 @@ jobs:
           fetch-depth: 1
           persist-credentials: false
 
+      - name: Resolve exact requested Repair cohort
+        id: cohort
+        shell: bash
+        env:
+          INPUT_TARGETS: ${{ inputs.target_providers || '' }}
+        run: |
+          set -euo pipefail
+          python - "$RUNNER_TEMP/niakvio-guidance-targets.txt" "$INPUT_TARGETS" <<'PY'
+          import json,sys
+          from pathlib import Path
+
+          out=Path(sys.argv[1])
+          raw=str(sys.argv[2] or "").strip()
+          trigger=Path("brain/.github/triggers/niakvio-guidance.json")
+          if not raw and trigger.is_file():
+              data=json.loads(trigger.read_text(encoding="utf-8"))
+              values=data.get("requested_repair_queue") or []
+          elif raw:
+              values=raw.split(",")
+          else:
+              values=[]
+
+          census=json.loads(Path("niakvio/automation/provider-census-status.json").read_text(encoding="utf-8"))
+          repair=[
+              str(v or "").strip().lower().replace("_","-")
+              for v in census.get("repairQueue") or []
+              if str(v or "").strip()
+          ]
+          repair_set=set(repair)
+          requested=[]
+          seen=set()
+          for value in values:
+              provider=str(value or "").strip().lower().replace("_","-")
+              if provider and provider not in seen:
+                  seen.add(provider); requested.append(provider)
+          if not requested:
+              requested=repair
+          missing=[provider for provider in requested if provider not in repair_set]
+          if missing:
+              raise SystemExit("requested Brain LLM cohort is not current repairQueue: "+",".join(missing))
+          if not requested:
+              raise SystemExit("Brain LLM requested cohort is empty")
+          out.write_text("\n".join(requested)+"\n",encoding="utf-8")
+          print("FIELD_NIAKVIO_GUIDANCE_COHORT providers="+str(len(requested))+" ids="+",".join(requested))
+          PY
+          count="$(wc -l < "$RUNNER_TEMP/niakvio-guidance-targets.txt" | tr -d ' ')"
+          csv="$(paste -sd, "$RUNNER_TEMP/niakvio-guidance-targets.txt")"
+          echo "count=$count" >> "$GITHUB_OUTPUT"
+          echo "csv=$csv" >> "$GITHUB_OUTPUT"
+
       - name: Checkout private NiakVIO project read-only
         uses: actions/checkout@v4
         with:
@@ -107,13 +161,30 @@ jobs:
                 f"source={d['source_conversations']} indexed={d['indexed_conversations']} documents={d['documents']}")
           PY
 
-      - name: Route current Repair queue
+      - name: Route exact requested Repair cohort
         id: route
         shell: bash
         run: |
           set -euo pipefail
-          python brain/scripts/route_batch_from_checkout.py             --niakvio-root niakvio             --experience public-experience.jsonl             --mode brain             --advisor-only             --limit 4             --output routing.jsonl             --summary routing-summary.json
-          python brain/scripts/route_batch_from_checkout.py             --niakvio-root niakvio             --experience public-experience.jsonl             --mode repair             --limit 4             --output routing-force.jsonl             --summary routing-force-summary.json
+          provider_args=()
+          while IFS= read -r provider; do
+            [ -z "$provider" ] || provider_args+=(--provider "$provider")
+          done < "$RUNNER_TEMP/niakvio-guidance-targets.txt"
+          python brain/scripts/route_batch_from_checkout.py \
+            --niakvio-root niakvio \
+            --experience public-experience.jsonl \
+            --mode brain \
+            --advisor-only \
+            "${provider_args[@]}" \
+            --output routing.jsonl \
+            --summary routing-summary.json
+          python brain/scripts/route_batch_from_checkout.py \
+            --niakvio-root niakvio \
+            --experience public-experience.jsonl \
+            --mode repair \
+            "${provider_args[@]}" \
+            --output routing-force.jsonl \
+            --summary routing-force-summary.json
           python - <<'PY'
           import json,os
           advisor=json.load(open("routing-summary.json"))
@@ -177,8 +248,37 @@ jobs:
           set -euo pipefail
           # Force mutations are the critical path. Generate them first, then
           # spend only a short bounded pass rotating advisor-only experiments.
-          python brain/scripts/plan_batch_from_checkout.py             --niakvio-root niakvio             --experience public-experience.jsonl             --documents public-documents.jsonl             --extra-documents private-documents.jsonl             --mode repair             --limit 4             --endpoint http://127.0.0.1:8080             --model qwen2.5-coder-3b             --workers 1             --max-tokens 256             --timeout-seconds 75             --output private-force-batch.jsonl
-          python brain/scripts/plan_batch_from_checkout.py             --niakvio-root niakvio             --experience public-experience.jsonl             --documents public-documents.jsonl             --extra-documents private-documents.jsonl             --mode brain             --limit 4             --endpoint http://127.0.0.1:8080             --model qwen2.5-coder-3b             --workers 2             --advisor-only             --max-tokens 160             --timeout-seconds 45             --output private-guided-batch.jsonl
+          provider_args=()
+          while IFS= read -r provider; do
+            [ -z "$provider" ] || provider_args+=(--provider "$provider")
+          done < "$RUNNER_TEMP/niakvio-guidance-targets.txt"
+          python brain/scripts/plan_batch_from_checkout.py \
+            --niakvio-root niakvio \
+            --experience public-experience.jsonl \
+            --documents public-documents.jsonl \
+            --extra-documents private-documents.jsonl \
+            --mode repair \
+            "${provider_args[@]}" \
+            --endpoint http://127.0.0.1:8080 \
+            --model qwen2.5-coder-3b \
+            --workers 1 \
+            --max-tokens 256 \
+            --timeout-seconds 75 \
+            --output private-force-batch.jsonl
+          python brain/scripts/plan_batch_from_checkout.py \
+            --niakvio-root niakvio \
+            --experience public-experience.jsonl \
+            --documents public-documents.jsonl \
+            --extra-documents private-documents.jsonl \
+            --mode brain \
+            "${provider_args[@]}" \
+            --endpoint http://127.0.0.1:8080 \
+            --model qwen2.5-coder-3b \
+            --workers 2 \
+            --advisor-only \
+            --max-tokens 160 \
+            --timeout-seconds 45 \
+            --output private-guided-batch.jsonl
 
       - name: Sanitize advisor output
         shell: bash
