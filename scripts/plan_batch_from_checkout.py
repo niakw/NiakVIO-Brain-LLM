@@ -65,16 +65,13 @@ def main() -> int:
         model=args.model,
         timeout_seconds=max(30, min(int(args.timeout_seconds), 240)),
         temperature=0.0,
-        max_tokens=max(256, min(int(args.max_tokens), 2048)),
+        max_tokens=max(128, min(int(args.max_tokens), 2048)),
     )
     store = ExperienceStore.from_jsonl_many(
         [args.experience, *args.extra_experience]
     )
-    planner = BrainPlanner(
-        backend,
-        store,
-        DocumentStore.from_jsonl_many([args.documents, *args.extra_documents]),
-    )
+    documents = DocumentStore.from_jsonl_many([args.documents, *args.extra_documents])
+    planner = BrainPlanner(backend, store, documents)
     orchestrator = BrainOrchestrator(planner, store)
 
     def plan_one(position: int, census_row: dict) -> dict:
@@ -93,6 +90,33 @@ def main() -> int:
                 "proposal": outcome.proposal.to_dict() if outcome.proposal else None,
             }
         except Exception as exc:
+            timed_out = isinstance(exc, TimeoutError) or "timed out" in str(exc).casefold()
+            if timed_out and not args.advisor_only:
+                retry_backend = LocalOpenAICompatibleBackend(
+                    base_url=args.endpoint,
+                    model=args.model,
+                    timeout_seconds=240,
+                    temperature=0.0,
+                    max_tokens=max(128, min(int(args.max_tokens), 160)),
+                )
+                retry_request = request_from_checkout(args.niakvio_root, provider)
+                retry_request.advisor_only = False
+                try:
+                    retry = BrainOrchestrator(
+                        BrainPlanner(retry_backend, store, documents),
+                        store,
+                    ).run(retry_request)
+                    return {
+                        "position": position,
+                        "provider": provider,
+                        "status": retry_request.status,
+                        "failure_class": retry_request.failure_class,
+                        "ok": True,
+                        "routing": retry.routing.to_dict(),
+                        "proposal": retry.proposal.to_dict() if retry.proposal else None,
+                    }
+                except Exception as retry_exc:
+                    exc = retry_exc
             return {
                 "position": position,
                 "provider": provider,
