@@ -91,14 +91,19 @@ def main() -> int:
                 "proposal": outcome.proposal.to_dict() if outcome.proposal else None,
             }
         except Exception as exc:
-            timed_out = isinstance(exc, TimeoutError) or "timed out" in str(exc).casefold()
-            if timed_out and not args.advisor_only:
+            retryable = (
+                isinstance(exc, TimeoutError)
+                or "timed out" in str(exc).casefold()
+                or "unterminated string" in str(exc).casefold()
+                or "jsondecodeerror" in type(exc).__name__.casefold()
+            )
+            if retryable and not args.advisor_only:
                 retry_backend = LocalOpenAICompatibleBackend(
                     base_url=args.endpoint,
                     model=args.model,
                     timeout_seconds=120,
                     temperature=0.0,
-                    max_tokens=max(128, min(int(args.max_tokens), 160)),
+                    max_tokens=max(128, min(int(args.max_tokens), 256)),
                 )
                 retry_request = request_from_checkout(args.niakvio_root, provider)
                 retry_request.advisor_only = False
