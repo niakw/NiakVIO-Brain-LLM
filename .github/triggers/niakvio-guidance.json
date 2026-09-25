@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "78efb1773688eb9e4b06de5d6158d7fdcb8be2ae",
-  "reason": "generate executable provider-local Force mutations after mutation-bridge validation and privacy cleanup",
+  "niakvio_sha": "a3806223ed1448fc0d63c02f0c61ed31776a5c2b",
+  "reason": "current exact NiakVIO Force-mutation generation after four-slot timeout fix and privacy hygiene guard",
   "requested_repair_queue": [
     "4khdhub",
     "allanime",
