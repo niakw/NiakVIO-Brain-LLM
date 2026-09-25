@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "564351cadcc19d1f630d90a886edae6c4e3de9fe",
-  "reason": "current exact-head advisor refresh after global HLS/Core/multiflux rematerialization and census 36141266929",
+  "niakvio_sha": "78efb1773688eb9e4b06de5d6158d7fdcb8be2ae",
+  "reason": "generate executable provider-local Force mutations after mutation-bridge validation and privacy cleanup",
   "requested_repair_queue": [
     "4khdhub",
     "allanime",
@@ -17,5 +17,6 @@
     "moviesmod",
     "vidfast",
     "yflix"
-  ]
+  ],
+  "require_force_mutations": true
 }
