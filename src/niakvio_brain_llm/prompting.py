@@ -40,9 +40,22 @@ def compact_request(
     data = request.to_dict()
     context = dict(data.get("provider_context") or {})
 
+    if "published_bundle" in context and isinstance(context["published_bundle"], dict):
+        published = dict(context["published_bundle"])
+        blocks = published.get("providerBlocks")
+        if isinstance(blocks, list):
+            published["providerBlocks"] = [
+                {
+                    "id": str(row.get("id") or "")[:180],
+                    "source": _clip(str(row.get("source") or ""), 3400 if mutation_allowed else 2200),
+                }
+                for row in blocks[:2]
+                if isinstance(row, dict)
+            ]
+        context["published_bundle"] = published
     if "registered_patch_sources" in context and isinstance(context["registered_patch_sources"], dict):
         sources = list(context["registered_patch_sources"].items())
-        source_limit = 2400 if mutation_allowed else 1800
+        source_limit = 2200 if mutation_allowed else 1800
         max_sources = 2 if mutation_allowed else 1
         context["registered_patch_sources"] = {
             str(path)[:180]: _clip(source, source_limit)
