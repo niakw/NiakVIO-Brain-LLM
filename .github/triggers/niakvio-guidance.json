@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "c6f157a28bc98457acba6a5eaf7d26a1854f57c5",
-  "reason": "final Force mutation generation after 5.21.73 cache bump and Qwen contention fix; require non-empty provider-local mutation prior",
+  "niakvio_sha": "f3d4231039c8ad34c632af0a4e836bd7e0428f77",
+  "reason": "rerun mutation-only Force planner against current NiakVIO HEAD after provider_worker alternate-signature fix and durable WAF/Tailscale latest merge; require non-empty validated provider-local mutations",
   "requested_repair_queue": [
     "4khdhub",
     "allanime",
