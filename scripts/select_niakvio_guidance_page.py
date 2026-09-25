@@ -56,10 +56,13 @@ def select(
         and str(previous.get("brainLlmSha") or "").casefold()==brain_sha
         and [canon(v) for v in previous.get("requestedProviders") or []]==requested
     )
+    previous_cycle=int(previous.get("cycle") or 1) if compatible else 0
+    restart_cycle=bool(compatible and previous.get("complete") is True)
     completed={
         canon(v) for v in (previous.get("completedProviders") or [])
-        if compatible and canon(v) in set(requested)
+        if compatible and not restart_cycle and canon(v) in set(requested)
     }
+    cycle=(previous_cycle+1) if restart_cycle else max(1,previous_cycle or 1)
     remaining=[v for v in requested if v not in completed]
     page=remaining[:max(1,min(int(page_size or 1),12))]
     completed.update(page)
@@ -69,6 +72,7 @@ def select(
         "sourceNiakvioSha":source_sha,
         "brainLlmSha":brain_sha,
         "requestedProviders":requested,
+        "cycle":cycle,
         "completedProviders":[v for v in requested if v in completed],
         "remainingProviders":remaining_after,
         "pageProviders":page,
