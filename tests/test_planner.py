@@ -77,7 +77,7 @@ class PlannerTests(unittest.TestCase):
 
     def test_compact_force_wire_synthesizes_full_validated_proposal(self):
         response = json.dumps({
-            "mutation": {
+            "edit": {
                 "scope": "provider_data",
                 "operation": "set",
                 "path": "notes",
@@ -100,6 +100,64 @@ class PlannerTests(unittest.TestCase):
         self.assertEqual(len(proposal.mutations), 1)
         self.assertFalse(proposal.abstain)
         self.assertTrue(proposal.tests)
+
+    def test_compact_force_file_edit_compiles_to_validated_unified_diff(self):
+        source = "def resolver():\n    return 'old'\n"
+        response = json.dumps({
+            "edit": {
+                "scope": "provider_patch",
+                "path": "scripts/provider_patches/demo_runtime_v1.py",
+                "find": "    return 'old'",
+                "replace": "    return 'new'",
+            },
+            "abstain_reason": "",
+        })
+        proposal = BrainPlanner(StaticBackend(response)).plan(
+            RepairRequest(
+                provider_id="demo",
+                failure_class="chain_terminal_gap",
+                status="CHAIN REACHED",
+                provider_context={
+                    "registered_patch_scripts": ["scripts/provider_patches/demo_runtime_v1.py"],
+                    "registered_patch_sources": {
+                        "scripts/provider_patches/demo_runtime_v1.py": source,
+                    },
+                },
+            ),
+            compact_force=True,
+        )
+        mutation = proposal.mutations[0]
+        self.assertEqual(mutation["scope"], "provider_patch")
+        self.assertEqual(mutation["operation"], "unified_diff")
+        self.assertIn("--- scripts/provider_patches/demo_runtime_v1.py", mutation["diff"])
+        self.assertIn("-    return 'old'", mutation["diff"])
+        self.assertIn("+    return 'new'", mutation["diff"])
+
+    def test_compact_force_file_edit_rejects_non_unique_find(self):
+        response = json.dumps({
+            "edit": {
+                "scope": "provider_patch",
+                "path": "scripts/provider_patches/demo_runtime_v1.py",
+                "find": "return None",
+                "replace": "return []",
+            },
+            "abstain_reason": "",
+        })
+        with self.assertRaisesRegex(ValueError, "exactly once"):
+            BrainPlanner(StaticBackend(response)).plan(
+                RepairRequest(
+                    provider_id="demo",
+                    failure_class="chain_terminal_gap",
+                    status="CHAIN REACHED",
+                    provider_context={
+                        "registered_patch_scripts": ["scripts/provider_patches/demo_runtime_v1.py"],
+                        "registered_patch_sources": {
+                            "scripts/provider_patches/demo_runtime_v1.py": "def a():\n    return None\ndef b():\n    return None\n",
+                        },
+                    },
+                ),
+                compact_force=True,
+            )
 
     def test_private_chat_document_reaches_planner_prompt(self):
         planner = BrainPlanner(
