@@ -21,13 +21,17 @@ for token in (
 assert 'parser.add_argument("--advisor-only", action="store_true")' in route
 assert "request.advisor_only = bool(args.advisor_only)" in route
 assert "--mode brain             --advisor-only" in wf
+assert "--mode repair             --output routing-force.jsonl" in wf
+assert "force_llm_needed=" in wf
 
-assert "-c 8192" in wf
+assert "-c 24576" in wf
 assert "-np 2" in wf
 assert "--workers 2" in wf
 assert "--advisor-only" in wf
 assert "--max-tokens 512" in wf
 assert "--timeout-seconds 90" in wf
+assert "--max-tokens 1024" in wf
+assert "--timeout-seconds 120" in wf
 assert wf.index("-np 2") < wf.index("--workers 2")
 
 print("bounded concurrent private-guidance batch contract passed")
