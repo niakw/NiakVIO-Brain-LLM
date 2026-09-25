@@ -217,13 +217,13 @@ def build_force_prompt_payload(
         target = {
             "scope": "provider_patch",
             "path": str(path)[:240],
-            "source": _head_tail(source, 3600, 1200),
+            "source": _head_tail(source, 8000, 4000),
         }
     elif context.get("authored_module"):
         target = {
             "scope": "provider_js",
             "path": f"engine_v2/providers/{request.provider_id}.mjs",
-            "source": _head_tail(context.get("authored_module"), 3600, 1200),
+            "source": _head_tail(context.get("authored_module"), 8000, 4000),
         }
     elif context.get("override"):
         target = {
@@ -259,8 +259,9 @@ def build_force_prompt_payload(
         "census_prior": census,
         "mutation_target": target,
         "output_contract": {
-            "max_mutations": 1,
+            "max_edits": 1,
             "provider_local_only": True,
-            "unified_diff_against_exact_source": target.get("scope") in {"provider_patch", "provider_js"},
+            "file_edit_format": "unique_find_replace" if target.get("scope") in {"provider_patch", "provider_js"} else "provider_data_mutation",
+            "find_must_be_exact_and_unique": target.get("scope") in {"provider_patch", "provider_js"},
         },
     }
