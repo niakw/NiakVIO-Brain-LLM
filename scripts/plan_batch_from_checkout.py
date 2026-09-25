@@ -138,6 +138,24 @@ def main() -> int:
         encoding="utf-8",
     )
 
+    safe_errors = []
+    for row in rows:
+        if row.get("ok") is not False:
+            continue
+        message = str(row.get("error") or "")
+        message = __import__("re").sub(r"https?://[^\\s]+", "<url>", message)
+        message = __import__("re").sub(
+            r"(?i)(?:authorization|cookie|token|secret|password|api[_-]?key)\\s*[:=]\\s*[^\\s,;]+",
+            "<credential-omitted>",
+            message,
+        )
+        safe_errors.append({
+            "provider": str(row.get("provider") or ""),
+            "error": message[:600],
+        })
+    if safe_errors:
+        print("FIELD_BRAIN_FORCE_PLAN_ERRORS " + json.dumps(safe_errors, ensure_ascii=True))
+
     summary = {
         "mode": args.mode,
         **batch_summary(selected),
