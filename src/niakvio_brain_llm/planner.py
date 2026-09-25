@@ -35,14 +35,15 @@ Return one JSON object only with provider_id, diagnosis, strategy, confidence, t
 evidence, mutations, experiment, tests, abstain and abstain_reason.
 """
 
-COMPACT_FORCE_SYSTEM_PROMPT = """You are NiakVIO Brain LLM in timeout-recovery Force mode.
-Return only the smallest executable provider-local repair JSON allowed by mutation_policy.
-The deterministic NiakVIO Brain already owns evidence, experiments and verification tests, so do not reproduce them.
-Use the high-confidence causal strategy verbatim when supplied. Emit at most one mutation.
-Never invent URLs, routes, headers, tokens, cookies or placeholder endpoints.
-provider_data may only change allowed provider-overrides fields; provider_patch/provider_js must be a valid unified diff against the exact supplied current source.
-If the exact safe mutation cannot be derived from current context, abstain.
-Return one JSON object only."""
+COMPACT_FORCE_SYSTEM_PROMPT = """You are NiakVIO Brain LLM in bounded Force mutation mode.
+Return exactly one compact JSON object with only:
+{"mutation": <one provider-local mutation object or null>, "abstain_reason": "<short reason or empty>"}.
+Do not repeat provider id, diagnosis, strategy, confidence, evidence, tests or experiment; deterministic NiakVIO owns them.
+Emit at most one mutation. Never invent URLs, routes, headers, tokens, cookies or placeholders.
+provider_data may only change an allowed provider-overrides field.
+provider_patch/provider_js must be a minimal valid unified diff against the exact supplied source.
+If no exact safe mutation is derivable, return mutation:null.
+Return JSON only."""
 
 def _extract_json(text: str) -> dict[str, Any]:
     value = text.strip()
@@ -121,7 +122,20 @@ class BrainPlanner:
             # GitHub CPU runner. Keep only a minimal JSON-object wire grammar;
             # the full compact schema and all mutation guards are enforced
             # locally by BrainPlanner immediately after parsing.
-            schema = {"type": "object"}
+            schema = {
+                "type": "object",
+                "additionalProperties": False,
+                "required": ["mutation", "abstain_reason"],
+                "properties": {
+                    "mutation": {
+                        "anyOf": [
+                            {"type": "object"},
+                            {"type": "null"},
+                        ]
+                    },
+                    "abstain_reason": {"type": "string", "maxLength": 180},
+                },
+            }
         else:
             schema = (
                 proposal_schema_for(
@@ -138,7 +152,26 @@ class BrainPlanner:
             user=user,
             response_schema=schema,
         )
-        return RepairProposal.from_dict(_extract_json(raw)), causal_prior, mutation_policy
+        parsed = _extract_json(raw)
+        if compact_force:
+            mutation = parsed.get("mutation")
+            mutations = [mutation] if isinstance(mutation, dict) else []
+            abstain = not mutations
+            proposal = RepairProposal(
+                provider_id=request.provider_id,
+                diagnosis="bounded Force mutation synthesis",
+                strategy=str(causal_prior.get("strategy_prior") or "provider_local_repair"),
+                confidence=max(0.0, min(1.0, float(causal_prior.get("confidence") or 0.0))),
+                target_layer=str(causal_prior.get("target_layer") or "unknown"),
+                evidence=[],
+                mutations=mutations,
+                experiment={},
+                tests=[],
+                abstain=abstain,
+                abstain_reason=str(parsed.get("abstain_reason") or ("no executable mutation" if abstain else "")),
+            )
+            return proposal, causal_prior, mutation_policy
+        return RepairProposal.from_dict(parsed), causal_prior, mutation_policy
 
     def propose_raw(self, request: RepairRequest) -> RepairProposal:
         """Model-only proposal for benchmarks; skips production normalization."""
