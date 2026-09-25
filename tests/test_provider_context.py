@@ -94,5 +94,31 @@ class ProviderContextTests(unittest.TestCase):
             self.assertEqual(blocks[0]["id"], "PROVIDER.ANIME-ULTIME.RUNTIME.V1")
             self.assertIn("/current", blocks[0]["source"])
 
+    def test_minified_fixdata_comment_does_not_erase_runtime_code(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "providers").mkdir(parents=True)
+            (root / "provider-overrides.json").write_text(json.dumps({"provider_patches": {}}))
+            (root / "provider-hubs.json").write_text("{}")
+            one_line = (
+                "/* STARTFIX:PROVIDER.DEMO.RUNTIME.V1 */ "
+                "/* FIXDATA:PROVIDER.DEMO.RUNTIME.V1:" + ("C" * 500) + " */ "
+                "const runtimeStillHere = true; "
+                "/* CLOSEFIX:PROVIDER.DEMO.RUNTIME.V1 */"
+            )
+            (root / "providers" / "demo--nuvio--one.js").write_text(one_line)
+            (root / "manifest.json").write_text(json.dumps({
+                "scrapers": [{
+                    "id": "demo",
+                    "version": "1.0.0",
+                    "filename": "providers/demo--nuvio--one.js",
+                }],
+            }))
+            context = build_provider_context(root, "demo")
+            source = context["published_bundle"]["providerBlocks"][0]["source"]
+            self.assertIn("runtimeStillHere", source)
+            self.assertIn("FIXDATA blob omitted", source)
+            self.assertNotIn("C" * 100, source)
+
 if __name__ == "__main__":
     unittest.main()
