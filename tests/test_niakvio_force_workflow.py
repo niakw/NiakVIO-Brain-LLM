@@ -18,7 +18,7 @@ assert "provider_patch" in workflow
 
 print("NiakVIO private guidance Force-mutation workflow contract passed")
 assert "--workers 1" in workflow
-assert "--max-tokens 160" in workflow
+assert "--max-tokens 256" in workflow
 assert "--timeout-seconds 75" in workflow
 assert "--timeout-seconds 45" in workflow
 assert workflow.count("--limit 4") >= 4
