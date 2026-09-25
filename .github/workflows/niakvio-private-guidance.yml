@@ -5,11 +5,6 @@ on:
     branches: [main]
     paths:
       - ".github/triggers/niakvio-guidance.json"
-      - ".github/workflows/niakvio-private-guidance.yml"
-      - "scripts/publish_niakvio_guidance.py"
-      - "scripts/publish_niakvio_force_mutations.py"
-      - "scripts/plan_batch_from_checkout.py"
-      - "src/niakvio_brain_llm/**"
   workflow_dispatch:
     inputs:
       niakvio_sha:
