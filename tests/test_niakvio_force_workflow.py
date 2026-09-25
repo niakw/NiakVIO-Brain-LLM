@@ -20,3 +20,8 @@ print("NiakVIO private guidance Force-mutation workflow contract passed")
 assert "--workers 2" in workflow
 assert "--max-tokens 320" in workflow
 assert "--timeout-seconds 150" in workflow
+assert "--max-tokens 160" in workflow
+assert "--timeout-seconds 45" in workflow
+force_command = workflow.index("--mode repair             --endpoint")
+advisor_command = workflow.index("--mode brain             --endpoint")
+assert force_command < advisor_command
