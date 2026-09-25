@@ -24,12 +24,12 @@ assert "--mode brain             --advisor-only" in wf
 assert "--mode repair             --output routing-force.jsonl" in wf
 assert "force_llm_needed=" in wf
 
-assert "-c 40960" in wf
-assert "-np 4" in wf
-assert "--workers 4" in wf
+assert "-c 32768" in wf
+assert "-np 2" in wf
+assert "--workers 2" in wf
 assert "--advisor-only" in wf
-assert "--max-tokens 512" in wf
-assert "--timeout-seconds 90" in wf
-assert wf.index("-np 4") < wf.index("--workers 4")
+assert "--max-tokens 320" in wf
+assert "--timeout-seconds 150" in wf
+assert wf.index("-np 2") < wf.index("--workers 2")
 
 print("bounded concurrent private-guidance batch contract passed")
