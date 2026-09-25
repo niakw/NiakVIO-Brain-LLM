@@ -112,8 +112,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python brain/scripts/route_batch_from_checkout.py             --niakvio-root niakvio             --experience public-experience.jsonl             --mode brain             --advisor-only             --output routing.jsonl             --summary routing-summary.json
-          python brain/scripts/route_batch_from_checkout.py             --niakvio-root niakvio             --experience public-experience.jsonl             --mode repair             --output routing-force.jsonl             --summary routing-force-summary.json
+          python brain/scripts/route_batch_from_checkout.py             --niakvio-root niakvio             --experience public-experience.jsonl             --mode brain             --advisor-only             --limit 4             --output routing.jsonl             --summary routing-summary.json
+          python brain/scripts/route_batch_from_checkout.py             --niakvio-root niakvio             --experience public-experience.jsonl             --mode repair             --limit 4             --output routing-force.jsonl             --summary routing-force-summary.json
           python - <<'PY'
           import json,os
           advisor=json.load(open("routing-summary.json"))
@@ -177,18 +177,20 @@ jobs:
           set -euo pipefail
           # Force mutations are the critical path. Generate them first, then
           # spend only a short bounded pass rotating advisor-only experiments.
-          python brain/scripts/plan_batch_from_checkout.py             --niakvio-root niakvio             --experience public-experience.jsonl             --documents public-documents.jsonl             --extra-documents private-documents.jsonl             --mode repair             --endpoint http://127.0.0.1:8080             --model qwen2.5-coder-3b             --workers 1             --max-tokens 220             --timeout-seconds 210             --output private-force-batch.jsonl
-          python brain/scripts/plan_batch_from_checkout.py             --niakvio-root niakvio             --experience public-experience.jsonl             --documents public-documents.jsonl             --extra-documents private-documents.jsonl             --mode brain             --endpoint http://127.0.0.1:8080             --model qwen2.5-coder-3b             --workers 2             --advisor-only             --max-tokens 160             --timeout-seconds 45             --output private-guided-batch.jsonl
+          python brain/scripts/plan_batch_from_checkout.py             --niakvio-root niakvio             --experience public-experience.jsonl             --documents public-documents.jsonl             --extra-documents private-documents.jsonl             --mode repair             --limit 4             --endpoint http://127.0.0.1:8080             --model qwen2.5-coder-3b             --workers 1             --max-tokens 220             --timeout-seconds 210             --output private-force-batch.jsonl
+          python brain/scripts/plan_batch_from_checkout.py             --niakvio-root niakvio             --experience public-experience.jsonl             --documents public-documents.jsonl             --extra-documents private-documents.jsonl             --mode brain             --limit 4             --endpoint http://127.0.0.1:8080             --model qwen2.5-coder-3b             --workers 2             --advisor-only             --max-tokens 160             --timeout-seconds 45             --output private-guided-batch.jsonl
 
       - name: Sanitize advisor output
         shell: bash
+        env:
+          FORCE_LLM_TARGETS: ${{ steps.route.outputs.force_llm_targets || '0' }}
         run: |
           set -euo pipefail
           brain_sha="$(git -C brain rev-parse HEAD)"
           python brain/scripts/publish_niakvio_guidance.py             --input private-guided-batch.jsonl             --output niakvio-guidance.json             --niakvio-root niakvio             --niakvio-sha "${{ steps.source.outputs.sha }}"             --brain-llm-sha "$brain_sha"
           python brain/scripts/publish_niakvio_force_mutations.py             --input private-force-batch.jsonl             --output niakvio-force-mutations.json             --niakvio-root niakvio             --niakvio-sha "${{ steps.source.outputs.sha }}"             --brain-llm-sha "$brain_sha"
           python - <<'PY'
-          import json,re
+          import json,os,re
           d=json.load(open("niakvio-guidance.json"))
           assert d["privateContentRetained"] is False
           assert d["proofAuthority"] is False
@@ -211,6 +213,9 @@ jobs:
           assert force.get("publicationAuthority") is False
           assert force.get("proofAuthority") is False
           assert force.get("privateContentRetained") is False
+          force_targets=int(os.environ.get("FORCE_LLM_TARGETS") or 0)
+          if force_targets > 0 and int(force.get("providerCount") or 0) <= 0:
+              raise SystemExit(f"Force routing requested {force_targets} LLM target(s) but produced zero executable mutations")
           allowed_scopes={"provider_data","provider_patch","provider_js"}
           for row in force.get("rows") or []:
               assert row.get("targetLayer")=="provider"
