@@ -11,7 +11,7 @@ from .policy import build_mutation_policy
 from .priors import build_causal_prior
 from .prompting import build_prompt_payload
 from .retrieval import ExperienceStore
-from .schema import REPAIR_PROPOSAL_SCHEMA, proposal_schema_for
+from .schema import REPAIR_PROPOSAL_SCHEMA, compact_force_schema_for, proposal_schema_for
 from .verification_plan import recommended_tests
 
 SYSTEM_PROMPT = """You are NiakVIO Brain LLM, a bounded repair planner.
@@ -34,6 +34,15 @@ Never return shell commands or edits to unrelated files.
 Return one JSON object only with provider_id, diagnosis, strategy, confidence, target_layer,
 evidence, mutations, experiment, tests, abstain and abstain_reason.
 """
+
+COMPACT_FORCE_SYSTEM_PROMPT = """You are NiakVIO Brain LLM in timeout-recovery Force mode.
+Return only the smallest executable provider-local repair JSON allowed by mutation_policy.
+The deterministic NiakVIO Brain already owns evidence, experiments and verification tests, so do not reproduce them.
+Use the high-confidence causal strategy verbatim when supplied. Emit at most one mutation.
+Never invent URLs, routes, headers, tokens, cookies or placeholder endpoints.
+provider_data may only change allowed provider-overrides fields; provider_patch/provider_js must be a valid unified diff against the exact supplied current source.
+If the exact safe mutation cannot be derived from current context, abstain.
+Return one JSON object only."""
 
 def _extract_json(text: str) -> dict[str, Any]:
     value = text.strip()
@@ -94,20 +103,29 @@ class BrainPlanner:
         request: RepairRequest,
         *,
         constrained: bool,
+        compact_force: bool = False,
     ) -> tuple[RepairProposal, dict[str, Any], dict[str, Any]]:
         _, _, causal_prior, mutation_policy, user = self._prepare(request)
-        schema = (
-            proposal_schema_for(
+        if compact_force:
+            schema = compact_force_schema_for(
                 request.provider_id,
                 causal_prior,
                 mutation_policy,
                 request.provider_context,
             )
-            if constrained
-            else REPAIR_PROPOSAL_SCHEMA
-        )
+        else:
+            schema = (
+                proposal_schema_for(
+                    request.provider_id,
+                    causal_prior,
+                    mutation_policy,
+                    request.provider_context,
+                )
+                if constrained
+                else REPAIR_PROPOSAL_SCHEMA
+            )
         raw = self.backend.complete(
-            system=SYSTEM_PROMPT,
+            system=COMPACT_FORCE_SYSTEM_PROMPT if compact_force else SYSTEM_PROMPT,
             user=user,
             response_schema=schema,
         )
@@ -118,10 +136,16 @@ class BrainPlanner:
         proposal, _, _ = self._generate(request, constrained=False)
         return proposal
 
-    def plan(self, request: RepairRequest) -> RepairProposal:
+    def plan(
+        self,
+        request: RepairRequest,
+        *,
+        compact_force: bool = False,
+    ) -> RepairProposal:
         proposal, causal_prior, mutation_policy = self._generate(
             request,
             constrained=True,
+            compact_force=compact_force,
         )
 
         if proposal.provider_id and proposal.provider_id != request.provider_id:
