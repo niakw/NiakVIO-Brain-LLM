@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "f3d4231039c8ad34c632af0a4e836bd7e0428f77",
-  "reason": "rerun mutation-only Force planner against current NiakVIO HEAD after provider_worker alternate-signature fix and durable WAF/Tailscale latest merge; require non-empty validated provider-local mutations",
+  "niakvio_sha": "eb5ee2534f4351176b5a1d5f2ae324b368d7ed69",
+  "reason": "micro-edit Force planner validation against exact canonical Repair SHA after provider_worker alternate-signature fix; require non-empty provider-local edit compiled to validated diff",
   "requested_repair_queue": [
     "4khdhub",
     "allanime",
