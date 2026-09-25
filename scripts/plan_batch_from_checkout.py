@@ -79,7 +79,8 @@ def main() -> int:
         request = request_from_checkout(args.niakvio_root, provider)
         request.advisor_only = bool(args.advisor_only)
         try:
-            outcome = orchestrator.run(request)
+            compact_force = args.mode == "repair" and not args.advisor_only
+            outcome = orchestrator.run(request, compact_force=compact_force)
             return {
                 "position": position,
                 "provider": provider,
@@ -95,7 +96,7 @@ def main() -> int:
                 retry_backend = LocalOpenAICompatibleBackend(
                     base_url=args.endpoint,
                     model=args.model,
-                    timeout_seconds=240,
+                    timeout_seconds=120,
                     temperature=0.0,
                     max_tokens=max(128, min(int(args.max_tokens), 160)),
                 )
