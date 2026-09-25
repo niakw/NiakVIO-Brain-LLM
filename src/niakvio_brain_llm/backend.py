@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from typing import Any, Protocol
+from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 class ModelBackend(Protocol):
@@ -46,14 +47,29 @@ class LocalOpenAICompatibleBackend:
                 "schema": response_schema,
             }
 
-        request = Request(
-            self.base_url.rstrip("/") + "/v1/chat/completions",
-            data=json.dumps(payload).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
-            method="POST",
-        )
-        with urlopen(request, timeout=self.timeout_seconds) as response:
-            value = json.loads(response.read().decode("utf-8"))
+        def invoke(body: dict[str, Any]) -> dict[str, Any]:
+            request = Request(
+                self.base_url.rstrip("/") + "/v1/chat/completions",
+                data=json.dumps(body).encode("utf-8"),
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+            with urlopen(request, timeout=self.timeout_seconds) as response:
+                return json.loads(response.read().decode("utf-8"))
+
+        try:
+            value = invoke(payload)
+        except HTTPError as exc:
+            # llama.cpp versions differ in the JSON-Schema subset accepted by
+            # response_format. Production safety does not depend on that server
+            # feature: BrainPlanner reparses and validates the proposal, causal
+            # prior, mutation policy and mutation guards locally. Retry only
+            # schema-rejection (HTTP 400), never transport/auth/server failures.
+            if exc.code != 400 or not response_schema:
+                raise
+            fallback = dict(payload)
+            fallback.pop("response_format", None)
+            value = invoke(fallback)
         return str(value["choices"][0]["message"]["content"])
 
 @dataclass(slots=True)
