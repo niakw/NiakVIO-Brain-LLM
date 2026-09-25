@@ -45,3 +45,12 @@ assert "--timeout-seconds 75" in wf
 assert wf.index("-np 1") < wf.index("--workers 1")
 
 print("bounded concurrent private-guidance batch contract passed")
+
+assert "select_niakvio_guidance_page.py" in wf
+assert "merge_niakvio_guidance_page.py" in wf
+assert "niakvio-guidance-page.txt" in wf
+assert "niakvio-guidance-state.json" in wf
+assert "Continue remaining guidance page" in wf
+assert "steps.page.outputs.complete" in wf
+assert "actions: write" in wf
+assert "mutationContextFingerprint" in wf
