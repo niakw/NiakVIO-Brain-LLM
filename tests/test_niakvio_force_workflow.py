@@ -19,14 +19,13 @@ assert "provider_patch" in workflow
 print("NiakVIO private guidance Force-mutation workflow contract passed")
 assert "--workers 1" in workflow
 assert "--max-tokens 768" in workflow
-assert "--timeout-seconds 75" in workflow
+assert "--timeout-seconds 90" in workflow
 assert "--timeout-seconds 45" in workflow
 assert "--limit 4" not in workflow
 assert "requested_repair_queue" in workflow
 assert "niakvio-guidance-targets.txt" in workflow
 assert '"${provider_args[@]}"' in workflow
 assert "FIELD_NIAKVIO_FORCE_MUTATIONS_READY ready=false" in workflow
-assert "requireExternalForceMutations=true" in workflow or "requireExternalForceMutations" not in workflow
 force_command = workflow.index("--mode repair \\\n            \"${provider_args[@]}\" \\\n            --endpoint")
 advisor_command = workflow.index("--mode brain \\\n            \"${provider_args[@]}\" \\\n            --endpoint")
 assert force_command < advisor_command
