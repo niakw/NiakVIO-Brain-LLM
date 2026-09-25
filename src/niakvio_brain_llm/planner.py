@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import difflib
 import json
 from typing import Any
 
@@ -37,12 +38,14 @@ evidence, mutations, experiment, tests, abstain and abstain_reason.
 
 COMPACT_FORCE_SYSTEM_PROMPT = """You are NiakVIO Brain LLM in bounded Force mutation mode.
 Return exactly one compact JSON object with only:
-{"mutation": <one provider-local mutation object or null>, "abstain_reason": "<short reason or empty>"}.
+{"edit": <one provider-local edit object or null>, "abstain_reason": "<short reason or empty>"}.
 Do not repeat provider id, diagnosis, strategy, confidence, evidence, tests or experiment; deterministic NiakVIO owns them.
-Emit at most one mutation. Never invent URLs, routes, headers, tokens, cookies or placeholders.
-provider_data may only change an allowed provider-overrides field.
-provider_patch/provider_js must be a minimal valid unified diff against the exact supplied source.
-If no exact safe mutation is derivable, return mutation:null.
+Emit at most one edit. Never invent URLs, routes, headers, tokens, cookies or placeholders.
+For provider_data, edit is the normal {scope,operation,path,value?} mutation.
+For provider_patch/provider_js, DO NOT emit a unified diff. Emit only:
+{scope,path,find,replace}
+where find is the smallest exact UNIQUE snippet from mutation_target.source and replace is its corrected text.
+If the exact unique edit is not safely derivable, return edit:null.
 Return JSON only."""
 
 def _extract_json(text: str) -> dict[str, Any]:
@@ -58,6 +61,63 @@ def _extract_json(text: str) -> dict[str, Any]:
     if not isinstance(parsed, dict):
         raise ValueError("model response must be a JSON object")
     return parsed
+
+
+def _compact_edit_to_mutation(
+    request: RepairRequest,
+    edit: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    if not isinstance(edit, dict):
+        return None
+    scope = str(edit.get("scope") or "")
+    if scope == "provider_data":
+        return dict(edit)
+
+    if scope not in {"provider_patch", "provider_js"}:
+        raise ValueError("compact Force edit has unsupported scope")
+    path = str(edit.get("path") or "")
+    find = str(edit.get("find") or "")
+    replace = str(edit.get("replace") or "")
+    if not find or len(find) > 2400 or len(replace) > 3200:
+        raise ValueError("compact Force find/replace is missing or oversized")
+
+    context = request.provider_context or {}
+    if scope == "provider_patch":
+        sources = context.get("registered_patch_sources")
+        if not isinstance(sources, dict) or path not in sources:
+            raise ValueError("compact Force edit does not target a registered provider Bloc")
+        source = str(sources[path])
+    else:
+        expected = f"engine_v2/providers/{request.provider_id}.mjs"
+        if path != expected:
+            raise ValueError("compact Force provider_js edit targets the wrong provider")
+        source = str(context.get("authored_module") or "")
+
+    if not source:
+        raise ValueError("compact Force exact source is unavailable")
+    if source.count(find) != 1:
+        raise ValueError("compact Force find snippet must occur exactly once in exact source")
+    if find == replace:
+        raise ValueError("compact Force edit is a no-op")
+
+    updated = source.replace(find, replace, 1)
+    diff = "".join(
+        difflib.unified_diff(
+            source.splitlines(keepends=True),
+            updated.splitlines(keepends=True),
+            fromfile=path,
+            tofile=path,
+            n=3,
+        )
+    )
+    if not diff:
+        raise ValueError("compact Force edit produced no diff")
+    return {
+        "scope": scope,
+        "operation": "unified_diff",
+        "path": path,
+        "diff": diff,
+    }
 
 class BrainPlanner:
     def __init__(
@@ -125,9 +185,9 @@ class BrainPlanner:
             schema = {
                 "type": "object",
                 "additionalProperties": False,
-                "required": ["mutation", "abstain_reason"],
+                "required": ["edit", "abstain_reason"],
                 "properties": {
-                    "mutation": {
+                    "edit": {
                         "anyOf": [
                             {"type": "object"},
                             {"type": "null"},
@@ -154,7 +214,10 @@ class BrainPlanner:
         )
         parsed = _extract_json(raw)
         if compact_force:
-            mutation = parsed.get("mutation")
+            mutation = _compact_edit_to_mutation(
+                request,
+                parsed.get("edit") if isinstance(parsed.get("edit"), dict) else None,
+            )
             mutations = [mutation] if isinstance(mutation, dict) else []
             abstain = not mutations
             proposal = RepairProposal(
