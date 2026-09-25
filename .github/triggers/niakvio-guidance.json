@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "1cae0e2c4d2b7defa102875b6538ce942c503f90",
-  "reason": "exact final advisor refresh after shared Core publication fingerprint change; no provider runtime route change",
+  "niakvio_sha": "ce559d7129883062abea0c05067b9cc6159cfd11",
+  "reason": "fresh post-clean canonical census 36120999320-retest; exact 14-provider repair queue with zero harness/environment/network blocked classifications",
   "requested_repair_queue": [
     "4khdhub",
     "allanime",
