@@ -15,6 +15,9 @@ for token in (
     "--advisor-only",
     "--max-tokens",
     "--timeout-seconds",
+    "retry_backend = LocalOpenAICompatibleBackend",
+    "timeout_seconds=240",
+    "max_tokens=max(128, min(int(args.max_tokens), 160))",
 ):
     assert token in src, token
 
