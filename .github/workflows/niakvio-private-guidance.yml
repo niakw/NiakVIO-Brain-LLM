@@ -160,10 +160,10 @@ jobs:
           SERVER="$(find llama-prebuilt -type f -name llama-server -print -quit)"
           test -n "$SERVER"
           chmod +x "$SERVER"
-          # Force proposals are deliberately small provider-local diffs. Keep four
-          # bounded slots so the 14-provider repair queue converges in waves instead
-          # of serial 120s timeouts. 40k total KV leaves ~10k tokens per slot.
-          "$SERVER"             -hf Qwen/Qwen2.5-Coder-3B-Instruct-GGUF:Q4_K_M             --host 127.0.0.1             --port 8080             -c 40960             -np 4             > llama-server.log 2>&1 &
+          # Force proposals are small provider-local diffs. Two slots avoid
+          # CPU oversubscription on GitHub runners; the prompt itself is now
+          # provider-local, so each slot has ample KV without four-way contention.
+          "$SERVER"             -hf Qwen/Qwen2.5-Coder-3B-Instruct-GGUF:Q4_K_M             --host 127.0.0.1             --port 8080             -c 32768             -np 2             > llama-server.log 2>&1 &
           for i in $(seq 1 180); do
             curl -fsS http://127.0.0.1:8080/health >/dev/null 2>&1 && exit 0
             sleep 2
@@ -176,7 +176,7 @@ jobs:
         run: |
           set -euo pipefail
           python brain/scripts/plan_batch_from_checkout.py             --niakvio-root niakvio             --experience public-experience.jsonl             --documents public-documents.jsonl             --extra-documents private-documents.jsonl             --mode brain             --endpoint http://127.0.0.1:8080             --model qwen2.5-coder-3b             --workers 2             --advisor-only             --max-tokens 512             --timeout-seconds 90             --output private-guided-batch.jsonl
-          python brain/scripts/plan_batch_from_checkout.py             --niakvio-root niakvio             --experience public-experience.jsonl             --documents public-documents.jsonl             --extra-documents private-documents.jsonl             --mode repair             --endpoint http://127.0.0.1:8080             --model qwen2.5-coder-3b             --workers 4             --max-tokens 512             --timeout-seconds 90             --output private-force-batch.jsonl
+          python brain/scripts/plan_batch_from_checkout.py             --niakvio-root niakvio             --experience public-experience.jsonl             --documents public-documents.jsonl             --extra-documents private-documents.jsonl             --mode repair             --endpoint http://127.0.0.1:8080             --model qwen2.5-coder-3b             --workers 2             --max-tokens 320             --timeout-seconds 150             --output private-force-batch.jsonl
 
       - name: Sanitize advisor output
         shell: bash
