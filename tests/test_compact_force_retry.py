@@ -54,10 +54,17 @@ class CompactForceRetryTest(unittest.TestCase):
     def test_timeout_retry_uses_compact_planner(self):
         script = (ROOT / "scripts" / "plan_batch_from_checkout.py").read_text(encoding="utf-8")
         planner = (ROOT / "src" / "niakvio_brain_llm" / "planner.py").read_text(encoding="utf-8")
+        self.assertIn("compact_force = args.mode == \"repair\" and not args.advisor_only", script)
+        self.assertIn("orchestrator.run(request, compact_force=compact_force)", script)
         self.assertIn(".run(retry_request, compact_force=True)", script)
+        self.assertIn("timeout_seconds=120", script)
         self.assertIn("compact_force_schema_for(", planner)
         self.assertIn("COMPACT_FORCE_SYSTEM_PROMPT", planner)
         self.assertIn("Emit at most one mutation.", planner)
+        workflow = (ROOT / ".github" / "workflows" / "niakvio-private-guidance.yml").read_text(encoding="utf-8")
+        self.assertIn("--max-tokens 160", workflow)
+        self.assertIn("--timeout-seconds 75", workflow)
+        self.assertNotIn("--timeout-seconds 210", workflow)
 
 
 if __name__ == "__main__":
