@@ -369,7 +369,7 @@ jobs:
           rm -f private-documents.jsonl private-guided-batch.jsonl private-force-batch.jsonl public-documents.jsonl public-experience.jsonl
           rm -rf private
 
-      - name: Publish minimal sanitized guidance ref
+      - name: Publish merged paged guidance ref
         shell: bash
         env:
           BRANCH: niakvio-guidance
@@ -379,39 +379,60 @@ jobs:
           git -C brain config user.email "actions@users.noreply.github.com"
           git -C brain fetch origin "+refs/heads/$BRANCH:refs/remotes/origin/$BRANCH" || true
           expected_sha=""
-          selected="$RUNNER_TEMP/niakvio-guidance.json"
+          previous_advisor_args=()
+          previous_force_args=()
           if git -C brain rev-parse --verify "refs/remotes/origin/$BRANCH" >/dev/null 2>&1; then
             expected_sha="$(git -C brain rev-parse "refs/remotes/origin/$BRANCH")"
-            previous="$RUNNER_TEMP/niakvio-guidance.previous.json"
-            if git -C brain show "refs/remotes/origin/$BRANCH:guidance/niakvio-guidance.json" > "$previous" 2>/dev/null; then
-              python brain/scripts/select_guidance_publication.py \
-                --previous "$previous" \
-                --candidate niakvio-guidance.json \
-                --output "$selected"
-            else
-              cp niakvio-guidance.json "$selected"
+            if git -C brain show "refs/remotes/origin/$BRANCH:guidance/niakvio-guidance.json" > "$RUNNER_TEMP/niakvio-guidance.previous.json" 2>/dev/null; then
+              previous_advisor_args=(--previous-advisor "$RUNNER_TEMP/niakvio-guidance.previous.json")
             fi
-          else
-            cp niakvio-guidance.json "$selected"
+            if git -C brain show "refs/remotes/origin/$BRANCH:guidance/niakvio-force-mutations.json" > "$RUNNER_TEMP/niakvio-force.previous.json" 2>/dev/null; then
+              previous_force_args=(--previous-force "$RUNNER_TEMP/niakvio-force.previous.json")
+            fi
           fi
-          cp "$selected" niakvio-guidance.json
+          python brain/scripts/merge_niakvio_guidance_page.py \
+            "${previous_advisor_args[@]}" \
+            "${previous_force_args[@]}" \
+            --candidate-advisor niakvio-guidance.json \
+            --candidate-force niakvio-force-mutations.json \
+            --refreshed-providers "$RUNNER_TEMP/niakvio-guidance-page.txt" \
+            --advisor-output "$RUNNER_TEMP/niakvio-guidance.merged.json" \
+            --force-output "$RUNNER_TEMP/niakvio-force.merged.json"
+          cp "$RUNNER_TEMP/niakvio-guidance.merged.json" niakvio-guidance.json
+          cp "$RUNNER_TEMP/niakvio-force.merged.json" niakvio-force-mutations.json
+
           git -C brain switch --orphan "niakvio-guidance-$GITHUB_RUN_ID"
           git -C brain rm -rf . >/dev/null 2>&1 || true
           mkdir -p brain/guidance
-          cp "$RUNNER_TEMP/niakvio-guidance.json" brain/guidance/niakvio-guidance.json
+          cp niakvio-guidance.json brain/guidance/niakvio-guidance.json
           cp niakvio-force-mutations.json brain/guidance/niakvio-force-mutations.json
-          git -C brain add guidance/niakvio-guidance.json guidance/niakvio-force-mutations.json
-          git -C brain commit -m "guidance: refresh NiakVIO advisor and Force mutation prior"
+          cp "$RUNNER_TEMP/niakvio-guidance-state.next.json" brain/guidance/niakvio-guidance-state.json
+          git -C brain add guidance/niakvio-guidance.json guidance/niakvio-force-mutations.json guidance/niakvio-guidance-state.json
+          git -C brain commit -m "guidance: merge NiakVIO advisor page ${{ steps.page.outputs.cycle }}"
           tracked="$(git -C brain ls-files | sort)"
-          expected_tracked="$(printf '%s\n' guidance/niakvio-force-mutations.json guidance/niakvio-guidance.json | sort)"
+          expected_tracked="$(printf '%s\n' guidance/niakvio-force-mutations.json guidance/niakvio-guidance-state.json guidance/niakvio-guidance.json | sort)"
           test "$tracked" = "$expected_tracked"
           if [ -n "$expected_sha" ]; then
             git -C brain push --force-with-lease="$BRANCH:$expected_sha" origin HEAD:"$BRANCH"
           else
             git -C brain push origin HEAD:"$BRANCH"
           fi
-          echo "FIELD_NIAKVIO_GUIDANCE_PUBLISH files=2 private_content=false force_mutations=true"
+          echo "FIELD_NIAKVIO_GUIDANCE_PUBLISH files=3 private_content=false force_mutations=true complete=${{ steps.page.outputs.complete }} remaining=${{ steps.page.outputs.remaining }}"
 
+      - name: Continue remaining guidance page
+        if: ${{ steps.page.outputs.complete != 'true' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh workflow run niakvio-private-guidance.yml \
+            --repo "$GITHUB_REPOSITORY" \
+            --ref main \
+            -f niakvio_sha="${{ steps.source.outputs.sha }}" \
+            -f target_providers="${{ steps.cohort.outputs.csv }}" \
+            -f page_size="${{ inputs.page_size || '8' }}"
+          echo "FIELD_NIAKVIO_GUIDANCE_CONTINUE remaining=${{ steps.page.outputs.remaining }} source=${{ steps.source.outputs.sha }}"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -419,6 +440,7 @@ jobs:
           path: |
             niakvio-guidance.json
             niakvio-force-mutations.json
+            $RUNNER_TEMP/niakvio-guidance-state.next.json
             private-memory-report.json
             routing-summary.json
             routing-force-summary.json
