@@ -45,7 +45,8 @@ For provider_data, edit is the normal {scope,operation,path,value?} mutation.
 For provider_patch/provider_js, DO NOT emit a unified diff. Emit only:
 {scope,path,find,replace}
 where find is the smallest exact UNIQUE snippet from mutation_target.source and replace is its corrected text.
-If the exact unique edit is not safely derivable, return edit:null.
+For file edits, find must be <= 320 characters and replace <= 640 characters. Prefer changing one expression, branch, call, regex or small block.
+If the correction cannot fit these bounds or the exact unique edit is not safely derivable, return edit:null.
 Return JSON only."""
 
 def _extract_json(text: str) -> dict[str, Any]:
@@ -78,7 +79,7 @@ def _compact_edit_to_mutation(
     path = str(edit.get("path") or "")
     find = str(edit.get("find") or "")
     replace = str(edit.get("replace") or "")
-    if not find or len(find) > 2400 or len(replace) > 3200:
+    if not find or len(find) > 320 or len(replace) > 640:
         raise ValueError("compact Force find/replace is missing or oversized")
 
     context = request.provider_context or {}
@@ -189,7 +190,25 @@ class BrainPlanner:
                 "properties": {
                     "edit": {
                         "anyOf": [
-                            {"type": "object"},
+                            {
+                                "type": "object",
+                                "additionalProperties": False,
+                                "required": ["scope", "path"],
+                                "properties": {
+                                    "scope": {
+                                        "type": "string",
+                                        "enum": ["provider_data", "provider_patch", "provider_js"],
+                                    },
+                                    "operation": {
+                                        "type": "string",
+                                        "enum": ["set", "delete", "append"],
+                                    },
+                                    "path": {"type": "string", "maxLength": 240},
+                                    "value": {},
+                                    "find": {"type": "string", "maxLength": 320},
+                                    "replace": {"type": "string", "maxLength": 640},
+                                },
+                            },
                             {"type": "null"},
                         ]
                     },
