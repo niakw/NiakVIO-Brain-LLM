@@ -21,9 +21,12 @@ assert "--workers 1" in workflow
 assert "--max-tokens 256" in workflow
 assert "--timeout-seconds 75" in workflow
 assert "--timeout-seconds 45" in workflow
-assert workflow.count("--limit 4") >= 4
+assert "--limit 4" not in workflow
+assert "requested_repair_queue" in workflow
+assert "niakvio-guidance-targets.txt" in workflow
+assert '"${provider_args[@]}"' in workflow
 assert "Force routing requested" in workflow
 assert "produced zero executable mutations" in workflow
-force_command = workflow.index("--mode repair             --limit 4             --endpoint")
-advisor_command = workflow.index("--mode brain             --limit 4             --endpoint")
+force_command = workflow.index("--mode repair \\\n            \"${provider_args[@]}\" \\\n            --endpoint")
+advisor_command = workflow.index("--mode brain \\\n            \"${provider_args[@]}\" \\\n            --endpoint")
 assert force_command < advisor_command
