@@ -24,9 +24,12 @@ for token in (
 assert 'parser.add_argument("--advisor-only", action="store_true")' in route
 assert "request.advisor_only = bool(args.advisor_only)" in route
 assert "--mode brain             --advisor-only" in wf
-assert "--mode repair             --limit 4             --output routing-force.jsonl" in wf
+assert "--mode repair \\" in wf
+assert '"${provider_args[@]}"' in wf
 assert "force_llm_needed=" in wf
-assert wf.count("--limit 4") >= 4
+assert "--limit 4" not in wf
+assert "requested_repair_queue" in wf
+assert "niakvio-guidance-targets.txt" in wf
 assert "produced zero executable mutations" in wf
 
 assert "-c 32768" in wf
