@@ -6,14 +6,14 @@ from pathlib import Path
 from typing import Any
 
 OPAQUE = re.compile(r"[A-Za-z0-9+/]{160,}={0,2}")
-FIXDATA_LINE = re.compile(r"^.*FIXDATA:.*$", re.MULTILINE)
+FIXDATA_COMMENT = re.compile(r"/\*\s*FIXDATA:.*?\*/", re.IGNORECASE | re.DOTALL)
 
 def _clip(text: str, limit: int) -> str:
     value = text.strip()
     return value if len(value) <= limit else value[:limit] + "\n/* clipped */"
 
 def sanitize_source(text: str, *, limit: int = 5000) -> str:
-    text = FIXDATA_LINE.sub("/* FIXDATA blob omitted */", text)
+    text = FIXDATA_COMMENT.sub("/* FIXDATA blob omitted */", text)
     text = OPAQUE.sub("<opaque-token-omitted>", text)
     return _clip(text, limit)
 
