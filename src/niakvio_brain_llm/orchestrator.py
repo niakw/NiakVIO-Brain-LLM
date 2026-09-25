@@ -33,7 +33,7 @@ class BrainOrchestrator:
         self.planner = planner
         self.store = store or planner.store
 
-    def run(self, request: RepairRequest) -> BrainOutcome:
+    def run(self, request: RepairRequest, *, compact_force: bool = False) -> BrainOutcome:
         routing = route_request(request, self.store)
 
         if request.advisor_only and routing.mode == "deterministic_advisor":
@@ -66,5 +66,5 @@ class BrainOrchestrator:
         elif routing.mode == "llm_repair":
             effective.allowed_mutations = list(routing.allowed_mutations)
 
-        proposal = self.planner.plan(effective)
+        proposal = self.planner.plan(effective, compact_force=compact_force)
         return BrainOutcome(routing=routing, proposal=proposal)
