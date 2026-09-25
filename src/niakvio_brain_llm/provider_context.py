@@ -59,13 +59,39 @@ def build_provider_context(root: str | Path, provider_id: str) -> dict[str, Any]
             limit=5000,
         )
 
+    override_value: Any = None
     for name, relative in (
         ("override", "provider-overrides.json"),
         ("hub", "provider-hubs.json"),
     ):
         value = _provider_entry(_load_json(root / relative), provider_id)
         if value is not None:
+            if name == "override":
+                override_value = value
             encoded = json.dumps(value, ensure_ascii=True, sort_keys=True)
             context[name] = sanitize_source(encoded, limit=2200)
+
+    # Provider-local Blocs are the real authored mutation surface for current
+    # NiakVIO providers. Expose only already-registered scripts; the model may
+    # edit an existing Bloc but may never invent or target an unrelated file.
+    if isinstance(override_value, dict):
+        scripts = [
+            str(value).strip()
+            for value in (override_value.get("provider_lego_scripts") or [])
+            if str(value).strip().startswith("scripts/provider_patches/")
+        ][:8]
+        scripts = list(dict.fromkeys(scripts))
+        if scripts:
+            context["registered_patch_scripts"] = scripts
+            sources: dict[str, str] = {}
+            for relative in scripts[:4]:
+                path = root / relative
+                if path.is_file():
+                    sources[relative] = sanitize_source(
+                        path.read_text(encoding="utf-8", errors="replace"),
+                        limit=5000,
+                    )
+            if sources:
+                context["registered_patch_sources"] = sources
 
     return context
