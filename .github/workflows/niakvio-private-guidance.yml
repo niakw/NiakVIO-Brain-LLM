@@ -113,14 +113,22 @@ jobs:
         run: |
           set -euo pipefail
           python brain/scripts/route_batch_from_checkout.py             --niakvio-root niakvio             --experience public-experience.jsonl             --mode brain             --advisor-only             --output routing.jsonl             --summary routing-summary.json
+          python brain/scripts/route_batch_from_checkout.py             --niakvio-root niakvio             --experience public-experience.jsonl             --mode repair             --output routing-force.jsonl             --summary routing-force-summary.json
           python - <<'PY'
           import json,os
-          d=json.load(open("routing-summary.json"))
+          advisor=json.load(open("routing-summary.json"))
+          force=json.load(open("routing-force-summary.json"))
+          needed=bool(advisor.get("llm_needed")) or bool(force.get("llm_needed"))
+          targets=max(int(advisor.get("llm_targets") or 0),int(force.get("llm_targets") or 0))
           with open(os.environ["GITHUB_OUTPUT"],"a") as f:
-              f.write("llm_needed="+("true" if d.get("llm_needed") else "false")+"\n")
-              f.write("llm_targets="+str(int(d.get("llm_targets") or 0))+"\n")
+              f.write("llm_needed="+("true" if needed else "false")+"\n")
+              f.write("llm_targets="+str(targets)+"\n")
+              f.write("force_llm_needed="+("true" if force.get("llm_needed") else "false")+"\n")
+              f.write("force_llm_targets="+str(int(force.get("llm_targets") or 0))+"\n")
           print("FIELD_NIAKVIO_GUIDANCE_ROUTE "
-                f"providers={int(d.get('provider_count') or 0)} llm_targets={int(d.get('llm_targets') or 0)}")
+                f"advisor_llm={int(advisor.get('llm_targets') or 0)} "
+                f"force_llm={int(force.get('llm_targets') or 0)} "
+                f"providers={int(force.get('provider_count') or advisor.get('provider_count') or 0)}")
           PY
 
       - uses: actions/cache@v4
@@ -267,5 +275,6 @@ jobs:
             niakvio-force-mutations.json
             private-memory-report.json
             routing-summary.json
+            routing-force-summary.json
           retention-days: 14
           if-no-files-found: warn
