@@ -185,3 +185,82 @@ def build_prompt_payload(
             "document_limit": document_limit,
         },
     }
+
+
+def _head_tail(value: Any, head: int, tail: int) -> str:
+    text = str(value or "").strip()
+    if len(text) <= head + tail + 40:
+        return text
+    return text[:head] + "\n...<middle-clipped>...\n" + text[-tail:]
+
+
+def build_force_prompt_payload(
+    request: RepairRequest,
+    causal_prior: dict[str, Any] | None = None,
+    mutation_policy: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Minimal provider-local context for CPU-bound Force synthesis.
+
+    The Force model does not need RAG documents, historical prose, verification
+    tests or the complete provider context. Deterministic NiakVIO already owns
+    those. Give the model only current causal state plus the exact authored
+    mutation surface it is allowed to edit.
+    """
+    prior = causal_prior or {}
+    policy = mutation_policy or {}
+    context = request.provider_context or {}
+
+    registered = context.get("registered_patch_sources")
+    target: dict[str, Any] = {}
+    if isinstance(registered, dict) and registered:
+        path, source = next(iter(registered.items()))
+        target = {
+            "scope": "provider_patch",
+            "path": str(path)[:240],
+            "source": _head_tail(source, 3600, 1200),
+        }
+    elif context.get("authored_module"):
+        target = {
+            "scope": "provider_js",
+            "path": f"engine_v2/providers/{request.provider_id}.mjs",
+            "source": _head_tail(context.get("authored_module"), 3600, 1200),
+        }
+    elif context.get("override"):
+        target = {
+            "scope": "provider_data",
+            "path": "provider-overrides.json > provider_patches[provider_id]",
+            "source": _clip(context.get("override"), 1800),
+        }
+
+    observations = [
+        _compact(row, string_limit=260)
+        for row in (request.observations or [])[:3]
+    ]
+    census = _compact(request.census_prior or {}, string_limit=320)
+    allowed_scopes = list(policy.get("allowed_scopes") or request.allowed_mutations or [])
+
+    return {
+        "provider_id": request.provider_id,
+        "failure_class": request.failure_class,
+        "status": request.status,
+        "supported_types": list(request.supported_types or [])[:4],
+        "causal_prior": {
+            "target_layer": prior.get("target_layer"),
+            "confidence": prior.get("confidence"),
+            "strategy_prior": prior.get("strategy_prior"),
+        },
+        "mutation_policy": {
+            "allow_mutations": bool(policy.get("allow_mutations")),
+            "allowed_scopes": allowed_scopes[:3],
+            "force_abstain": bool(policy.get("force_abstain")),
+            "reason": _clip(policy.get("reason"), 260),
+        },
+        "current_observations": observations,
+        "census_prior": census,
+        "mutation_target": target,
+        "output_contract": {
+            "max_mutations": 1,
+            "provider_local_only": True,
+            "unified_diff_against_exact_source": target.get("scope") in {"provider_patch", "provider_js"},
+        },
+    }
