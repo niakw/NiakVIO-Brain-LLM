@@ -1,7 +1,7 @@
 import unittest
 
 from niakvio_brain_llm.contracts import RepairRequest
-from niakvio_brain_llm.prompting import build_prompt_payload
+from niakvio_brain_llm.prompting import build_force_prompt_payload, build_prompt_payload
 
 class PromptingTests(unittest.TestCase):
     def test_large_context_is_bounded(self):
@@ -93,6 +93,37 @@ class PromptingTests(unittest.TestCase):
         self.assertLess(len(context["hub"]), 550)
         self.assertEqual(len(payload["retrieved_experiences"]), 1)
         self.assertEqual(payload["retrieved_documents"], [])
+
+    def test_force_prompt_is_provider_local_and_drops_rag_bulk(self):
+        request = RepairRequest(
+            provider_id="demo",
+            failure_class="chain_terminal_gap",
+            status="CHAIN REACHED",
+            observations=[{"stage": "player", "blob": "Z" * 5000} for _ in range(8)],
+            provider_context={
+                "registered_patch_sources": {
+                    "scripts/provider_patches/demo_runtime_v1.py": "HEAD" + ("A" * 10000) + "TAIL",
+                    "scripts/provider_patches/demo_extra_v1.py": "B" * 10000,
+                },
+                "authored_module": "M" * 10000,
+                "override": "O" * 10000,
+                "published_bundle": {"providerBlocks": [{"source": "P" * 10000}]},
+            },
+        )
+        payload = build_force_prompt_payload(
+            request,
+            {"target_layer": "provider", "confidence": 0.96, "strategy_prior": "terminal_media_extractor_with_playback_validation"},
+            {"allow_mutations": True, "allowed_scopes": ["provider_patch"]},
+        )
+        self.assertEqual(payload["mutation_target"]["scope"], "provider_patch")
+        self.assertEqual(payload["mutation_target"]["path"], "scripts/provider_patches/demo_runtime_v1.py")
+        self.assertLess(len(payload["mutation_target"]["source"]), 5000)
+        self.assertIn("HEAD", payload["mutation_target"]["source"])
+        self.assertIn("TAIL", payload["mutation_target"]["source"])
+        self.assertEqual(len(payload["current_observations"]), 3)
+        self.assertNotIn("retrieved_experiences", payload)
+        self.assertNotIn("retrieved_documents", payload)
+        self.assertNotIn("published_bundle", payload)
 
     def test_brain_owned_required_tests_are_hidden_from_model(self):
         payload = build_prompt_payload(
