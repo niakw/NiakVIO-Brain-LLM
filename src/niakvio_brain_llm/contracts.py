@@ -14,7 +14,7 @@ class RepairRequest:
     census_prior: dict[str, Any] = field(default_factory=dict)
     observations: list[dict[str, Any]] = field(default_factory=list)
     provider_context: dict[str, Any] = field(default_factory=dict)
-    allowed_mutations: list[str] = field(default_factory=lambda: ["provider_data", "provider_js"])
+    allowed_mutations: list[str] = field(default_factory=lambda: ["provider_data", "provider_patch", "provider_js"])
     forbidden_mutations: list[str] = field(default_factory=lambda: ["core", "provider_base"])
     max_hypotheses: int = 3
     advisor_only: bool = False
