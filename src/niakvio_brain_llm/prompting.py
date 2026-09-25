@@ -40,16 +40,27 @@ def compact_request(
     data = request.to_dict()
     context = dict(data.get("provider_context") or {})
 
+    if "registered_patch_sources" in context and isinstance(context["registered_patch_sources"], dict):
+        sources = list(context["registered_patch_sources"].items())
+        source_limit = 2400 if mutation_allowed else 1800
+        max_sources = 2 if mutation_allowed else 1
+        context["registered_patch_sources"] = {
+            str(path)[:180]: _clip(source, source_limit)
+            for path, source in sources[:max_sources]
+        }
     if "authored_module" in context:
-        source_limit = 3200 if mutation_allowed else (2200 if not high_confidence else 1200)
+        # Force mutation planning should spend context on the registered provider
+        # Bloc first. Keep only a small authored-module fallback for providers
+        # whose registered Bloc does not expose the needed contract.
+        source_limit = 1200 if mutation_allowed else (2200 if not high_confidence else 1200)
         context["authored_module"] = _clip(context["authored_module"], source_limit)
     if "override" in context:
         context["override"] = _clip(
             context["override"],
-            1200 if mutation_allowed else 700,
+            900 if mutation_allowed else 700,
         )
     if "hub" in context:
-        context["hub"] = _clip(context["hub"], 700)
+        context["hub"] = _clip(context["hub"], 450 if mutation_allowed else 700)
 
     data["provider_context"] = context
     observation_limit = 500 if high_confidence else 650
@@ -123,10 +134,20 @@ def build_prompt_payload(
     high_confidence = float(prior.get("confidence") or 0.0) >= 0.90
     mutation_allowed = bool(policy.get("allow_mutations"))
 
-    experience_limit = 2 if high_confidence else 4
-    document_limit = 1 if high_confidence else 2
-    experience_text_limit = 420 if high_confidence else 600
-    document_text_limit = 650 if high_confidence else 900
+    if mutation_allowed:
+        # Force is a code/data synthesis phase, not a research pass. Current
+        # provider bytes + current failure evidence + one nearest experience are
+        # enough; broad docs/private history only increase prefill latency and
+        # were causing every 4-slot CPU request to time out.
+        experience_limit = 1
+        document_limit = 0
+        experience_text_limit = 320
+        document_text_limit = 0
+    else:
+        experience_limit = 2 if high_confidence else 4
+        document_limit = 1 if high_confidence else 2
+        experience_text_limit = 420 if high_confidence else 600
+        document_text_limit = 650 if high_confidence else 900
 
     return {
         "request": compact_request(
