@@ -23,7 +23,8 @@ for token in (
 
 assert 'parser.add_argument("--advisor-only", action="store_true")' in route
 assert "request.advisor_only = bool(args.advisor_only)" in route
-assert "--mode brain             --advisor-only" in wf
+assert "--mode brain \\" in wf
+assert "--advisor-only \\" in wf
 assert "--mode repair \\" in wf
 assert '"${provider_args[@]}"' in wf
 assert "force_llm_needed=" in wf
