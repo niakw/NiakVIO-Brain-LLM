@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "f5fcbf95064c353e828bfcb37d62c46b61993c25",
-  "reason": "refresh exact advisor prior after bounding residential WAF probe so final Force runs on current NiakVIO HEAD",
+  "niakvio_sha": "1cae0e2c4d2b7defa102875b6538ce942c503f90",
+  "reason": "exact final advisor refresh after shared Core publication fingerprint change; no provider runtime route change",
   "requested_repair_queue": [
     "4khdhub",
     "allanime",
