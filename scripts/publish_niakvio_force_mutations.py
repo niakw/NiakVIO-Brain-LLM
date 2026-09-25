@@ -55,6 +55,7 @@ def sanitize(
 
     output: list[dict[str, Any]] = []
     seen: set[tuple[str, str]] = set()
+    seen_providers: set[str] = set()
 
     for row in rows:
         if row.get("ok") is not True:
@@ -108,6 +109,11 @@ def sanitize(
             continue
 
         mutation_fp = fingerprint(mutations)
+        if provider in seen_providers:
+            raise ValueError(
+                f"{provider}: multiple concrete Force candidates require isolated candidate sandboxing"
+            )
+        seen_providers.add(provider)
         key = (provider, mutation_fp)
         if key in seen:
             continue
