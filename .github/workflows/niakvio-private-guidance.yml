@@ -15,9 +15,14 @@ on:
         description: "Optional comma-separated exact Repair cohort; empty uses trigger requested_repair_queue, then current repairQueue"
         required: false
         default: ""
+      page_size:
+        description: "Bounded providers per guidance page (1..12)"
+        required: false
+        default: "8"
 
 permissions:
   contents: write
+  actions: write
 
 concurrency:
   group: niakvio-private-guidance-v2
@@ -114,6 +119,42 @@ jobs:
           echo "count=$count" >> "$GITHUB_OUTPUT"
           echo "csv=$csv" >> "$GITHUB_OUTPUT"
 
+      - name: Select fair bounded guidance page
+        id: page
+        shell: bash
+        env:
+          PAGE_SIZE: ${{ inputs.page_size || '8' }}
+        run: |
+          set -euo pipefail
+          git -C brain fetch origin "+refs/heads/niakvio-guidance:refs/remotes/origin/niakvio-guidance" || true
+          previous_args=()
+          if git -C brain rev-parse --verify refs/remotes/origin/niakvio-guidance >/dev/null 2>&1 \
+             && git -C brain show refs/remotes/origin/niakvio-guidance:guidance/niakvio-guidance-state.json > "$RUNNER_TEMP/niakvio-guidance-state.previous.json" 2>/dev/null; then
+            previous_args=(--previous-state "$RUNNER_TEMP/niakvio-guidance-state.previous.json")
+          fi
+          brain_sha="$(git -C brain rev-parse HEAD)"
+          python brain/scripts/select_niakvio_guidance_page.py \
+            --targets "$RUNNER_TEMP/niakvio-guidance-targets.txt" \
+            "${previous_args[@]}" \
+            --source-sha "${{ steps.source.outputs.sha }}" \
+            --brain-sha "$brain_sha" \
+            --page-size "$PAGE_SIZE" \
+            --page-output "$RUNNER_TEMP/niakvio-guidance-page.txt" \
+            --state-output "$RUNNER_TEMP/niakvio-guidance-state.next.json"
+          count="$(wc -l < "$RUNNER_TEMP/niakvio-guidance-page.txt" | tr -d ' ')"
+          csv="$(paste -sd, "$RUNNER_TEMP/niakvio-guidance-page.txt")"
+          read -r remaining complete cycle < <(python - "$RUNNER_TEMP/niakvio-guidance-state.next.json" <<'PY'
+          import json,sys
+          d=json.load(open(sys.argv[1],encoding="utf-8"))
+          print(int(d.get("remainingCount") or 0), "true" if d.get("complete") is True else "false", int(d.get("cycle") or 1))
+          PY
+          )
+          test "$count" -gt 0 || { echo "guidance page unexpectedly empty" >&2; exit 1; }
+          echo "count=$count" >> "$GITHUB_OUTPUT"
+          echo "csv=$csv" >> "$GITHUB_OUTPUT"
+          echo "remaining=$remaining" >> "$GITHUB_OUTPUT"
+          echo "complete=$complete" >> "$GITHUB_OUTPUT"
+          echo "cycle=$cycle" >> "$GITHUB_OUTPUT"
       - name: Checkout private NiakVIO project read-only
         uses: actions/checkout@v4
         with:
@@ -164,7 +205,7 @@ jobs:
           provider_args=()
           while IFS= read -r provider; do
             [ -z "$provider" ] || provider_args+=(--provider "$provider")
-          done < "$RUNNER_TEMP/niakvio-guidance-targets.txt"
+          done < "$RUNNER_TEMP/niakvio-guidance-page.txt"
           python brain/scripts/route_batch_from_checkout.py \
             --niakvio-root niakvio \
             --experience public-experience.jsonl \
@@ -246,7 +287,7 @@ jobs:
           provider_args=()
           while IFS= read -r provider; do
             [ -z "$provider" ] || provider_args+=(--provider "$provider")
-          done < "$RUNNER_TEMP/niakvio-guidance-targets.txt"
+          done < "$RUNNER_TEMP/niakvio-guidance-page.txt"
           python brain/scripts/plan_batch_from_checkout.py \
             --niakvio-root niakvio \
             --experience public-experience.jsonl \
