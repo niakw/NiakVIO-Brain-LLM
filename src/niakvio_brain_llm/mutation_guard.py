@@ -6,6 +6,7 @@ from urllib.parse import urlparse
 
 DATA_OPERATIONS = {"set", "delete", "append"}
 JS_OPERATIONS = {"unified_diff"}
+PATCH_OPERATIONS = {"unified_diff"}
 
 ALLOWED_DATA_ROOTS = {
     "capability",
@@ -82,7 +83,12 @@ def _require_http_url(value: Any) -> None:
     if host.endswith(".example") or host in {"example.com", "localhost"}:
         raise ValueError("URL mutation value cannot use a placeholder host")
 
-def validate_mutation(provider_id: str, mutation: dict[str, Any]) -> None:
+def validate_mutation(
+    provider_id: str,
+    mutation: dict[str, Any],
+    *,
+    allowed_patch_paths: set[str] | None = None,
+) -> None:
     scope = str(mutation.get("scope") or "")
     operation = str(mutation.get("operation") or "")
 
@@ -110,6 +116,21 @@ def validate_mutation(provider_id: str, mutation: dict[str, Any]) -> None:
                 _require_http_url(value)
         return
 
+    if scope == "provider_patch":
+        if operation not in PATCH_OPERATIONS:
+            raise ValueError(f"unsupported provider_patch operation: {operation}")
+        path = str(mutation.get("path") or "")
+        allowed = set(allowed_patch_paths or set())
+        if not path.startswith("scripts/provider_patches/") or path not in allowed:
+            raise ValueError("provider_patch must target an already-registered provider Bloc")
+        diff = str(mutation.get("diff") or "")
+        if not diff or len(diff) > 24000:
+            raise ValueError("missing or oversized provider_patch diff")
+        _reject_placeholders(diff)
+        if not ("--- " in diff and "+++ " in diff and "@@" in diff):
+            raise ValueError("provider_patch mutation must contain a concrete unified diff")
+        return
+
     if scope == "provider_js":
         if operation not in JS_OPERATIONS:
             raise ValueError(f"unsupported provider_js operation: {operation}")
@@ -127,6 +148,15 @@ def validate_mutation(provider_id: str, mutation: dict[str, Any]) -> None:
 
     raise ValueError(f"unsupported mutation scope: {scope}")
 
-def validate_mutations(provider_id: str, mutations: list[dict[str, Any]]) -> None:
+def validate_mutations(
+    provider_id: str,
+    mutations: list[dict[str, Any]],
+    *,
+    allowed_patch_paths: set[str] | None = None,
+) -> None:
     for mutation in mutations:
-        validate_mutation(provider_id, mutation)
+        validate_mutation(
+            provider_id,
+            mutation,
+            allowed_patch_paths=allowed_patch_paths,
+        )
