@@ -2,12 +2,14 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import os
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
+from niakvio_brain_llm.advisor_experiments import experiment_fingerprint
 from niakvio_brain_llm.backend import LocalOpenAICompatibleBackend
 from niakvio_brain_llm.batch import batch_summary, load_census, select_batch_targets
 from niakvio_brain_llm.document_memory import DocumentStore
@@ -26,6 +28,12 @@ def main() -> int:
     parser.add_argument("--mode", choices=("repair", "diagnostic", "brain"), default="repair")
     parser.add_argument("--provider", action="append", default=[])
     parser.add_argument("--limit", type=int, default=0)
+    parser.add_argument(
+        "--max-hypotheses",
+        type=int,
+        default=3,
+        help="Advisor-only hypotheses per provider. Force remains one concrete edit per provider.",
+    )
     parser.add_argument(
         "--workers",
         type=int,
@@ -74,22 +82,70 @@ def main() -> int:
     planner = BrainPlanner(backend, store, documents)
     orchestrator = BrainOrchestrator(planner, store)
 
-    def plan_one(position: int, census_row: dict) -> dict:
+    def _row(position: int, hypothesis_index: int, provider: str, request, outcome) -> dict:
+        return {
+            "position": position,
+            "hypothesis_index": hypothesis_index,
+            "provider": provider,
+            "status": request.status,
+            "failure_class": request.failure_class,
+            "ok": True,
+            "routing": outcome.routing.to_dict(),
+            "proposal": outcome.proposal.to_dict() if outcome.proposal else None,
+        }
+
+    def _reserve_advisor_experiment(request, outcome) -> bool:
+        proposal = outcome.proposal
+        if proposal is None or not isinstance(proposal.experiment, dict) or not proposal.experiment:
+            return False
+        try:
+            fp = experiment_fingerprint(proposal.experiment)
+        except Exception:
+            return False
+        context = copy.deepcopy(request.provider_context or {})
+        history = [
+            copy.deepcopy(value)
+            for value in context.get("advisor_experiment_history") or []
+            if isinstance(value, dict)
+        ]
+        if any(
+            str(value.get("llmAdvisorExperimentFingerprint") or "").strip().casefold() == fp
+            for value in history
+        ):
+            return False
+        history.append({
+            "llmAdvisorExperimentFingerprint": fp,
+            "consecutiveFailures": 1,
+            "failures": 1,
+            "successes": 0,
+            "lastOutcome": "candidate_reserved",
+            "lastReason": "reserve distinct hypothesis inside current advisor batch",
+            "failureClass": request.failure_class,
+        })
+        context["advisor_experiment_history"] = history[-32:]
+        request.provider_context = context
+        return True
+
+    def plan_one(position: int, census_row: dict) -> list[dict]:
         provider = str(census_row["provider"])
         request = request_from_checkout(args.niakvio_root, provider)
         request.advisor_only = bool(args.advisor_only)
+        max_hypotheses = (
+            max(1, min(int(args.max_hypotheses or request.max_hypotheses or 1), 3))
+            if args.advisor_only
+            else 1
+        )
+        planned: list[dict] = []
         try:
             compact_force = args.mode == "repair" and not args.advisor_only
-            outcome = orchestrator.run(request, compact_force=compact_force)
-            return {
-                "position": position,
-                "provider": provider,
-                "status": request.status,
-                "failure_class": request.failure_class,
-                "ok": True,
-                "routing": outcome.routing.to_dict(),
-                "proposal": outcome.proposal.to_dict() if outcome.proposal else None,
-            }
+            for hypothesis_index in range(1, max_hypotheses + 1):
+                outcome = orchestrator.run(request, compact_force=compact_force)
+                planned.append(_row(position, hypothesis_index, provider, request, outcome))
+                if not args.advisor_only:
+                    break
+                if not _reserve_advisor_experiment(request, outcome):
+                    break
+            return planned
         except Exception as exc:
             retryable = (
                 isinstance(exc, TimeoutError)
@@ -112,33 +168,25 @@ def main() -> int:
                         BrainPlanner(retry_backend, store, documents),
                         store,
                     ).run(retry_request, compact_force=True)
-                    return {
-                        "position": position,
-                        "provider": provider,
-                        "status": retry_request.status,
-                        "failure_class": retry_request.failure_class,
-                        "ok": True,
-                        "routing": retry.routing.to_dict(),
-                        "proposal": retry.proposal.to_dict() if retry.proposal else None,
-                    }
+                    return [_row(position, 1, provider, retry_request, retry)]
                 except Exception as retry_exc:
                     exc = retry_exc
-            return {
+            planned.append({
                 "position": position,
+                "hypothesis_index": len(planned) + 1,
                 "provider": provider,
                 "status": request.status,
                 "failure_class": request.failure_class,
                 "ok": False,
                 "error": type(exc).__name__ + ": " + str(exc),
-            }
+            })
+            return planned
 
     workers = max(1, min(int(args.workers or 1), 8, len(selected) or 1))
     rows: list[dict] = []
     if workers == 1:
-        rows = [
-            plan_one(position, census_row)
-            for position, census_row in enumerate(selected, start=1)
-        ]
+        for position, census_row in enumerate(selected, start=1):
+            rows.extend(plan_one(position, census_row))
     else:
         with ThreadPoolExecutor(max_workers=workers, thread_name_prefix="niakvio-llm") as pool:
             futures = {
@@ -146,8 +194,8 @@ def main() -> int:
                 for position, census_row in enumerate(selected, start=1)
             }
             for future in as_completed(futures):
-                rows.append(future.result())
-        rows.sort(key=lambda row: int(row["position"]))
+                rows.extend(future.result())
+        rows.sort(key=lambda row: (int(row["position"]), int(row.get("hypothesis_index") or 1)))
 
     routing_modes: Counter[str] = Counter()
     llm_calls = 0
@@ -190,6 +238,9 @@ def main() -> int:
         "mode": args.mode,
         **batch_summary(selected),
         "planned": sum(1 for row in rows if row["ok"]),
+        "plannedProviders": len({str(row.get("provider") or "") for row in rows if row.get("ok") is True}),
+        "plannedHypotheses": sum(1 for row in rows if row.get("ok") is True),
+        "maxHypothesesPerProvider": max(1, min(int(args.max_hypotheses or 1), 3)) if args.advisor_only else 1,
         "errors": sum(1 for row in rows if not row["ok"]),
         "model_processes": 1,
         "parallel_workers": workers,
