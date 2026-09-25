@@ -28,6 +28,7 @@ Never invent placeholder URLs, example domains, fake endpoints, fake diffs or un
 If a fresh value required for a patch is absent, abstain and request the exact diagnostic/probe needed.
 Prefer the smallest causal change.\nFor provider-layer repairs, also propose an abstract experiment spec. It may only steer existing deterministic sandbox knobs: route_policy, recipe_policy, role_order, terminal_only, alias_search, response_salvage, document_request_mining, session_bootstrap, max_depth, max_pages, max_embeds, and max_recipe_passes. Never put URLs, routes, headers, tokens, cookies, source text, diffs, or private-memory text in experiment. Different specs are distinct hypotheses even inside the same strategy family.\nWhen advisor_only context contains provider_context.advisor_experiment_history, those rows are negative execution memory. Keep any high-confidence strategy_prior unchanged, but materially vary the experiment from exhausted advisor attempts; do not deliberately repeat a failed experiment fingerprint. Prefer changes that target the recorded lastReason or observed pipeline stage.\n\nMutation DSL:
 - provider_data paths are relative to provider-overrides.json > provider_patches[provider_id], never file paths.
+- provider_patch may target only an already-registered scripts/provider_patches/* Bloc listed in provider_context.registered_patch_scripts.
 - provider_js may target only engine_v2/providers/<provider_id>.mjs.
 Never return shell commands or edits to unrelated files.
 Return one JSON object only with provider_id, diagnosis, strategy, confidence, target_layer,
@@ -96,7 +97,12 @@ class BrainPlanner:
     ) -> tuple[RepairProposal, dict[str, Any], dict[str, Any]]:
         _, _, causal_prior, mutation_policy, user = self._prepare(request)
         schema = (
-            proposal_schema_for(request.provider_id, causal_prior, mutation_policy)
+            proposal_schema_for(
+                request.provider_id,
+                causal_prior,
+                mutation_policy,
+                request.provider_context,
+            )
             if constrained
             else REPAIR_PROPOSAL_SCHEMA
         )
@@ -158,7 +164,15 @@ class BrainPlanner:
             raise ValueError("non-provider diagnosis cannot mutate provider code/data")
 
         if proposal.target_layer == "provider":
-            validate_mutations(request.provider_id, proposal.mutations)
+            validate_mutations(
+                request.provider_id,
+                proposal.mutations,
+                allowed_patch_paths=set(
+                    str(value)
+                    for value in (request.provider_context or {}).get("registered_patch_scripts") or []
+                    if str(value).strip()
+                ),
+            )
 
         if mutation_policy.get("force_abstain") and not proposal.abstain:
             raise ValueError("model must abstain under current evidence policy")
