@@ -9,7 +9,7 @@ from .document_memory import DocumentStore
 from .mutation_guard import validate_mutations
 from .policy import build_mutation_policy
 from .priors import build_causal_prior
-from .prompting import build_prompt_payload
+from .prompting import build_force_prompt_payload, build_prompt_payload
 from .retrieval import ExperienceStore
 from .schema import REPAIR_PROPOSAL_SCHEMA, compact_force_schema_for, proposal_schema_for
 from .verification_plan import recommended_tests
@@ -107,12 +107,21 @@ class BrainPlanner:
     ) -> tuple[RepairProposal, dict[str, Any], dict[str, Any]]:
         _, _, causal_prior, mutation_policy, user = self._prepare(request)
         if compact_force:
-            schema = compact_force_schema_for(
-                request.provider_id,
-                causal_prior,
-                mutation_policy,
-                request.provider_context,
+            user = json.dumps(
+                build_force_prompt_payload(
+                    request,
+                    causal_prior,
+                    mutation_policy,
+                ),
+                ensure_ascii=True,
+                allow_nan=False,
             )
+            # llama.cpp JSON-Schema grammar for the complete mutation DSL is
+            # substantially more expensive than the 3B generation itself on a
+            # GitHub CPU runner. Keep only a minimal JSON-object wire grammar;
+            # the full compact schema and all mutation guards are enforced
+            # locally by BrainPlanner immediately after parsing.
+            schema = {"type": "object"}
         else:
             schema = (
                 proposal_schema_for(
