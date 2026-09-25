@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "ce559d7129883062abea0c05067b9cc6159cfd11",
-  "reason": "fresh post-clean canonical census 36120999320-retest; exact 14-provider repair queue with zero harness/environment/network blocked classifications",
+  "niakvio_sha": "564351cadcc19d1f630d90a886edae6c4e3de9fe",
+  "reason": "current exact-head advisor refresh after global HLS/Core/multiflux rematerialization and census 36141266929",
   "requested_repair_queue": [
     "4khdhub",
     "allanime",
