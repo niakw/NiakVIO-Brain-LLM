@@ -75,6 +75,32 @@ class PlannerTests(unittest.TestCase):
         self.assertTrue(proposal.abstain)
         self.assertEqual(proposal.target_layer, "harness")
 
+    def test_compact_force_wire_synthesizes_full_validated_proposal(self):
+        response = json.dumps({
+            "mutation": {
+                "scope": "provider_data",
+                "operation": "set",
+                "path": "notes",
+                "value": "current terminal extractor repair",
+            },
+            "abstain_reason": "",
+        })
+        proposal = BrainPlanner(StaticBackend(response)).plan(
+            RepairRequest(
+                provider_id="demo",
+                failure_class="chain_terminal_gap",
+                status="CHAIN REACHED",
+                provider_context={"override": {"notes": "old"}},
+            ),
+            compact_force=True,
+        )
+        self.assertEqual(proposal.provider_id, "demo")
+        self.assertEqual(proposal.target_layer, "provider")
+        self.assertEqual(proposal.strategy, "terminal_media_extractor_with_playback_validation")
+        self.assertEqual(len(proposal.mutations), 1)
+        self.assertFalse(proposal.abstain)
+        self.assertTrue(proposal.tests)
+
     def test_private_chat_document_reaches_planner_prompt(self):
         planner = BrainPlanner(
             StaticBackend("{}"),
