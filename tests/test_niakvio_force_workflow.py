@@ -30,3 +30,14 @@ assert "produced zero executable mutations" in workflow
 force_command = workflow.index("--mode repair \\\n            \"${provider_args[@]}\" \\\n            --endpoint")
 advisor_command = workflow.index("--mode brain \\\n            \"${provider_args[@]}\" \\\n            --endpoint")
 assert force_command < advisor_command
+
+assert "select_niakvio_guidance_page.py" in workflow
+assert "merge_niakvio_guidance_page.py" in workflow
+assert "niakvio-guidance-page.txt" in workflow
+assert "niakvio-guidance-state.json" in workflow
+assert "Continue remaining guidance page" in workflow
+assert "steps.page.outputs.complete" in workflow
+assert "actions: write" in workflow
+assert "mutationContextFingerprint" in workflow
+assert "guidance/niakvio-guidance-state.json" in workflow
+assert "files=3" in workflow
