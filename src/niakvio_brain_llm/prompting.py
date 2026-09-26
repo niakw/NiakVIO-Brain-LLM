@@ -265,6 +265,34 @@ def build_prompt_payload(
             published = ctx.get("published_bundle")
             if isinstance(published, dict):
                 published.pop("providerBlocks", None)
+    if encoded_size() > 7600:
+        request_payload = payload["request"]
+        request_payload["observations"] = [
+            _compact(row, string_limit=180)
+            for row in (request_payload.get("observations") or [])[:2]
+        ]
+        request_payload["census_prior"] = _compact(
+            request_payload.get("census_prior") or {}, string_limit=180
+        )
+        ctx = request_payload.get("provider_context") or {}
+        if isinstance(ctx, dict):
+            request_payload["provider_context"] = {
+                key: value
+                for key, value in ctx.items()
+                if key in {
+                    "source_repo", "read_only", "provider_id",
+                    "registered_patch_scripts", "advisor_experiment_history",
+                }
+            }
+            history = request_payload["provider_context"].get("advisor_experiment_history")
+            if isinstance(history, list):
+                request_payload["provider_context"]["advisor_experiment_history"] = history[-2:]
+        payload["causal_prior"] = _compact(payload["causal_prior"], string_limit=220)
+        payload["mutation_policy"] = _compact(payload["mutation_policy"], string_limit=220)
+    if encoded_size() > 7600:
+        # This is a programming-contract failure, not a model/runtime failure.
+        # Refuse to create an oversized request rather than let llama.cpp reject it.
+        raise ValueError("advisor prompt payload exceeded bounded context budget")
     payload["context_budget"]["serialized_user_chars"] = encoded_size()
     payload["context_budget"]["max_serialized_user_chars"] = 7600
     return payload
