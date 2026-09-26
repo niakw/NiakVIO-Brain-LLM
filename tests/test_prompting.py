@@ -80,8 +80,7 @@ class PromptingTests(unittest.TestCase):
             {"allow_mutations": True, "allowed_scopes": ["provider_patch"]},
         )
         context = payload["request"]["provider_context"]
-        self.assertEqual(len(context["published_bundle"]["providerBlocks"]), 2)
-        self.assertLessEqual(
+        # Advisor context keeps one representative Bloc; exact multi-Bloc source\n        # remains available to compact Force and deterministic validation.\n        self.assertEqual(len(context["published_bundle"]["providerBlocks"]), 1)\n        self.assertLessEqual(
             max(len(v["source"]) for v in context["published_bundle"]["providerBlocks"]),
             3412,
         )
