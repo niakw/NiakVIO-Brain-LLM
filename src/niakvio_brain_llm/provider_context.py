@@ -17,6 +17,11 @@ def sanitize_source(text: str, *, limit: int = 5000) -> str:
     text = OPAQUE.sub("<opaque-token-omitted>", text)
     return _clip(text, limit)
 
+def sanitize_exact_source(text: str) -> str:
+    """Sanitize public provider source without changing its structural bytes."""
+    text = FIXDATA_COMMENT.sub("/* FIXDATA blob omitted */", text)
+    return OPAQUE.sub("<opaque-token-omitted>", text)
+
 def _load_json(path: Path) -> Any:
     try:
         return json.loads(path.read_text(encoding="utf-8"))
@@ -145,9 +150,12 @@ def build_provider_context(root: str | Path, provider_id: str) -> dict[str, Any]
             for relative in scripts[:4]:
                 path = root / relative
                 if path.is_file():
-                    sources[relative] = sanitize_source(
-                        path.read_text(encoding="utf-8", errors="replace"),
-                        limit=5000,
+                    # Keep the exact sanitized Bloc internally. Prompting owns
+                    # context clipping; compact Force find/replace validation must
+                    # compare against real source rather than a synthetic clipped
+                    # surrogate.
+                    sources[relative] = sanitize_exact_source(
+                        path.read_text(encoding="utf-8", errors="replace")
                     )
             if sources:
                 context["registered_patch_sources"] = sources
