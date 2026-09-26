@@ -51,6 +51,13 @@ class CompactForceRetryTest(unittest.TestCase):
         self.assertNotIn("evidence", schema["properties"])
         self.assertNotIn("tests", schema["properties"])
 
+    def test_registered_force_source_remains_exact_before_prompt_clipping(self):
+        source = (ROOT / "src" / "niakvio_brain_llm" / "provider_context.py").read_text(encoding="utf-8")
+        prompting = (ROOT / "src" / "niakvio_brain_llm" / "prompting.py").read_text(encoding="utf-8")
+        self.assertIn("sanitize_exact_source(", source)
+        self.assertIn("Prompting owns", source)
+        self.assertIn("_head_tail(source, 8000, 4000)", prompting)
+
     def test_timeout_retry_uses_compact_planner(self):
         script = (ROOT / "scripts" / "plan_batch_from_checkout.py").read_text(encoding="utf-8")
         planner = (ROOT / "src" / "niakvio_brain_llm" / "planner.py").read_text(encoding="utf-8")
