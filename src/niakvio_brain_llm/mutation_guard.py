@@ -40,6 +40,7 @@ PLACEHOLDER_MARKERS = (
     "<current",
     "<replace",
     "todo:",
+    "/* clipped */",
 )
 
 def _data_parts(path: str) -> list[str]:
