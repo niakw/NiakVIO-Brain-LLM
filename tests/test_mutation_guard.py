@@ -81,6 +81,25 @@ class MutationGuardTests(unittest.TestCase):
                 "diff": "diff_to_replace_extractor",
             })
 
+    def test_clipped_provider_patch_rejected(self):
+        with self.assertRaises(ValueError):
+            validate_mutation(
+                "demo",
+                {
+                    "scope": "provider_patch",
+                    "operation": "unified_diff",
+                    "path": "scripts/provider_patches/demo_runtime_v1.py",
+                    "diff": (
+                        "--- scripts/provider_patches/demo_runtime_v1.py\n"
+                        "+++ scripts/provider_patches/demo_runtime_v1.py\n"
+                        "@@ -1 +1 @@\n"
+                        "-old\n"
+                        "+new /* clipped */\n"
+                    ),
+                },
+                allowed_patch_paths={"scripts/provider_patches/demo_runtime_v1.py"},
+            )
+
     def test_proto_path_rejected(self):
         with self.assertRaises(ValueError):
             validate_mutation("demo", {
