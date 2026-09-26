@@ -1,0 +1,26 @@
+{
+  "brainLlmSha": "dc44b7e1684173c5f5ea1f81feaaf8eca41f5e7f",
+  "complete": true,
+  "completedProviders": [
+    "animevostfr",
+    "mallumv"
+  ],
+  "cycle": 1,
+  "pageProviders": [
+    "animevostfr",
+    "mallumv"
+  ],
+  "pageSize": 8,
+  "privateContentRetained": false,
+  "processedCount": 2,
+  "proofAuthority": false,
+  "publicationAuthority": false,
+  "remainingCount": 0,
+  "remainingProviders": [],
+  "requestedProviders": [
+    "animevostfr",
+    "mallumv"
+  ],
+  "schemaVersion": 1,
+  "sourceNiakvioSha": "38c5bcbde51fe5b1ec183c48c33c45586b67d1d3"
+}
