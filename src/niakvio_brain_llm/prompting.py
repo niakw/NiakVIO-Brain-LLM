@@ -75,6 +75,62 @@ def compact_request(
     if "hub" in context:
         context["hub"] = _clip(context["hub"], 450 if mutation_allowed else 700)
 
+    # The checkout context is richer than what the advisor model may need.
+    # Keep an explicit bounded view; exact source remains available to compact
+    # Force and deterministic validation outside this advisor payload.
+    bounded_context: dict[str, Any] = {
+        "source_repo": _clip(context.get("source_repo"), 80),
+        "read_only": bool(context.get("read_only", True)),
+        "provider_id": _clip(context.get("provider_id"), 120),
+    }
+    scripts = context.get("registered_patch_scripts")
+    if isinstance(scripts, list):
+        bounded_context["registered_patch_scripts"] = [
+            _clip(value, 180) for value in scripts[:4]
+        ]
+    published = context.get("published_bundle")
+    if isinstance(published, dict):
+        compact_published = {
+            "filename": _clip(published.get("filename"), 180),
+            "version": _clip(published.get("version"), 80),
+            "supportedTypes": list(published.get("supportedTypes") or [])[:6],
+            "formats": list(published.get("formats") or [])[:6],
+        }
+        blocks = published.get("providerBlocks")
+        if isinstance(blocks, list):
+            compact_published["providerBlocks"] = [
+                {
+                    "id": _clip(row.get("id"), 160),
+                    "source": _clip(row.get("source"), 1100 if mutation_allowed else 320),
+                }
+                for row in blocks[:1]
+                if isinstance(row, dict)
+            ]
+        bounded_context["published_bundle"] = compact_published
+    sources = context.get("registered_patch_sources")
+    if isinstance(sources, dict):
+        source_limit = 1400 if mutation_allowed else 280
+        bounded_context["registered_patch_sources"] = {
+            _clip(path, 180): _clip(value, source_limit)
+            for path, value in list(sources.items())[:1]
+        }
+    if context.get("authored_module"):
+        bounded_context["authored_module"] = _clip(
+            context.get("authored_module"), 900 if mutation_allowed else 260
+        )
+    if context.get("override"):
+        bounded_context["override"] = _clip(context.get("override"), 600)
+    if context.get("hub"):
+        bounded_context["hub"] = _clip(context.get("hub"), 420)
+    history = context.get("advisor_experiment_history")
+    if isinstance(history, list):
+        bounded_context["advisor_experiment_history"] = [
+            _compact(row, string_limit=220)
+            for row in history[-6:]
+            if isinstance(row, dict)
+        ]
+    context = bounded_context
+
     data["provider_context"] = context
     observation_limit = 500 if high_confidence else 650
     observation_count = 5 if high_confidence else 7
@@ -162,7 +218,7 @@ def build_prompt_payload(
         experience_text_limit = 420 if high_confidence else 600
         document_text_limit = 650 if high_confidence else 900
 
-    return {
+    payload = {
         "request": compact_request(
             request,
             high_confidence=high_confidence,
@@ -185,6 +241,61 @@ def build_prompt_payload(
             "document_limit": document_limit,
         },
     }
+
+    # Leave room inside a 4096-token llama.cpp context for the system prompt,
+    # schema grammar and completion. Optional retrieval prose is dropped before
+    # current provider evidence if the bounded payload is still oversized.
+    import json
+    def encoded_size() -> int:
+        return len(json.dumps(payload, ensure_ascii=True, separators=(",", ":")))
+
+    if encoded_size() > 7600:
+        payload["retrieved_documents"] = []
+        payload["context_budget"]["document_limit"] = 0
+    if encoded_size() > 7600:
+        payload["retrieved_experiences"] = payload["retrieved_experiences"][:1]
+        payload["context_budget"]["experience_limit"] = min(
+            1, int(payload["context_budget"]["experience_limit"])
+        )
+    if encoded_size() > 7600:
+        ctx = payload["request"].get("provider_context") or {}
+        if isinstance(ctx, dict):
+            ctx.pop("registered_patch_sources", None)
+            ctx.pop("authored_module", None)
+            published = ctx.get("published_bundle")
+            if isinstance(published, dict):
+                published.pop("providerBlocks", None)
+    if encoded_size() > 7600:
+        request_payload = payload["request"]
+        request_payload["observations"] = [
+            _compact(row, string_limit=180)
+            for row in (request_payload.get("observations") or [])[:2]
+        ]
+        request_payload["census_prior"] = _compact(
+            request_payload.get("census_prior") or {}, string_limit=180
+        )
+        ctx = request_payload.get("provider_context") or {}
+        if isinstance(ctx, dict):
+            request_payload["provider_context"] = {
+                key: value
+                for key, value in ctx.items()
+                if key in {
+                    "source_repo", "read_only", "provider_id",
+                    "registered_patch_scripts", "advisor_experiment_history",
+                }
+            }
+            history = request_payload["provider_context"].get("advisor_experiment_history")
+            if isinstance(history, list):
+                request_payload["provider_context"]["advisor_experiment_history"] = history[-2:]
+        payload["causal_prior"] = _compact(payload["causal_prior"], string_limit=220)
+        payload["mutation_policy"] = _compact(payload["mutation_policy"], string_limit=220)
+    if encoded_size() > 7600:
+        # This is a programming-contract failure, not a model/runtime failure.
+        # Refuse to create an oversized request rather than let llama.cpp reject it.
+        raise ValueError("advisor prompt payload exceeded bounded context budget")
+    payload["context_budget"]["serialized_user_chars"] = encoded_size()
+    payload["context_budget"]["max_serialized_user_chars"] = 7600
+    return payload
 
 
 def _head_tail(value: Any, head: int, tail: int) -> str:

@@ -80,15 +80,17 @@ class PromptingTests(unittest.TestCase):
             {"allow_mutations": True, "allowed_scopes": ["provider_patch"]},
         )
         context = payload["request"]["provider_context"]
-        self.assertEqual(len(context["published_bundle"]["providerBlocks"]), 2)
+        # Advisor context keeps one representative Bloc; exact multi-Bloc source
+        # remains available to compact Force and deterministic validation.
+        self.assertEqual(len(context["published_bundle"]["providerBlocks"]), 1)
         self.assertLessEqual(
             max(len(v["source"]) for v in context["published_bundle"]["providerBlocks"]),
             3412,
         )
         self.assertEqual(context["published_bundle"]["filename"], "providers/demo--nuvio--abc.js")
-        self.assertEqual(len(context["registered_patch_sources"]), 2)
+        self.assertEqual(len(context["registered_patch_sources"]), 1)
         self.assertLessEqual(max(len(v) for v in context["registered_patch_sources"].values()), 2212)
-        self.assertLess(len(context["authored_module"]), 1300)
+        self.assertLess(len(context["authored_module"]), 1000)
         self.assertLess(len(context["override"]), 1000)
         self.assertLess(len(context["hub"]), 550)
         self.assertEqual(len(payload["retrieved_experiences"]), 1)
