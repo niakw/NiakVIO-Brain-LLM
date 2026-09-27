@@ -166,6 +166,37 @@ class PlannerTests(unittest.TestCase):
         self.assertIn("function confirmTarget(){return media;}", mutation["diff"])
         self.assertNotIn("-function first(){return null;}", mutation["diff"])
 
+    def test_compact_force_window_focus_resolves_repeated_local_find(self):
+        source = (
+            "function first(){return null;}\n"
+            "function helper(){return null;}\n"
+            "function confirmTarget(){return null;}\n"
+        )
+        response = json.dumps({
+            "edit": {
+                "scope": "provider_js",
+                "path": "engine_v2/providers/demo.mjs",
+                "window_id": "w1",
+                "find": "return null;",
+                "replace": "return media;",
+            },
+            "abstain_reason": "",
+        })
+        proposal = BrainPlanner(StaticBackend(response)).plan(
+            RepairRequest(
+                provider_id="demo",
+                failure_class="chain_terminal_gap",
+                status="CHAIN REACHED",
+                provider_context={"authored_module": source},
+                allowed_mutations=["provider_js"],
+            ),
+            compact_force=True,
+        )
+        mutation = proposal.mutations[0]
+        self.assertIn("function confirmTarget(){return media;}", mutation["diff"])
+        self.assertNotIn("-function first(){return null;}", mutation["diff"])
+        self.assertNotIn("-function helper(){return null;}", mutation["diff"])
+
     def test_compact_force_minimizes_partial_function_copy_before_validation(self):
         source = (
             "function resolve(url){const score=55;if(score<55)return null;return url;}\n"
