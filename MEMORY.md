@@ -74,3 +74,11 @@
 - Force now starts with a 512-token / 120-second budget and performs at most one larger bounded retry (768–896 tokens, 180–240 seconds depending on the initial timeout). Malformed/truncated output still fails closed; nothing is auto-salvaged.
 - Added safe numeric telemetry `FIELD_BRAIN_FORCE_MODEL` (provider, serialized prompt chars, elapsed seconds, outcome, max token budget) and a regression assertion keeping the synthetic dual-source Force prompt below 10k serialized characters.
 - Next validation is to regenerate the same three-family guidance against the unchanged NiakVIO SHA and require actual executable mutations before any live NiakVIO FORCE proof.
+
+
+### 2026-09-27 — Timeout-fix CI contract alignment
+
+- Brain LLM CI run `36341242374` on `b226ef96e794babce2497b5bf2d1c9655bc1dbe9` failed before any live provider proof because five source-contract assertions still required the superseded Force settings (`timeout_seconds=150`, second `1280` retry, `768/90` workflow budget and `8000/4000` prompt window).
+- The observed failures were stale test expectations, not evidence that a generated mutation, provider sandbox or playback check failed.
+- Contract tests are aligned to the new bounded CPU path: workflow `512/120`, one computed retry timeout, no `1280` second retry, existing-patch source window `2800/1200`, runtime-Bloc window `2000/1000`.
+- No NiakVIO provider run is launched until the corrected Brain CI is green and the same three-family guidance run yields actual executable Force rows.

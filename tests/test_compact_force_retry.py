@@ -56,7 +56,8 @@ class CompactForceRetryTest(unittest.TestCase):
         prompting = (ROOT / "src" / "niakvio_brain_llm" / "prompting.py").read_text(encoding="utf-8")
         self.assertIn("sanitize_exact_source(", source)
         self.assertIn("Prompting owns", source)
-        self.assertIn("_head_tail(source, 8000, 4000)", prompting)
+        self.assertIn("_head_tail(source, 2800, 1200)", prompting)
+        self.assertIn("_head_tail(runtime_source, 2000, 1000)", prompting)
 
     def test_timeout_retry_uses_compact_planner(self):
         script = (ROOT / "scripts" / "plan_batch_from_checkout.py").read_text(encoding="utf-8")
@@ -64,17 +65,19 @@ class CompactForceRetryTest(unittest.TestCase):
         self.assertIn("compact_force = args.mode == \"repair\" and not args.advisor_only", script)
         self.assertIn("orchestrator.run(request, compact_force=compact_force)", script)
         self.assertIn(".run(retry_request, compact_force=True)", script)
-        self.assertIn("timeout_seconds=150", script)
+        self.assertIn("retry_timeout = max(", script)
+        self.assertIn("min(int(args.timeout_seconds) + 90, 240)", script)
+        self.assertNotIn("timeout_seconds=150", script)
         self.assertIn("build_force_prompt_payload(", planner)
         self.assertIn('"required": ["edit", "abstain_reason"]', planner)
         self.assertIn('_compact_edit_to_mutation(', planner)
         self.assertIn("COMPACT_FORCE_SYSTEM_PROMPT", planner)
         self.assertIn("Emit at most one edit.", planner)
         workflow = (ROOT / ".github" / "workflows" / "niakvio-private-guidance.yml").read_text(encoding="utf-8")
-        self.assertIn("--max-tokens 768", workflow)
-        self.assertIn("--timeout-seconds 90", workflow)
+        self.assertIn("--max-tokens 512", workflow)
+        self.assertIn("--timeout-seconds 120", workflow)
         self.assertIn("retry_budgets = (", script)
-        self.assertIn("1280", script)
+        self.assertNotIn("1280", script)
 
 
 if __name__ == "__main__":

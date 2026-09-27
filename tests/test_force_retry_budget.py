@@ -5,13 +5,16 @@ source = (ROOT / "scripts" / "plan_batch_from_checkout.py").read_text(encoding="
 workflow = (ROOT / ".github" / "workflows" / "niakvio-private-guidance.yml").read_text(encoding="utf-8")
 
 assert "max(int(args.max_tokens), 768)" in source
-assert "1280" in source
 assert "retry_budgets = (" in source
+assert "retry_timeout = max(" in source
+assert "min(int(args.timeout_seconds) + 90, 240)" in source
+assert "1280" not in source
+assert "timeout_seconds=150" not in source
 assert '"unterminated string" in str(retry_exc).casefold()' in source
 assert '"jsondecodeerror" in type(retry_exc).__name__.casefold()' in source
 
-assert "--max-tokens 768" in workflow
-assert "--timeout-seconds 90" in workflow
+assert "--max-tokens 512" in workflow
+assert "--timeout-seconds 120" in workflow
 assert "FIELD_NIAKVIO_FORCE_MUTATIONS_READY ready=false" in workflow
 assert "raise SystemExit(f\"Force routing requested" not in workflow
 
