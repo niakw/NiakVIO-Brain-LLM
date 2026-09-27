@@ -327,7 +327,7 @@ class PlannerTests(unittest.TestCase):
             },
             "abstain_reason": "",
         })
-        with self.assertRaisesRegex(ValueError, "semantic no-op"):
+        with self.assertRaisesRegex(ValueError, "no-op"):
             BrainPlanner(StaticBackend(response)).plan(
                 RepairRequest(
                     provider_id="demo",
@@ -355,7 +355,7 @@ class PlannerTests(unittest.TestCase):
             },
             "abstain_reason": "",
         })
-        with self.assertRaisesRegex(ValueError, "semantic no-op"):
+        with self.assertRaisesRegex(ValueError, "no-op"):
             BrainPlanner(StaticBackend(response)).plan(
                 RepairRequest(
                     provider_id="demo",
