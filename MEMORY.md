@@ -204,3 +204,12 @@
 - The compiler now preserves already-globally-unique non-function snippets instead of unnecessarily minimizing them, while still minimizing ambiguous or function-prefixed model edits.
 - Generated `provider_bloc` candidates now receive a full post-application JavaScript syntax check before the mutation can leave Brain-LLM. This closes a gap where a locally plausible replacement could leave the surrounding provider runtime syntactically broken.
 - Contract tests now pass an explicit `window_id` for real compact-wire generated-Bloc edits and accept any fail-closed structural/syntax rejection reason rather than requiring the superseded pre-compiler message.
+
+
+### 2026-09-27 — FULL OK patterns are references, not a whitelist
+
+- Brain-LLM now builds a bounded implementation reference library from **current FULL OK providers** and their registered/published provider Blocs.
+- References are selected by technical overlap with the current causal family and target source. Before model exposure, URLs, hosts, route literals, provider identifiers and opaque blobs are removed.
+- Reference snippets carry no proof/publication authority and are explicitly marked `pattern_reference_only`.
+- The model contract explicitly permits four outcomes: adapt a known pattern, combine several patterns, ignore all references, or synthesize a **genuinely new provider-local mechanism/Bloc/script**. Existing code is useful prior art, never a whitelist or ceiling on repair capability.
+- New mechanisms retain the same bounded structural compiler and NiakVIO proof requirements. Novelty does not bypass syntax, ownership, no-op, sandbox, playback/identity or non-regression validation.
