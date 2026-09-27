@@ -14,6 +14,9 @@ ROOT = Path(__file__).resolve().parents[1]
 runtime_source = (
     "/* BEGIN NIAKVIO_PROVIDER */\n"
     "function resolve(){return oldResolver();}\n"
+    "/* STARTFIX:CORE.RUNTIME_COMPAT.V1 */\n"
+    "coreRuntime();\n"
+    "/* CLOSEFIX:CORE.RUNTIME_COMPAT.V1 */\n"
     "/* END NIAKVIO_PROVIDER */"
 )
 request = RepairRequest(
@@ -94,6 +97,7 @@ with tempfile.TemporaryDirectory() as tmp:
     assert ctx["registered_patch_scripts"] == ["scripts/provider_patches/existing_v1.py"], ctx
     assert ctx["runtimeMutationFilename"] == "providers/demo.js"
     assert "return oldResolver();" in ctx["runtimeMutationSource"]
+    assert "CORE.RUNTIME_COMPAT" not in ctx["runtimeMutationSource"]
 
 spec = importlib.util.spec_from_file_location(
     "publish_force", ROOT / "scripts" / "publish_niakvio_force_mutations.py"

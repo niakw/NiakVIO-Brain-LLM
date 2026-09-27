@@ -137,8 +137,8 @@ def validate_mutation(
             raise ValueError("provider_bloc mutation is a no-op")
         _reject_placeholders(find)
         _reject_placeholders(replace)
-        if any(marker in replace for marker in ("/* STARTFIX:", "/* CLOSEFIX:", "/* FIXDATA:")):
-            raise ValueError("provider_bloc replacement may not forge managed ownership markers")
+        if any(marker in find or marker in replace for marker in ("/* STARTFIX:", "/* CLOSEFIX:", "/* FIXDATA:")):
+            raise ValueError("provider_bloc may not target or forge managed ownership markers")
         before_caps = set(DANGEROUS_RUNTIME_TOKEN.findall(find))
         after_caps = set(DANGEROUS_RUNTIME_TOKEN.findall(replace))
         if after_caps - before_caps:

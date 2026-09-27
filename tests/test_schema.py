@@ -6,7 +6,7 @@ class SchemaTests(unittest.TestCase):
     def test_mutation_variants_are_scope_specific(self):
         variants = REPAIR_PROPOSAL_SCHEMA["properties"]["mutations"]["items"]["oneOf"]
         scopes = {variant["properties"]["scope"]["const"] for variant in variants}
-        self.assertEqual(scopes, {"provider_data", "provider_patch", "provider_js"})
+        self.assertEqual(scopes, {"provider_data", "provider_patch", "provider_bloc", "provider_js"})
         self.assertFalse(REPAIR_PROPOSAL_SCHEMA["additionalProperties"])
 
     def test_experiment_spec_is_abstract_and_bounded(self):

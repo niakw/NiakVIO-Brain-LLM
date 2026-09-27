@@ -78,8 +78,12 @@ def _published_provider_context(root: Path, provider_id: str) -> dict[str, Any] 
     provider_end = "/* END NIAKVIO_PROVIDER */"
     if source.count(provider_begin) == 1 and source.count(provider_end) == 1:
         begin_index = source.index(provider_begin)
-        end_index = source.index(provider_end, begin_index) + len(provider_end)
-        runtime_mutation_source = sanitize_exact_source(source[begin_index:end_index])
+        provider_end_index = source.index(provider_end, begin_index)
+        first_core = source.find("/* STARTFIX:CORE.", begin_index, provider_end_index)
+        runtime_limit = first_core if first_core >= 0 else provider_end_index
+        runtime_mutation_source = sanitize_exact_source(
+            source[begin_index:runtime_limit]
+        )
     canonical = re.escape(provider_id.upper()).replace(r"\-", "[-_]")
     pattern = re.compile(
         rf"/\* STARTFIX:(PROVIDER\.{canonical}\.[A-Z0-9_.-]+) \*/"
