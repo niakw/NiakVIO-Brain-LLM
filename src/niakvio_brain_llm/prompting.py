@@ -401,20 +401,20 @@ def build_force_prompt_payload(
     allowed_scopes = list(policy.get("allowed_scopes") or request.allowed_mutations or [])
     registered = context.get("registered_patch_sources")
     target: dict[str, Any] = {}
-    if isinstance(registered, dict) and registered:
+    if "provider_patch" in allowed_scopes and isinstance(registered, dict) and registered:
         path, source = next(iter(registered.items()))
         target = {
             "scope": "provider_patch",
             "path": str(path)[:240],
             "source_windows": _force_source_windows(source, request.failure_class),
         }
-    elif context.get("authored_module"):
+    elif "provider_js" in allowed_scopes and context.get("authored_module"):
         target = {
             "scope": "provider_js",
             "path": f"engine_v2/providers/{request.provider_id}.mjs",
             "source_windows": _force_source_windows(context.get("authored_module"), request.failure_class),
         }
-    elif context.get("override"):
+    elif "provider_data" in allowed_scopes and context.get("override"):
         target = {
             "scope": "provider_data",
             "path": "provider-overrides.json > provider_patches[provider_id]",

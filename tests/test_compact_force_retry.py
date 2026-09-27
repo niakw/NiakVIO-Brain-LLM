@@ -63,8 +63,10 @@ class CompactForceRetryTest(unittest.TestCase):
     def test_timeout_retry_uses_compact_planner(self):
         script = (ROOT / "scripts" / "plan_batch_from_checkout.py").read_text(encoding="utf-8")
         planner = (ROOT / "src" / "niakvio_brain_llm" / "planner.py").read_text(encoding="utf-8")
-        self.assertIn("compact_force = args.mode == \"repair\" and not args.advisor_only", script)
-        self.assertIn("orchestrator.run(request, compact_force=compact_force)", script)
+        self.assertIn('if args.mode == "repair" and not args.advisor_only:', script)
+        self.assertIn("_force_scope_order", script)
+        self.assertIn("scoped_request.allowed_mutations = [scope]", script)
+        self.assertIn("FIELD_BRAIN_FORCE_SCOPE_SELECTED", script)
         self.assertIn(".run(retry_request, compact_force=True)", script)
         self.assertIn("retry_timeout = max(", script)
         self.assertIn("min(int(args.timeout_seconds) + 90, 240)", script)
@@ -79,7 +81,7 @@ class CompactForceRetryTest(unittest.TestCase):
         workflow = (ROOT / ".github" / "workflows" / "niakvio-private-guidance.yml").read_text(encoding="utf-8")
         self.assertIn("--max-tokens 512", workflow)
         self.assertIn("--timeout-seconds 120", workflow)
-        self.assertIn("retry_budgets = (", script)
+        self.assertIn("retry_tokens = max(", script)
         self.assertNotIn("1280", script)
 
 

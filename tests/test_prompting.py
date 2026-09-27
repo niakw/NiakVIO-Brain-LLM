@@ -187,6 +187,22 @@ class PromptingTests(unittest.TestCase):
         self.assertEqual(payload["mutation_target"]["scope"], "provider_patch")
         self.assertEqual(payload["new_bloc_target"]["scope"], "provider_bloc")
 
+        patch_only = build_force_prompt_payload(
+            request,
+            {"target_layer": "provider", "confidence": 0.96, "strategy_prior": "proven_route_terminal_traversal_v1"},
+            {"allow_mutations": True, "allowed_scopes": ["provider_patch"]},
+        )
+        self.assertEqual(patch_only["mutation_target"]["scope"], "provider_patch")
+        self.assertEqual(patch_only["new_bloc_target"], {})
+
+        bloc_only = build_force_prompt_payload(
+            request,
+            {"target_layer": "provider", "confidence": 0.96, "strategy_prior": "proven_route_terminal_traversal_v1"},
+            {"allow_mutations": True, "allowed_scopes": ["provider_bloc"]},
+        )
+        self.assertEqual(bloc_only["mutation_target"], {})
+        self.assertEqual(bloc_only["new_bloc_target"]["scope"], "provider_bloc")
+
     def test_brain_owned_required_tests_are_hidden_from_model(self):
         payload = build_prompt_payload(
             RepairRequest(provider_id="demo", failure_class="chain_terminal_gap"),

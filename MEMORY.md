@@ -106,3 +106,16 @@
 - Window selection is generic by causal family: transport primitives for `provider_transport_gap`, route/detail/player primitives for `route_proven_gap`, and confirm/internal/terminal-media primitives for `chain_terminal_gap`. Unknown families fall back to generic resolver/fetch/search/player primitives; if no keyword exists, exact head and tail windows are used separately.
 - Qwen is explicitly forbidden to join across windows. Its `find` must fit wholly inside one exact slice and is still validated for exact uniqueness against the complete unabridged source before any mutation can be published.
 - Added regression coverage for middle-of-file chain-terminal code, exact-window semantics, total source budget, and both existing-Bloc and generated-Bloc prompt surfaces.
+
+
+### 2026-09-27 — Force target cascade and truncation guard
+
+- Three-family guidance run `36342073213` on Brain `12a5631bc28e905f297097f0e31571c3620deac4` / NiakVIO `1b79a1f9944c3ddc392cae14959cfff7935abfb8` completed, but it is **not** a repair proof.
+- All three 512-token first calls timed out at ~120s; the single 768-token retries returned in ~22–63s. Force planning yielded two non-error rows, but only one mutation survived publication. `4khdhub` was rejected as placeholder/synthetic. MalluMV produced no publishable mutation.
+- The only published candidate was AllWish and is visibly malformed: it replaces multiple helper declarations with a suffix-like fragment. It must not be treated as a valid repair merely because the guidance publisher accepted its bounded diff.
+- Root cause audit: compact Force was still presenting an existing registered Bloc and a generated-Bloc runtime surface in the same prompt. On the real representatives that kept serialized prompts around 10.9k–13.5k characters and made target selection ambiguous.
+- Force planning now uses a deterministic **target cascade**. It presents exactly one existing mutation surface first (registered Bloc, else authored module, else provider DATA). Only if that scoped attempt abstains or is rejected does it retry against `provider_bloc` when current provider-owned runtime bytes are available. At most one concrete mutation is returned per provider.
+- `build_force_prompt_payload` now respects scoped `allowed_scopes`: a provider-patch-only attempt does not include generated-Bloc bytes, and a provider-Bloc-only attempt does not include existing patch/module/DATA bytes.
+- Added a generic compact-edit guard for suffix/prefix-style truncation and silent helper-function removal. Small replacements inside a helper remain allowed when the helper signature is preserved.
+- Telemetry now records the scoped target and explicit `FIELD_BRAIN_FORCE_SCOPE_{SELECTED,ABSTAIN,REJECTED}` events.
+- No NiakVIO live FORCE is launched from run 36342073213. Regenerate the same three-family guidance with this cascade first.

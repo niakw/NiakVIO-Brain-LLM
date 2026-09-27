@@ -159,6 +159,66 @@ class PlannerTests(unittest.TestCase):
                 compact_force=True,
             )
 
+    def test_compact_force_file_edit_rejects_truncated_source_fragment(self):
+        source = (
+            'function A(v){return v;}\n'
+            'function H(v){return v;}\n'
+            'async function T(v){return fetch(v,{redirect:"follow"});}\n'
+        )
+        response = json.dumps({
+            "edit": {
+                "scope": "provider_patch",
+                "path": "scripts/provider_patches/demo_runtime_v1.py",
+                "find": source.strip(),
+                "replace": 'ollow"});',
+            },
+            "abstain_reason": "",
+        })
+        with self.assertRaisesRegex(ValueError, "truncated|helper function"):
+            BrainPlanner(StaticBackend(response)).plan(
+                RepairRequest(
+                    provider_id="demo",
+                    failure_class="provider_transport_gap",
+                    status="NO PROOF",
+                    provider_context={
+                        "registered_patch_scripts": ["scripts/provider_patches/demo_runtime_v1.py"],
+                        "registered_patch_sources": {
+                            "scripts/provider_patches/demo_runtime_v1.py": source,
+                        },
+                    },
+                    allowed_mutations=["provider_patch"],
+                ),
+                compact_force=True,
+            )
+
+    def test_compact_force_file_edit_preserves_single_helper_signature(self):
+        source = 'function T(v){return fetch(v);}\n'
+        response = json.dumps({
+            "edit": {
+                "scope": "provider_patch",
+                "path": "scripts/provider_patches/demo_runtime_v1.py",
+                "find": "function T(v){return fetch(v);}",
+                "replace": "function T(v){return fetch(v,{redirect:'follow'});}",
+            },
+            "abstain_reason": "",
+        })
+        proposal = BrainPlanner(StaticBackend(response)).plan(
+            RepairRequest(
+                provider_id="demo",
+                failure_class="provider_transport_gap",
+                status="NO PROOF",
+                provider_context={
+                    "registered_patch_scripts": ["scripts/provider_patches/demo_runtime_v1.py"],
+                    "registered_patch_sources": {
+                        "scripts/provider_patches/demo_runtime_v1.py": source,
+                    },
+                },
+                allowed_mutations=["provider_patch"],
+            ),
+            compact_force=True,
+        )
+        self.assertEqual(proposal.mutations[0]["scope"], "provider_patch")
+
     def test_compact_force_file_edit_rejects_oversized_replace(self):
         response = json.dumps({
             "edit": {

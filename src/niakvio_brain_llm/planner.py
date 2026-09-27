@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import difflib
 import json
+import re
 import time
 from typing import Any
 
@@ -47,6 +48,7 @@ For provider_data, edit is the normal {scope,operation,path,value?} mutation.
 For provider_patch/provider_js, DO NOT emit a unified diff. Emit only:
 {scope,path,find,replace}
 where find is the smallest exact UNIQUE snippet wholly contained in one mutation_target.source_windows[].source and replace is its corrected text.
+Never delete or truncate whole helper/function declarations to repair one expression or branch; preserve the enclosing function signature unless that signature itself is the proven defect.
 For a genuinely new independent runtime mechanism, provider_bloc may emit only:
 {scope:"provider_bloc",family:"snake_case_family",find,replace}
 using exact UNIQUE bytes wholly contained in one new_bloc_target.source_windows[].source. Each window is an exact current-byte slice; never join across windows. NiakVIO, not you, creates and versions the trusted Bloc file.
@@ -108,6 +110,27 @@ def _compact_edit_to_mutation(
     replace = str(edit.get("replace") or "")
     if not find or len(find) > 320 or len(replace) > 640:
         raise ValueError("compact Force find/replace is missing or oversized")
+    stripped_find = find.strip()
+    stripped_replace = replace.strip()
+    if (
+        stripped_replace
+        and len(stripped_find) >= 48
+        and len(stripped_replace) * 2 < len(stripped_find)
+        and stripped_replace in stripped_find
+    ):
+        raise ValueError("compact Force replacement looks like a truncated source fragment")
+    function_names = re.findall(
+        r"\b(?:async\s+)?function\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*\(",
+        find,
+    )
+    if function_names and any(
+        not re.search(
+            rf"\b(?:async\s+)?function\s+{re.escape(name)}\s*\(",
+            replace,
+        )
+        for name in function_names
+    ):
+        raise ValueError("compact Force replacement may not silently remove a helper function declaration")
 
     context = request.provider_context or {}
     if scope == "provider_patch":
@@ -265,7 +288,7 @@ class BrainPlanner:
             if compact_force:
                 print(
                     "FIELD_BRAIN_FORCE_MODEL "
-                    f"provider={request.provider_id} chars={len(user)} "
+                    f"provider={request.provider_id} scopes={','.join(request.allowed_mutations)} chars={len(user)} "
                     f"seconds={time.monotonic() - started:.2f} outcome=error "
                     f"error={type(exc).__name__} "
                     f"max_tokens={getattr(self.backend, 'max_tokens', 'unknown')}"
@@ -274,7 +297,7 @@ class BrainPlanner:
         if compact_force:
             print(
                 "FIELD_BRAIN_FORCE_MODEL "
-                f"provider={request.provider_id} chars={len(user)} "
+                f"provider={request.provider_id} scopes={','.join(request.allowed_mutations)} chars={len(user)} "
                 f"seconds={time.monotonic() - started:.2f} outcome=success "
                 f"max_tokens={getattr(self.backend, 'max_tokens', 'unknown')}"
             )

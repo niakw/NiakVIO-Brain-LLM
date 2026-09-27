@@ -126,6 +126,68 @@ def main() -> int:
         request.provider_context = context
         return True
 
+    def _retryable_force_error(exc: Exception) -> bool:
+        return (
+            isinstance(exc, TimeoutError)
+            or "timed out" in str(exc).casefold()
+            or "unterminated string" in str(exc).casefold()
+            or "jsondecodeerror" in type(exc).__name__.casefold()
+        )
+
+    def _force_scope_order(request) -> list[str]:
+        context = request.provider_context or {}
+        allowed = set(request.allowed_mutations or [])
+        scopes: list[str] = []
+        if (
+            "provider_patch" in allowed
+            and isinstance(context.get("registered_patch_sources"), dict)
+            and context.get("registered_patch_sources")
+        ):
+            scopes.append("provider_patch")
+        elif "provider_js" in allowed and context.get("authored_module"):
+            scopes.append("provider_js")
+        elif "provider_data" in allowed and (context.get("override") or context.get("hub")):
+            scopes.append("provider_data")
+        if (
+            "provider_bloc" in allowed
+            and context.get("runtimeMutationSource")
+            and "provider_bloc" not in scopes
+        ):
+            scopes.append("provider_bloc")
+        return scopes
+
+    def _run_force_scope(position: int, provider: str, base_request, scope: str):
+        scoped_request = copy.deepcopy(base_request)
+        scoped_request.advisor_only = False
+        scoped_request.allowed_mutations = [scope]
+        try:
+            outcome = orchestrator.run(scoped_request, compact_force=True)
+            return _row(position, 1, provider, scoped_request, outcome), None
+        except Exception as exc:
+            if not _retryable_force_error(exc):
+                return None, exc
+            retry_tokens = max(768, min(max(int(args.max_tokens), 768), 896))
+            retry_timeout = max(
+                180,
+                min(int(args.timeout_seconds) + 90, 240),
+            )
+            retry_backend = LocalOpenAICompatibleBackend(
+                base_url=args.endpoint,
+                model=args.model,
+                timeout_seconds=retry_timeout,
+                temperature=0.0,
+                max_tokens=retry_tokens,
+            )
+            retry_request = copy.deepcopy(scoped_request)
+            try:
+                retry = BrainOrchestrator(
+                    BrainPlanner(retry_backend, store, documents),
+                    store,
+                ).run(retry_request, compact_force=True)
+                return _row(position, 1, provider, retry_request, retry), None
+            except Exception as retry_exc:
+                return None, retry_exc
+
     def plan_one(position: int, census_row: dict) -> list[dict]:
         provider = str(census_row["provider"])
         request = request_from_checkout(args.niakvio_root, provider)
@@ -136,10 +198,54 @@ def main() -> int:
             else 1
         )
         planned: list[dict] = []
+
+        if args.mode == "repair" and not args.advisor_only:
+            scopes = _force_scope_order(request)
+            last_error: Exception | None = None
+            last_row: dict | None = None
+            for scope in scopes:
+                row, error = _run_force_scope(position, provider, request, scope)
+                if error is not None:
+                    last_error = error
+                    print(
+                        "FIELD_BRAIN_FORCE_SCOPE_REJECTED "
+                        f"provider={provider} scope={scope} error={type(error).__name__}",
+                        flush=True,
+                    )
+                    continue
+                if row is None:
+                    continue
+                last_row = row
+                proposal = row.get("proposal") if isinstance(row, dict) else None
+                mutations = proposal.get("mutations") if isinstance(proposal, dict) else None
+                if isinstance(mutations, list) and mutations:
+                    print(
+                        "FIELD_BRAIN_FORCE_SCOPE_SELECTED "
+                        f"provider={provider} scope={scope}",
+                        flush=True,
+                    )
+                    return [row]
+                print(
+                    "FIELD_BRAIN_FORCE_SCOPE_ABSTAIN "
+                    f"provider={provider} scope={scope}",
+                    flush=True,
+                )
+            if last_row is not None:
+                return [last_row]
+            exc = last_error or RuntimeError("no bounded Force mutation scope is available")
+            return [{
+                "position": position,
+                "hypothesis_index": 1,
+                "provider": provider,
+                "status": request.status,
+                "failure_class": request.failure_class,
+                "ok": False,
+                "error": type(exc).__name__ + ": " + str(exc),
+            }]
+
         try:
-            compact_force = args.mode == "repair" and not args.advisor_only
             for hypothesis_index in range(1, max_hypotheses + 1):
-                outcome = orchestrator.run(request, compact_force=compact_force)
+                outcome = orchestrator.run(request, compact_force=False)
                 planned.append(_row(position, hypothesis_index, provider, request, outcome))
                 if not args.advisor_only:
                     break
@@ -147,51 +253,6 @@ def main() -> int:
                     break
             return planned
         except Exception as exc:
-            retryable = (
-                isinstance(exc, TimeoutError)
-                or "timed out" in str(exc).casefold()
-                or "unterminated string" in str(exc).casefold()
-                or "jsondecodeerror" in type(exc).__name__.casefold()
-            )
-            if retryable and not args.advisor_only:
-                # Compact Force now receives a much smaller exact-source window.
-                # One bounded retry is enough: repeated long retries were turning
-                # a systemic CPU timeout into ~6.5 minutes per provider without
-                # producing a candidate. Keep the retry larger than the first
-                # generation for escaped JSON/code, but fail closed after it.
-                retry_budgets = (
-                    max(768, min(max(int(args.max_tokens), 768), 896)),
-                )
-                retry_timeout = max(
-                    180,
-                    min(int(args.timeout_seconds) + 90, 240),
-                )
-                for retry_index, retry_tokens in enumerate(retry_budgets, start=1):
-                    retry_backend = LocalOpenAICompatibleBackend(
-                        base_url=args.endpoint,
-                        model=args.model,
-                        timeout_seconds=retry_timeout,
-                        temperature=0.0,
-                        max_tokens=retry_tokens,
-                    )
-                    retry_request = request_from_checkout(args.niakvio_root, provider)
-                    retry_request.advisor_only = False
-                    try:
-                        retry = BrainOrchestrator(
-                            BrainPlanner(retry_backend, store, documents),
-                            store,
-                        ).run(retry_request, compact_force=True)
-                        return [_row(position, retry_index, provider, retry_request, retry)]
-                    except Exception as retry_exc:
-                        exc = retry_exc
-                        retryable = (
-                            isinstance(retry_exc, TimeoutError)
-                            or "timed out" in str(retry_exc).casefold()
-                            or "unterminated string" in str(retry_exc).casefold()
-                            or "jsondecodeerror" in type(retry_exc).__name__.casefold()
-                        )
-                        if not retryable:
-                            break
             planned.append({
                 "position": position,
                 "hypothesis_index": len(planned) + 1,
