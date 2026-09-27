@@ -10,8 +10,8 @@ assert "retry_timeout = max(" in source
 assert "min(int(args.timeout_seconds) + 90, 240)" in source
 assert "1280" not in source
 assert "timeout_seconds=150" not in source
-assert '"unterminated string" in str(retry_exc).casefold()' in source
-assert '"jsondecodeerror" in type(retry_exc).__name__.casefold()' in source
+assert '"unterminated string" in str(exc).casefold()' in source
+assert '"jsondecodeerror" in type(exc).__name__.casefold()' in source
 
 assert "--max-tokens 512" in workflow
 assert "--timeout-seconds 120" in workflow
