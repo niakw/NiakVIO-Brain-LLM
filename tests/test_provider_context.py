@@ -70,6 +70,56 @@ class ProviderContextTests(unittest.TestCase):
             self.assertIn("publishedRuntime", published_context["providerBlocks"][1]["source"])
             self.assertNotIn("B" * 100, published_context["providerBlocks"][0]["source"])
 
+    def test_full_ok_reference_patterns_are_sanitized_and_optional(self):
+        from niakvio_brain_llm.provider_context import build_validated_reference_patterns
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "providers").mkdir(parents=True)
+            (root / "scripts" / "provider_patches").mkdir(parents=True)
+            (root / "engine_v2" / "providers").mkdir(parents=True)
+            (root / "provider-hubs.json").write_text("{}", encoding="utf-8")
+            (root / "manifest.json").write_text(json.dumps({"scrapers": []}), encoding="utf-8")
+            (root / "scripts" / "provider_patches" / "peer_runtime_v1.py").write_text(
+                "WRAPPER = r'''\n"
+                "async function resolvePlayer(url){\n"
+                "  const res = await fetch('https://peer.example/watch/123', {headers:{Referer:'/title/123'}});\n"
+                "  const html = await res.text();\n"
+                "  const iframe = html.match(/iframe/);\n"
+                "  return iframe ? 'https://cdn.peer.example/master.m3u8' : null;\n"
+                "}\n"
+                "'''\n",
+                encoding="utf-8",
+            )
+            (root / "provider-overrides.json").write_text(json.dumps({
+                "provider_patches": {
+                    "peer": {"patch_scripts": ["scripts/provider_patches/peer_runtime_v1.py"]},
+                    "demo": {},
+                }
+            }), encoding="utf-8")
+            census = {
+                "providers": [
+                    {"provider": "peer", "status": "FULL OK"},
+                    {"provider": "demo", "status": "CHAIN REACHED"},
+                ]
+            }
+            refs = build_validated_reference_patterns(
+                root,
+                "demo",
+                "chain_terminal_gap",
+                census,
+                target_context={"runtimeMutationSource": "function resolve(){return null;}"},
+            )
+            self.assertTrue(refs)
+            self.assertEqual(refs[0]["status"], "FULL OK")
+            self.assertTrue(refs[0]["novelty_allowed"])
+            self.assertEqual(refs[0]["copy_policy"], "pattern_reference_only")
+            self.assertIn("fetch", refs[0]["technical_features"])
+            self.assertNotIn("peer.example", refs[0]["snippet"])
+            self.assertNotIn("/watch/123", refs[0]["snippet"])
+            self.assertNotIn("/title/123", refs[0]["snippet"])
+            self.assertNotIn("cdn.peer.example", refs[0]["snippet"])
+
     def test_hyphenated_provider_reads_published_bloc(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
