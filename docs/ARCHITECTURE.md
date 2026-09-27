@@ -46,13 +46,14 @@ Qwen must not solve repository-global text anchoring by itself.
 
 ~~~text
 current provider-owned source
-  -> deterministic exact source_windows with stable window_id
-  -> Qwen chooses one window_id + exact local find/replace
-  -> Brain locates that occurrence inside the selected window
+  -> deterministic exact source_windows with stable window_id + causal focus_offset
+  -> Qwen chooses one window_id + exact local semantic find/replace
+  -> Brain resolves repeated local occurrences against the causal focus
   -> Brain minimizes unchanged prefix/suffix
   -> if the minimized snippet is globally ambiguous, Brain expands only exact
-     unchanged surrounding current bytes around that occurrence
+     unchanged surrounding current bytes around the selected occurrence
   -> syntax / ownership / capability / semantic-no-op validation
+  -> bounded validation feedback (at most two materially different corrections)
   -> concrete provider-local mutation
   -> NiakVIO sandbox + proof
 ~~~
@@ -61,16 +62,24 @@ Invariants:
 
 1. A real compact-wire code edit carries a `window_id` selected from the exact
    windows in that request.
-2. `find` must occur exactly once inside the selected window. It does not need to
-   be globally unique; deterministic Brain compilation owns that problem.
-3. Global disambiguation may add only unchanged bytes from the same complete
+2. `find` must be exact current bytes inside the selected window, but it may
+   occur more than once. Qwen does **not** own textual uniqueness.
+3. Each window carries a deterministic causal `focus_offset`. When `find`
+   repeats, Brain selects the occurrence that contains the focus, otherwise the
+   nearest occurrence after it, otherwise the nearest occurrence before it. A
+   truly tied result fails closed.
+4. Global disambiguation may add only unchanged bytes from the same complete
    provider-owned source and stays inside the bounded find/replace limits.
-4. Brain minimizes copied enclosing-function context before structural validation,
+5. Brain minimizes copied enclosing-function context before structural validation,
    so a local change is judged as a local change rather than as an accidental
    partial function rewrite.
-5. If the window itself is ambiguous, the occurrence cannot be made globally
-   unique inside the budget, syntax fails, ownership is crossed or the change is
-   behaviorally neutral, Brain retries/abstains. NiakVIO never guesses.
+6. A deterministic validation rejection may feed back a safe reason code to the
+   model for at most two materially different corrections in that same scope.
+   Rejected source/mutation content is not echoed back.
+7. If causal-focus selection is still ambiguous, the occurrence cannot be made
+   globally unique inside the budget, syntax fails, ownership/capability bounds
+   are crossed or the change is behaviorally neutral after the bounded correction
+   chain, Brain abstains. NiakVIO never guesses.
 
 ## Runtime flow
 
@@ -84,7 +93,8 @@ Invariants:
    mutation scope.
 7. Call the local model only when the route requires it.
 8. Compile the model's window-local semantic edit into a concrete bounded
-   provider mutation and reject unsafe/ambiguous/no-op output.
+   provider mutation, resolving repeated local anchors by causal focus and using
+   at most two validation-feedback corrections before rejecting unsafe/no-op output.
 9. Publish sanitized guidance/mutations with exact Brain and NiakVIO SHA pins.
 10. NiakVIO imports the pinned artifact and may execute it only in its existing
     isolated current-byte sandbox.
