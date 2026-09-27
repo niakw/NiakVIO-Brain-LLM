@@ -87,6 +87,20 @@ def _reject_placeholders(value: Any) -> None:
         if any(marker in lowered for marker in PLACEHOLDER_MARKERS):
             raise ValueError("mutation contains placeholder or synthetic value")
 
+SYNTHETIC_HOST_SUFFIXES = (".example", ".invalid", ".localhost", ".local", ".test")
+SYNTHETIC_HOSTS = {"example.com", "localhost", "127.0.0.1", "::1"}
+URL_TOKEN = re.compile(r"https?://[^\s\"'<>]+", re.IGNORECASE)
+
+def _reject_synthetic_urls(value: Any) -> None:
+    for text in _string_values(value):
+        for match in URL_TOKEN.findall(text):
+            parsed = urlparse(match.rstrip("),.;]}"))
+            host = (parsed.hostname or "").casefold()
+            if not host:
+                continue
+            if host in SYNTHETIC_HOSTS or any(host.endswith(suffix) for suffix in SYNTHETIC_HOST_SUFFIXES):
+                raise ValueError("mutation contains synthetic or non-provider network endpoint")
+
 def _require_http_url(value: Any) -> None:
     if not isinstance(value, str):
         raise ValueError("URL mutation value must be a string")
@@ -121,6 +135,7 @@ def validate_mutation(
                 raise ValueError("provider_data set/append requires a value")
             value = mutation.get("value")
             _reject_placeholders(value)
+            _reject_synthetic_urls(value)
             if path in {
                 "official_hub",
                 "official_site",
@@ -146,6 +161,7 @@ def validate_mutation(
             raise ValueError("provider_bloc mutation is a no-op")
         _reject_placeholders(find)
         _reject_placeholders(replace)
+        _reject_synthetic_urls(replace)
         if any(marker in find or marker in replace for marker in ("/* STARTFIX:", "/* CLOSEFIX:", "/* FIXDATA:")):
             raise ValueError("provider_bloc may not target or forge managed ownership markers")
         before_caps = set(DANGEROUS_RUNTIME_TOKEN.findall(find))
@@ -165,6 +181,7 @@ def validate_mutation(
         if not diff or len(diff) > 24000:
             raise ValueError("missing or oversized provider_patch diff")
         _reject_placeholders(diff)
+        _reject_synthetic_urls(diff)
         if not ("--- " in diff and "+++ " in diff and "@@" in diff):
             raise ValueError("provider_patch mutation must contain a concrete unified diff")
         return
@@ -180,6 +197,7 @@ def validate_mutation(
         if not diff or len(diff) > 24000:
             raise ValueError("missing or oversized provider_js diff")
         _reject_placeholders(diff)
+        _reject_synthetic_urls(diff)
         if not ("--- " in diff and "+++ " in diff and "@@" in diff):
             raise ValueError("provider_js mutation must contain a concrete unified diff")
         return
