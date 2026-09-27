@@ -31,6 +31,35 @@ class MutationGuardTests(unittest.TestCase):
                 "value": "https://api.example",
             })
 
+    def test_provider_bloc_rejects_synthetic_network_endpoint(self):
+        with self.assertRaisesRegex(ValueError, "synthetic or non-provider network endpoint"):
+            validate_mutation("demo", {
+                "scope": "provider_bloc",
+                "operation": "upsert",
+                "family": "terminal_response_fallback",
+                "find": "const responseUrl = response.url || row.url;",
+                "replace": 'const responseUrl = response.url || row.url || "https://invalid.local/";',
+            })
+
+    def test_provider_patch_rejects_synthetic_network_endpoint(self):
+        with self.assertRaisesRegex(ValueError, "synthetic or non-provider network endpoint"):
+            validate_mutation(
+                "demo",
+                {
+                    "scope": "provider_patch",
+                    "operation": "unified_diff",
+                    "path": "scripts/provider_patches/demo_runtime_v1.py",
+                    "diff": (
+                        "--- a/scripts/provider_patches/demo_runtime_v1.py\n"
+                        "+++ b/scripts/provider_patches/demo_runtime_v1.py\n"
+                        "@@ -1 +1 @@\n"
+                        "-return response.url\n"
+                        "+return response.url || 'https://fallback.test/'\n"
+                    ),
+                },
+                allowed_patch_paths={"scripts/provider_patches/demo_runtime_v1.py"},
+            )
+
     def test_file_like_provider_data_path_rejected(self):
         with self.assertRaises(ValueError):
             validate_mutation("demo", {
