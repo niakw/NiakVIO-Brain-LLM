@@ -526,9 +526,11 @@ def build_force_prompt_payload(
         "output_contract": {
             "max_edits": 1,
             "provider_local_only": True,
-            "file_edit_format": "unique_find_replace" if target.get("scope") in {"provider_patch", "provider_js"} else "provider_data_mutation",
-            "generated_bloc_format": "family_unique_find_replace" if new_bloc_target else None,
+            "file_edit_format": "window_local_find_replace" if target.get("scope") in {"provider_patch", "provider_js"} else "provider_data_mutation",
+            "generated_bloc_format": "family_window_local_find_replace" if new_bloc_target else None,
             "find_must_be_exact_in_selected_window": bool(target.get("scope") in {"provider_patch", "provider_js"} or new_bloc_target),
+            "find_may_repeat_in_selected_window": True,
+            "brain_resolves_window_occurrence_by_causal_focus": True,
             "window_id_required_for_model_edits": bool(target.get("scope") in {"provider_patch", "provider_js"} or new_bloc_target),
             "brain_resolves_global_anchor_uniqueness": True,
             "source_windows_are_exact_current_bytes": True,
