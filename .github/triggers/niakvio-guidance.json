@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "niakvio_sha": "1b79a1f9944c3ddc392cae14959cfff7935abfb8",
-  "reason": "three-family live proof retry after bounded Qwen Force prompt and timeout fix; require executable mutations before NiakVIO FORCE",
+  "reason": "three-family live proof on corrected Force contract: bounded CPU prompt, full allowed scopes, generated Bloc wire grammar; require executable mutations",
   "requested_repair_queue": [
     "allwish",
     "4khdhub",
