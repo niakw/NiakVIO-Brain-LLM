@@ -79,7 +79,7 @@ duplicate_updated = duplicate.provider_context["runtimeMutationSource"].replace(
     duplicate_mutation["replace"],
     1,
 )
-assert duplicate_updated == "return oldResolver(); return resolveTerminalMedia();", duplicate_updated
+assert duplicate_updated == "return resolveTerminalMedia(); return oldResolver();", duplicate_updated
 
 with tempfile.TemporaryDirectory() as tmp:
     root = Path(tmp)
