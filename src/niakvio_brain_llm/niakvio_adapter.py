@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from .contracts import RepairRequest
-from .provider_context import build_provider_context
+from .provider_context import build_provider_context, build_validated_reference_patterns
 
 def _load(path: Path, default: Any) -> Any:
     try:
@@ -223,6 +223,16 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
 
     provider_context = build_provider_context(root, provider_id)
     provider_context["advisor_experiment_history"] = negative_memory
+    references = build_validated_reference_patterns(
+        root,
+        provider_id,
+        str(failure),
+        census,
+        target_context=provider_context,
+        limit=3,
+    )
+    if references:
+        provider_context["validated_reference_patterns"] = references
 
     return RepairRequest(
         provider_id=provider_id,
