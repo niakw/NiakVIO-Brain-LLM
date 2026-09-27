@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "niakvio_sha": "b570076d299d1871437d0065aec63caef768dd3e",
-  "reason": "three-family proof after causal-focus window disambiguation and two-stage bounded validation correction",
+  "reason": "three-family proof after focused validation-retry prompt context; keep initial synthesis rich, retry surgical",
   "requested_repair_queue": [
     "allwish",
     "4khdhub",
