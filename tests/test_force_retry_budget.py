@@ -18,6 +18,9 @@ assert '"function anchor is structurally incomplete", "truncated_fragment"' in s
 assert "except ValueError as validation_exc:" in source
 assert "timeout_seconds=validation_timeout" in source
 assert "timeout_seconds=transport_timeout" in source
+assert "max_validation_corrections = 2" in source
+assert "for correction_index in range(1, max_validation_corrections + 1):" in source
+assert "minimal exact window-local edit" in source
 
 assert "--max-tokens 768" in workflow
 assert "--timeout-seconds 120" in workflow
