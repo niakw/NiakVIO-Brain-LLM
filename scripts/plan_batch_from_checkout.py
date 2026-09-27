@@ -146,6 +146,7 @@ def main() -> int:
         for needle, code in (
             ("missing or oversized", "missing_or_oversized"),
             ("placeholder or synthetic", "placeholder_or_synthetic"),
+            ("synthetic or non-provider network endpoint", "placeholder_or_synthetic"),
             ("exactly once", "non_unique_anchor"),
             ("no-op", "no_op"),
             ("truncated source fragment", "truncated_fragment"),
@@ -157,6 +158,9 @@ def main() -> int:
             ("helper function declaration", "helper_declaration_removed"),
             ("forbidden runtime capability", "forbidden_capability"),
             ("remains ambiguous after causal-focus resolution", "ambiguous_window_occurrence"),
+            ("remains ambiguous across causal source windows", "ambiguous_window_occurrence"),
+            ("does not occur in any current causal source window", "window_mismatch"),
+            ("does not occur in selected source window", "window_mismatch"),
             ("outside request scope", "wrong_scope"),
             ("exact source is unavailable", "missing_source"),
         ):
@@ -238,13 +242,42 @@ def main() -> int:
         def _validation_feedback(request, exc: ValueError, correction_index: int):
             reason = _force_rejection_reason(exc)
             retry_request = copy.deepcopy(request)
+            instructions = {
+                "syntax_error": (
+                    "previous edit broke syntax; change only one complete expression "
+                    "or statement copied from the selected window, preserve surrounding "
+                    "quotes/braces/parentheses and never emit a partial function declaration"
+                ),
+                "window_mismatch": (
+                    "previous find was not present in the chosen causal window; copy the "
+                    "smallest exact current-byte find from one provided window and keep the "
+                    "same causal intent, or abstain"
+                ),
+                "ambiguous_window_occurrence": (
+                    "previous anchor remained structurally ambiguous; choose a smaller exact "
+                    "current-byte expression nearest the causal operation, or abstain"
+                ),
+                "placeholder_or_synthetic": (
+                    "never invent a URL, host, route, token, header value or placeholder; "
+                    "use only concrete current-source facts, otherwise abstain"
+                ),
+                "truncated_fragment": (
+                    "previous edit used a truncated function fragment; choose one complete "
+                    "expression or statement and preserve helper/function boundaries"
+                ),
+                "neighbor_absorption": (
+                    "previous replacement absorbed neighboring helper code; edit only the "
+                    "minimal expression or statement inside the intended helper"
+                ),
+            }
             feedback = {
                 "stage": "force_validation_feedback",
                 "reason": reason,
                 "correction_index": correction_index,
-                "instruction": (
-                    "previous edit rejected; choose a materially different "
-                    "minimal exact window-local edit in the same scope or abstain"
+                "instruction": instructions.get(
+                    reason,
+                    "previous edit rejected; choose a materially different minimal exact "
+                    "window-local edit in the same scope or abstain",
                 ),
             }
             retry_request.observations = [
