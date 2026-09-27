@@ -130,7 +130,15 @@ class PromptingTests(unittest.TestCase):
         self.assertNotIn("retrieved_documents", payload)
         self.assertNotIn("published_bundle", payload)
         self.assertEqual(payload["output_contract"]["file_edit_format"], "unique_find_replace")
-        self.assertTrue(payload["output_contract"]["find_must_be_exact_and_unique"])
+        self.assertTrue(payload["output_contract"]["find_must_be_exact_in_selected_window"])
+        self.assertTrue(payload["output_contract"]["window_id_required_for_model_edits"])
+        self.assertTrue(payload["output_contract"]["brain_resolves_global_anchor_uniqueness"])
+        self.assertEqual([row["id"] for row in windows], [f"w{i}" for i in range(1, len(windows) + 1)])
+        self.assertTrue(all(row["source"] == (
+            request.provider_context["registered_patch_sources"]["scripts/provider_patches/demo_runtime_v1.py"][
+                row["offset"]:row["end_offset"]
+            ]
+        ) for row in windows))
 
 
     def test_force_prompt_targets_family_relevant_middle_windows(self):

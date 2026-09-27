@@ -185,3 +185,14 @@
   - actual timeout/truncation: 120–150 seconds (105-second workflow budget yields 150).
 - There is still at most one retry per scope and no guard/proof weakening. The change only caps wasted CPU time before the existing scope cascade moves on.
 - Contract tests pin both timeout formulas and the 105-second workflow budget.
+
+
+### 2026-09-27 — Durable synthesis/proof boundary + structured anchor compiler
+
+- Three-family run 36350734425 completed operationally on Brain cd9c4c901f1b08266827c643113b0e4bcaac295c but published **0/3** executable Force mutations. MalluMV ended on a structurally incomplete function anchor; 4KHDHub and AllWish ended on non-unique provider_bloc anchors.
+- Durable ownership decision: these failures belong to **Brain-LLM synthesis/compiler structure**, not to provider-specific NiakVIO Repair logic. NiakVIO remains the execution/proof authority and must not accumulate heuristics that guess what a malformed LLM edit meant.
+- Compact Force source windows now carry stable request-local ids plus exact offsets. Real model wire schemas require window_id for provider_patch/provider_js/provider_bloc edits.
+- Qwen only has to select one exact source window and express a local semantic find/replace that is unique inside that window. It no longer owns repository-global uniqueness.
+- The Brain compiler resolves the selected occurrence against full current bytes, minimizes unchanged prefix/suffix copied by the model, and deterministically expands exact unchanged surrounding bytes only when global uniqueness requires it. If bounded uniqueness cannot be established, the mutation fails closed.
+- Minimization occurs before partial-function structural validation. This allows a valid local expression change to survive even if Qwen copied an enclosing function prefix, while true incomplete/neighbor-smashing edits remain rejected.
+- docs/ARCHITECTURE.md is updated from its obsolete 'future integration' description to the real pinned guidance bridge and explicitly records Brain synthesis versus NiakVIO proof ownership.

@@ -323,11 +323,17 @@ def _force_source_windows(
     find snippet wholly inside one exact slice; deterministic validation still
     checks uniqueness against the complete unabridged source.
     """
-    text = str(value or "").strip()
-    if not text:
+    text = str(value or "")
+    if not text.strip():
         return []
     if len(text) <= max_chars:
-        return [{"offset": 0, "reason": "full_source", "source": text}]
+        return [{
+            "id": "w1",
+            "offset": 0,
+            "end_offset": len(text),
+            "reason": "full_source",
+            "source": text,
+        }]
 
     lowered = text.casefold()
     keywords = _FORCE_SOURCE_KEYWORDS.get(
@@ -377,7 +383,13 @@ def _force_source_windows(
         source = text[start:end]
         if not source:
             continue
-        windows.append({"offset": start, "reason": reason, "source": source})
+        windows.append({
+            "id": f"w{len(windows) + 1}",
+            "offset": start,
+            "end_offset": end,
+            "reason": reason,
+            "source": source,
+        })
         used += len(source)
     return windows
 
@@ -460,7 +472,9 @@ def build_force_prompt_payload(
             "provider_local_only": True,
             "file_edit_format": "unique_find_replace" if target.get("scope") in {"provider_patch", "provider_js"} else "provider_data_mutation",
             "generated_bloc_format": "family_unique_find_replace" if new_bloc_target else None,
-            "find_must_be_exact_and_unique": bool(target.get("scope") in {"provider_patch", "provider_js"} or new_bloc_target),
+            "find_must_be_exact_in_selected_window": bool(target.get("scope") in {"provider_patch", "provider_js"} or new_bloc_target),
+            "window_id_required_for_model_edits": bool(target.get("scope") in {"provider_patch", "provider_js"} or new_bloc_target),
+            "brain_resolves_global_anchor_uniqueness": True,
             "source_windows_are_exact_current_bytes": True,
         },
     }

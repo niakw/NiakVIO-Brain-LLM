@@ -17,7 +17,7 @@ from .document_memory import DocumentStore
 from .mutation_guard import validate_mutations
 from .policy import build_mutation_policy
 from .priors import build_causal_prior
-from .prompting import build_force_prompt_payload, build_prompt_payload
+from .prompting import _force_source_windows, build_force_prompt_payload, build_prompt_payload
 from .retrieval import ExperienceStore
 from .schema import REPAIR_PROPOSAL_SCHEMA, compact_force_schema_for, proposal_schema_for
 from .verification_plan import recommended_tests
@@ -51,13 +51,13 @@ Do not repeat provider id, diagnosis, strategy, confidence, evidence, tests or e
 Emit at most one edit. Never invent URLs, routes, headers, tokens, cookies or placeholders.
 For provider_data, edit is the normal {scope,operation,path,value?} mutation.
 For provider_patch/provider_js, DO NOT emit a unified diff. Emit only:
-{scope,path,find,replace}
-where find is the smallest exact UNIQUE snippet wholly contained in one mutation_target.source_windows[].source and replace is its corrected text.
-Never delete or truncate whole helper/function declarations to repair one expression or branch; preserve the enclosing function signature unless that signature itself is the proven defect.
+{scope,path,window_id,find,replace}
+Choose window_id from mutation_target.source_windows[].id. find must be the smallest exact snippet that occurs exactly once INSIDE that selected window; it does not need to be globally unique. Deterministic Brain code resolves the selected occurrence against the complete current source and expands unchanged surrounding bytes only when global uniqueness requires it.
+Normally target one expression, branch, call, regex or statement inside a function. Do not copy a function declaration into find unless the complete function is intentionally being replaced.
 For a genuinely new independent runtime mechanism, provider_bloc may emit only:
-{scope:"provider_bloc",family:"<descriptive_snake_case_mechanism>",find,replace}
+{scope:"provider_bloc",family:"<descriptive_snake_case_mechanism>",window_id,find,replace}
 The family must describe the concrete mechanism (for example terminal_confirm_traversal), never copy the placeholder text from this prompt.
-Use exact UNIQUE bytes wholly contained in one new_bloc_target.source_windows[].source. Each window is an exact current-byte slice; never join across windows. NiakVIO, not you, creates and versions the trusted Bloc file.
+Choose window_id from new_bloc_target.source_windows[].id and use exact bytes from that one window only. Never join across windows. Brain, not you, resolves global uniqueness; NiakVIO, not you, creates and versions the trusted Bloc file.
 For file edits, find must be <= 320 characters. Existing-file replace must be <= 640 characters; provider_bloc replace must be <= 1200 characters.
 Prefer changing one expression, branch, call, regex or small block.
 If current_observations contains force_validation_feedback, the previous edit was rejected by deterministic validation. Do not repeat that rejected shape; produce a materially different exact edit in the same allowed scope or abstain.
@@ -184,6 +184,120 @@ def _validate_compact_updated_source(scope: str, updated: str) -> None:
         _node_check_javascript(wrapper)
 
 
+def _minimize_local_edit(find: str, replace: str) -> tuple[str, str, int]:
+    """Trim unchanged context while preserving the exact replacement semantics."""
+    if not find:
+        return find, replace, 0
+    prefix = 0
+    limit = min(len(find), len(replace))
+    while prefix < limit and find[prefix] == replace[prefix]:
+        prefix += 1
+    find_tail = find[prefix:]
+    replace_tail = replace[prefix:]
+    suffix = 0
+    suffix_limit = min(len(find_tail), len(replace_tail))
+    while (
+        suffix < suffix_limit
+        and find_tail[len(find_tail) - suffix - 1]
+        == replace_tail[len(replace_tail) - suffix - 1]
+    ):
+        suffix += 1
+    if suffix:
+        minimized_find = find_tail[:-suffix]
+        minimized_replace = replace_tail[:-suffix]
+    else:
+        minimized_find = find_tail
+        minimized_replace = replace_tail
+    # Pure insertion cannot be represented by exact find/replace. Keep the
+    # original bounded edit rather than inventing an insertion anchor.
+    if not minimized_find:
+        return find, replace, 0
+    return minimized_find, minimized_replace, prefix
+
+
+def _resolve_structured_anchor(
+    source: str,
+    failure_class: str,
+    window_id: str,
+    find: str,
+    replace: str,
+    *,
+    max_find: int,
+    max_replace: int,
+) -> tuple[str, str]:
+    """Compile a window-local semantic edit into one globally unique anchor."""
+    if not source:
+        raise ValueError("compact Force exact source is unavailable")
+    if not find:
+        raise ValueError("compact Force find snippet is missing")
+
+    absolute_start: int
+    if window_id:
+        windows = _force_source_windows(source, failure_class)
+        window = next(
+            (row for row in windows if str(row.get("id") or "") == window_id),
+            None,
+        )
+        if window is None:
+            raise ValueError("compact Force window_id is not valid for current source")
+        window_source = str(window.get("source") or "")
+        if window_source.count(find) != 1:
+            raise ValueError(
+                "compact Force find snippet must occur exactly once in selected source window"
+            )
+        local_start = window_source.index(find)
+        absolute_start = int(window.get("offset") or 0) + local_start
+        if source[absolute_start:absolute_start + len(find)] != find:
+            raise ValueError("compact Force selected source window drifted from current bytes")
+    else:
+        # Backward-compatible internal/test path. Real compact-wire schemas
+        # require window_id; without it only a globally unique snippet is safe.
+        if source.count(find) != 1:
+            raise ValueError("compact Force find snippet must occur exactly once in exact source")
+        absolute_start = source.index(find)
+
+    _reject_semantic_identity_edit(find, replace)
+    minimized_find, minimized_replace, prefix = _minimize_local_edit(find, replace)
+    target_start = absolute_start + prefix
+    target_end = target_start + len(minimized_find)
+
+    anchor_find = minimized_find
+    anchor_replace = minimized_replace
+    _reject_semantic_identity_edit(anchor_find, anchor_replace)
+
+    # If minimization made the local change globally ambiguous, deterministically
+    # restore exact unchanged bytes around the selected occurrence. The LLM does
+    # not have to solve repository-global textual uniqueness.
+    while source.count(anchor_find) != 1:
+        if len(anchor_find) >= max_find:
+            raise ValueError(
+                "compact Force selected window occurrence cannot be resolved to a globally unique anchor"
+            )
+        remaining = max_find - len(anchor_find)
+        step = min(12, max(1, remaining // 2))
+        left = min(step, target_start)
+        right = min(step, len(source) - target_end)
+        if left <= 0 and right <= 0:
+            raise ValueError(
+                "compact Force selected window occurrence cannot be resolved to a globally unique anchor"
+            )
+        new_start = target_start - left
+        new_end = target_end + right
+        prefix_text = source[new_start:target_start]
+        suffix_text = source[target_end:new_end]
+        anchor_find = prefix_text + anchor_find + suffix_text
+        anchor_replace = prefix_text + anchor_replace + suffix_text
+        target_start = new_start
+        target_end = new_end
+        if len(anchor_replace) > max_replace:
+            raise ValueError("compact Force resolved replacement exceeds bounded size")
+
+    if len(anchor_find) > max_find or len(anchor_replace) > max_replace:
+        raise ValueError("compact Force resolved find/replace is oversized")
+    _reject_partial_function_anchor(anchor_find, anchor_replace)
+    return anchor_find, anchor_replace
+
+
 def _compact_edit_to_mutation(
     request: RepairRequest,
     edit: dict[str, Any] | None,
@@ -196,6 +310,7 @@ def _compact_edit_to_mutation(
 
     if scope == "provider_bloc":
         family = str(edit.get("family") or "").strip().casefold()
+        window_id = str(edit.get("window_id") or "").strip()
         find = str(edit.get("find") or "")
         replace = str(edit.get("replace") or "")
         source = str((request.provider_context or {}).get("runtimeMutationSource") or "")
@@ -203,10 +318,15 @@ def _compact_edit_to_mutation(
             raise ValueError("compact Force provider_bloc edit is missing or oversized")
         if not source:
             raise ValueError("compact Force provider_bloc runtime source is unavailable")
-        if source.count(find) != 1:
-            raise ValueError("compact Force provider_bloc find snippet must occur exactly once in current runtime source")
-        _reject_semantic_identity_edit(find, replace)
-        _reject_partial_function_anchor(find, replace)
+        find, replace = _resolve_structured_anchor(
+            source,
+            request.failure_class,
+            window_id,
+            find,
+            replace,
+            max_find=320,
+            max_replace=1200,
+        )
         return {
             "scope": "provider_bloc",
             "operation": "upsert",
@@ -218,6 +338,7 @@ def _compact_edit_to_mutation(
     if scope not in {"provider_patch", "provider_js"}:
         raise ValueError("compact Force edit has unsupported scope")
     path = str(edit.get("path") or "")
+    window_id = str(edit.get("window_id") or "").strip()
     find = str(edit.get("find") or "")
     replace = str(edit.get("replace") or "")
     if not find or len(find) > 320 or len(replace) > 640:
@@ -231,8 +352,6 @@ def _compact_edit_to_mutation(
         and stripped_replace in stripped_find
     ):
         raise ValueError("compact Force replacement looks like a truncated source fragment")
-    _reject_partial_function_anchor(find, replace)
-
     context = request.provider_context or {}
     if scope == "provider_patch":
         sources = context.get("registered_patch_sources")
@@ -247,9 +366,15 @@ def _compact_edit_to_mutation(
 
     if not source:
         raise ValueError("compact Force exact source is unavailable")
-    if source.count(find) != 1:
-        raise ValueError("compact Force find snippet must occur exactly once in exact source")
-    _reject_semantic_identity_edit(find, replace)
+    find, replace = _resolve_structured_anchor(
+        source,
+        request.failure_class,
+        window_id,
+        find,
+        replace,
+        max_find=320,
+        max_replace=640,
+    )
 
     updated = source.replace(find, replace, 1)
     _validate_compact_updated_source(scope, updated)
@@ -284,13 +409,20 @@ def _compact_wire_schema_for(
     variants: list[dict[str, Any]] = []
     for scope in allowed:
         if scope == "provider_bloc":
+            source = str(context.get("runtimeMutationSource") or "")
+            window_ids = [
+                str(row.get("id"))
+                for row in _force_source_windows(source, request.failure_class)
+                if str(row.get("id") or "")
+            ]
             variants.append({
                 "type": "object",
                 "additionalProperties": False,
-                "required": ["scope", "family", "find", "replace"],
+                "required": ["scope", "family", "window_id", "find", "replace"],
                 "properties": {
                     "scope": {"type": "string", "enum": ["provider_bloc"]},
                     "family": {"type": "string", "maxLength": 49},
+                    "window_id": {"type": "string", "enum": window_ids or ["w1"]},
                     "find": {"type": "string", "maxLength": 320},
                     "replace": {"type": "string", "maxLength": 1200},
                 },
@@ -309,13 +441,23 @@ def _compact_wire_schema_for(
                     "type": "string",
                     "enum": [f"engine_v2/providers/{request.provider_id}.mjs"],
                 }
+            if scope == "provider_patch":
+                source = str(next(iter((context.get("registered_patch_sources") or {}).values()), ""))
+            else:
+                source = str(context.get("authored_module") or "")
+            window_ids = [
+                str(row.get("id"))
+                for row in _force_source_windows(source, request.failure_class)
+                if str(row.get("id") or "")
+            ]
             variants.append({
                 "type": "object",
                 "additionalProperties": False,
-                "required": ["scope", "path", "find", "replace"],
+                "required": ["scope", "path", "window_id", "find", "replace"],
                 "properties": {
                     "scope": {"type": "string", "enum": [scope]},
                     "path": path_schema,
+                    "window_id": {"type": "string", "enum": window_ids or ["w1"]},
                     "find": {"type": "string", "maxLength": 320},
                     "replace": {"type": "string", "maxLength": 640},
                 },
