@@ -52,12 +52,12 @@ Emit at most one edit. Never invent URLs, routes, headers, tokens, cookies or pl
 For provider_data, edit is the normal {scope,operation,path,value?} mutation.
 For provider_patch/provider_js, DO NOT emit a unified diff. Emit only:
 {scope,path,window_id,find,replace}
-Choose window_id from mutation_target.source_windows[].id. find must be the smallest exact snippet that occurs exactly once INSIDE that selected window; it does not need to be globally unique. Deterministic Brain code resolves the selected occurrence against the complete current source and expands unchanged surrounding bytes only when global uniqueness requires it.
+Choose window_id from mutation_target.source_windows[].id. find must be the smallest exact snippet from that selected window; it may repeat inside the window. Deterministic Brain code resolves repeated local occurrences against the window's causal focus and complete current source, then expands unchanged surrounding bytes only when global uniqueness requires it.
 Normally target one expression, branch, call, regex or statement inside a function. Do not copy a function declaration into find unless the complete function is intentionally being replaced.
 For a genuinely new independent runtime mechanism, provider_bloc may emit only:
 {scope:"provider_bloc",family:"<descriptive_snake_case_mechanism>",window_id,find,replace}
 The family must describe the concrete mechanism (for example terminal_confirm_traversal), never copy the placeholder text from this prompt.
-Choose window_id from new_bloc_target.source_windows[].id and use exact bytes from that one window only. Never join across windows. Brain, not you, resolves global uniqueness; NiakVIO, not you, creates and versions the trusted Bloc file.
+Choose window_id from new_bloc_target.source_windows[].id and use exact bytes from that one window only. Never join across windows. Brain, not you, resolves local occurrence selection and global uniqueness; NiakVIO, not you, creates and versions the trusted Bloc file.
 For file edits, find must be <= 320 characters. Existing-file replace must be <= 640 characters; provider_bloc replace must be <= 1200 characters.
 Prefer changing one expression, branch, call, regex or small block.
 validated_reference_patterns are OPTIONAL transferable code examples from current FULL OK providers. They have no proof authority. You may adapt one pattern, combine several patterns, ignore them completely, or synthesize a genuinely new provider-local mechanism/Bloc/script when current evidence requires it. Existing references are prior art, never a whitelist or ceiling. Never copy provider identifiers, hosts, URLs, routes, tokens or provider-specific literals from a reference.
