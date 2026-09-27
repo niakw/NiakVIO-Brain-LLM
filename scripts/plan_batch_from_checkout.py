@@ -142,6 +142,7 @@ def main() -> int:
             ("exactly once", "non_unique_anchor"),
             ("no-op", "no_op"),
             ("truncated source fragment", "truncated_fragment"),
+            ("function anchor is structurally incomplete", "truncated_fragment"),
             ("helper function declaration", "helper_declaration_removed"),
             ("forbidden runtime capability", "forbidden_capability"),
             ("outside request scope", "wrong_scope"),
@@ -177,58 +178,91 @@ def main() -> int:
         scoped_request = copy.deepcopy(base_request)
         scoped_request.advisor_only = False
         scoped_request.allowed_mutations = [scope]
-        try:
-            outcome = orchestrator.run(scoped_request, compact_force=True)
-            return _row(position, 1, provider, scoped_request, outcome), None
-        except Exception as exc:
-            is_timeout_retry = _retryable_force_error(exc)
-            is_validation_retry = isinstance(exc, ValueError)
-            if not (is_timeout_retry or is_validation_retry):
-                return None, exc
-            retry_tokens = max(768, min(max(int(args.max_tokens), 768), 896))
-            if is_validation_retry:
-                retry_timeout = max(
-                    90,
-                    min(int(args.timeout_seconds) + 15, 120),
-                )
-            else:
-                retry_timeout = max(
-                    120,
-                    min(int(args.timeout_seconds) + 45, 150),
-                )
+
+        retry_tokens = max(768, min(max(int(args.max_tokens), 768), 896))
+        validation_timeout = max(
+            90,
+            min(int(args.timeout_seconds) + 15, 120),
+        )
+        transport_timeout = max(
+            120,
+            min(int(args.timeout_seconds) + 45, 150),
+        )
+
+        def _run_retry(request, *, timeout_seconds: int):
             retry_backend = LocalOpenAICompatibleBackend(
                 base_url=args.endpoint,
                 model=args.model,
-                timeout_seconds=retry_timeout,
+                timeout_seconds=timeout_seconds,
                 temperature=0.0,
                 max_tokens=retry_tokens,
             )
-            retry_request = copy.deepcopy(scoped_request)
-            if is_validation_retry:
-                reason = _force_rejection_reason(exc)
-                feedback = {
-                    "stage": "force_validation_feedback",
-                    "reason": reason,
-                    "instruction": (
-                        "previous edit rejected; choose a materially different "
-                        "minimal exact unique edit in the same scope or abstain"
-                    ),
-                }
-                retry_request.observations = [
-                    feedback,
-                    *list(retry_request.observations or []),
-                ][:3]
-                print(
-                    "FIELD_BRAIN_FORCE_SCOPE_FEEDBACK "
-                    f"provider={provider} scope={scope} reason={reason}",
-                    flush=True,
-                )
+            return BrainOrchestrator(
+                BrainPlanner(retry_backend, store, documents),
+                store,
+            ).run(request, compact_force=True)
+
+        def _validation_feedback(request, exc: ValueError):
+            reason = _force_rejection_reason(exc)
+            retry_request = copy.deepcopy(request)
+            feedback = {
+                "stage": "force_validation_feedback",
+                "reason": reason,
+                "instruction": (
+                    "previous edit rejected; choose a materially different "
+                    "minimal exact unique edit in the same scope or abstain"
+                ),
+            }
+            retry_request.observations = [
+                feedback,
+                *list(retry_request.observations or []),
+            ][:3]
+            print(
+                "FIELD_BRAIN_FORCE_SCOPE_FEEDBACK "
+                f"provider={provider} scope={scope} reason={reason}",
+                flush=True,
+            )
+            return retry_request
+
+        try:
+            outcome = orchestrator.run(scoped_request, compact_force=True)
+            return _row(position, 1, provider, scoped_request, outcome), None
+        except ValueError as validation_exc:
+            retry_request = _validation_feedback(scoped_request, validation_exc)
             try:
-                retry = BrainOrchestrator(
-                    BrainPlanner(retry_backend, store, documents),
-                    store,
-                ).run(retry_request, compact_force=True)
+                retry = _run_retry(
+                    retry_request,
+                    timeout_seconds=validation_timeout,
+                )
                 return _row(position, 1, provider, retry_request, retry), None
+            except Exception as retry_exc:
+                return None, retry_exc
+        except Exception as exc:
+            if not _retryable_force_error(exc):
+                return None, exc
+            transport_request = copy.deepcopy(scoped_request)
+            try:
+                retry = _run_retry(
+                    transport_request,
+                    timeout_seconds=transport_timeout,
+                )
+                return _row(position, 1, provider, transport_request, retry), None
+            except ValueError as validation_exc:
+                # A transport retry can finally return parseable code that is
+                # structurally invalid. Preserve one bounded deterministic
+                # validation-feedback correction instead of dropping it.
+                retry_request = _validation_feedback(
+                    transport_request,
+                    validation_exc,
+                )
+                try:
+                    corrected = _run_retry(
+                        retry_request,
+                        timeout_seconds=validation_timeout,
+                    )
+                    return _row(position, 1, provider, retry_request, corrected), None
+                except Exception as corrected_exc:
+                    return None, corrected_exc
             except Exception as retry_exc:
                 return None, retry_exc
 
