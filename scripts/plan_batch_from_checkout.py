@@ -143,8 +143,13 @@ def main() -> int:
             ("no-op", "no_op"),
             ("truncated source fragment", "truncated_fragment"),
             ("function anchor is structurally incomplete", "truncated_fragment"),
+            ("javascript syntax validation failed", "syntax_error"),
+            ("python syntax validation failed", "syntax_error"),
+            ("duplicated javascript control tokens", "duplicated_tokens"),
+            ("may not absorb a neighboring helper", "neighbor_absorption"),
             ("helper function declaration", "helper_declaration_removed"),
             ("forbidden runtime capability", "forbidden_capability"),
+            ("remains ambiguous after causal-focus resolution", "ambiguous_window_occurrence"),
             ("outside request scope", "wrong_scope"),
             ("exact source is unavailable", "missing_source"),
         ):
@@ -188,6 +193,7 @@ def main() -> int:
             120,
             min(int(args.timeout_seconds) + 45, 150),
         )
+        max_validation_corrections = 2
 
         def _run_retry(request, *, timeout_seconds: int):
             retry_backend = LocalOpenAICompatibleBackend(
@@ -202,15 +208,16 @@ def main() -> int:
                 store,
             ).run(request, compact_force=True)
 
-        def _validation_feedback(request, exc: ValueError):
+        def _validation_feedback(request, exc: ValueError, correction_index: int):
             reason = _force_rejection_reason(exc)
             retry_request = copy.deepcopy(request)
             feedback = {
                 "stage": "force_validation_feedback",
                 "reason": reason,
+                "correction_index": correction_index,
                 "instruction": (
                     "previous edit rejected; choose a materially different "
-                    "minimal exact unique edit in the same scope or abstain"
+                    "minimal exact window-local edit in the same scope or abstain"
                 ),
             }
             retry_request.observations = [
@@ -219,24 +226,42 @@ def main() -> int:
             ][:3]
             print(
                 "FIELD_BRAIN_FORCE_SCOPE_FEEDBACK "
-                f"provider={provider} scope={scope} reason={reason}",
+                f"provider={provider} scope={scope} reason={reason} "
+                f"correction={correction_index}/{max_validation_corrections}",
                 flush=True,
             )
             return retry_request
+
+        def _run_validation_chain(request, first_exc: ValueError):
+            current_request = request
+            current_exc = first_exc
+            for correction_index in range(1, max_validation_corrections + 1):
+                retry_request = _validation_feedback(
+                    current_request,
+                    current_exc,
+                    correction_index,
+                )
+                try:
+                    corrected = _run_retry(
+                        retry_request,
+                        timeout_seconds=validation_timeout,
+                    )
+                    return _row(position, 1, provider, retry_request, corrected), None
+                except ValueError as validation_exc:
+                    current_request = retry_request
+                    current_exc = validation_exc
+                    if correction_index >= max_validation_corrections:
+                        return None, validation_exc
+                    continue
+                except Exception as retry_exc:
+                    return None, retry_exc
+            return None, current_exc
 
         try:
             outcome = orchestrator.run(scoped_request, compact_force=True)
             return _row(position, 1, provider, scoped_request, outcome), None
         except ValueError as validation_exc:
-            retry_request = _validation_feedback(scoped_request, validation_exc)
-            try:
-                retry = _run_retry(
-                    retry_request,
-                    timeout_seconds=validation_timeout,
-                )
-                return _row(position, 1, provider, retry_request, retry), None
-            except Exception as retry_exc:
-                return None, retry_exc
+            return _run_validation_chain(scoped_request, validation_exc)
         except Exception as exc:
             if not _retryable_force_error(exc):
                 return None, exc
@@ -249,20 +274,9 @@ def main() -> int:
                 return _row(position, 1, provider, transport_request, retry), None
             except ValueError as validation_exc:
                 # A transport retry can finally return parseable code that is
-                # structurally invalid. Preserve one bounded deterministic
-                # validation-feedback correction instead of dropping it.
-                retry_request = _validation_feedback(
-                    transport_request,
-                    validation_exc,
-                )
-                try:
-                    corrected = _run_retry(
-                        retry_request,
-                        timeout_seconds=validation_timeout,
-                    )
-                    return _row(position, 1, provider, retry_request, corrected), None
-                except Exception as corrected_exc:
-                    return None, corrected_exc
+                # structurally invalid. Preserve the same bounded validation
+                # correction chain instead of dropping that useful progress.
+                return _run_validation_chain(transport_request, validation_exc)
             except Exception as retry_exc:
                 return None, retry_exc
 
