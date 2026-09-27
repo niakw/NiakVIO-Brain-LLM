@@ -264,15 +264,26 @@ def _resolve_structured_anchor(
             local_start = occurrences[0]
         else:
             focus = int(window.get("focus_offset") or (len(window_source) // 2))
-            ranked = sorted(
-                (
-                    abs((position + (len(find) // 2)) - focus),
-                    position,
-                )
-                for position in occurrences
-            )
-            best_distance = ranked[0][0]
-            best = [position for distance, position in ranked if distance == best_distance]
+            def _focus_rank(position: int) -> tuple[int, int, int]:
+                end = position + len(find)
+                if position <= focus < end:
+                    relation = 0
+                    distance = 0
+                elif position >= focus:
+                    relation = 1
+                    distance = position - focus
+                else:
+                    relation = 2
+                    distance = focus - end
+                return relation, max(0, distance), position
+
+            ranked = sorted((_focus_rank(position), position) for position in occurrences)
+            best_rank = ranked[0][0][:2]
+            best = [
+                position
+                for rank, position in ranked
+                if rank[:2] == best_rank
+            ]
             if len(best) != 1:
                 raise ValueError(
                     "compact Force selected source window remains ambiguous after causal-focus resolution"
