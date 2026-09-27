@@ -173,6 +173,35 @@ class PromptingTests(unittest.TestCase):
         self.assertIn("resolveMedia", joined)
         self.assertTrue(all("...<middle-clipped>..." not in row["source"] for row in windows))
 
+    def test_force_prompt_references_are_optional_and_novelty_allowed(self):
+        request = RepairRequest(
+            provider_id="demo",
+            failure_class="chain_terminal_gap",
+            provider_context={
+                "runtimeMutationFilename": "providers/demo.js",
+                "runtimeMutationSource": "function resolve(){return null;}",
+                "validated_reference_patterns": [{
+                    "provider": "healthy",
+                    "status": "FULL OK",
+                    "source_kind": "registered_bloc:x",
+                    "technical_features": ["fetch", "iframe", "m3u8"],
+                    "snippet": "async function resolvePlayer(){return '<ROUTE>';}",
+                    "proof_authority": False,
+                    "copy_policy": "pattern_reference_only",
+                    "novelty_allowed": True,
+                }],
+            },
+        )
+        payload = build_force_prompt_payload(
+            request,
+            {"target_layer": "provider", "confidence": 0.96, "strategy_prior": "chain_terminal_extractor_v1"},
+            {"allow_mutations": True, "allowed_scopes": ["provider_bloc"]},
+        )
+        self.assertEqual(len(payload["validated_reference_patterns"]), 1)
+        self.assertTrue(payload["reference_policy"]["may_adapt_combine_or_ignore"])
+        self.assertTrue(payload["reference_policy"]["novel_provider_local_mechanisms_allowed"])
+        self.assertTrue(payload["reference_policy"]["reference_is_not_proof"])
+
     def test_force_prompt_preserves_all_allowed_mutation_scopes(self):
         request = RepairRequest(
             provider_id="demo",
