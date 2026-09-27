@@ -213,3 +213,15 @@
 - Reference snippets carry no proof/publication authority and are explicitly marked `pattern_reference_only`.
 - The model contract explicitly permits four outcomes: adapt a known pattern, combine several patterns, ignore all references, or synthesize a **genuinely new provider-local mechanism/Bloc/script**. Existing code is useful prior art, never a whitelist or ceiling on repair capability.
 - New mechanisms retain the same bounded structural compiler and NiakVIO proof requirements. Novelty does not bypass syntax, ownership, no-op, sandbox, playback/identity or non-regression validation.
+
+### 2026-09-28 — Three-family proof exposed model-owned window anchoring as the remaining compiler defect
+
+- Guidance run `36354867920` on Brain `28a485b07f210ba9552752937c27a0bf8e8f37db` completed operationally but published **0/3** executable Force mutations for `mallumv`, `4khdhub` and `allwish`.
+- The staged feedback path worked: every first invalid edit received deterministic `force_validation_feedback`. Final failures were MalluMV `forbidden_capability`, 4KHDHub `no_op`, and AllWish `non_unique_anchor`.
+- This proves the transport/retry fix was real but insufficient. The remaining common defect was architectural: Qwen still effectively owned window-local textual anchoring, so repeated snippets could defeat synthesis even though Brain already owned global uniqueness.
+- Durable correction: exact source windows now carry a deterministic causal `focus_offset`. Qwen chooses a window and local transformation; Brain resolves repeated local occurrences against that causal focus, then expands unchanged current bytes only as needed for global uniqueness.
+- The compact Force contract no longer requires model-owned uniqueness inside the selected window. A repeated exact snippet is valid input to the compiler.
+- Validation correction is now a bounded chain of at most **two** deterministic corrections per scope. This covers real sequences such as `truncated_fragment -> forbidden_capability` or `truncated_fragment -> no_op` without allowing an unbounded repair loop.
+- FULL OK references remain optional prior art. Causal-focus compilation and validation correction apply equally to adapted known patterns and genuinely novel provider-local Blocs/scripts.
+- Brain LLM CI run `36356184279` is green on `24039ff307c85cfef984110bd727e2c260b20a35`. This validates the compiler/test contract only; a fresh three-family generative proof is still required before any NiakVIO Deep execution.
+
