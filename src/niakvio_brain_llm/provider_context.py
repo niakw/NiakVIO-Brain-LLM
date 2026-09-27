@@ -7,6 +7,20 @@ from typing import Any
 
 OPAQUE = re.compile(r"[A-Za-z0-9+/]{160,}={0,2}")
 FIXDATA_COMMENT = re.compile(r"/\*\s*FIXDATA:.*?\*/", re.IGNORECASE | re.DOTALL)
+URL = re.compile(r"https?://[^\s\"'<>]+", re.IGNORECASE)
+HOST = re.compile(r"\b(?:[a-z0-9-]+\.)+[a-z]{2,}\b", re.IGNORECASE)
+ROUTE_LITERAL = re.compile(r"([\"'])/(?![/*])[^\"'\n]{1,180}\1")
+TECHNICAL_TOKENS = (
+    "fetch", "headers", "cookie", "user-agent", "referer", "origin", "redirect",
+    "timeout", "search", "detail", "episode", "watch", "player", "iframe", "embed",
+    "confirm", "internal", "resolve", "m3u8", "mp4", "playlist", "json", "regex",
+    "base64", "decrypt", "decode", "session", "token", "source",
+)
+FAMILY_REFERENCE_TOKENS = {
+    "provider_transport_gap": {"fetch", "headers", "cookie", "user-agent", "referer", "origin", "redirect", "timeout", "session"},
+    "route_proven_gap": {"search", "detail", "episode", "watch", "player", "iframe", "embed", "fetch", "resolve"},
+    "chain_terminal_gap": {"confirm", "internal", "player", "iframe", "resolve", "m3u8", "mp4", "playlist", "source"},
+}
 
 def _clip(text: str, limit: int) -> str:
     value = text.strip()
@@ -21,6 +35,126 @@ def sanitize_exact_source(text: str) -> str:
     """Sanitize public provider source without changing its structural bytes."""
     text = FIXDATA_COMMENT.sub("/* FIXDATA blob omitted */", text)
     return OPAQUE.sub("<opaque-token-omitted>", text)
+
+def _technical_features(text: str) -> set[str]:
+    lowered = str(text or "").casefold()
+    return {token for token in TECHNICAL_TOKENS if token in lowered}
+
+def _sanitize_reference_source(text: str, provider_id: str, *, limit: int = 1400) -> str:
+    """Keep transferable code shape while removing provider addressing/content."""
+    value = sanitize_source(str(text or ""), limit=9000)
+    value = URL.sub("<URL>", value)
+    value = HOST.sub("<HOST>", value)
+    value = ROUTE_LITERAL.sub(lambda m: m.group(1) + "<ROUTE>" + m.group(1), value)
+    if provider_id:
+        value = re.sub(re.escape(provider_id), "<PROVIDER>", value, flags=re.IGNORECASE)
+    value = re.sub(r"PROVIDER\.[A-Z0-9_.-]+", "PROVIDER.<REFERENCE>", value, flags=re.IGNORECASE)
+    return _clip(value, limit)
+
+def _reference_snippet(source: str, failure_class: str, provider_id: str) -> str:
+    cleaned = _sanitize_reference_source(source, provider_id, limit=5000)
+    if len(cleaned) <= 1400:
+        return cleaned
+    tokens = list(FAMILY_REFERENCE_TOKENS.get(str(failure_class or "").strip().casefold(), set()))
+    lowered = cleaned.casefold()
+    positions = [lowered.find(token) for token in tokens if lowered.find(token) >= 0]
+    center = min(positions) if positions else len(cleaned) // 2
+    start = max(0, center - 450)
+    end = min(len(cleaned), start + 1400)
+    return cleaned[start:end]
+
+def build_validated_reference_patterns(
+    root: str | Path,
+    target_provider_id: str,
+    failure_class: str,
+    census: dict[str, Any],
+    *,
+    target_context: dict[str, Any] | None = None,
+    limit: int = 3,
+) -> list[dict[str, Any]]:
+    """Return optional code references from current FULL OK providers."""
+    root = Path(root)
+    rows = census.get("providers") if isinstance(census, dict) else None
+    if not isinstance(rows, list):
+        return []
+    target_id = str(target_provider_id or "").strip().casefold()
+    target_context = target_context or build_provider_context(root, target_provider_id)
+    target_sources: list[str] = []
+    registered = target_context.get("registered_patch_sources")
+    if isinstance(registered, dict):
+        target_sources.extend(str(v) for v in registered.values())
+    runtime = target_context.get("runtimeMutationSource")
+    if runtime:
+        target_sources.append(str(runtime))
+    target_features = _technical_features("\n".join(target_sources))
+    family_features = FAMILY_REFERENCE_TOKENS.get(
+        str(failure_class or "").strip().casefold(),
+        set(),
+    )
+
+    candidates: list[tuple[float, dict[str, Any]]] = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        provider = str(row.get("provider") or "").strip()
+        if not provider or provider.casefold() == target_id:
+            continue
+        status = str(row.get("status") or "").strip().casefold().replace("_", " ")
+        if "full ok" not in status:
+            continue
+        context = build_provider_context(root, provider)
+        sources: list[tuple[str, str]] = []
+        peer_registered = context.get("registered_patch_sources")
+        if isinstance(peer_registered, dict):
+            for path, source in peer_registered.items():
+                sources.append(("registered_bloc:" + str(path), str(source)))
+        published = context.get("published_bundle")
+        if isinstance(published, dict):
+            for block in published.get("providerBlocks") or []:
+                if isinstance(block, dict) and block.get("source"):
+                    sources.append(("published_bloc:" + str(block.get("id") or ""), str(block.get("source"))))
+        if not sources and context.get("authored_module"):
+            sources.append(("authored_module", str(context.get("authored_module"))))
+        for source_kind, source in sources[:4]:
+            features = _technical_features(source)
+            if not features:
+                continue
+            target_overlap = (
+                len(features & target_features) / max(1, len(features | target_features))
+                if target_features else 0.0
+            )
+            family_overlap = (
+                len(features & family_features) / max(1, len(family_features))
+                if family_features else 0.0
+            )
+            score = (0.65 * family_overlap) + (0.35 * target_overlap)
+            if score <= 0:
+                continue
+            snippet = _reference_snippet(source, failure_class, provider)
+            if not snippet:
+                continue
+            candidates.append((score, {
+                "provider": provider,
+                "status": "FULL OK",
+                "source_kind": source_kind[:220],
+                "technical_features": sorted(features)[:16],
+                "snippet": snippet,
+                "proof_authority": False,
+                "copy_policy": "pattern_reference_only",
+                "novelty_allowed": True,
+            }))
+    candidates.sort(key=lambda item: item[0], reverse=True)
+    out: list[dict[str, Any]] = []
+    seen: set[tuple[str, str]] = set()
+    for _, row in candidates:
+        key = (str(row["provider"]), str(row["source_kind"]))
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(row)
+        if len(out) >= max(0, min(int(limit), 3)):
+            break
+    return out
 
 def _load_json(path: Path) -> Any:
     try:
