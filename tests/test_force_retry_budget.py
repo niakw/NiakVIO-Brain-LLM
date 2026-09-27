@@ -6,7 +6,8 @@ workflow = (ROOT / ".github" / "workflows" / "niakvio-private-guidance.yml").rea
 
 assert "max(int(args.max_tokens), 768)" in source
 assert "retry_tokens = max(" in source
-assert "retry_timeout = max(" in source
+assert "validation_timeout = max(" in source
+assert "transport_timeout = max(" in source
 assert "min(int(args.timeout_seconds) + 15, 120)" in source
 assert "min(int(args.timeout_seconds) + 45, 150)" in source
 assert "1280" not in source
