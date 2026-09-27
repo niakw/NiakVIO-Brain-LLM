@@ -445,6 +445,20 @@ def build_force_prompt_payload(
     context = request.provider_context or {}
 
     allowed_scopes = list(policy.get("allowed_scopes") or request.allowed_mutations or [])
+    validation_feedback = next(
+        (
+            row
+            for row in (request.observations or [])
+            if isinstance(row, dict)
+            and str(row.get("stage") or "") == "force_validation_feedback"
+        ),
+        None,
+    )
+    force_window_kwargs = (
+        {"max_chars": 3200, "max_windows": 4}
+        if validation_feedback is not None
+        else {}
+    )
     registered = context.get("registered_patch_sources")
     target: dict[str, Any] = {}
     if "provider_patch" in allowed_scopes and isinstance(registered, dict) and registered:
@@ -452,13 +466,13 @@ def build_force_prompt_payload(
         target = {
             "scope": "provider_patch",
             "path": str(path)[:240],
-            "source_windows": _force_source_windows(source, request.failure_class),
+            "source_windows": _force_source_windows(source, request.failure_class, **force_window_kwargs),
         }
     elif "provider_js" in allowed_scopes and context.get("authored_module"):
         target = {
             "scope": "provider_js",
             "path": f"engine_v2/providers/{request.provider_id}.mjs",
-            "source_windows": _force_source_windows(context.get("authored_module"), request.failure_class),
+            "source_windows": _force_source_windows(context.get("authored_module"), request.failure_class, **force_window_kwargs),
         }
     elif "provider_data" in allowed_scopes and context.get("override"):
         target = {
@@ -473,15 +487,26 @@ def build_force_prompt_payload(
         new_bloc_target = {
             "scope": "provider_bloc",
             "filename": _clip(context.get("runtimeMutationFilename"), 180),
-            "source_windows": _force_source_windows(runtime_source, request.failure_class),
+            "source_windows": _force_source_windows(runtime_source, request.failure_class, **force_window_kwargs),
         }
 
+    observation_source = (
+        [validation_feedback]
+        if validation_feedback is not None
+        else list(request.observations or [])[:3]
+    )
     observations = [
         _compact(row, string_limit=260)
-        for row in (request.observations or [])[:3]
+        for row in observation_source
+        if isinstance(row, dict)
     ]
     references = []
-    for raw in (context.get("validated_reference_patterns") or [])[:2]:
+    reference_source = (
+        []
+        if validation_feedback is not None
+        else (context.get("validated_reference_patterns") or [])[:2]
+    )
+    for raw in reference_source:
         if not isinstance(raw, dict):
             continue
         references.append({
@@ -494,7 +519,11 @@ def build_force_prompt_payload(
             "copy_policy": "pattern_reference_only",
             "novelty_allowed": True,
         })
-    census = _compact(request.census_prior or {}, string_limit=320)
+    census = (
+        {}
+        if validation_feedback is not None
+        else _compact(request.census_prior or {}, string_limit=320)
+    )
     return {
         "provider_id": request.provider_id,
         "failure_class": request.failure_class,
@@ -534,5 +563,6 @@ def build_force_prompt_payload(
             "window_id_required_for_model_edits": bool(target.get("scope") in {"provider_patch", "provider_js"} or new_bloc_target),
             "brain_resolves_global_anchor_uniqueness": True,
             "source_windows_are_exact_current_bytes": True,
+            "validation_retry_context": "focused" if validation_feedback is not None else "full",
         },
     }
