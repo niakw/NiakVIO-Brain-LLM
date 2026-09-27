@@ -58,8 +58,8 @@ class CompactForceRetryTest(unittest.TestCase):
         prompting = (ROOT / "src" / "niakvio_brain_llm" / "prompting.py").read_text(encoding="utf-8")
         self.assertIn("sanitize_exact_source(", source)
         self.assertIn("Prompting owns", source)
-        self.assertIn("_force_source_windows(source, request.failure_class)", prompting)
-        self.assertIn("_force_source_windows(runtime_source, request.failure_class)", prompting)
+        self.assertIn("_force_source_windows(source, request.failure_class, **force_window_kwargs)", prompting)
+        self.assertIn("_force_source_windows(runtime_source, request.failure_class, **force_window_kwargs)", prompting)
         self.assertIn("source_windows", prompting)
 
     def test_timeout_retry_uses_compact_planner(self):
