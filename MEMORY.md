@@ -158,3 +158,10 @@
 - Added a bounded validation-feedback retry inside each Force scope. A deterministic `ValueError` (non-unique anchor, placeholder, syntax rejection, neutral pseudo-fix, etc.) is converted to a safe reason code and prepended to current observations as `force_validation_feedback`.
 - Qwen gets one larger bounded retry in the same scope with the instruction to produce a materially different minimal exact unique edit or abstain. Rejected mutation/source text is never echoed back. Only after that correction attempt fails does the cascade move to the next scope.
 - Timeout retries remain bounded. Telemetry emits `FIELD_BRAIN_FORCE_SCOPE_FEEDBACK provider=<id> scope=<scope> reason=<code>`.
+
+
+### 2026-09-27 — Validation-feedback retry CI green
+
+- Brain LLM CI run `36347059351` is green on `0a0cd93fd70cd9aba670590992310996a5d4c1c9`.
+- The only preceding failures were test-fixture escaping; the compact Force engine, syntax/semantic guards, scope cascade and deterministic validation-feedback retry now pass the full Brain CI suite together.
+- The next three-family proof is triggered from one immutable Brain revision and Brain main must remain unchanged until guidance publication, preventing the split-brain failure previously seen in NiakVIO Learning.
