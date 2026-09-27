@@ -4,7 +4,8 @@ import unittest
 from niakvio_brain_llm.backend import StaticBackend
 from niakvio_brain_llm.contracts import RepairRequest
 from niakvio_brain_llm.document_memory import DocumentStore
-from niakvio_brain_llm.planner import BrainPlanner
+from niakvio_brain_llm.planner import BrainPlanner, _resolve_structured_anchor
+from niakvio_brain_llm.prompting import _force_source_windows
 
 class PlannerTests(unittest.TestCase):
     def test_accepts_bounded_provider_mutation(self):
@@ -165,6 +166,30 @@ class PlannerTests(unittest.TestCase):
         self.assertEqual(mutation["scope"], "provider_js")
         self.assertIn("function confirmTarget(){return media;}", mutation["diff"])
         self.assertNotIn("-function first(){return null;}", mutation["diff"])
+
+    def test_structured_anchor_relocates_exact_find_from_wrong_window(self):
+        source = (
+            "function searchTarget(){return null;}\n"
+            + "/*" + ("x" * 7000) + "*/\n"
+            + "function terminalTarget(){const media='ok';return media;}\n"
+        )
+        find = "return media;"
+        windows = _force_source_windows(source, "chain_terminal_gap")
+        wrong = next(
+            row for row in windows
+            if find not in str(row.get("source") or "")
+        )
+        resolved_find, resolved_replace = _resolve_structured_anchor(
+            source,
+            "chain_terminal_gap",
+            str(wrong["id"]),
+            find,
+            "return resolvedMedia;",
+            max_find=320,
+            max_replace=1200,
+        )
+        self.assertIn("return media;", resolved_find)
+        self.assertIn("return resolvedMedia;", resolved_replace)
 
     def test_compact_force_window_focus_resolves_repeated_local_find(self):
         source = (
