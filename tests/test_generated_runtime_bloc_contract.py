@@ -33,6 +33,7 @@ mutation = _compact_edit_to_mutation(
     {
         "scope": "provider_bloc",
         "family": "terminal_resolution",
+        "window_id": "w1",
         "find": "return oldResolver();",
         "replace": "return resolveTerminalMedia();",
     },
@@ -69,6 +70,7 @@ try:
         {
             "scope": "provider_bloc",
             "family": "terminal_resolution",
+            "window_id": "w1",
             "find": "return oldResolver();",
             "replace": "return resolveTerminalMedia();",
         },

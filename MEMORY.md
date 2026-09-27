@@ -196,3 +196,11 @@
 - The Brain compiler resolves the selected occurrence against full current bytes, minimizes unchanged prefix/suffix copied by the model, and deterministically expands exact unchanged surrounding bytes only when global uniqueness requires it. If bounded uniqueness cannot be established, the mutation fails closed.
 - Minimization occurs before partial-function structural validation. This allows a valid local expression change to survive even if Qwen copied an enclosing function prefix, while true incomplete/neighbor-smashing edits remain rejected.
 - docs/ARCHITECTURE.md is updated from its obsolete 'future integration' description to the real pinned guidance bridge and explicitly records Brain synthesis versus NiakVIO proof ownership.
+
+
+### 2026-09-27 — Structural compiler CI hardening
+
+- CI run `36352593062` proved the new window-local compiler resolves a globally non-unique local anchor and can minimize copied partial-function context before validation, but legacy tests still expected the pre-compiler rejection behavior.
+- The compiler now preserves already-globally-unique non-function snippets instead of unnecessarily minimizing them, while still minimizing ambiguous or function-prefixed model edits.
+- Generated `provider_bloc` candidates now receive a full post-application JavaScript syntax check before the mutation can leave Brain-LLM. This closes a gap where a locally plausible replacement could leave the surrounding provider runtime syntactically broken.
+- Contract tests now pass an explicit `window_id` for real compact-wire generated-Bloc edits and accept any fail-closed structural/syntax rejection reason rather than requiring the superseded pre-compiler message.

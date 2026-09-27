@@ -257,7 +257,11 @@ def _resolve_structured_anchor(
         absolute_start = source.index(find)
 
     _reject_semantic_identity_edit(find, replace)
-    minimized_find, minimized_replace, prefix = _minimize_local_edit(find, replace)
+    must_minimize = source.count(find) != 1 or bool(_function_names(find))
+    if must_minimize:
+        minimized_find, minimized_replace, prefix = _minimize_local_edit(find, replace)
+    else:
+        minimized_find, minimized_replace, prefix = find, replace, 0
     target_start = absolute_start + prefix
     target_end = target_start + len(minimized_find)
 
@@ -327,6 +331,8 @@ def _compact_edit_to_mutation(
             max_find=320,
             max_replace=1200,
         )
+        updated = source.replace(find, replace, 1)
+        _node_check_javascript(updated)
         return {
             "scope": "provider_bloc",
             "operation": "upsert",

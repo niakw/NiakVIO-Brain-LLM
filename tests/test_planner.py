@@ -263,7 +263,7 @@ class PlannerTests(unittest.TestCase):
             },
             "abstain_reason": "",
         })
-        with self.assertRaisesRegex(ValueError, "structurally incomplete"):
+        with self.assertRaisesRegex(ValueError, "syntax validation|structurally incomplete"):
             BrainPlanner(StaticBackend(response)).plan(
                 RepairRequest(
                     provider_id="demo",
@@ -292,7 +292,7 @@ class PlannerTests(unittest.TestCase):
             },
             "abstain_reason": "",
         })
-        with self.assertRaisesRegex(ValueError, "neighboring helper|duplicated"):
+        with self.assertRaisesRegex(ValueError, "neighboring helper|duplicated|structurally incomplete|syntax validation"):
             BrainPlanner(StaticBackend(response)).plan(
                 RepairRequest(
                     provider_id="demo",
@@ -328,7 +328,7 @@ class PlannerTests(unittest.TestCase):
             },
             "abstain_reason": "",
         })
-        with self.assertRaisesRegex(ValueError, "boolean-neutral"):
+        with self.assertRaisesRegex(ValueError, "no-op|boolean-neutral"):
             BrainPlanner(StaticBackend(response)).plan(
                 RepairRequest(
                     provider_id="demo",
