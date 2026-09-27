@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "niakvio_sha": "1b79a1f9944c3ddc392cae14959cfff7935abfb8",
-  "reason": "three-family live proof after offline 14-provider readiness, now with provider_bloc accepted by the final guidance sanitizer",
+  "reason": "three-family live proof retry after bounded Qwen Force prompt and timeout fix; require executable mutations before NiakVIO FORCE",
   "requested_repair_queue": [
     "allwish",
     "4khdhub",
