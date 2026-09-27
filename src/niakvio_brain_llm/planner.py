@@ -60,8 +60,9 @@ The family must describe the concrete mechanism (for example terminal_confirm_tr
 Choose window_id from new_bloc_target.source_windows[].id and use exact bytes from that one window only. Never join across windows. Brain, not you, resolves global uniqueness; NiakVIO, not you, creates and versions the trusted Bloc file.
 For file edits, find must be <= 320 characters. Existing-file replace must be <= 640 characters; provider_bloc replace must be <= 1200 characters.
 Prefer changing one expression, branch, call, regex or small block.
+validated_reference_patterns are OPTIONAL transferable code examples from current FULL OK providers. They have no proof authority. You may adapt one pattern, combine several patterns, ignore them completely, or synthesize a genuinely new provider-local mechanism/Bloc/script when current evidence requires it. Existing references are prior art, never a whitelist or ceiling. Never copy provider identifiers, hosts, URLs, routes, tokens or provider-specific literals from a reference.
 If current_observations contains force_validation_feedback, the previous edit was rejected by deterministic validation. Do not repeat that rejected shape; produce a materially different exact edit in the same allowed scope or abstain.
-If the correction cannot fit these bounds or the exact unique edit is not safely derivable, return edit:null.
+If the correction cannot fit these bounds or the exact edit is not safely derivable, return edit:null.
 Return JSON only."""
 
 def _extract_json(text: str) -> dict[str, Any]:
