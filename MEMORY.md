@@ -174,3 +174,14 @@
 - Compact Force now rejects obvious boolean identity edits (`|| false`, `|| 0`, `&& true`, `&& 1`) when normalizing them makes find/replace equivalent. This applies to existing provider_patch/provider_js edits and generated provider_bloc edits.
 - Added regression tests for both existing-Bloc and generated-Bloc semantic no-ops.
 - Separate evidence from NiakVIO run `36345982243` requalified `vostfree` as FULL OK via residential replay with one raw stream, one playable stream, one verified stream and `identitySafe=true`; that overlay reduced the effective repair queue from 14 to 13, although the failed MalluMV Force prevented canonical census persistence.
+
+
+### 2026-09-27 — Force retry latency cap after three-family wall-time audit
+
+- The validation-feedback design was correct but its wall-time ceiling was still excessive: workflow Force used a 150-second first call and the retry helper could grant up to 240 seconds **per scope**. A provider failing both existing-Bloc and generated-Bloc validation could therefore monopolize more than ten minutes even before any NiakVIO Deep proof.
+- Prior corrected three-family runs showed successful compact generations commonly returning in roughly 47–63 seconds. The first Force budget is reduced to 105 seconds.
+- Retry timeouts now distinguish failure type:
+  - deterministic validation rejection: 90–120 seconds (105-second workflow budget yields 120),
+  - actual timeout/truncation: 120–150 seconds (105-second workflow budget yields 150).
+- There is still at most one retry per scope and no guard/proof weakening. The change only caps wasted CPU time before the existing scope cascade moves on.
+- Contract tests pin both timeout formulas and the 105-second workflow budget.

@@ -71,7 +71,8 @@ class CompactForceRetryTest(unittest.TestCase):
         self.assertIn("FIELD_BRAIN_FORCE_SCOPE_SELECTED", script)
         self.assertIn(".run(retry_request, compact_force=True)", script)
         self.assertIn("retry_timeout = max(", script)
-        self.assertIn("min(int(args.timeout_seconds) + 90, 240)", script)
+        self.assertIn("min(int(args.timeout_seconds) + 15, 120)", script)
+        self.assertIn("min(int(args.timeout_seconds) + 45, 150)", script)
         self.assertNotIn("timeout_seconds=150", script)
         self.assertIn("build_force_prompt_payload(", planner)
         self.assertIn('"required": ["edit", "abstain_reason"]', planner)
@@ -81,7 +82,7 @@ class CompactForceRetryTest(unittest.TestCase):
         self.assertIn("Emit at most one edit.", planner)
         workflow = (ROOT / ".github" / "workflows" / "niakvio-private-guidance.yml").read_text(encoding="utf-8")
         self.assertIn("--max-tokens 512", workflow)
-        self.assertIn("--timeout-seconds 150", workflow)
+        self.assertIn("--timeout-seconds 105", workflow)
         self.assertIn("retry_tokens = max(", script)
         self.assertNotIn("1280", script)
 

@@ -186,10 +186,16 @@ def main() -> int:
             if not (is_timeout_retry or is_validation_retry):
                 return None, exc
             retry_tokens = max(768, min(max(int(args.max_tokens), 768), 896))
-            retry_timeout = max(
-                180,
-                min(int(args.timeout_seconds) + 90, 240),
-            )
+            if is_validation_retry:
+                retry_timeout = max(
+                    90,
+                    min(int(args.timeout_seconds) + 15, 120),
+                )
+            else:
+                retry_timeout = max(
+                    120,
+                    min(int(args.timeout_seconds) + 45, 150),
+                )
             retry_backend = LocalOpenAICompatibleBackend(
                 base_url=args.endpoint,
                 model=args.model,
