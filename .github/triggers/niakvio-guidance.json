@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "166d1d5fe9ca6b80d1935867d72db5866a1ebfa8",
-  "reason": "three-family proof after semantic no-op guard; require non-neutral executable mutations for transport, route-terminal, chain-terminal",
+  "niakvio_sha": "6b9d7bac5d2eadc6ff699c637418bf846481cbf4",
+  "reason": "three-family proof with bounded Qwen wall time, validation feedback, semantic no-op guards and exact target coverage",
   "requested_repair_queue": [
     "allwish",
     "4khdhub",
