@@ -319,29 +319,54 @@ def _force_source_windows(
 ) -> list[dict[str, Any]]:
     """Return exact current-byte slices around family-relevant runtime code.
 
-    Windows never contain synthetic clipping markers. The model must choose a
-    find snippet wholly inside one exact slice; deterministic validation still
-    checks uniqueness against the complete unabridged source.
+    Windows never contain synthetic clipping markers. Each window carries a
+    deterministic focus offset for the causal keyword that selected it. The
+    model only has to choose a window and exact local bytes; deterministic Brain
+    code may disambiguate repeated local snippets against this focus and the
+    complete unabridged source.
     """
     text = str(value or "")
     if not text.strip():
         return []
-    if len(text) <= max_chars:
-        return [{
-            "id": "w1",
-            "offset": 0,
-            "end_offset": len(text),
-            "reason": "full_source",
-            "source": text,
-        }]
 
     lowered = text.casefold()
     keywords = _FORCE_SOURCE_KEYWORDS.get(
         str(failure_class or "").strip().casefold(),
         ("resolve", "fetch(", "search", "player", "embed", "source"),
     )
-    intervals: list[tuple[int, int, str]] = []
     minimum_code_offset = min(1000, max(0, len(text) // 8))
+
+    def _focus_position() -> tuple[int, str]:
+        for keyword in keywords:
+            positions: list[int] = []
+            cursor = 0
+            while len(positions) < 12:
+                position = lowered.find(keyword.casefold(), cursor)
+                if position < 0:
+                    break
+                positions.append(position)
+                cursor = position + max(1, len(keyword))
+            if not positions:
+                continue
+            chosen = next(
+                (candidate for candidate in positions if candidate >= minimum_code_offset),
+                positions[-1],
+            )
+            return chosen, keyword
+        return min(len(text) // 2, max(0, len(text) - 1)), "fallback_center"
+
+    if len(text) <= max_chars:
+        focus, reason = _focus_position()
+        return [{
+            "id": "w1",
+            "offset": 0,
+            "end_offset": len(text),
+            "reason": reason if reason != "fallback_center" else "full_source",
+            "focus_offset": focus,
+            "source": text,
+        }]
+
+    intervals: list[tuple[int, int, str, int]] = []
     for keyword in keywords:
         positions: list[int] = []
         cursor = 0
@@ -359,9 +384,12 @@ def _force_source_windows(
         )
         start = max(0, position - 380)
         end = min(len(text), position + len(keyword) + 620)
-        if any(start < existing_end and end > existing_start for existing_start, existing_end, _ in intervals):
+        if any(
+            start < existing_end and end > existing_start
+            for existing_start, existing_end, _, _ in intervals
+        ):
             continue
-        intervals.append((start, end, keyword))
+        intervals.append((start, end, keyword, position))
         if len(intervals) >= max_windows:
             break
 
@@ -369,13 +397,18 @@ def _force_source_windows(
         head = min(2000, max_chars // 2)
         tail = min(2000, max_chars - head)
         intervals = [
-            (0, head, "fallback_head"),
-            (max(0, len(text) - tail), len(text), "fallback_tail"),
+            (0, head, "fallback_head", min(head // 2, max(0, head - 1))),
+            (
+                max(0, len(text) - tail),
+                len(text),
+                "fallback_tail",
+                max(0, len(text) - max(1, tail // 2)),
+            ),
         ]
 
     windows: list[dict[str, Any]] = []
     used = 0
-    for start, end, reason in intervals:
+    for start, end, reason, focus in intervals:
         remaining = max_chars - used
         if remaining <= 0:
             break
@@ -383,16 +416,17 @@ def _force_source_windows(
         source = text[start:end]
         if not source:
             continue
+        local_focus = max(0, min(len(source) - 1, focus - start))
         windows.append({
             "id": f"w{len(windows) + 1}",
             "offset": start,
             "end_offset": end,
             "reason": reason,
+            "focus_offset": local_focus,
             "source": source,
         })
         used += len(source)
     return windows
-
 
 def build_force_prompt_payload(
     request: RepairRequest,
