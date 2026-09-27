@@ -364,7 +364,7 @@ jobs:
                   "FIELD_NIAKVIO_FORCE_MUTATIONS_READY ready=true "
                   f"requested={force_targets} providers={int(force.get('providerCount') or 0)}"
               )
-          allowed_scopes={"provider_data","provider_patch","provider_js"}
+          allowed_scopes={"provider_data","provider_patch","provider_bloc","provider_js"}
           for row in force.get("rows") or []:
               assert row.get("targetLayer")=="provider"
               assert re.fullmatch(r"[0-9a-f]{64}",str(row.get("mutationFingerprint") or ""))

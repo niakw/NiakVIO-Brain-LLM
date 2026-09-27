@@ -56,3 +56,10 @@
 - Brain LLM CI run 36335904761 executed 124 unit tests: the new generated-runtime-Bloc contract itself passed; the only failure was the pre-existing schema test still asserting the former three-scope set. The contract test is updated to include `provider_bloc`.
 - Tightened `runtimeMutationSource` to stop before the first `CORE.*` STARTFIX inside the Provider envelope. A generated provider Bloc therefore cannot anchor on Core-owned bytes.
 - Generated Bloc guards now reject ownership markers in both `find` and `replace`, preventing the model from selecting or forging STARTFIX/CLOSEFIX/FIXDATA metadata.
+
+
+### 2026-09-27 — Guidance sanitizer aligned with generated Bloc scope
+
+- The three-family live-proof guidance run exposed a stale workflow-local whitelist: the public Force contract now supports `provider_bloc`, but `niakvio-private-guidance.yml` still allowed only provider_data/provider_patch/provider_js during final artifact sanitation.
+- Added `provider_bloc` to that final fail-closed whitelist. This does not weaken mutation validation: schema, mutation guard, current-byte context fingerprint and NiakVIO sandbox validation still apply before publication/acceptance.
+- Run 36338401169 started from the preceding workflow SHA and therefore does not contain this workflow correction; its output is inspected before any NiakVIO FORCE trigger.
