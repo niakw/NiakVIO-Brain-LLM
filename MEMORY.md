@@ -119,3 +119,14 @@
 - Added a generic compact-edit guard for suffix/prefix-style truncation and silent helper-function removal. Small replacements inside a helper remain allowed when the helper signature is preserved.
 - Telemetry now records the scoped target and explicit `FIELD_BRAIN_FORCE_SCOPE_{SELECTED,ABSTAIN,REJECTED}` events.
 - No NiakVIO live FORCE is launched from run 36342073213. Regenerate the same three-family guidance with this cascade first.
+
+
+### 2026-09-27 — Scoped cascade run result and scope-specific wire grammar
+
+- Scoped three-family guidance run `36343881731` (Brain `60684885471dcef279708ca0d843dafce5c49d8c`, NiakVIO `1b79a1f9944c3ddc392cae14959cfff7935abfb8`) completed with **0 executable Force mutations**. No NiakVIO live FORCE was launched.
+- The target cascade itself worked: MalluMV patch abstained then tried `provider_bloc`; 4KHDHub patch was rejected then tried `provider_bloc`; AllWish patch abstained then tried `provider_bloc`.
+- Prompt sizes fell from the previous ~10.9k–13.5k chars to 6.5k–9.4k chars. AllWish no longer timed out on either scoped request. MalluMV/4KHDHub still crossed the 120-second initial timeout, but their retries returned only ~9–21 seconds later, showing the 120-second cutoff was causing duplicate requests near completion.
+- 4KHDHub's final generated-Bloc rejection was `compact Force provider_bloc edit is missing or oversized`. The generic compact wire grammar only required `scope`, so Qwen was not grammatically required to emit `family/find/replace`.
+- Compact Force now uses a **scope-specific minimal JSON schema**. Provider patch/module edits require `scope+path+find+replace`; generated Blocs require `scope+family+find+replace`; provider DATA requires `scope+operation+path`. Path is constrained to the exact visible target when available.
+- Safe rejection telemetry now emits a bounded reason code (missing/oversized, placeholder, non-unique anchor, no-op, truncated fragment, helper removal, forbidden capability, wrong scope, missing source) without exposing source/private prompt text.
+- Initial Force timeout is raised from 120s to 150s while keeping the same 512-token cap; this is intended to avoid the redundant retry observed just 9–21 seconds after the former cutoff. Retry remains bounded/fail-closed.

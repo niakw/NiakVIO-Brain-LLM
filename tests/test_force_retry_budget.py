@@ -14,7 +14,7 @@ assert '"unterminated string" in str(exc).casefold()' in source
 assert '"jsondecodeerror" in type(exc).__name__.casefold()' in source
 
 assert "--max-tokens 512" in workflow
-assert "--timeout-seconds 120" in workflow
+assert "--timeout-seconds 150" in workflow
 assert "FIELD_NIAKVIO_FORCE_MUTATIONS_READY ready=false" in workflow
 assert "raise SystemExit(f\"Force routing requested" not in workflow
 

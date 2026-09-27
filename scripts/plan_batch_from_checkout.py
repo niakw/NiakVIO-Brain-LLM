@@ -134,6 +134,23 @@ def main() -> int:
             or "jsondecodeerror" in type(exc).__name__.casefold()
         )
 
+    def _force_rejection_reason(exc: Exception) -> str:
+        message = str(exc).casefold()
+        for needle, code in (
+            ("missing or oversized", "missing_or_oversized"),
+            ("placeholder or synthetic", "placeholder_or_synthetic"),
+            ("exactly once", "non_unique_anchor"),
+            ("no-op", "no_op"),
+            ("truncated source fragment", "truncated_fragment"),
+            ("helper function declaration", "helper_declaration_removed"),
+            ("forbidden runtime capability", "forbidden_capability"),
+            ("outside request scope", "wrong_scope"),
+            ("exact source is unavailable", "missing_source"),
+        ):
+            if needle in message:
+                return code
+        return type(exc).__name__.casefold()
+
     def _force_scope_order(request) -> list[str]:
         context = request.provider_context or {}
         allowed = set(request.allowed_mutations or [])
@@ -209,7 +226,8 @@ def main() -> int:
                     last_error = error
                     print(
                         "FIELD_BRAIN_FORCE_SCOPE_REJECTED "
-                        f"provider={provider} scope={scope} error={type(error).__name__}",
+                        f"provider={provider} scope={scope} error={type(error).__name__} "
+                        f"reason={_force_rejection_reason(error)}",
                         flush=True,
                     )
                     continue

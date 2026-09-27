@@ -43,7 +43,7 @@ assert "-np 1" in wf
 assert "--workers 1" in wf
 assert "--advisor-only" in wf
 assert "--max-tokens 512" in wf
-assert "--timeout-seconds 120" in wf
+assert "--timeout-seconds 150" in wf
 assert wf.index("-np 1") < wf.index("--workers 1")
 
 print("bounded concurrent private-guidance batch contract passed")

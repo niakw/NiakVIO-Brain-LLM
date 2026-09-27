@@ -1,6 +1,8 @@
 from pathlib import Path
 import unittest
 
+from niakvio_brain_llm.contracts import RepairRequest
+from niakvio_brain_llm.planner import _compact_wire_schema_for
 from niakvio_brain_llm.schema import compact_force_schema_for
 
 
@@ -73,16 +75,63 @@ class CompactForceRetryTest(unittest.TestCase):
         self.assertNotIn("timeout_seconds=150", script)
         self.assertIn("build_force_prompt_payload(", planner)
         self.assertIn('"required": ["edit", "abstain_reason"]', planner)
-        self.assertIn('"required": ["scope"]', planner)
-        self.assertNotIn('"required": ["scope", "path"]', planner)
+        self.assertIn("_compact_wire_schema_for(request, mutation_policy)", planner)
         self.assertIn('_compact_edit_to_mutation(', planner)
         self.assertIn("COMPACT_FORCE_SYSTEM_PROMPT", planner)
         self.assertIn("Emit at most one edit.", planner)
         workflow = (ROOT / ".github" / "workflows" / "niakvio-private-guidance.yml").read_text(encoding="utf-8")
         self.assertIn("--max-tokens 512", workflow)
-        self.assertIn("--timeout-seconds 120", workflow)
+        self.assertIn("--timeout-seconds 150", workflow)
         self.assertIn("retry_tokens = max(", script)
         self.assertNotIn("1280", script)
+
+
+    def test_compact_wire_schema_requires_scope_specific_fields(self):
+        patch_request = RepairRequest(
+            provider_id="demo",
+            failure_class="route_proven_gap",
+            provider_context={
+                "registered_patch_sources": {
+                    "scripts/provider_patches/demo_runtime_v1.py": "return old;",
+                },
+            },
+            allowed_mutations=["provider_patch"],
+        )
+        patch_schema = _compact_wire_schema_for(
+            patch_request,
+            {"allowed_scopes": ["provider_patch"]},
+        )
+        patch_variant = patch_schema["properties"]["edit"]["anyOf"][0]
+        self.assertEqual(
+            set(patch_variant["required"]),
+            {"scope", "path", "find", "replace"},
+        )
+        self.assertEqual(
+            patch_variant["properties"]["path"]["enum"],
+            ["scripts/provider_patches/demo_runtime_v1.py"],
+        )
+
+        bloc_request = RepairRequest(
+            provider_id="demo",
+            failure_class="chain_terminal_gap",
+            provider_context={"runtimeMutationSource": "function resolve(){}"},
+            allowed_mutations=["provider_bloc"],
+        )
+        bloc_schema = _compact_wire_schema_for(
+            bloc_request,
+            {"allowed_scopes": ["provider_bloc"]},
+        )
+        bloc_variant = bloc_schema["properties"]["edit"]["anyOf"][0]
+        self.assertEqual(
+            set(bloc_variant["required"]),
+            {"scope", "family", "find", "replace"},
+        )
+        self.assertEqual(
+            bloc_variant["properties"]["scope"]["enum"],
+            ["provider_bloc"],
+        )
+        self.assertNotIn("path", bloc_variant["properties"])
+
 
 
 if __name__ == "__main__":

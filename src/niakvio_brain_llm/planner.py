@@ -170,6 +170,78 @@ def _compact_edit_to_mutation(
         "diff": diff,
     }
 
+def _compact_wire_schema_for(
+    request: RepairRequest,
+    mutation_policy: dict[str, Any],
+) -> dict[str, Any]:
+    allowed = [
+        str(scope)
+        for scope in mutation_policy.get("allowed_scopes") or []
+        if str(scope) in {"provider_data", "provider_patch", "provider_bloc", "provider_js"}
+    ]
+    context = request.provider_context or {}
+    variants: list[dict[str, Any]] = []
+    for scope in allowed:
+        if scope == "provider_bloc":
+            variants.append({
+                "type": "object",
+                "additionalProperties": False,
+                "required": ["scope", "family", "find", "replace"],
+                "properties": {
+                    "scope": {"type": "string", "enum": ["provider_bloc"]},
+                    "family": {"type": "string", "maxLength": 49},
+                    "find": {"type": "string", "maxLength": 320},
+                    "replace": {"type": "string", "maxLength": 1200},
+                },
+            })
+            continue
+        if scope in {"provider_patch", "provider_js"}:
+            if scope == "provider_patch":
+                sources = context.get("registered_patch_sources")
+                paths = [str(path) for path in (sources or {}).keys()] if isinstance(sources, dict) else []
+                path_schema: dict[str, Any] = {
+                    "type": "string",
+                    "enum": paths[:1],
+                } if paths else {"type": "string", "maxLength": 240}
+            else:
+                path_schema = {
+                    "type": "string",
+                    "enum": [f"engine_v2/providers/{request.provider_id}.mjs"],
+                }
+            variants.append({
+                "type": "object",
+                "additionalProperties": False,
+                "required": ["scope", "path", "find", "replace"],
+                "properties": {
+                    "scope": {"type": "string", "enum": [scope]},
+                    "path": path_schema,
+                    "find": {"type": "string", "maxLength": 320},
+                    "replace": {"type": "string", "maxLength": 640},
+                },
+            })
+            continue
+        variants.append({
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["scope", "operation", "path"],
+            "properties": {
+                "scope": {"type": "string", "enum": ["provider_data"]},
+                "operation": {"type": "string", "enum": ["set", "delete", "append"]},
+                "path": {"type": "string", "maxLength": 240},
+                "value": {},
+            },
+        })
+    return {
+        "type": "object",
+        "additionalProperties": False,
+        "required": ["edit", "abstain_reason"],
+        "properties": {
+            "edit": {"anyOf": [*variants, {"type": "null"}]},
+            "abstain_reason": {"type": "string", "maxLength": 180},
+        },
+    }
+
+
 class BrainPlanner:
     def __init__(
         self,
@@ -228,44 +300,11 @@ class BrainPlanner:
                 ensure_ascii=True,
                 allow_nan=False,
             )
-            # llama.cpp JSON-Schema grammar for the complete mutation DSL is
-            # substantially more expensive than the 3B generation itself on a
-            # GitHub CPU runner. Keep only a minimal JSON-object wire grammar;
-            # the full compact schema and all mutation guards are enforced
-            # locally by BrainPlanner immediately after parsing.
-            schema = {
-                "type": "object",
-                "additionalProperties": False,
-                "required": ["edit", "abstain_reason"],
-                "properties": {
-                    "edit": {
-                        "anyOf": [
-                            {
-                                "type": "object",
-                                "additionalProperties": False,
-                                "required": ["scope"],
-                                "properties": {
-                                    "scope": {
-                                        "type": "string",
-                                        "enum": ["provider_data", "provider_patch", "provider_bloc", "provider_js"],
-                                    },
-                                    "operation": {
-                                        "type": "string",
-                                        "enum": ["set", "delete", "append", "upsert"],
-                                    },
-                                    "path": {"type": "string", "maxLength": 240},
-                                    "family": {"type": "string", "maxLength": 49},
-                                    "value": {},
-                                    "find": {"type": "string", "maxLength": 320},
-                                    "replace": {"type": "string", "maxLength": 1200},
-                                },
-                            },
-                            {"type": "null"},
-                        ]
-                    },
-                    "abstain_reason": {"type": "string", "maxLength": 180},
-                },
-            }
+            # Keep the grammar small, but make it scope-specific. The scoped
+            # Force cascade normally exposes exactly one mutation family, so
+            # llama.cpp can enforce the fields that family actually needs
+            # without paying for the complete production proposal schema.
+            schema = _compact_wire_schema_for(request, mutation_policy)
         else:
             schema = (
                 proposal_schema_for(
