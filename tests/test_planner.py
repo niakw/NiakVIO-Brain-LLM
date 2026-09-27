@@ -191,6 +191,32 @@ class PlannerTests(unittest.TestCase):
                 compact_force=True,
             )
 
+    def test_compact_force_provider_bloc_rejects_partial_function_anchor(self):
+        source = "function resolve(url) { const x = normalize(url); return x; }\n"
+        response = json.dumps({
+            "edit": {
+                "scope": "provider_bloc",
+                "family": "terminal_resolution",
+                "find": "function resolve(url) { const x = normalize(url);",
+                "replace": "function resolve(url) { return normalize(url); }",
+            },
+            "abstain_reason": "",
+        })
+        with self.assertRaisesRegex(ValueError, "structurally incomplete"):
+            BrainPlanner(StaticBackend(response)).plan(
+                RepairRequest(
+                    provider_id="demo",
+                    failure_class="chain_terminal_gap",
+                    status="CHAIN REACHED",
+                    provider_context={
+                        "runtimeMutationFilename": "providers/demo.js",
+                        "runtimeMutationSource": source,
+                    },
+                    allowed_mutations=["provider_bloc"],
+                ),
+                compact_force=True,
+            )
+
     def test_compact_force_file_edit_preserves_single_helper_signature(self):
         source = 'function T(v){return fetch(v);}\n'
         response = json.dumps({

@@ -3,6 +3,17 @@ import unittest
 from niakvio_brain_llm.mutation_guard import validate_mutation
 
 class MutationGuardTests(unittest.TestCase):
+    def test_generated_bloc_rejects_contract_placeholder_family(self):
+        mutation = {
+            "scope": "provider_bloc",
+            "operation": "upsert",
+            "family": "snake_case_family",
+            "find": "return oldResolver();",
+            "replace": "return resolveTerminalMedia();",
+        }
+        with self.assertRaisesRegex(ValueError, "contract placeholder"):
+            validate_mutation("demo", mutation)
+
     def test_provider_data_set_allowed(self):
         validate_mutation("demo", {
             "scope": "provider_data",

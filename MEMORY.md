@@ -130,3 +130,12 @@
 - Compact Force now uses a **scope-specific minimal JSON schema**. Provider patch/module edits require `scope+path+find+replace`; generated Blocs require `scope+family+find+replace`; provider DATA requires `scope+operation+path`. Path is constrained to the exact visible target when available.
 - Safe rejection telemetry now emits a bounded reason code (missing/oversized, placeholder, non-unique anchor, no-op, truncated fragment, helper removal, forbidden capability, wrong scope, missing source) without exposing source/private prompt text.
 - Initial Force timeout is raised from 120s to 150s while keeping the same 512-token cap; this is intended to avoid the redundant retry observed just 9–21 seconds after the former cutoff. Retry remains bounded/fail-closed.
+
+
+### 2026-09-27 — Reject placeholder Bloc families and partial function anchors
+
+- Cascade guidance run `36344970225` / Brain `08c51930c44a5eecc8262089d0792e6e14debdd4` is green operationally but still **not provider proof**. It produced one publishable row, for MalluMV.
+- The MalluMV row is rejected by inspection before NiakVIO FORCE: it copied the literal contract placeholder `snake_case_family` as the generated Bloc family and used a `find` that starts a JavaScript function but ends before the function body closes. Applying that prefix replacement could leave the old function tail behind and corrupt runtime source.
+- `provider_bloc` now rejects reserved/example family names such as `snake_case_family`; the Force prompt explicitly requires a descriptive concrete mechanism family.
+- Compact Force now rejects any provider_patch/provider_js/provider_bloc anchor that begins a function declaration but does not contain a structurally complete function block. Whole-helper replacement remains allowed when the complete helper is anchored and its signature is preserved.
+- Added planner and mutation-guard regression tests. No NiakVIO live FORCE is launched from the malformed MalluMV candidate.

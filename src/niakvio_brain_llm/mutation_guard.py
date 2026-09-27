@@ -9,6 +9,13 @@ JS_OPERATIONS = {"unified_diff"}
 PATCH_OPERATIONS = {"unified_diff"}
 BLOC_OPERATIONS = {"upsert"}
 BLOC_FAMILY = re.compile(r"^[a-z][a-z0-9_]{2,48}$")
+BLOC_RESERVED_FAMILIES = {
+    "snake_case_family",
+    "descriptive_snake_case_mechanism",
+    "example_family",
+    "runtime_fix",
+    "provider_fix",
+}
 DANGEROUS_RUNTIME_TOKEN = re.compile(
     r"(?i)(?:\beval\s*\(|\bFunction\s*\(|\bprocess\.|\brequire\s*\(|"
     r"\bchild_process\b|\bDeno\.|\bBun\.|\bimport\s*\()"
@@ -131,6 +138,8 @@ def validate_mutation(
         replace = str(mutation.get("replace") or "")
         if not BLOC_FAMILY.fullmatch(family):
             raise ValueError("provider_bloc family must be a bounded snake_case identifier")
+        if family in BLOC_RESERVED_FAMILIES:
+            raise ValueError("provider_bloc family must be descriptive, not a contract placeholder")
         if not find or len(find) > 320 or not replace or len(replace) > 1200:
             raise ValueError("provider_bloc find/replace is missing or oversized")
         if find == replace:

@@ -50,8 +50,9 @@ For provider_patch/provider_js, DO NOT emit a unified diff. Emit only:
 where find is the smallest exact UNIQUE snippet wholly contained in one mutation_target.source_windows[].source and replace is its corrected text.
 Never delete or truncate whole helper/function declarations to repair one expression or branch; preserve the enclosing function signature unless that signature itself is the proven defect.
 For a genuinely new independent runtime mechanism, provider_bloc may emit only:
-{scope:"provider_bloc",family:"snake_case_family",find,replace}
-using exact UNIQUE bytes wholly contained in one new_bloc_target.source_windows[].source. Each window is an exact current-byte slice; never join across windows. NiakVIO, not you, creates and versions the trusted Bloc file.
+{scope:"provider_bloc",family:"<descriptive_snake_case_mechanism>",find,replace}
+The family must describe the concrete mechanism (for example terminal_confirm_traversal), never copy the placeholder text from this prompt.
+Use exact UNIQUE bytes wholly contained in one new_bloc_target.source_windows[].source. Each window is an exact current-byte slice; never join across windows. NiakVIO, not you, creates and versions the trusted Bloc file.
 For file edits, find must be <= 320 characters. Existing-file replace must be <= 640 characters; provider_bloc replace must be <= 1200 characters.
 Prefer changing one expression, branch, call, regex or small block.
 If the correction cannot fit these bounds or the exact unique edit is not safely derivable, return edit:null.
@@ -70,6 +71,27 @@ def _extract_json(text: str) -> dict[str, Any]:
     if not isinstance(parsed, dict):
         raise ValueError("model response must be a JSON object")
     return parsed
+
+
+def _reject_partial_function_anchor(find: str, replace: str) -> None:
+    """Reject prefix/suffix edits that start a function but do not cover its block."""
+    names = re.findall(
+        r"\b(?:async\s+)?function\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*\(",
+        find,
+    )
+    if not names:
+        return
+    # Compact Force may replace an entire helper, but it must anchor a complete
+    # function body. Replacing only a prefix leaves the old tail behind and can
+    # create syntactically valid-looking but semantically corrupted source.
+    if find.count("{") > find.count("}"):
+        raise ValueError("compact Force function anchor is structurally incomplete")
+    for name in names:
+        if not re.search(
+            rf"\b(?:async\s+)?function\s+{re.escape(name)}\s*\(",
+            replace,
+        ):
+            raise ValueError("compact Force replacement may not silently remove a helper function declaration")
 
 
 def _compact_edit_to_mutation(
@@ -95,6 +117,7 @@ def _compact_edit_to_mutation(
             raise ValueError("compact Force provider_bloc find snippet must occur exactly once in current runtime source")
         if find == replace:
             raise ValueError("compact Force provider_bloc edit is a no-op")
+        _reject_partial_function_anchor(find, replace)
         return {
             "scope": "provider_bloc",
             "operation": "upsert",
@@ -119,18 +142,7 @@ def _compact_edit_to_mutation(
         and stripped_replace in stripped_find
     ):
         raise ValueError("compact Force replacement looks like a truncated source fragment")
-    function_names = re.findall(
-        r"\b(?:async\s+)?function\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*\(",
-        find,
-    )
-    if function_names and any(
-        not re.search(
-            rf"\b(?:async\s+)?function\s+{re.escape(name)}\s*\(",
-            replace,
-        )
-        for name in function_names
-    ):
-        raise ValueError("compact Force replacement may not silently remove a helper function declaration")
+    _reject_partial_function_anchor(find, replace)
 
     context = request.provider_context or {}
     if scope == "provider_patch":
