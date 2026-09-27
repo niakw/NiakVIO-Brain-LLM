@@ -300,8 +300,8 @@ jobs:
             --endpoint http://127.0.0.1:8080 \
             --model qwen2.5-coder-3b \
             --workers 1 \
-            --max-tokens 512 \
-            --timeout-seconds 105 \
+            --max-tokens 768 \
+            --timeout-seconds 120 \
             --output private-force-batch.jsonl
           python brain/scripts/plan_batch_from_checkout.py \
             --niakvio-root niakvio \
