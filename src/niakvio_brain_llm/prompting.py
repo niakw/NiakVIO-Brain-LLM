@@ -298,11 +298,88 @@ def build_prompt_payload(
     return payload
 
 
-def _head_tail(value: Any, head: int, tail: int) -> str:
+_FORCE_SOURCE_KEYWORDS: dict[str, tuple[str, ...]] = {
+    "provider_transport_gap": (
+        "fetch(", "headers", "user-agent", "referer", "cookie", "origin", "request", "timeout",
+    ),
+    "route_proven_gap": (
+        "resolve", "detail", "player", "embed", "episode", "watch", "search", "route", "fetch(",
+    ),
+    "chain_terminal_gap": (
+        "confirm", "internal", "resolve", "m3u8", "iframe", "terminal", "crawl", "source",
+    ),
+}
+
+def _force_source_windows(
+    value: Any,
+    failure_class: str,
+    *,
+    max_chars: int = 4000,
+    max_windows: int = 4,
+) -> list[dict[str, Any]]:
+    """Return exact current-byte slices around family-relevant runtime code.
+
+    Windows never contain synthetic clipping markers. The model must choose a
+    find snippet wholly inside one exact slice; deterministic validation still
+    checks uniqueness against the complete unabridged source.
+    """
     text = str(value or "").strip()
-    if len(text) <= head + tail + 40:
-        return text
-    return text[:head] + "\n...<middle-clipped>...\n" + text[-tail:]
+    if not text:
+        return []
+    if len(text) <= max_chars:
+        return [{"offset": 0, "reason": "full_source", "source": text}]
+
+    lowered = text.casefold()
+    keywords = _FORCE_SOURCE_KEYWORDS.get(
+        str(failure_class or "").strip().casefold(),
+        ("resolve", "fetch(", "search", "player", "embed", "source"),
+    )
+    intervals: list[tuple[int, int, str]] = []
+    minimum_code_offset = min(1000, max(0, len(text) // 8))
+    for keyword in keywords:
+        positions: list[int] = []
+        cursor = 0
+        while len(positions) < 12:
+            position = lowered.find(keyword.casefold(), cursor)
+            if position < 0:
+                break
+            positions.append(position)
+            cursor = position + max(1, len(keyword))
+        if not positions:
+            continue
+        position = next(
+            (candidate for candidate in positions if candidate >= minimum_code_offset),
+            positions[-1],
+        )
+        start = max(0, position - 380)
+        end = min(len(text), position + len(keyword) + 620)
+        if any(start < existing_end and end > existing_start for existing_start, existing_end, _ in intervals):
+            continue
+        intervals.append((start, end, keyword))
+        if len(intervals) >= max_windows:
+            break
+
+    if not intervals:
+        head = min(2000, max_chars // 2)
+        tail = min(2000, max_chars - head)
+        intervals = [
+            (0, head, "fallback_head"),
+            (max(0, len(text) - tail), len(text), "fallback_tail"),
+        ]
+
+    windows: list[dict[str, Any]] = []
+    used = 0
+    for start, end, reason in intervals:
+        remaining = max_chars - used
+        if remaining <= 0:
+            break
+        end = min(end, start + remaining)
+        source = text[start:end]
+        if not source:
+            continue
+        windows.append({"offset": start, "reason": reason, "source": source})
+        used += len(source)
+    return windows
 
 
 def build_force_prompt_payload(
@@ -329,13 +406,13 @@ def build_force_prompt_payload(
         target = {
             "scope": "provider_patch",
             "path": str(path)[:240],
-            "source": _head_tail(source, 2800, 1200),
+            "source_windows": _force_source_windows(source, request.failure_class),
         }
     elif context.get("authored_module"):
         target = {
             "scope": "provider_js",
             "path": f"engine_v2/providers/{request.provider_id}.mjs",
-            "source": _head_tail(context.get("authored_module"), 2800, 1200),
+            "source_windows": _force_source_windows(context.get("authored_module"), request.failure_class),
         }
     elif context.get("override"):
         target = {
@@ -350,7 +427,7 @@ def build_force_prompt_payload(
         new_bloc_target = {
             "scope": "provider_bloc",
             "filename": _clip(context.get("runtimeMutationFilename"), 180),
-            "source": _head_tail(runtime_source, 2000, 1000),
+            "source_windows": _force_source_windows(runtime_source, request.failure_class),
         }
 
     observations = [
@@ -384,5 +461,6 @@ def build_force_prompt_payload(
             "file_edit_format": "unique_find_replace" if target.get("scope") in {"provider_patch", "provider_js"} else "provider_data_mutation",
             "generated_bloc_format": "family_unique_find_replace" if new_bloc_target else None,
             "find_must_be_exact_and_unique": bool(target.get("scope") in {"provider_patch", "provider_js"} or new_bloc_target),
+            "source_windows_are_exact_current_bytes": True,
         },
     }

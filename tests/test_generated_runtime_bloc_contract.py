@@ -148,9 +148,13 @@ budget_payload = build_force_prompt_payload(
 )
 encoded_budget = json.dumps(budget_payload, ensure_ascii=True, allow_nan=False)
 assert len(encoded_budget) < 10000, len(encoded_budget)
-assert "PATCH_HEAD" in budget_payload["mutation_target"]["source"]
-assert "PATCH_TAIL" in budget_payload["mutation_target"]["source"]
-assert "RUNTIME_HEAD" in budget_payload["new_bloc_target"]["source"]
-assert "RUNTIME_TAIL" in budget_payload["new_bloc_target"]["source"]
+patch_windows = budget_payload["mutation_target"]["source_windows"]
+runtime_windows = budget_payload["new_bloc_target"]["source_windows"]
+assert sum(len(row["source"]) for row in patch_windows) <= 4000
+assert sum(len(row["source"]) for row in runtime_windows) <= 4000
+assert "PATCH_HEAD" in "\n".join(row["source"] for row in patch_windows)
+assert "PATCH_TAIL" in "\n".join(row["source"] for row in patch_windows)
+assert "RUNTIME_HEAD" in "\n".join(row["source"] for row in runtime_windows)
+assert "RUNTIME_TAIL" in "\n".join(row["source"] for row in runtime_windows)
 
 print("generated runtime Bloc contract passed")

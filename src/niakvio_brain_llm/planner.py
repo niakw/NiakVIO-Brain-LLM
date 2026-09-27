@@ -46,10 +46,10 @@ Emit at most one edit. Never invent URLs, routes, headers, tokens, cookies or pl
 For provider_data, edit is the normal {scope,operation,path,value?} mutation.
 For provider_patch/provider_js, DO NOT emit a unified diff. Emit only:
 {scope,path,find,replace}
-where find is the smallest exact UNIQUE snippet from mutation_target.source and replace is its corrected text.
+where find is the smallest exact UNIQUE snippet wholly contained in one mutation_target.source_windows[].source and replace is its corrected text.
 For a genuinely new independent runtime mechanism, provider_bloc may emit only:
 {scope:"provider_bloc",family:"snake_case_family",find,replace}
-using exact UNIQUE bytes from new_bloc_target.source. NiakVIO, not you, creates and versions the trusted Bloc file.
+using exact UNIQUE bytes wholly contained in one new_bloc_target.source_windows[].source. Each window is an exact current-byte slice; never join across windows. NiakVIO, not you, creates and versions the trusted Bloc file.
 For file edits, find must be <= 320 characters. Existing-file replace must be <= 640 characters; provider_bloc replace must be <= 1200 characters.
 Prefer changing one expression, branch, call, regex or small block.
 If the correction cannot fit these bounds or the exact unique edit is not safely derivable, return edit:null.

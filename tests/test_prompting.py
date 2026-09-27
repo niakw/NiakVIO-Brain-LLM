@@ -119,9 +119,12 @@ class PromptingTests(unittest.TestCase):
         )
         self.assertEqual(payload["mutation_target"]["scope"], "provider_patch")
         self.assertEqual(payload["mutation_target"]["path"], "scripts/provider_patches/demo_runtime_v1.py")
-        self.assertLessEqual(len(payload["mutation_target"]["source"]), 4050)
-        self.assertIn("HEAD", payload["mutation_target"]["source"])
-        self.assertIn("TAIL", payload["mutation_target"]["source"])
+        windows = payload["mutation_target"]["source_windows"]
+        self.assertLessEqual(sum(len(row["source"]) for row in windows), 4000)
+        joined = "\n".join(row["source"] for row in windows)
+        self.assertIn("HEAD", joined)
+        self.assertIn("TAIL", joined)
+        self.assertTrue(payload["output_contract"]["source_windows_are_exact_current_bytes"])
         self.assertEqual(len(payload["current_observations"]), 3)
         self.assertNotIn("retrieved_experiences", payload)
         self.assertNotIn("retrieved_documents", payload)
@@ -129,6 +132,38 @@ class PromptingTests(unittest.TestCase):
         self.assertEqual(payload["output_contract"]["file_edit_format"], "unique_find_replace")
         self.assertTrue(payload["output_contract"]["find_must_be_exact_and_unique"])
 
+
+    def test_force_prompt_targets_family_relevant_middle_windows(self):
+        source = (
+            "H" * 5000
+            + "\nfunction confirmLink(){ return '/confirm/' + id; }\n"
+            + "I" * 2200
+            + "\nfunction internalLink(){ return '/internal/' + id; }\n"
+            + "J" * 2200
+            + "\nfunction resolveMedia(){ return url.includes('.m3u8') ? url : null; }\n"
+            + "T" * 5000
+        )
+        request = RepairRequest(
+            provider_id="demo",
+            failure_class="chain_terminal_gap",
+            provider_context={
+                "registered_patch_sources": {
+                    "scripts/provider_patches/demo_runtime_v1.py": source,
+                },
+            },
+        )
+        payload = build_force_prompt_payload(
+            request,
+            {"target_layer": "provider", "confidence": 0.96, "strategy_prior": "chain_terminal_extractor_v1"},
+            {"allow_mutations": True, "allowed_scopes": ["provider_patch"]},
+        )
+        windows = payload["mutation_target"]["source_windows"]
+        joined = "\n".join(row["source"] for row in windows)
+        self.assertLessEqual(sum(len(row["source"]) for row in windows), 4000)
+        self.assertIn("confirmLink", joined)
+        self.assertIn("internalLink", joined)
+        self.assertIn("resolveMedia", joined)
+        self.assertTrue(all("...<middle-clipped>..." not in row["source"] for row in windows))
 
     def test_force_prompt_preserves_all_allowed_mutation_scopes(self):
         request = RepairRequest(

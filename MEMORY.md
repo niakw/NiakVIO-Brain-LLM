@@ -97,3 +97,12 @@
 - Audit found the compact Force response grammar required `scope + path` for every non-null edit even though the public `provider_bloc` contract intentionally has no repository path and only carries `family + find + replace`.
 - The wire grammar now requires only `scope`; scope-specific completeness remains fail-closed in `_compact_edit_to_mutation` and the mutation guards. Existing file edits still require a registered path at local validation time, while generated Blocs no longer receive a contradictory grammar requirement.
 - Added regression coverage preventing `scope,path` from becoming a universal compact-wire requirement again.
+
+
+### 2026-09-27 — Family-targeted exact Force source windows
+
+- Audit of the three representative existing runtime Blocs found the naive head/tail budget hid the likely causal code on all three: AllWish relevant filter/watch/resolve logic sits mainly in the middle of an ~8.6k source; 4KHDHub detail/HubCloud/resolve logic spans the middle of ~11.9k; MalluMV confirm/internal/m3u8/resolve logic spans roughly 6.8k–14k of ~15.8k.
+- Compact Force no longer concatenates a synthetic `...<middle-clipped>...` marker into an apparent source string. It now emits up to four **exact current-byte source windows** totaling at most 4k characters.
+- Window selection is generic by causal family: transport primitives for `provider_transport_gap`, route/detail/player primitives for `route_proven_gap`, and confirm/internal/terminal-media primitives for `chain_terminal_gap`. Unknown families fall back to generic resolver/fetch/search/player primitives; if no keyword exists, exact head and tail windows are used separately.
+- Qwen is explicitly forbidden to join across windows. Its `find` must fit wholly inside one exact slice and is still validated for exact uniqueness against the complete unabridged source before any mutation can be published.
+- Added regression coverage for middle-of-file chain-terminal code, exact-window semantics, total source budget, and both existing-Bloc and generated-Bloc prompt surfaces.
