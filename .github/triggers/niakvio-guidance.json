@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "niakvio_sha": "b570076d299d1871437d0065aec63caef768dd3e",
-  "reason": "three-family proof after structural anchor compiler plus optional FULL OK reference library with novel Bloc/script synthesis allowed",
+  "reason": "three-family proof after staged timeout-to-validation feedback fix and 768-token primary budget",
   "requested_repair_queue": [
     "allwish",
     "4khdhub",
