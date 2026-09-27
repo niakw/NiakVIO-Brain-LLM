@@ -1,21 +1,10 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "accaa36c2e049a55db51210f783b352794903b2d",
-  "reason": "regenerate the exact current 14-provider FORCE mutation cohort after exact-Bloc source validation, clipped-diff rejection, candidate isolation and canonical sanitizer migration fixes",
+  "niakvio_sha": "1b79a1f9944c3ddc392cae14959cfff7935abfb8",
+  "reason": "three-family live proof after offline 14-provider readiness: provider transport, route-to-terminal and chain-to-terminal with bounded generated runtime Bloc support",
   "requested_repair_queue": [
-    "4khdhub",
-    "allanime",
     "allwish",
-    "anime-ultime",
-    "animesalt",
-    "animesultra",
-    "animevost-fr",
-    "animevostfr",
-    "flemmix",
-    "mallumv",
-    "moviebox",
-    "moviesmod",
-    "vidfast",
-    "yflix"
+    "4khdhub",
+    "mallumv"
   ]
 }
