@@ -226,7 +226,13 @@ def _resolve_structured_anchor(
     max_find: int,
     max_replace: int,
 ) -> tuple[str, str]:
-    """Compile a window-local semantic edit into one globally unique anchor."""
+    """Compile a window-local semantic edit into one globally unique anchor.
+
+    The model is not responsible for textual uniqueness inside the chosen
+    causal window. If the same exact snippet appears several times there, Brain
+    deterministically selects the occurrence closest to the window's causal
+    focus. A tie remains ambiguous and fails closed.
+    """
     if not source:
         raise ValueError("compact Force exact source is unavailable")
     if not find:
@@ -242,11 +248,36 @@ def _resolve_structured_anchor(
         if window is None:
             raise ValueError("compact Force window_id is not valid for current source")
         window_source = str(window.get("source") or "")
-        if window_source.count(find) != 1:
+        occurrences: list[int] = []
+        cursor = 0
+        while True:
+            local = window_source.find(find, cursor)
+            if local < 0:
+                break
+            occurrences.append(local)
+            cursor = local + max(1, len(find))
+        if not occurrences:
             raise ValueError(
-                "compact Force find snippet must occur exactly once in selected source window"
+                "compact Force find snippet does not occur in selected source window"
             )
-        local_start = window_source.index(find)
+        if len(occurrences) == 1:
+            local_start = occurrences[0]
+        else:
+            focus = int(window.get("focus_offset") or (len(window_source) // 2))
+            ranked = sorted(
+                (
+                    abs((position + (len(find) // 2)) - focus),
+                    position,
+                )
+                for position in occurrences
+            )
+            best_distance = ranked[0][0]
+            best = [position for distance, position in ranked if distance == best_distance]
+            if len(best) != 1:
+                raise ValueError(
+                    "compact Force selected source window remains ambiguous after causal-focus resolution"
+                )
+            local_start = best[0]
         absolute_start = int(window.get("offset") or 0) + local_start
         if source[absolute_start:absolute_start + len(find)] != find:
             raise ValueError("compact Force selected source window drifted from current bytes")
@@ -272,7 +303,7 @@ def _resolve_structured_anchor(
 
     # If minimization made the local change globally ambiguous, deterministically
     # restore exact unchanged bytes around the selected occurrence. The LLM does
-    # not have to solve repository-global textual uniqueness.
+    # not have to solve repository-global or window-local textual uniqueness.
     while source.count(anchor_find) != 1:
         if len(anchor_find) >= max_find:
             raise ValueError(
@@ -301,7 +332,6 @@ def _resolve_structured_anchor(
         raise ValueError("compact Force resolved find/replace is oversized")
     _reject_partial_function_anchor(anchor_find, anchor_replace)
     return anchor_find, anchor_replace
-
 
 def _compact_edit_to_mutation(
     request: RepairRequest,
