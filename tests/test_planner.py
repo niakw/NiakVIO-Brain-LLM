@@ -217,6 +217,73 @@ class PlannerTests(unittest.TestCase):
                 compact_force=True,
             )
 
+    def test_compact_force_rejects_neighbor_helper_absorption(self):
+        source = (
+            'async function T(url){return fetch(url);}\n'
+            'function Q(a){return a;}\n'
+        )
+        response = json.dumps({
+            "edit": {
+                "scope": "provider_patch",
+                "path": "scripts/provider_patches/demo_runtime_v1.py",
+                "find": "async function T(url){return fetch(url);}",
+                "replace": "async async function T(url){return fetch(url);}function Q(a){return a;}",
+            },
+            "abstain_reason": "",
+        })
+        with self.assertRaisesRegex(ValueError, "neighboring helper|duplicated"):
+            BrainPlanner(StaticBackend(response)).plan(
+                RepairRequest(
+                    provider_id="demo",
+                    failure_class="provider_transport_gap",
+                    status="NO PROOF",
+                    provider_context={
+                        "registered_patch_scripts": ["scripts/provider_patches/demo_runtime_v1.py"],
+                        "registered_patch_sources": {
+                            "scripts/provider_patches/demo_runtime_v1.py": (
+                                "WRAPPER = r'''\\n"
+                                + source
+                                + "'''\\n"
+                            ),
+                        },
+                    },
+                    allowed_mutations=["provider_patch"],
+                ),
+                compact_force=True,
+            )
+
+    def test_compact_force_rejects_boolean_neutral_noop(self):
+        source = (
+            "WRAPPER = r'''\n"
+            "function detail(m){if(!m||m.score<55)return null;return m;}\n"
+            "'''\n"
+        )
+        response = json.dumps({
+            "edit": {
+                "scope": "provider_patch",
+                "path": "scripts/provider_patches/demo_runtime_v1.py",
+                "find": "function detail(m){if(!m||m.score<55)return null;return m;}",
+                "replace": "function detail(m){if(!m||m.score<55 || 0)return null;return m;}",
+            },
+            "abstain_reason": "",
+        })
+        with self.assertRaisesRegex(ValueError, "boolean-neutral"):
+            BrainPlanner(StaticBackend(response)).plan(
+                RepairRequest(
+                    provider_id="demo",
+                    failure_class="chain_terminal_gap",
+                    status="CHAIN REACHED",
+                    provider_context={
+                        "registered_patch_scripts": ["scripts/provider_patches/demo_runtime_v1.py"],
+                        "registered_patch_sources": {
+                            "scripts/provider_patches/demo_runtime_v1.py": source,
+                        },
+                    },
+                    allowed_mutations=["provider_patch"],
+                ),
+                compact_force=True,
+            )
+
     def test_compact_force_file_edit_preserves_single_helper_signature(self):
         source = 'function T(v){return fetch(v);}\n'
         response = json.dumps({

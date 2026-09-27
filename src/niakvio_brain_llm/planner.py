@@ -1,9 +1,14 @@
 from __future__ import annotations
 
+import ast
 import difflib
 import json
 import re
+import shutil
+import subprocess
+import tempfile
 import time
+from pathlib import Path
 from typing import Any
 
 from .backend import ModelBackend
@@ -73,25 +78,89 @@ def _extract_json(text: str) -> dict[str, Any]:
     return parsed
 
 
-def _reject_partial_function_anchor(find: str, replace: str) -> None:
-    """Reject prefix/suffix edits that start a function but do not cover its block."""
-    names = re.findall(
+def _function_names(value: str) -> set[str]:
+    return set(re.findall(
         r"\b(?:async\s+)?function\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*\(",
-        find,
-    )
-    if not names:
-        return
-    # Compact Force may replace an entire helper, but it must anchor a complete
-    # function body. Replacing only a prefix leaves the old tail behind and can
-    # create syntactically valid-looking but semantically corrupted source.
-    if find.count("{") > find.count("}"):
-        raise ValueError("compact Force function anchor is structurally incomplete")
-    for name in names:
-        if not re.search(
-            rf"\b(?:async\s+)?function\s+{re.escape(name)}\s*\(",
-            replace,
-        ):
+        value,
+    ))
+
+
+def _compact_without_space(value: str) -> str:
+    return re.sub(r"\s+", "", str(value or ""))
+
+
+def _reject_partial_function_anchor(find: str, replace: str) -> None:
+    """Reject structurally partial or neighbor-smashing helper edits."""
+    find_names = _function_names(find)
+    replace_names = _function_names(replace)
+    if find_names:
+        # Compact Force may replace an entire helper, but it must anchor a complete
+        # function body. Replacing only a prefix leaves the old tail behind.
+        if find.count("{") > find.count("}"):
+            raise ValueError("compact Force function anchor is structurally incomplete")
+        missing = find_names - replace_names
+        if missing:
             raise ValueError("compact Force replacement may not silently remove a helper function declaration")
+    added = replace_names - find_names
+    if added:
+        raise ValueError("compact Force replacement may not absorb a neighboring helper function")
+    if re.search(r"\basync\s+async\b|\bfunction\s+function\b|\breturn\s+return\b", replace):
+        raise ValueError("compact Force replacement contains duplicated JavaScript control tokens")
+
+    # Neutral boolean constants inside a control condition are a common LLM
+    # pseudo-fix: they change bytes but not behavior.
+    if re.search(r"\b(?:if|while)\s*\(", replace):
+        neutral = re.sub(r"\|\|\s*(?:0|false)\b|&&\s*(?:1|true)\b", "", replace, flags=re.I)
+        if _compact_without_space(neutral) == _compact_without_space(find) and _compact_without_space(replace) != _compact_without_space(find):
+            raise ValueError("compact Force replacement is a boolean-neutral no-op")
+
+
+def _node_check_javascript(source: str) -> None:
+    node = shutil.which("node")
+    if not node:
+        raise ValueError("node is required for compact Force JavaScript syntax validation")
+    with tempfile.TemporaryDirectory(prefix="niakvio-force-js-") as tmp:
+        path = Path(tmp) / "candidate.js"
+        path.write_text(source, encoding="utf-8")
+        proc = subprocess.run(
+            [node, "--check", str(path)],
+            text=True,
+            capture_output=True,
+            check=False,
+            timeout=20,
+        )
+    if proc.returncode != 0:
+        detail = (proc.stderr or proc.stdout or "node --check failed").strip().replace("\n", " ")
+        raise ValueError("compact Force JavaScript syntax validation failed: " + detail[:500])
+
+
+def _validate_compact_updated_source(scope: str, updated: str) -> None:
+    if scope == "provider_js":
+        _node_check_javascript(updated)
+        return
+    if scope != "provider_patch":
+        return
+    try:
+        tree = ast.parse(updated)
+    except SyntaxError as exc:
+        raise ValueError(f"compact Force provider Bloc Python syntax validation failed: {exc.msg}") from exc
+    wrappers: list[str] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.Assign, ast.AnnAssign)):
+            continue
+        value = getattr(node, "value", None)
+        if not isinstance(value, ast.Constant) or not isinstance(value.value, str):
+            continue
+        targets = list(getattr(node, "targets", []) or [])
+        target = getattr(node, "target", None)
+        if target is not None:
+            targets.append(target)
+        if any(isinstance(item, ast.Name) and item.id in {"WRAPPER", "JS", "RUNTIME"} for item in targets):
+            wrappers.append(value.value)
+    if not wrappers:
+        raise ValueError("compact Force provider Bloc exposes no static runtime wrapper for syntax validation")
+    for wrapper in wrappers:
+        _node_check_javascript(wrapper)
 
 
 def _compact_edit_to_mutation(
@@ -164,6 +233,7 @@ def _compact_edit_to_mutation(
         raise ValueError("compact Force edit is a no-op")
 
     updated = source.replace(find, replace, 1)
+    _validate_compact_updated_source(scope, updated)
     diff = "".join(
         difflib.unified_diff(
             source.splitlines(keepends=True),

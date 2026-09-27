@@ -139,3 +139,13 @@
 - `provider_bloc` now rejects reserved/example family names such as `snake_case_family`; the Force prompt explicitly requires a descriptive concrete mechanism family.
 - Compact Force now rejects any provider_patch/provider_js/provider_bloc anchor that begins a function declaration but does not contain a structurally complete function block. Whole-helper replacement remains allowed when the complete helper is anchored and its signature is preserved.
 - Added planner and mutation-guard regression tests. No NiakVIO live FORCE is launched from the malformed MalluMV candidate.
+
+
+### 2026-09-27 — Reject helper absorption, duplicated JS tokens and neutral pseudo-fixes
+
+- Hardened three-family guidance run `36346051449` / Brain `0aa104d6e18c78204319cb5b59ee1ee1a5d25a4f` completed much faster (~4 minutes Force generation) but still produced two unsafe/non-causal provider-patch rows and no 4KHDHub row.
+- AllWish candidate introduced `async async function T(...)` and absorbed the following `function Q(...)` into the replacement. MalluMV candidate only changed a boolean condition by adding `|| 0`, a byte change with no behavioral effect. Neither is eligible for a NiakVIO FORCE proof.
+- Compact Force now rejects replacement function declarations not already present in the exact `find`, duplicated JS control tokens such as `async async`, and boolean-neutral condition changes (`|| 0`, `|| false`, `&& 1`, `&& true`) when removing the neutral literal yields the original condition.
+- For provider-patch edits, the fully updated Python Bloc is parsed with `ast`, its static runtime wrapper (`WRAPPER`/`JS`/`RUNTIME`) is extracted, and every wrapper is validated with `node --check` before a mutation can become a proposal. provider_js edits are also syntax-checked directly.
+- Added regression tests reproducing the AllWish neighbor-absorption pattern and the MalluMV boolean-neutral pseudo-fix.
+- 4KHDHub still has no executable mutation: provider_patch was rejected as synthetic and provider_bloc as non-unique anchor. It remains the representative blocker for route_proven_gap.
