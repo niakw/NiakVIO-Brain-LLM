@@ -247,37 +247,64 @@ def _resolve_structured_anchor(
         )
         if window is None:
             raise ValueError("compact Force window_id is not valid for current source")
-        window_source = str(window.get("source") or "")
-        occurrences: list[int] = []
-        cursor = 0
-        while True:
-            local = window_source.find(find, cursor)
-            if local < 0:
-                break
-            occurrences.append(local)
-            cursor = local + max(1, len(find))
+        def _occurrences(row: dict) -> list[int]:
+            window_source = str(row.get("source") or "")
+            found: list[int] = []
+            cursor = 0
+            while True:
+                local = window_source.find(find, cursor)
+                if local < 0:
+                    break
+                found.append(local)
+                cursor = local + max(1, len(find))
+            return found
+
+        def _focus_rank(row: dict, position: int) -> tuple[int, int, int]:
+            window_source = str(row.get("source") or "")
+            focus = int(row.get("focus_offset") or (len(window_source) // 2))
+            end = position + len(find)
+            if position <= focus < end:
+                relation = 0
+                distance = 0
+            elif position >= focus:
+                relation = 1
+                distance = position - focus
+            else:
+                relation = 2
+                distance = focus - end
+            absolute = int(row.get("offset") or 0) + position
+            return relation, max(0, distance), absolute
+
+        occurrences = _occurrences(window)
+        selected_window = window
         if not occurrences:
-            raise ValueError(
-                "compact Force find snippet does not occur in selected source window"
-            )
-        if len(occurrences) == 1:
+            # Qwen may identify the right exact bytes but attach the wrong window id.
+            # Brain owns structural targeting, so relocate that exact snippet across
+            # the current causal windows instead of spending another model call.
+            candidates: dict[int, tuple[tuple[int, int, int], dict, int]] = {}
+            for candidate_window in windows:
+                for local in _occurrences(candidate_window):
+                    absolute = int(candidate_window.get("offset") or 0) + local
+                    rank = _focus_rank(candidate_window, local)
+                    previous = candidates.get(absolute)
+                    if previous is None or rank < previous[0]:
+                        candidates[absolute] = (rank, candidate_window, local)
+            if not candidates:
+                raise ValueError(
+                    "compact Force find snippet does not occur in any current causal source window"
+                )
+            ranked_candidates = sorted(candidates.values(), key=lambda item: item[0])
+            best_rank = ranked_candidates[0][0][:2]
+            best = [item for item in ranked_candidates if item[0][:2] == best_rank]
+            if len(best) != 1:
+                raise ValueError(
+                    "compact Force find snippet remains ambiguous across causal source windows"
+                )
+            _, selected_window, local_start = best[0]
+        elif len(occurrences) == 1:
             local_start = occurrences[0]
         else:
-            focus = int(window.get("focus_offset") or (len(window_source) // 2))
-            def _focus_rank(position: int) -> tuple[int, int, int]:
-                end = position + len(find)
-                if position <= focus < end:
-                    relation = 0
-                    distance = 0
-                elif position >= focus:
-                    relation = 1
-                    distance = position - focus
-                else:
-                    relation = 2
-                    distance = focus - end
-                return relation, max(0, distance), position
-
-            ranked = sorted((_focus_rank(position), position) for position in occurrences)
+            ranked = sorted((_focus_rank(window, position), position) for position in occurrences)
             best_rank = ranked[0][0][:2]
             best = [
                 position
@@ -289,9 +316,9 @@ def _resolve_structured_anchor(
                     "compact Force selected source window remains ambiguous after causal-focus resolution"
                 )
             local_start = best[0]
-        absolute_start = int(window.get("offset") or 0) + local_start
+        absolute_start = int(selected_window.get("offset") or 0) + local_start
         if source[absolute_start:absolute_start + len(find)] != find:
-            raise ValueError("compact Force selected source window drifted from current bytes")
+            raise ValueError("compact Force causal source window drifted from current bytes")
     else:
         # Backward-compatible internal/test path. Real compact-wire schemas
         # require window_id; without it only a globally unique snippet is safe.
