@@ -19,7 +19,7 @@ class MutationGuardTests(unittest.TestCase):
             "scope": "provider_data",
             "operation": "set",
             "path": "candidate_api_recipe.base",
-            "value": "https://api.real-provider.test",
+            "value": "https://api.real-provider.co",
         })
 
     def test_placeholder_api_url_rejected(self):
