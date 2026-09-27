@@ -119,3 +119,34 @@ guidance bridge**.
 A private repository may enrich RAG using sanitized NiakVIO-only technical
 experiences. Raw conversations never become a runtime dependency and never enter
 this public repository.
+
+
+## Validated implementation reference library
+
+Current FULL OK providers and their already-registered/published Blocs form a
+**reference library, not a solution whitelist**.
+
+Brain may retrieve a small number of technically similar examples for the current
+causal family. Before a snippet is exposed to the model, Brain removes URLs,
+hosts, route literals, provider identifiers and opaque data. The remaining code
+is non-authoritative implementation context such as session/fetch handling,
+player/iframe traversal, terminal HLS/MP4 extraction, parsing and decoding shape.
+
+The synthesis rule is deliberately open:
+
+~~~text
+reference pattern A
+reference pattern B
+current evidence
+       |
+       +--> adapt one pattern
+       +--> combine patterns
+       +--> ignore all references
+       +--> invent a genuinely new provider-local mechanism
+~~~
+
+A novel script/Bloc is **first-class behavior**, not a last-resort exception.
+References must never suppress a new mechanism when current evidence requires
+one. Conversely, novelty alone is not evidence: every new mechanism still passes
+Brain structural/syntax/ownership guards and NiakVIO's sandbox,
+playable-media/identity, current-byte and non-regression proof ladder.
