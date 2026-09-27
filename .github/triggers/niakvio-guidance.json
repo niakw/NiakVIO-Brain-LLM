@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "1b79a1f9944c3ddc392cae14959cfff7935abfb8",
-  "reason": "three-family proof with scoped mutation cascade, syntax/semantic guards and deterministic validation-feedback retry",
+  "niakvio_sha": "166d1d5fe9ca6b80d1935867d72db5866a1ebfa8",
+  "reason": "three-family proof after semantic no-op guard; require non-neutral executable mutations for transport, route-terminal, chain-terminal",
   "requested_repair_queue": [
     "allwish",
     "4khdhub",
