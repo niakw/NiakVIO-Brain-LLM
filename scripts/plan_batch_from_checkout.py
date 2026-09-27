@@ -5,6 +5,7 @@ import argparse
 import copy
 import json
 import os
+import time
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
@@ -44,6 +45,12 @@ def main() -> int:
     parser.add_argument("--strict", action="store_true")
     parser.add_argument("--max-tokens", type=int, default=768)
     parser.add_argument("--timeout-seconds", type=int, default=90)
+    parser.add_argument(
+        "--force-provider-budget-seconds",
+        type=int,
+        default=int(os.environ.get("NIAKVIO_FORCE_PROVIDER_BUDGET_SECONDS", "300")),
+        help="Maximum wall-clock budget per provider across all Force scopes and retries.",
+    )
     parser.add_argument(
         "--advisor-only",
         action="store_true",
@@ -179,34 +186,54 @@ def main() -> int:
             scopes.append("provider_bloc")
         return scopes
 
-    def _run_force_scope(position: int, provider: str, base_request, scope: str):
+    def _run_force_scope(
+        position: int,
+        provider: str,
+        base_request,
+        scope: str,
+        force_deadline: float,
+    ):
         scoped_request = copy.deepcopy(base_request)
         scoped_request.advisor_only = False
         scoped_request.allowed_mutations = [scope]
 
-        retry_tokens = max(768, min(max(int(args.max_tokens), 768), 896))
+        retry_tokens = max(512, min(max(int(args.max_tokens), 512), 768))
         validation_timeout = max(
+            60,
+            min(int(args.timeout_seconds), 90),
+        )
+        transport_timeout = max(
             90,
             min(int(args.timeout_seconds) + 15, 120),
         )
-        transport_timeout = max(
-            120,
-            min(int(args.timeout_seconds) + 45, 150),
-        )
-        max_validation_corrections = 2
+        max_validation_corrections = 1
 
-        def _run_retry(request, *, timeout_seconds: int):
+        def _remaining_timeout(desired: int) -> int:
+            remaining = force_deadline - time.monotonic()
+            if remaining < 5:
+                raise TimeoutError("force provider budget exhausted")
+            return max(5, min(int(desired), int(remaining)))
+
+        def _run_once(request, *, timeout_seconds: int, max_tokens: int):
+            bounded_timeout = _remaining_timeout(timeout_seconds)
             retry_backend = LocalOpenAICompatibleBackend(
                 base_url=args.endpoint,
                 model=args.model,
-                timeout_seconds=timeout_seconds,
+                timeout_seconds=bounded_timeout,
                 temperature=0.0,
-                max_tokens=retry_tokens,
+                max_tokens=max_tokens,
             )
             return BrainOrchestrator(
                 BrainPlanner(retry_backend, store, documents),
                 store,
             ).run(request, compact_force=True)
+
+        def _run_retry(request, *, timeout_seconds: int):
+            return _run_once(
+                request,
+                timeout_seconds=timeout_seconds,
+                max_tokens=retry_tokens,
+            )
 
         def _validation_feedback(request, exc: ValueError, correction_index: int):
             reason = _force_rejection_reason(exc)
@@ -258,7 +285,11 @@ def main() -> int:
             return None, current_exc
 
         try:
-            outcome = orchestrator.run(scoped_request, compact_force=True)
+            outcome = _run_once(
+                scoped_request,
+                timeout_seconds=max(45, min(int(args.timeout_seconds), 120)),
+                max_tokens=max(512, min(int(args.max_tokens), 768)),
+            )
             return _row(position, 1, provider, scoped_request, outcome), None
         except ValueError as validation_exc:
             return _run_validation_chain(scoped_request, validation_exc)
@@ -295,8 +326,24 @@ def main() -> int:
             scopes = _force_scope_order(request)
             last_error: Exception | None = None
             last_row: dict | None = None
+            budget_seconds = max(60, min(int(args.force_provider_budget_seconds), 900))
+            force_deadline = time.monotonic() + budget_seconds
             for scope in scopes:
-                row, error = _run_force_scope(position, provider, request, scope)
+                if time.monotonic() >= force_deadline:
+                    last_error = TimeoutError("force provider budget exhausted")
+                    print(
+                        "FIELD_BRAIN_FORCE_PROVIDER_BUDGET_EXHAUSTED "
+                        f"provider={provider} budget_seconds={budget_seconds}",
+                        flush=True,
+                    )
+                    break
+                row, error = _run_force_scope(
+                    position,
+                    provider,
+                    request,
+                    scope,
+                    force_deadline,
+                )
                 if error is not None:
                     last_error = error
                     print(
