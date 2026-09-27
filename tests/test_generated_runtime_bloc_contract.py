@@ -64,21 +64,22 @@ duplicate = RepairRequest(
     failure_class="chain_terminal_gap",
     provider_context={"runtimeMutationSource": "return oldResolver(); return oldResolver();"},
 )
-try:
-    _compact_edit_to_mutation(
-        duplicate,
-        {
-            "scope": "provider_bloc",
-            "family": "terminal_resolution",
-            "window_id": "w1",
-            "find": "return oldResolver();",
-            "replace": "return resolveTerminalMedia();",
-        },
-    )
-except ValueError as exc:
-    assert "exactly once" in str(exc)
-else:
-    raise AssertionError("ambiguous generated Bloc anchor accepted")
+duplicate_mutation = _compact_edit_to_mutation(
+    duplicate,
+    {
+        "scope": "provider_bloc",
+        "family": "terminal_resolution",
+        "window_id": "w1",
+        "find": "return oldResolver();",
+        "replace": "return resolveTerminalMedia();",
+    },
+)
+duplicate_updated = duplicate.provider_context["runtimeMutationSource"].replace(
+    duplicate_mutation["find"],
+    duplicate_mutation["replace"],
+    1,
+)
+assert duplicate_updated == "return oldResolver(); return resolveTerminalMedia();", duplicate_updated
 
 with tempfile.TemporaryDirectory() as tmp:
     root = Path(tmp)
