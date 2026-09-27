@@ -220,7 +220,7 @@ class BrainPlanner:
                             {
                                 "type": "object",
                                 "additionalProperties": False,
-                                "required": ["scope", "path"],
+                                "required": ["scope"],
                                 "properties": {
                                     "scope": {
                                         "type": "string",

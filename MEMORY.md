@@ -90,3 +90,10 @@
 - Brain currently has four bounded provider scopes. Because the policy list is sorted, this could hide `provider_patch` from Qwen while simultaneously presenting an existing registered Bloc as `mutation_target.scope=provider_patch`, creating a contradictory prompt and unnecessary abstention.
 - Compact Force now exposes the complete bounded allowed-scope list (maximum four by contract). Added regression coverage requiring all four scopes to survive while both an existing Bloc target and a generated runtime-Bloc target remain available.
 - This is a Brain prompt-contract correction only. Any guidance already running from the preceding Brain SHA remains attributable to that SHA and is not silently relabeled as using this fix.
+
+
+### 2026-09-27 — Generated Bloc compact-wire schema correction
+
+- Audit found the compact Force response grammar required `scope + path` for every non-null edit even though the public `provider_bloc` contract intentionally has no repository path and only carries `family + find + replace`.
+- The wire grammar now requires only `scope`; scope-specific completeness remains fail-closed in `_compact_edit_to_mutation` and the mutation guards. Existing file edits still require a registered path at local validation time, while generated Blocs no longer receive a contradictory grammar requirement.
+- Added regression coverage preventing `scope,path` from becoming a universal compact-wire requirement again.

@@ -70,6 +70,8 @@ class CompactForceRetryTest(unittest.TestCase):
         self.assertNotIn("timeout_seconds=150", script)
         self.assertIn("build_force_prompt_payload(", planner)
         self.assertIn('"required": ["edit", "abstain_reason"]', planner)
+        self.assertIn('"required": ["scope"]', planner)
+        self.assertNotIn('"required": ["scope", "path"]', planner)
         self.assertIn('_compact_edit_to_mutation(', planner)
         self.assertIn("COMPACT_FORCE_SYSTEM_PROMPT", planner)
         self.assertIn("Emit at most one edit.", planner)
