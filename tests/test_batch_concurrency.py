@@ -22,12 +22,12 @@ for token in (
     "validation_timeout = max(",
     "transport_timeout = max(",
     "retry_tokens = max(",
-    "max(int(args.max_tokens), 768)",
+    "max(int(args.max_tokens), 512)",
     "min(int(args.timeout_seconds) + 15, 120)",
     "min(int(args.timeout_seconds) + 45, 150)",
     "force_validation_feedback",
     "FIELD_BRAIN_FORCE_SCOPE_FEEDBACK",
-    "materially different",
+    "minimal exact window-local edit",\n    "force provider budget exhausted",\n    "FIELD_BRAIN_FORCE_PROVIDER_BUDGET_EXHAUSTED",
 ):
     assert token in src, token
 
