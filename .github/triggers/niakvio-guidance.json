@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "niakvio_sha": "1b79a1f9944c3ddc392cae14959cfff7935abfb8",
-  "reason": "three-family live proof after offline 14-provider readiness: provider transport, route-to-terminal and chain-to-terminal with bounded generated runtime Bloc support",
+  "reason": "three-family live proof after offline 14-provider readiness, now with provider_bloc accepted by the final guidance sanitizer",
   "requested_repair_queue": [
     "allwish",
     "4khdhub",
