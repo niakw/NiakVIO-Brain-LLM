@@ -446,6 +446,20 @@ def build_force_prompt_payload(
         _compact(row, string_limit=260)
         for row in (request.observations or [])[:3]
     ]
+    references = []
+    for raw in (context.get("validated_reference_patterns") or [])[:2]:
+        if not isinstance(raw, dict):
+            continue
+        references.append({
+            "provider": _clip(raw.get("provider"), 80),
+            "status": "FULL OK",
+            "source_kind": _clip(raw.get("source_kind"), 180),
+            "technical_features": [str(x)[:40] for x in (raw.get("technical_features") or [])[:12]],
+            "snippet": _clip(raw.get("snippet"), 1100),
+            "proof_authority": False,
+            "copy_policy": "pattern_reference_only",
+            "novelty_allowed": True,
+        })
     census = _compact(request.census_prior or {}, string_limit=320)
     return {
         "provider_id": request.provider_id,
@@ -465,6 +479,14 @@ def build_force_prompt_payload(
         },
         "current_observations": observations,
         "census_prior": census,
+        "validated_reference_patterns": references,
+        "reference_policy": {
+            "role": "optional_implementation_inspiration",
+            "may_adapt_combine_or_ignore": True,
+            "novel_provider_local_mechanisms_allowed": True,
+            "never_copy_routes_hosts_urls_or_provider_specific_literals": True,
+            "reference_is_not_proof": True,
+        },
         "mutation_target": target,
         "new_bloc_target": new_bloc_target,
         "output_contract": {
