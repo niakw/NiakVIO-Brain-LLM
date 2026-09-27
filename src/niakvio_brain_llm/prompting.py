@@ -370,7 +370,7 @@ def build_force_prompt_payload(
         },
         "mutation_policy": {
             "allow_mutations": bool(policy.get("allow_mutations")),
-            "allowed_scopes": allowed_scopes[:3],
+            "allowed_scopes": allowed_scopes,
             "force_abstain": bool(policy.get("force_abstain")),
             "reason": _clip(policy.get("reason"), 260),
         },

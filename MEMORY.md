@@ -82,3 +82,11 @@
 - The observed failures were stale test expectations, not evidence that a generated mutation, provider sandbox or playback check failed.
 - Contract tests are aligned to the new bounded CPU path: workflow `512/120`, one computed retry timeout, no `1280` second retry, existing-patch source window `2800/1200`, runtime-Bloc window `2000/1000`.
 - No NiakVIO provider run is launched until the corrected Brain CI is green and the same three-family guidance run yields actual executable Force rows.
+
+
+### 2026-09-27 — Compact Force scope visibility correction
+
+- While the three-family retry was running, audit found that `build_force_prompt_payload` truncated the sorted mutation policy to `allowed_scopes[:3]`.
+- Brain currently has four bounded provider scopes. Because the policy list is sorted, this could hide `provider_patch` from Qwen while simultaneously presenting an existing registered Bloc as `mutation_target.scope=provider_patch`, creating a contradictory prompt and unnecessary abstention.
+- Compact Force now exposes the complete bounded allowed-scope list (maximum four by contract). Added regression coverage requiring all four scopes to survive while both an existing Bloc target and a generated runtime-Bloc target remain available.
+- This is a Brain prompt-contract correction only. Any guidance already running from the preceding Brain SHA remains attributable to that SHA and is not silently relabeled as using this fix.

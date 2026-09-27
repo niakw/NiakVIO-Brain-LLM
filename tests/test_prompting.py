@@ -119,7 +119,7 @@ class PromptingTests(unittest.TestCase):
         )
         self.assertEqual(payload["mutation_target"]["scope"], "provider_patch")
         self.assertEqual(payload["mutation_target"]["path"], "scripts/provider_patches/demo_runtime_v1.py")
-        self.assertLessEqual(len(payload["mutation_target"]["source"]), 12050)
+        self.assertLessEqual(len(payload["mutation_target"]["source"]), 4050)
         self.assertIn("HEAD", payload["mutation_target"]["source"])
         self.assertIn("TAIL", payload["mutation_target"]["source"])
         self.assertEqual(len(payload["current_observations"]), 3)
@@ -128,6 +128,29 @@ class PromptingTests(unittest.TestCase):
         self.assertNotIn("published_bundle", payload)
         self.assertEqual(payload["output_contract"]["file_edit_format"], "unique_find_replace")
         self.assertTrue(payload["output_contract"]["find_must_be_exact_and_unique"])
+
+
+    def test_force_prompt_preserves_all_allowed_mutation_scopes(self):
+        request = RepairRequest(
+            provider_id="demo",
+            failure_class="route_proven_gap",
+            provider_context={
+                "registered_patch_sources": {
+                    "scripts/provider_patches/demo_runtime_v1.py": "const x = 1;",
+                },
+                "runtimeMutationFilename": "providers/demo.js",
+                "runtimeMutationSource": "function resolve(){ return 1; }",
+            },
+        )
+        scopes = ["provider_bloc", "provider_data", "provider_js", "provider_patch"]
+        payload = build_force_prompt_payload(
+            request,
+            {"target_layer": "provider", "confidence": 0.96, "strategy_prior": "proven_route_terminal_traversal_v1"},
+            {"allow_mutations": True, "allowed_scopes": scopes},
+        )
+        self.assertEqual(payload["mutation_policy"]["allowed_scopes"], scopes)
+        self.assertEqual(payload["mutation_target"]["scope"], "provider_patch")
+        self.assertEqual(payload["new_bloc_target"]["scope"], "provider_bloc")
 
     def test_brain_owned_required_tests_are_hidden_from_model(self):
         payload = build_prompt_payload(
