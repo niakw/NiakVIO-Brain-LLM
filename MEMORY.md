@@ -149,3 +149,12 @@
 - For provider-patch edits, the fully updated Python Bloc is parsed with `ast`, its static runtime wrapper (`WRAPPER`/`JS`/`RUNTIME`) is extracted, and every wrapper is validated with `node --check` before a mutation can become a proposal. provider_js edits are also syntax-checked directly.
 - Added regression tests reproducing the AllWish neighbor-absorption pattern and the MalluMV boolean-neutral pseudo-fix.
 - 4KHDHub still has no executable mutation: provider_patch was rejected as synthetic and provider_bloc as non-unique anchor. It remains the representative blocker for route_proven_gap.
+
+
+### 2026-09-27 — Deterministic validation-feedback retry
+
+- CI run `36346562380` on `122bfb2a4b3002e7ee2e2a03eb1c72917e10d86b` showed the new syntax validator working, but two legacy planner tests used unrealistic provider_patch fixtures: one valid Python patch without a runtime wrapper and one raw-JS string under a `.py` patch path.
+- Provider-patch validation now always parses the updated Python source; when static runtime wrapper assignments (`WRAPPER`/`JS`/`RUNTIME`) exist, they are additionally checked with `node --check`. A legitimate Python-only provider patch is not rejected merely for lacking a wrapper. The helper-signature test now uses a realistic Python wrapper.
+- Added a bounded validation-feedback retry inside each Force scope. A deterministic `ValueError` (non-unique anchor, placeholder, syntax rejection, neutral pseudo-fix, etc.) is converted to a safe reason code and prepended to current observations as `force_validation_feedback`.
+- Qwen gets one larger bounded retry in the same scope with the instruction to produce a materially different minimal exact unique edit or abstain. Rejected mutation/source text is never echoed back. Only after that correction attempt fails does the cascade move to the next scope.
+- Timeout retries remain bounded. Telemetry emits `FIELD_BRAIN_FORCE_SCOPE_FEEDBACK provider=<id> scope=<scope> reason=<code>`.

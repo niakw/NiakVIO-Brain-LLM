@@ -285,7 +285,7 @@ class PlannerTests(unittest.TestCase):
             )
 
     def test_compact_force_file_edit_preserves_single_helper_signature(self):
-        source = 'function T(v){return fetch(v);}\n'
+        source = "WRAPPER = r\'\'\'\\nfunction T(v){return fetch(v);}\\n\'\'\'\\n"
         response = json.dumps({
             "edit": {
                 "scope": "provider_patch",

@@ -23,6 +23,9 @@ for token in (
     "retry_tokens = max(",
     "max(int(args.max_tokens), 768)",
     "min(int(args.timeout_seconds) + 90, 240)",
+    "force_validation_feedback",
+    "FIELD_BRAIN_FORCE_SCOPE_FEEDBACK",
+    "materially different",
 ):
     assert token in src, token
 
