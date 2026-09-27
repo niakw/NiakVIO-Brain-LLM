@@ -90,6 +90,28 @@ def _compact_without_space(value: str) -> str:
     return re.sub(r"\s+", "", str(value or ""))
 
 
+def _normalized_js_identity(value: str) -> str:
+    """Remove only obvious boolean identity operands for no-op detection."""
+    text = str(value or "")
+    previous = None
+    patterns = (
+        (r"\s*\|\|\s*(?:false|0)(?=\s*[,;)\]}]|\s*\b(?:return|throw)\b|\s*$)", ""),
+        (r"\s*&&\s*(?:true|1)(?=\s*[,;)\]}]|\s*\b(?:return|throw)\b|\s*$)", ""),
+    )
+    while previous != text:
+        previous = text
+        for pattern, replacement in patterns:
+            text = re.sub(pattern, replacement, text, flags=re.IGNORECASE)
+    return re.sub(r"\s+", "", text)
+
+
+def _reject_semantic_identity_edit(find: str, replace: str) -> None:
+    if find == replace:
+        raise ValueError("compact Force edit is a no-op")
+    if _normalized_js_identity(find) == _normalized_js_identity(replace):
+        raise ValueError("compact Force edit is a semantic no-op")
+
+
 def _reject_partial_function_anchor(find: str, replace: str) -> None:
     """Reject structurally partial or neighbor-smashing helper edits."""
     find_names = _function_names(find)
@@ -183,8 +205,7 @@ def _compact_edit_to_mutation(
             raise ValueError("compact Force provider_bloc runtime source is unavailable")
         if source.count(find) != 1:
             raise ValueError("compact Force provider_bloc find snippet must occur exactly once in current runtime source")
-        if find == replace:
-            raise ValueError("compact Force provider_bloc edit is a no-op")
+        _reject_semantic_identity_edit(find, replace)
         _reject_partial_function_anchor(find, replace)
         return {
             "scope": "provider_bloc",
@@ -228,8 +249,7 @@ def _compact_edit_to_mutation(
         raise ValueError("compact Force exact source is unavailable")
     if source.count(find) != 1:
         raise ValueError("compact Force find snippet must occur exactly once in exact source")
-    if find == replace:
-        raise ValueError("compact Force edit is a no-op")
+    _reject_semantic_identity_edit(find, replace)
 
     updated = source.replace(find, replace, 1)
     _validate_compact_updated_source(scope, updated)

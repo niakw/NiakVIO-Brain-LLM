@@ -165,3 +165,12 @@
 - Brain LLM CI run `36347059351` is green on `0a0cd93fd70cd9aba670590992310996a5d4c1c9`.
 - The only preceding failures were test-fixture escaping; the compact Force engine, syntax/semantic guards, scope cascade and deterministic validation-feedback retry now pass the full Brain CI suite together.
 - The next three-family proof is triggered from one immutable Brain revision and Brain main must remain unchanged until guidance publication, preventing the split-brain failure previously seen in NiakVIO Learning.
+
+
+### 2026-09-27 — Semantic no-op Force guard
+
+- Hardened three-family guidance run `36346051449` completed successfully as a workflow, but the merged Force artifact retained only one provider mutation: MalluMV.
+- Inspection showed that mutation changed `if (!best || bestScore < min) ...` into the same condition plus `|| 0`. In JavaScript this is behaviorally identical, so the candidate has zero causal repair value and must not consume a NiakVIO Deep sandbox run.
+- Compact Force now rejects obvious boolean identity edits (`|| false`, `|| 0`, `&& true`, `&& 1`) when normalizing them makes find/replace equivalent. This applies to existing provider_patch/provider_js edits and generated provider_bloc edits.
+- Added regression tests for both existing-Bloc and generated-Bloc semantic no-ops.
+- Separate evidence from NiakVIO run `36345982243` requalified `vostfree` as FULL OK via residential replay with one raw stream, one playable stream, one verified stream and `identitySafe=true`; that overlay reduced the effective repair queue from 14 to 13, although the failed MalluMV Force prevented canonical census persistence.

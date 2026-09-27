@@ -316,6 +316,60 @@ class PlannerTests(unittest.TestCase):
         )
         self.assertEqual(proposal.mutations[0]["scope"], "provider_patch")
 
+    def test_compact_force_file_edit_rejects_boolean_identity_noop(self):
+        source = "function detail(best,score,min){if(!best||score<min)return null;return best;}\n"
+        response = json.dumps({
+            "edit": {
+                "scope": "provider_patch",
+                "path": "scripts/provider_patches/demo_runtime_v1.py",
+                "find": "if(!best||score<min)return null;",
+                "replace": "if(!best||score<min || 0)return null;",
+            },
+            "abstain_reason": "",
+        })
+        with self.assertRaisesRegex(ValueError, "semantic no-op"):
+            BrainPlanner(StaticBackend(response)).plan(
+                RepairRequest(
+                    provider_id="demo",
+                    failure_class="chain_terminal_gap",
+                    status="CHAIN REACHED",
+                    provider_context={
+                        "registered_patch_scripts": ["scripts/provider_patches/demo_runtime_v1.py"],
+                        "registered_patch_sources": {
+                            "scripts/provider_patches/demo_runtime_v1.py": source,
+                        },
+                    },
+                    allowed_mutations=["provider_patch"],
+                ),
+                compact_force=True,
+            )
+
+    def test_compact_force_provider_bloc_rejects_boolean_identity_noop(self):
+        source = "function ok(v){return v&&true;}\n"
+        response = json.dumps({
+            "edit": {
+                "scope": "provider_bloc",
+                "family": "terminal_boolean_guard",
+                "find": "return v;",
+                "replace": "return v&&true;",
+            },
+            "abstain_reason": "",
+        })
+        with self.assertRaisesRegex(ValueError, "semantic no-op"):
+            BrainPlanner(StaticBackend(response)).plan(
+                RepairRequest(
+                    provider_id="demo",
+                    failure_class="chain_terminal_gap",
+                    status="CHAIN REACHED",
+                    provider_context={
+                        "runtimeMutationFilename": "providers/demo.js",
+                        "runtimeMutationSource": "function ok(v){return v;}\n",
+                    },
+                    allowed_mutations=["provider_bloc"],
+                ),
+                compact_force=True,
+            )
+
     def test_compact_force_file_edit_rejects_oversized_replace(self):
         response = json.dumps({
             "edit": {
