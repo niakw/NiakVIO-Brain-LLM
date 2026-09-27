@@ -181,7 +181,9 @@ def main() -> int:
             outcome = orchestrator.run(scoped_request, compact_force=True)
             return _row(position, 1, provider, scoped_request, outcome), None
         except Exception as exc:
-            if not _retryable_force_error(exc):
+            is_timeout_retry = _retryable_force_error(exc)
+            is_validation_retry = isinstance(exc, ValueError)
+            if not (is_timeout_retry or is_validation_retry):
                 return None, exc
             retry_tokens = max(768, min(max(int(args.max_tokens), 768), 896))
             retry_timeout = max(
@@ -196,6 +198,25 @@ def main() -> int:
                 max_tokens=retry_tokens,
             )
             retry_request = copy.deepcopy(scoped_request)
+            if is_validation_retry:
+                reason = _force_rejection_reason(exc)
+                feedback = {
+                    "stage": "force_validation_feedback",
+                    "reason": reason,
+                    "instruction": (
+                        "previous edit rejected; choose a materially different "
+                        "minimal exact unique edit in the same scope or abstain"
+                    ),
+                }
+                retry_request.observations = [
+                    feedback,
+                    *list(retry_request.observations or []),
+                ][:3]
+                print(
+                    "FIELD_BRAIN_FORCE_SCOPE_FEEDBACK "
+                    f"provider={provider} scope={scope} reason={reason}",
+                    flush=True,
+                )
             try:
                 retry = BrainOrchestrator(
                     BrainPlanner(retry_backend, store, documents),

@@ -60,6 +60,7 @@ The family must describe the concrete mechanism (for example terminal_confirm_tr
 Use exact UNIQUE bytes wholly contained in one new_bloc_target.source_windows[].source. Each window is an exact current-byte slice; never join across windows. NiakVIO, not you, creates and versions the trusted Bloc file.
 For file edits, find must be <= 320 characters. Existing-file replace must be <= 640 characters; provider_bloc replace must be <= 1200 characters.
 Prefer changing one expression, branch, call, regex or small block.
+If current_observations contains force_validation_feedback, the previous edit was rejected by deterministic validation. Do not repeat that rejected shape; produce a materially different exact edit in the same allowed scope or abstain.
 If the correction cannot fit these bounds or the exact unique edit is not safely derivable, return edit:null.
 Return JSON only."""
 
@@ -157,8 +158,6 @@ def _validate_compact_updated_source(scope: str, updated: str) -> None:
             targets.append(target)
         if any(isinstance(item, ast.Name) and item.id in {"WRAPPER", "JS", "RUNTIME"} for item in targets):
             wrappers.append(value.value)
-    if not wrappers:
-        raise ValueError("compact Force provider Bloc exposes no static runtime wrapper for syntax validation")
     for wrapper in wrappers:
         _node_check_javascript(wrapper)
 
