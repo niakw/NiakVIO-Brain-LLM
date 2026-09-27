@@ -5,7 +5,7 @@ source = (ROOT / "scripts" / "plan_batch_from_checkout.py").read_text(encoding="
 workflow = (ROOT / ".github" / "workflows" / "niakvio-private-guidance.yml").read_text(encoding="utf-8")
 
 assert "max(int(args.max_tokens), 768)" in source
-assert "retry_budgets = (" in source
+assert "retry_tokens = max(" in source
 assert "retry_timeout = max(" in source
 assert "min(int(args.timeout_seconds) + 90, 240)" in source
 assert "1280" not in source
