@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "niakvio_sha": "1b79a1f9944c3ddc392cae14959cfff7935abfb8",
-  "reason": "three-family proof with scope-specific compact schema and scoped mutation cascade",
+  "reason": "three-family proof with scoped cascade, exact causal windows, placeholder-family rejection and complete-function anchor guard",
   "requested_repair_queue": [
     "allwish",
     "4khdhub",
