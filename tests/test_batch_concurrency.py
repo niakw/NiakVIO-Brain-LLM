@@ -20,7 +20,7 @@ for token in (
     "--timeout-seconds",
     "retry_backend = LocalOpenAICompatibleBackend",
     "retry_timeout = max(",
-    "retry_budgets = (",
+    "retry_tokens = max(",
     "max(int(args.max_tokens), 768)",
     "min(int(args.timeout_seconds) + 90, 240)",
 ):
