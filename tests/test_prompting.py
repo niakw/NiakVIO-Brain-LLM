@@ -144,6 +144,60 @@ class PromptingTests(unittest.TestCase):
         ) for row in windows))
 
 
+    def test_force_validation_retry_uses_focused_context(self):
+        source = (
+            "H" * 5000
+            + "\nfunction confirmLink(){ return '/confirm/' + id; }\n"
+            + "I" * 2200
+            + "\nfunction internalLink(){ return '/internal/' + id; }\n"
+            + "J" * 2200
+            + "\nfunction resolveMedia(){ return url.includes('.m3u8') ? url : null; }\n"
+            + "T" * 5000
+        )
+        request = RepairRequest(
+            provider_id="demo",
+            failure_class="chain_terminal_gap",
+            status="CHAIN REACHED",
+            observations=[
+                {
+                    "stage": "force_validation_feedback",
+                    "reason": "syntax_error",
+                    "correction_index": 1,
+                    "instruction": "previous edit rejected",
+                },
+                {"stage": "player", "blob": "Z" * 5000},
+                {"stage": "detail", "blob": "Y" * 5000},
+            ],
+            census_prior={"blob": "C" * 5000},
+            provider_context={
+                "registered_patch_sources": {
+                    "scripts/provider_patches/demo_runtime_v1.py": source,
+                },
+                "validated_reference_patterns": [
+                    {
+                        "provider": "healthy",
+                        "status": "FULL OK",
+                        "source_kind": "registered_bloc:x",
+                        "technical_features": ["fetch", "iframe", "m3u8"],
+                        "snippet": "S" * 1100,
+                    }
+                ],
+            },
+        )
+        payload = build_force_prompt_payload(
+            request,
+            {"target_layer": "provider", "confidence": 0.96, "strategy_prior": "chain_terminal_extractor_v1"},
+            {"allow_mutations": True, "allowed_scopes": ["provider_patch"]},
+        )
+        windows = payload["mutation_target"]["source_windows"]
+        self.assertLessEqual(sum(len(row["source"]) for row in windows), 3200)
+        self.assertLessEqual(len(windows), 4)
+        self.assertEqual(len(payload["current_observations"]), 1)
+        self.assertEqual(payload["current_observations"][0]["stage"], "force_validation_feedback")
+        self.assertEqual(payload["validated_reference_patterns"], [])
+        self.assertEqual(payload["census_prior"], {})
+        self.assertEqual(payload["output_contract"]["validation_retry_context"], "focused")
+
     def test_force_prompt_targets_family_relevant_middle_windows(self):
         source = (
             "H" * 5000
