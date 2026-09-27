@@ -7,6 +7,12 @@ from urllib.parse import urlparse
 DATA_OPERATIONS = {"set", "delete", "append"}
 JS_OPERATIONS = {"unified_diff"}
 PATCH_OPERATIONS = {"unified_diff"}
+BLOC_OPERATIONS = {"upsert"}
+BLOC_FAMILY = re.compile(r"^[a-z][a-z0-9_]{2,48}$")
+DANGEROUS_RUNTIME_TOKEN = re.compile(
+    r"(?i)(?:\beval\s*\(|\bFunction\s*\(|\bprocess\.|\brequire\s*\(|"
+    r"\bchild_process\b|\bDeno\.|\bBun\.|\bimport\s*\()"
+)
 
 ALLOWED_DATA_ROOTS = {
     "capability",
@@ -115,6 +121,28 @@ def validate_mutation(
                 "api_recipe.base",
             }:
                 _require_http_url(value)
+        return
+
+    if scope == "provider_bloc":
+        if operation not in BLOC_OPERATIONS:
+            raise ValueError(f"unsupported provider_bloc operation: {operation}")
+        family = str(mutation.get("family") or "").strip().casefold()
+        find = str(mutation.get("find") or "")
+        replace = str(mutation.get("replace") or "")
+        if not BLOC_FAMILY.fullmatch(family):
+            raise ValueError("provider_bloc family must be a bounded snake_case identifier")
+        if not find or len(find) > 320 or not replace or len(replace) > 1200:
+            raise ValueError("provider_bloc find/replace is missing or oversized")
+        if find == replace:
+            raise ValueError("provider_bloc mutation is a no-op")
+        _reject_placeholders(find)
+        _reject_placeholders(replace)
+        if any(marker in replace for marker in ("/* STARTFIX:", "/* CLOSEFIX:", "/* FIXDATA:")):
+            raise ValueError("provider_bloc replacement may not forge managed ownership markers")
+        before_caps = set(DANGEROUS_RUNTIME_TOKEN.findall(find))
+        after_caps = set(DANGEROUS_RUNTIME_TOKEN.findall(replace))
+        if after_caps - before_caps:
+            raise ValueError("provider_bloc replacement introduces a forbidden runtime capability")
         return
 
     if scope == "provider_patch":

@@ -39,3 +39,13 @@
 - Advisor provider_context is now explicit-allowlist only. Exact source remains outside this path for deterministic validation and compact Force mutation.
 - build_prompt_payload progressively removes optional documents, excess experiences and source excerpts, then compacts observations/census/context; payloads above the 7600-character contract fail before any model request.
 - Added a synthetic worst-case prompt-budget regression test including oversized sources, advisor history, observations, documents and an unknown 50k context field.
+
+
+## 2026-09-27 — Generated runtime Bloc contract
+
+- Confirmed an architectural gap in current Force: Brain LLM could mutate provider DATA, an authored provider module, or an already-registered provider Bloc, but could not create a new runtime Bloc when existing mechanisms were insufficient.
+- Added the bounded `provider_bloc` mutation contract. The model emits only a family plus one exact unique find/replace against current provider-owned runtime bytes; it never chooses a repository path and never emits Python source.
+- Current runtime bytes and the provider override are included in the mutation-context fingerprint, so stale generated-Bloc guidance fails closed.
+- The contract supports canonical `patch_scripts` as well as the legacy serialized `provider_lego_scripts` reader during migration.
+- New runtime capabilities such as `eval`, `Function`, Node process/require/child_process, Deno/Bun or dynamic import cannot be introduced by a generated Bloc replacement.
+- This change is architecture/offline-only. It does not prove any provider repaired and must not trigger a provider Repair/Learning/FORCE run.

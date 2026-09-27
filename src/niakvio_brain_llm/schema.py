@@ -47,6 +47,24 @@ PROVIDER_PATCH_MUTATION_SCHEMA = {
     },
 }
 
+PROVIDER_BLOC_MUTATION_SCHEMA = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["scope", "operation", "family", "find", "replace"],
+    "properties": {
+        "scope": {"type": "string", "const": "provider_bloc"},
+        "operation": {"type": "string", "const": "upsert"},
+        "family": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 49,
+            "pattern": r"^[a-z][a-z0-9_]{2,48}$",
+        },
+        "find": {"type": "string", "minLength": 1, "maxLength": 320},
+        "replace": {"type": "string", "minLength": 1, "maxLength": 1200},
+    },
+}
+
 EXPERIMENT_SPEC_SCHEMA = {
     "type": "object",
     "additionalProperties": False,
@@ -103,6 +121,7 @@ REPAIR_PROPOSAL_SCHEMA = {
                 "oneOf": [
                     deepcopy(DATA_MUTATION_SCHEMA),
                     deepcopy(PROVIDER_PATCH_MUTATION_SCHEMA),
+                    deepcopy(PROVIDER_BLOC_MUTATION_SCHEMA),
                     deepcopy(JS_MUTATION_SCHEMA),
                 ]
             },

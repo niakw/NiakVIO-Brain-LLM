@@ -73,6 +73,13 @@ def _published_provider_context(root: Path, provider_id: str) -> dict[str, Any] 
     if not path.is_file():
         return None
     source = path.read_text(encoding="utf-8", errors="replace")
+    runtime_mutation_source = ""
+    provider_begin = "/* BEGIN NIAKVIO_PROVIDER */"
+    provider_end = "/* END NIAKVIO_PROVIDER */"
+    if source.count(provider_begin) == 1 and source.count(provider_end) == 1:
+        begin_index = source.index(provider_begin)
+        end_index = source.index(provider_end, begin_index) + len(provider_end)
+        runtime_mutation_source = sanitize_exact_source(source[begin_index:end_index])
     canonical = re.escape(provider_id.upper()).replace(r"\-", "[-_]")
     pattern = re.compile(
         rf"/\* STARTFIX:(PROVIDER\.{canonical}\.[A-Z0-9_.-]+) \*/"
@@ -100,6 +107,8 @@ def _published_provider_context(root: Path, provider_id: str) -> dict[str, Any] 
         "supportedTypes": list(row.get("supportedTypes") or []),
         "formats": list(row.get("formats") or []),
         "providerBlocks": blocks,
+        "runtimeMutationFilename": filename,
+        "runtimeMutationSource": runtime_mutation_source,
     }
 
 
@@ -113,7 +122,14 @@ def build_provider_context(root: str | Path, provider_id: str) -> dict[str, Any]
 
     published = _published_provider_context(root, provider_id)
     if published is not None:
-        context["published_bundle"] = published
+        context["published_bundle"] = {
+            key: value
+            for key, value in published.items()
+            if key not in {"runtimeMutationFilename", "runtimeMutationSource"}
+        }
+        if published.get("runtimeMutationSource"):
+            context["runtimeMutationFilename"] = published.get("runtimeMutationFilename")
+            context["runtimeMutationSource"] = published.get("runtimeMutationSource")
 
     authored = root / "engine_v2" / "providers" / f"{provider_id}.mjs"
     if authored.exists():
@@ -135,12 +151,16 @@ def build_provider_context(root: str | Path, provider_id: str) -> dict[str, Any]
             context[name] = sanitize_source(encoded, limit=2200)
 
     # Provider-local Blocs are the real authored mutation surface for current
-    # NiakVIO providers. Expose only already-registered scripts; the model may
-    # edit an existing Bloc but may never invent or target an unrelated file.
+    # NiakVIO providers. Existing scripts remain exact edit targets. A separate
+    # bounded provider_bloc contract may synthesize a new managed Bloc from the
+    # current provider-owned runtime source; it never grants arbitrary file paths.
     if isinstance(override_value, dict):
         scripts = [
             str(value).strip()
-            for value in (override_value.get("provider_lego_scripts") or [])
+            for value in [
+                *(override_value.get("patch_scripts") or []),
+                *(override_value.get("provider_lego_scripts") or []),
+            ]
             if str(value).strip().startswith("scripts/provider_patches/")
         ][:8]
         scripts = list(dict.fromkeys(scripts))

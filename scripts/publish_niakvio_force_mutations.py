@@ -54,6 +54,25 @@ def _provider_override(root: Path, provider: str) -> Any:
     return None
 
 
+def _provider_runtime_surface(root: Path, provider: str) -> tuple[str, str]:
+    try:
+        manifest = json.loads((root / "manifest.json").read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        raise ValueError(f"{provider}: manifest unavailable for provider_bloc context")
+    rows = manifest.get("scrapers") if isinstance(manifest, dict) else None
+    if not isinstance(rows, list):
+        raise ValueError(f"{provider}: manifest scrapers unavailable for provider_bloc context")
+    wanted = canon(provider)
+    row = next((value for value in rows if isinstance(value, dict) and canon(value.get("id")) == wanted), None)
+    filename = str((row or {}).get("filename") or "").strip()
+    if not filename.startswith(("providers/", "provider-disabled/")):
+        raise ValueError(f"{provider}: current provider runtime filename unavailable")
+    path = root / filename
+    if not path.is_file():
+        raise ValueError(f"{provider}: current provider runtime bytes unavailable: {filename}")
+    return filename, hashlib.sha256(path.read_bytes()).hexdigest()
+
+
 def mutation_context_fingerprint(
     root: Path,
     provider: str,
@@ -66,6 +85,11 @@ def mutation_context_fingerprint(
         path=str(mutation.get("path") or "")
         if scope=="provider_data":
             override_needed=True
+            continue
+        if scope=="provider_bloc":
+            override_needed=True
+            filename, digest = _provider_runtime_surface(root, provider)
+            surfaces.append({"scope":"provider_bloc","path":filename,"sha256":digest})
             continue
         if scope in {"provider_patch","provider_js"}:
             target=root/path
@@ -177,7 +201,7 @@ def sanitize(
         scopes = {str(value.get("scope") or "") for value in mutations}
         if not scopes or not scopes.issubset(allowed):
             continue
-        if any(scope not in {"provider_data", "provider_patch", "provider_js"} for scope in scopes):
+        if any(scope not in {"provider_data", "provider_patch", "provider_bloc", "provider_js"} for scope in scopes):
             continue
 
         mutation_fp = fingerprint(mutations)

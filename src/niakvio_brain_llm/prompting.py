@@ -321,6 +321,7 @@ def build_force_prompt_payload(
     policy = mutation_policy or {}
     context = request.provider_context or {}
 
+    allowed_scopes = list(policy.get("allowed_scopes") or request.allowed_mutations or [])
     registered = context.get("registered_patch_sources")
     target: dict[str, Any] = {}
     if isinstance(registered, dict) and registered:
@@ -343,13 +344,20 @@ def build_force_prompt_payload(
             "source": _clip(context.get("override"), 1800),
         }
 
+    new_bloc_target: dict[str, Any] = {}
+    runtime_source = context.get("runtimeMutationSource")
+    if runtime_source and "provider_bloc" in allowed_scopes:
+        new_bloc_target = {
+            "scope": "provider_bloc",
+            "filename": _clip(context.get("runtimeMutationFilename"), 180),
+            "source": _head_tail(runtime_source, 8000, 4000),
+        }
+
     observations = [
         _compact(row, string_limit=260)
         for row in (request.observations or [])[:3]
     ]
     census = _compact(request.census_prior or {}, string_limit=320)
-    allowed_scopes = list(policy.get("allowed_scopes") or request.allowed_mutations or [])
-
     return {
         "provider_id": request.provider_id,
         "failure_class": request.failure_class,
@@ -369,10 +377,12 @@ def build_force_prompt_payload(
         "current_observations": observations,
         "census_prior": census,
         "mutation_target": target,
+        "new_bloc_target": new_bloc_target,
         "output_contract": {
             "max_edits": 1,
             "provider_local_only": True,
             "file_edit_format": "unique_find_replace" if target.get("scope") in {"provider_patch", "provider_js"} else "provider_data_mutation",
-            "find_must_be_exact_and_unique": target.get("scope") in {"provider_patch", "provider_js"},
+            "generated_bloc_format": "family_unique_find_replace" if new_bloc_target else None,
+            "find_must_be_exact_and_unique": bool(target.get("scope") in {"provider_patch", "provider_js"} or new_bloc_target),
         },
     }

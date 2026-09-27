@@ -30,6 +30,7 @@ If a fresh value required for a patch is absent, abstain and request the exact d
 Prefer the smallest causal change.\nFor provider-layer repairs, also propose an abstract experiment spec. It may only steer existing deterministic sandbox knobs: route_policy, recipe_policy, role_order, terminal_only, alias_search, response_salvage, document_request_mining, session_bootstrap, max_depth, max_pages, max_embeds, and max_recipe_passes. Never put URLs, routes, headers, tokens, cookies, source text, diffs, or private-memory text in experiment. Different specs are distinct hypotheses even inside the same strategy family.\nWhen advisor_only context contains provider_context.advisor_experiment_history, those rows are negative execution memory. Keep any high-confidence strategy_prior unchanged, but materially vary the experiment from exhausted advisor attempts; do not deliberately repeat a failed experiment fingerprint. Prefer changes that target the recorded lastReason or observed pipeline stage.\nprovider_context.published_bundle is the exact generated bundle referenced by NiakVIO manifest.json. Treat it as read-only current-byte evidence: compare its providerBlocks against registered_patch_sources/authored_module/override to locate projection or runtime drift, but NEVER target providers/*.js or provider-disabled/*.js as a mutation path.\n\nMutation DSL:
 - provider_data paths are relative to provider-overrides.json > provider_patches[provider_id], never file paths.
 - provider_patch may target only an already-registered scripts/provider_patches/* Bloc listed in provider_context.registered_patch_scripts.
+- provider_bloc may request one bounded managed runtime Bloc synthesized from current provider-owned runtime bytes; it supplies family + exact unique find + replace, never a file path or Python source.
 - provider_js may target only engine_v2/providers/<provider_id>.mjs.
 Never return shell commands or edits to unrelated files.
 Return one JSON object only with provider_id, diagnosis, strategy, confidence, target_layer,
@@ -45,7 +46,11 @@ For provider_data, edit is the normal {scope,operation,path,value?} mutation.
 For provider_patch/provider_js, DO NOT emit a unified diff. Emit only:
 {scope,path,find,replace}
 where find is the smallest exact UNIQUE snippet from mutation_target.source and replace is its corrected text.
-For file edits, find must be <= 320 characters and replace <= 640 characters. Prefer changing one expression, branch, call, regex or small block.
+For a genuinely new independent runtime mechanism, provider_bloc may emit only:
+{scope:"provider_bloc",family:"snake_case_family",find,replace}
+using exact UNIQUE bytes from new_bloc_target.source. NiakVIO, not you, creates and versions the trusted Bloc file.
+For file edits, find must be <= 320 characters. Existing-file replace must be <= 640 characters; provider_bloc replace must be <= 1200 characters.
+Prefer changing one expression, branch, call, regex or small block.
 If the correction cannot fit these bounds or the exact unique edit is not safely derivable, return edit:null.
 Return JSON only."""
 
@@ -73,6 +78,27 @@ def _compact_edit_to_mutation(
     scope = str(edit.get("scope") or "")
     if scope == "provider_data":
         return dict(edit)
+
+    if scope == "provider_bloc":
+        family = str(edit.get("family") or "").strip().casefold()
+        find = str(edit.get("find") or "")
+        replace = str(edit.get("replace") or "")
+        source = str((request.provider_context or {}).get("runtimeMutationSource") or "")
+        if not family or not find or len(find) > 320 or not replace or len(replace) > 1200:
+            raise ValueError("compact Force provider_bloc edit is missing or oversized")
+        if not source:
+            raise ValueError("compact Force provider_bloc runtime source is unavailable")
+        if source.count(find) != 1:
+            raise ValueError("compact Force provider_bloc find snippet must occur exactly once in current runtime source")
+        if find == replace:
+            raise ValueError("compact Force provider_bloc edit is a no-op")
+        return {
+            "scope": "provider_bloc",
+            "operation": "upsert",
+            "family": family,
+            "find": find,
+            "replace": replace,
+        }
 
     if scope not in {"provider_patch", "provider_js"}:
         raise ValueError("compact Force edit has unsupported scope")
@@ -197,16 +223,17 @@ class BrainPlanner:
                                 "properties": {
                                     "scope": {
                                         "type": "string",
-                                        "enum": ["provider_data", "provider_patch", "provider_js"],
+                                        "enum": ["provider_data", "provider_patch", "provider_bloc", "provider_js"],
                                     },
                                     "operation": {
                                         "type": "string",
-                                        "enum": ["set", "delete", "append"],
+                                        "enum": ["set", "delete", "append", "upsert"],
                                     },
                                     "path": {"type": "string", "maxLength": 240},
+                                    "family": {"type": "string", "maxLength": 49},
                                     "value": {},
                                     "find": {"type": "string", "maxLength": 320},
-                                    "replace": {"type": "string", "maxLength": 640},
+                                    "replace": {"type": "string", "maxLength": 1200},
                                 },
                             },
                             {"type": "null"},

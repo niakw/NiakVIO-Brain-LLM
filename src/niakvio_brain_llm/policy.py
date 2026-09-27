@@ -83,6 +83,8 @@ def build_mutation_policy(
         allowed.discard("provider_js")
     if not context.get("registered_patch_scripts"):
         allowed.discard("provider_patch")
+    if not context.get("runtimeMutationSource"):
+        allowed.discard("provider_bloc")
     if not (context.get("override") or context.get("hub")):
         allowed.discard("provider_data")
 
