@@ -154,20 +154,23 @@ def main() -> int:
                 or "jsondecodeerror" in type(exc).__name__.casefold()
             )
             if retryable and not args.advisor_only:
-                # Compact Force may still need a few hundred tokens because the
-                # bounded find/replace payload itself can contain up to ~1k
-                # characters. A 256-token retry can truncate a valid response
-                # before its closing braces. Retry twice with a larger but still
-                # bounded budget; never salvage or auto-close malformed JSON.
+                # Compact Force now receives a much smaller exact-source window.
+                # One bounded retry is enough: repeated long retries were turning
+                # a systemic CPU timeout into ~6.5 minutes per provider without
+                # producing a candidate. Keep the retry larger than the first
+                # generation for escaped JSON/code, but fail closed after it.
                 retry_budgets = (
-                    max(512, min(max(int(args.max_tokens), 768), 1024)),
-                    1280,
+                    max(768, min(max(int(args.max_tokens), 768), 896)),
+                )
+                retry_timeout = max(
+                    180,
+                    min(int(args.timeout_seconds) + 90, 240),
                 )
                 for retry_index, retry_tokens in enumerate(retry_budgets, start=1):
                     retry_backend = LocalOpenAICompatibleBackend(
                         base_url=args.endpoint,
                         model=args.model,
-                        timeout_seconds=150,
+                        timeout_seconds=retry_timeout,
                         temperature=0.0,
                         max_tokens=retry_tokens,
                     )

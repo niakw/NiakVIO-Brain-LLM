@@ -329,19 +329,19 @@ def build_force_prompt_payload(
         target = {
             "scope": "provider_patch",
             "path": str(path)[:240],
-            "source": _head_tail(source, 8000, 4000),
+            "source": _head_tail(source, 2800, 1200),
         }
     elif context.get("authored_module"):
         target = {
             "scope": "provider_js",
             "path": f"engine_v2/providers/{request.provider_id}.mjs",
-            "source": _head_tail(context.get("authored_module"), 8000, 4000),
+            "source": _head_tail(context.get("authored_module"), 2800, 1200),
         }
     elif context.get("override"):
         target = {
             "scope": "provider_data",
             "path": "provider-overrides.json > provider_patches[provider_id]",
-            "source": _clip(context.get("override"), 1800),
+            "source": _clip(context.get("override"), 1200),
         }
 
     new_bloc_target: dict[str, Any] = {}
@@ -350,7 +350,7 @@ def build_force_prompt_payload(
         new_bloc_target = {
             "scope": "provider_bloc",
             "filename": _clip(context.get("runtimeMutationFilename"), 180),
-            "source": _head_tail(runtime_source, 8000, 4000),
+            "source": _head_tail(runtime_source, 2000, 1000),
         }
 
     observations = [

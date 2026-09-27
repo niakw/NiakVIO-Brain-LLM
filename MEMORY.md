@@ -63,3 +63,14 @@
 - The three-family live-proof guidance run exposed a stale workflow-local whitelist: the public Force contract now supports `provider_bloc`, but `niakvio-private-guidance.yml` still allowed only provider_data/provider_patch/provider_js during final artifact sanitation.
 - Added `provider_bloc` to that final fail-closed whitelist. This does not weaken mutation validation: schema, mutation guard, current-byte context fingerprint and NiakVIO sandbox validation still apply before publication/acceptance.
 - Run 36338401169 started from the preceding workflow SHA and therefore does not contain this workflow correction; its output is inspected before any NiakVIO FORCE trigger.
+
+
+### 2026-09-27 — Three-family Force timeout diagnosed and bounded
+
+- Targeted guidance run 36339445818 used exact NiakVIO SHA `1b79a1f9944c3ddc392cae14959cfff7935abfb8` and representatives `allwish`, `4khdhub`, `mallumv`.
+- Advisor generation succeeded, but concrete Force produced **0 executable mutations**: all three provider calls timed out. This is not a provider-repair success and no NiakVIO FORCE run is justified from that artifact.
+- The failure cost was structural: each provider could consume the initial 90-second request plus two 150-second retries, so three systemic timeouts consumed about 20 minutes while repeating the same CPU-bound failure.
+- Compact Force source windows are reduced from up to ~12k chars per exact source to bounded head/tail windows (~4k for an existing patch/authored module and ~3k for a new runtime Bloc surface). Exact unique find/replace validation remains unchanged.
+- Force now starts with a 512-token / 120-second budget and performs at most one larger bounded retry (768–896 tokens, 180–240 seconds depending on the initial timeout). Malformed/truncated output still fails closed; nothing is auto-salvaged.
+- Added safe numeric telemetry `FIELD_BRAIN_FORCE_MODEL` (provider, serialized prompt chars, elapsed seconds, outcome, max token budget) and a regression assertion keeping the synthetic dual-source Force prompt below 10k serialized characters.
+- Next validation is to regenerate the same three-family guidance against the unchanged NiakVIO SHA and require actual executable mutations before any live NiakVIO FORCE proof.

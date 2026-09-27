@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import difflib
 import json
+import time
 from typing import Any
 
 from .backend import ModelBackend
@@ -253,11 +254,30 @@ class BrainPlanner:
                 if constrained
                 else REPAIR_PROPOSAL_SCHEMA
             )
-        raw = self.backend.complete(
-            system=COMPACT_FORCE_SYSTEM_PROMPT if compact_force else SYSTEM_PROMPT,
-            user=user,
-            response_schema=schema,
-        )
+        started = time.monotonic()
+        try:
+            raw = self.backend.complete(
+                system=COMPACT_FORCE_SYSTEM_PROMPT if compact_force else SYSTEM_PROMPT,
+                user=user,
+                response_schema=schema,
+            )
+        except Exception as exc:
+            if compact_force:
+                print(
+                    "FIELD_BRAIN_FORCE_MODEL "
+                    f"provider={request.provider_id} chars={len(user)} "
+                    f"seconds={time.monotonic() - started:.2f} outcome=error "
+                    f"error={type(exc).__name__} "
+                    f"max_tokens={getattr(self.backend, 'max_tokens', 'unknown')}"
+                )
+            raise
+        if compact_force:
+            print(
+                "FIELD_BRAIN_FORCE_MODEL "
+                f"provider={request.provider_id} chars={len(user)} "
+                f"seconds={time.monotonic() - started:.2f} outcome=success "
+                f"max_tokens={getattr(self.backend, 'max_tokens', 'unknown')}"
+            )
         parsed = _extract_json(raw)
         if compact_force:
             mutation = _compact_edit_to_mutation(
