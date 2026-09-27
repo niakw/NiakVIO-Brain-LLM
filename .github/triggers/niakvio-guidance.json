@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "niakvio_sha": "1b79a1f9944c3ddc392cae14959cfff7935abfb8",
-  "reason": "three-family live proof on bounded exact causal windows; require executable Force mutations before NiakVIO sandbox proof",
+  "reason": "three-family proof with scoped Force cascade: existing Bloc first, provider_bloc fallback on abstain/rejection, truncation guard, exact causal windows",
   "requested_repair_queue": [
     "allwish",
     "4khdhub",
