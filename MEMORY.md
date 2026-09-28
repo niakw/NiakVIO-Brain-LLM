@@ -429,3 +429,13 @@
 - Route-proven provider budget may now use up to 360s when the caller explicitly grants that budget; the existing GitHub workflow still passes 240s, so its current production ceiling remains 240s. Transport/environment cases remain capped at 120s.
 - Validation correction timeouts remain deliberately smaller (90s patch/JS, 120s Bloc) because their focused prompts are much shorter.
 - Local hard-case proofs can therefore use 180s model timeout + a larger explicit provider budget without weakening exact-byte, syntax, ownership, sandbox, playback or identity gates.
+
+## 2026-09-28 — Final local FORCE stop state
+
+- Resource-intensive local Qwen/Force execution was intentionally stopped after it began impacting the host machine/network experience. No `llama-server` or `plan_batch_from_checkout.py` process remains running.
+- Brain `main` already contains the response-shape deduplication, configurable model timeout and explicit extended ROUTE PROVEN budget used for this pass.
+- 4KHDHub final persisted local result: `ROUTE PROVEN`, repair routing reached provider patch then provider Bloc; both paths abstained after deterministic validation feedback. Final proposal contains **0 mutations** and `abstain=true`.
+- YFlix final persisted local result: `ROUTE PROVEN`, provider patch and provider Bloc both abstained after validation feedback. Final proposal contains **0 mutations** and `abstain=true`.
+- MovieBox final persisted local result: `CHAIN REACHED`; provider patch was rejected as a no-op, provider Bloc entered validation feedback, then the correction call timed out. No candidate gained publication authority.
+- AllAnime began a new pass but was interrupted before a final result. Anime-Ultime, AnimeSultra and VidFast were not executed in this final sequence.
+- No provider from this stop-state is to be marked repaired or promoted. Existing NiakVIO playback/census authority remains unchanged.
