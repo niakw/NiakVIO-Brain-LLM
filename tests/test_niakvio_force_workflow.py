@@ -40,3 +40,7 @@ assert "actions: write" in workflow
 assert "mutationContextFingerprint" in workflow
 assert "guidance/niakvio-guidance-state.json" in workflow
 assert "files=3" in workflow
+
+assert "brain_sha:" in workflow
+assert 'ref: ${{ inputs.brain_sha || github.sha }}' in workflow
+assert '-f brain_sha="$(git -C brain rev-parse HEAD)"' in workflow
