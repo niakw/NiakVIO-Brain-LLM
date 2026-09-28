@@ -665,10 +665,11 @@ class PlannerTests(unittest.TestCase):
                 "replace": "const finalUrl=page.finalUrl||page.url;return finalUrl;",
             },
         )
-        self.assertEqual(mutation["find"], source)
-        self.assertTrue(mutation["replace"].startswith("async function resolve(page){"))
-        self.assertIn("const finalUrl=page.finalUrl||page.url;return finalUrl;", mutation["replace"])
-        self.assertTrue(mutation["replace"].rstrip().endswith("}"))
+        updated = source.replace(mutation["find"], mutation["replace"], 1)
+        self.assertNotEqual(updated, source)
+        self.assertTrue(updated.startswith("async function resolve(page){"))
+        self.assertIn("const finalUrl=page.finalUrl||page.url;return finalUrl;", updated)
+        self.assertTrue(updated.rstrip().endswith("}"))
 
     def test_compact_force_provider_bloc_allows_long_exact_function_anchor(self):
         old_body = "a" * 900
