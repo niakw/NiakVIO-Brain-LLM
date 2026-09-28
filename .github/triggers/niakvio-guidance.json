@@ -1,8 +1,16 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "6f3beaad1f6fc47f55f63edad06c4a1d2365a95b",
-  "reason": "FORCE retry for the five remaining providers with bounded editable-unit prefill on GitHub CPU.",
+  "niakvio_sha": "c15fb3eea213cb69819839e96f09a4c5034186c6",
+  "reason": "Full current repairQueue executable FORCE guidance on GitHub after 180s/360s structural budget alignment.",
   "requested_repair_queue": [
+    "4khdhub",
+    "allanime",
+    "allwish",
+    "anime-ultime",
+    "animesalt",
+    "animesultra",
+    "animevost-fr",
+    "flemmix",
     "mallumv",
     "moviebox",
     "moviesmod",
