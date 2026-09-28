@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "c15fb3eea213cb69819839e96f09a4c5034186c6",
-  "reason": "Authoritative full repairQueue executable FORCE guidance after Brain CI 872 green and 180s/360s contract alignment.",
+  "niakvio_sha": "803ab25349077fe850afff9ccff090dca2ac7068",
+  "reason": "Full current repairQueue executable FORCE rerun after generic complete-function invention fallback and 1800-char Bloc alignment; Brain code CI 882 green.",
   "requested_repair_queue": [
     "4khdhub",
     "allanime",
