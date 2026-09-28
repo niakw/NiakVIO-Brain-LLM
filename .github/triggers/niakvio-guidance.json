@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "niakvio_sha": "6f3beaad1f6fc47f55f63edad06c4a1d2365a95b",
-  "reason": "Clean pinned 13-provider cycle with WAF/client causality, Bloc-first routing, no explicit prefill, and per-cycle concurrency isolation.",
+  "reason": "Clean pinned 13-provider cycle after residential provider replay is prioritized over narrow WAF seeds.",
   "requested_repair_queue": [
     "4khdhub",
     "allanime",
