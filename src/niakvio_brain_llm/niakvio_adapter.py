@@ -188,6 +188,16 @@ def _provider_force_negative_memory(payload: Any, provider_id: str) -> list[dict
             "successes": successes,
             "lastOutcome": str(value.get("lastOutcome") or "")[:80],
             "lastReason": str(value.get("lastReason") or "")[:240],
+            "lastMutationSummary": [
+                {
+                    "scope": str(item.get("scope") or "")[:40],
+                    "operation": str(item.get("operation") or "")[:40],
+                    **({"family": str(item.get("family") or "")[:80]} if str(item.get("family") or "") else {}),
+                    **({"path": str(item.get("path") or "")[:160]} if str(item.get("path") or "") else {}),
+                }
+                for item in (value.get("lastMutationSummary") or [])[:8]
+                if isinstance(item, dict) and str(item.get("scope") or "")
+            ],
             "lastCurrentSha": str(value.get("lastCurrentSha") or "")[:40],
             "sourceNiakvioSha": str(value.get("sourceNiakvioSha") or "")[:40],
             "sourceBrainLlmSha": str(value.get("sourceBrainLlmSha") or "")[:40],
