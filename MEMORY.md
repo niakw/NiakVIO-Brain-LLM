@@ -454,3 +454,11 @@
 - `provider_bloc` is now an actual invention fallback. Generic complete provider-owned functions remain eligible even without taxonomy keyword matches; keyword matches still rank first. The model is instructed to rewrite the nearest complete function with a novel bounded provider-local mechanism when evidence is sufficient, rather than abstaining merely because no existing helper matches.
 - Generated Bloc replacement bound is aligned with complete function units at **1800 chars** across planner, Brain mutation guard and NiakVIO application guard. Exact current bytes, syntax checks, dangerous-capability guards, mutation-context fingerprints, isolated Deep sandbox and NiakVIO proof remain mandatory.
 - Do not interpret this as provider repair proof. The next authoritative guidance cycle must produce and sandbox concrete mutations before any provider status changes.
+
+## 2026-09-28 — Current provider replay now outranks narrow WAF priors
+
+- A second FORCE routing contradiction was confirmed after the 13-provider zero-mutation cycle: `request_from_checkout()` could correctly preserve a provider-layer `ROUTE PROVEN`/chain failure after identity-safe residential replay, but `build_causal_prior()` independently reclassified the same request to `harness` whenever an older targeted observation contained `provider_waf_challenge`.
+- This made repair routing deterministic/non-mutating even though the strongest current evidence showed the provider runtime itself still failed cleanly (including `provider_zero_before_provider_network`).
+- The causal prior now checks the current `waf-client-differential-current.residentialReplay` evidence before honoring a narrow targeted interactive-challenge seed. An identity-safe, contradiction-free replay whose debug stage is not WAF/timeout preserves the provider failure taxonomy and allows provider repair synthesis.
+- Tests cover both `route_proven_gap` and `chain_terminal_gap` preservation. Brain CI #885 passed on `bfcf26bf752176e2d6c4c96241870e434e182b18`.
+- Persistent/current challenge evidence without a clean full-provider replay remains non-provider/harness evidence; this change does not authorize provider code to bypass real WAF.
