@@ -77,7 +77,7 @@ class CompactForceRetryTest(unittest.TestCase):
         self.assertIn("transport_timeout = max(", script)
         self.assertIn("max_validation_corrections = 1", script)
         self.assertIn("for correction_index in range(1, max_validation_corrections + 1):", script)
-        self.assertIn("minimal exact window-local edit", script)
+        self.assertIn("window-local edit in the same scope or abstain", script)
         self.assertIn("min(int(args.timeout_seconds), 90)", script)
         self.assertIn("min(int(args.timeout_seconds) + 15, 120)", script)
         self.assertNotIn("timeout_seconds=150", script)
