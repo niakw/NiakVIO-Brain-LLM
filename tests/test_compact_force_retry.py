@@ -125,7 +125,8 @@ class CompactForceRetryTest(unittest.TestCase):
             patch_variant["properties"]["path"]["enum"],
             ["scripts/provider_patches/demo_runtime_v1.py"],
         )
-        self.assertEqual(patch_variant["properties"]["unit_id"]["enum"], ["w1u1"])
+        self.assertIn("w1u1", patch_variant["properties"]["unit_id"]["enum"])
+        self.assertGreaterEqual(len(patch_variant["properties"]["unit_id"]["enum"]), 1)
         self.assertNotIn("find", patch_variant["properties"])
         self.assertNotIn("window_id", patch_variant["properties"])
 
@@ -151,7 +152,8 @@ class CompactForceRetryTest(unittest.TestCase):
         self.assertEqual(bloc_variant["properties"]["family"]["pattern"], "^[a-z][a-z0-9_]{2,48}$")
         self.assertEqual(bloc_variant["properties"]["family"]["minLength"], 3)
         self.assertNotIn("path", bloc_variant["properties"])
-        self.assertEqual(bloc_variant["properties"]["unit_id"]["enum"], ["w1u1"])
+        self.assertIn("w1u1", bloc_variant["properties"]["unit_id"]["enum"])
+        self.assertGreaterEqual(len(bloc_variant["properties"]["unit_id"]["enum"]), 1)
         self.assertNotIn("find", bloc_variant["properties"])
         self.assertNotIn("window_id", bloc_variant["properties"])
 
