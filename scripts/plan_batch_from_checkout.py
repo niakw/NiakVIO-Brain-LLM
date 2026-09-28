@@ -177,6 +177,18 @@ def main() -> int:
         context = request.provider_context or {}
         allowed = set(request.allowed_mutations or [])
         scopes: list[str] = []
+        failure_key = str(request.failure_class or "").strip().casefold().replace("-", "_")
+        bloc_ready = (
+            "provider_bloc" in allowed
+            and bool(context.get("runtimeMutationSource"))
+        )
+
+        # Chain-terminal failures usually require composing/traversing runtime
+        # helpers. Spend the provider budget on the expressive Bloc surface
+        # first; ordinary patch/JS/data surfaces remain fallbacks.
+        if failure_key == "chain_terminal_gap" and bloc_ready:
+            scopes.append("provider_bloc")
+
         if (
             "provider_patch" in allowed
             and isinstance(context.get("registered_patch_sources"), dict)
@@ -187,11 +199,8 @@ def main() -> int:
             scopes.append("provider_js")
         elif "provider_data" in allowed and (context.get("override") or context.get("hub")):
             scopes.append("provider_data")
-        if (
-            "provider_bloc" in allowed
-            and context.get("runtimeMutationSource")
-            and "provider_bloc" not in scopes
-        ):
+
+        if bloc_ready and "provider_bloc" not in scopes:
             scopes.append("provider_bloc")
         return scopes
 
