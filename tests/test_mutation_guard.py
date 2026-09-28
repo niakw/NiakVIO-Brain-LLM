@@ -26,6 +26,19 @@ class MutationGuardTests(unittest.TestCase):
             "replace": replacement,
         })
 
+    def test_generated_bloc_accepts_long_exact_find_anchor(self):
+        find = 'function resolve(page){const marker="' + ("a" * 900) + '";return page.url;}'
+        replace = 'function resolve(page){const marker="' + ("b" * 900) + '";return page.finalUrl||page.url;}'
+        self.assertGreater(len(find), 320)
+        self.assertLessEqual(len(find), 1800)
+        validate_mutation("demo", {
+            "scope": "provider_bloc",
+            "operation": "upsert",
+            "family": "terminal_resolution",
+            "find": find,
+            "replace": replace,
+        })
+
     def test_provider_data_set_allowed(self):
         validate_mutation("demo", {
             "scope": "provider_data",
