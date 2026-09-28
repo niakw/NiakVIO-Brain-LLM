@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "niakvio_sha": "4b5e5ff99e69ec1a29e06820bf070460a5234349",
-  "reason": "Full 14-provider Force replan on fresh targeted recovery evidence run 36412614349.",
+  "reason": "Full 14-provider Force replan on fresh targeted evidence with deduplicated causal prompt context.",
   "requested_repair_queue": [
     "4khdhub",
     "allanime",
