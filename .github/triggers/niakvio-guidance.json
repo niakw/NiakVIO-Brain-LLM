@@ -1,8 +1,21 @@
 {
   "schema_version": 1,
   "niakvio_sha": "d17f241726180d727152dd4e460cfafd7a725d4f",
-  "reason": "MallumV focused proof with chain-terminal provider_bloc priority and strict JSON",
+  "reason": "Full 14-provider repair queue proof after strict JSON, causal function units, and chain-terminal Bloc-first routing",
   "requested_repair_queue": [
-    "mallumv"
+    "4khdhub",
+    "allanime",
+    "allwish",
+    "anime-ultime",
+    "animesalt",
+    "animesultra",
+    "animevost-fr",
+    "flemmix",
+    "mallumv",
+    "moviebox",
+    "moviesmod",
+    "vidfast",
+    "vostfree",
+    "yflix"
   ]
 }
