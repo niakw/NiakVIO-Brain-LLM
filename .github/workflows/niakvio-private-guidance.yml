@@ -300,7 +300,7 @@ jobs:
             --endpoint http://127.0.0.1:8080 \
             --model qwen2.5-coder-3b \
             --workers 1 \
-            --max-tokens 768 \
+            --max-tokens 512 \
             --timeout-seconds 120 \
             --force-provider-budget-seconds 180 \
             --output private-force-batch.jsonl
