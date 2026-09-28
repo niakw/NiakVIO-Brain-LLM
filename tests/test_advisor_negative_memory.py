@@ -5,7 +5,7 @@ import json
 import tempfile
 from pathlib import Path
 
-from niakvio_brain_llm.niakvio_adapter import _provider_negative_memory
+from niakvio_brain_llm.niakvio_adapter import _provider_negative_memory, _provider_force_negative_memory
 from niakvio_brain_llm.advisor_experiments import experiment_fingerprint as runtime_fingerprint, next_advisor_experiment
 from niakvio_brain_llm.contracts import RepairRequest
 
@@ -38,6 +38,34 @@ rows = _provider_negative_memory(payload, "animesalt")
 assert len(rows) == 1, rows
 assert rows[0]["llmAdvisorExperimentFingerprint"] == "a" * 64
 assert rows[0]["consecutiveFailures"] == 3
+
+
+force_payload = {
+    "entries": [{
+        "providerId": "AnimeSalt",
+        "mutationFingerprint": "c" * 64,
+        "mutationContextFingerprint": "d" * 64,
+        "consecutiveFailures": 1,
+        "failures": 1,
+        "successes": 0,
+        "lastOutcome": "rejected",
+        "lastReason": "required_category_playable_proof:anime",
+        "lastCurrentSha": "1" * 40,
+        "sourceNiakvioSha": "2" * 40,
+        "sourceBrainLlmSha": "3" * 40,
+        "mutations": [{"find": "secret-current-bytes", "replace": "secret-replacement"}],
+    }]
+}
+force_rows = _provider_force_negative_memory(force_payload, "animesalt")
+assert len(force_rows) == 1, force_rows
+assert force_rows[0]["memoryRole"] == "force_sandbox_execution"
+assert force_rows[0]["executionObserved"] is True
+assert force_rows[0]["lastReason"] == "required_category_playable_proof:anime"
+encoded_force = json.dumps(force_rows)
+assert "mutationFingerprint" not in encoded_force
+assert "mutationContextFingerprint" not in encoded_force
+assert "secret-current-bytes" not in encoded_force
+assert "secret-replacement" not in encoded_force
 
 with tempfile.TemporaryDirectory() as td:
     root = Path(td)
