@@ -197,6 +197,67 @@ class AdapterFailureClassTests(unittest.TestCase):
             request = request_from_checkout(root, "demo")
             self.assertEqual(request.failure_class, "transport_environment_gap")
 
+    def test_waf_client_content_reached_routes_to_client_transport_gap(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "automation").mkdir(parents=True)
+            (root / "automation" / "provider-census-status.json").write_text(
+                json.dumps({
+                    "runId": "run-client",
+                    "providers": [{
+                        "provider": "demo",
+                        "status": "ROUTE PROVEN",
+                        "dominantIssue": "provider_network_http_error",
+                        "declaredLanes": ["movie"],
+                        "routeProof": ["1 live route"],
+                    }],
+                }),
+                encoding="utf-8",
+            )
+            for name in ("brain-repair-experience.json", "brain-repair-memory.json"):
+                (root / "automation" / name).write_text("{}", encoding="utf-8")
+            (root / "automation" / "provider-targeted-regression-recovery-latest.json").write_text(
+                json.dumps({
+                    "providers": {
+                        "demo": {
+                            "debugStages": {"movie": "provider_network_http_error"},
+                            "statuses": {"movie": "no_streams"},
+                            "verifiedLanes": [],
+                            "playableLanes": [],
+                            "network": {
+                                "movie": [
+                                    {"method": "GET", "host": "provider.example.org", "path": "/movie/1", "status": 403},
+                                ],
+                            },
+                        }
+                    }
+                }),
+                encoding="utf-8",
+            )
+            (root / "automation" / "provider-waf-browser-session-latest.json").write_text(
+                json.dumps({
+                    "rows": [{
+                        "provider": "demo",
+                        "lane": "movie",
+                        "outcome": "browser_content_reached",
+                        "contentProfiles": ["nuvio-tv-okhttp-jvm"],
+                        "residentialExitNodeProfile": {"outcome": "browser_content_reached"},
+                        "nativeTvTransportStillUnproven": True,
+                    }],
+                    "residentialProviderReplay": {"rows": []},
+                }),
+                encoding="utf-8",
+            )
+            (root / "automation" / "provider-repair-batch-refined-latest.json").write_text(
+                json.dumps({"sourceRunId": "run-client", "groups": []}),
+                encoding="utf-8",
+            )
+            request = request_from_checkout(root, "demo")
+            self.assertEqual(request.failure_class, "client_transport_gap")
+            by_source = {row["source"]: row["value"] for row in request.observations}
+            self.assertIn("waf-client-differential-current", by_source)
+            self.assertIn("nuvio-tv-okhttp-jvm", by_source["waf-client-differential-current"]["contentProfiles"])
+
     def test_stale_refined_evidence_is_not_injected(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
