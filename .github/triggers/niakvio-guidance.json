@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "53ed9623b2f69119b0e6c9919fb3371a18d30ab7",
-  "reason": "Authoritative 13-provider executable FORCE after invention fallback, replay-over-WAF precedence and current-census fresh-proof gate; all related Brain tests green.",
+  "niakvio_sha": "014c73b8b8e68fb7a7975a46bec8d133de56ee02",
+  "reason": "Authoritative guarded current 14-provider FORCE cohort after Bloc invention fallback, current replay/evidence authority fixes, stale-publication protection and routing observability. Recompute all mutations against current NiakVIO bytes; include Vostfree fresh-evidence routing.",
   "requested_repair_queue": [
     "4khdhub",
     "allanime",
@@ -15,6 +15,7 @@
     "moviebox",
     "moviesmod",
     "vidfast",
+    "vostfree",
     "yflix"
   ]
 }
