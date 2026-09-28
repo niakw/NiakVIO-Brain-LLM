@@ -198,6 +198,31 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
         supported = []
 
     targeted_observation = _provider_targeted_observation(targeted, provider_id)
+    targeted_stages = {
+        str(value or "").strip().casefold()
+        for value in (targeted_observation.get("debugStages") or {}).values()
+        if str(value or "").strip()
+    }
+    targeted_network = [
+        item
+        for rows in (targeted_observation.get("network") or {}).values()
+        if isinstance(rows, list)
+        for item in rows
+        if isinstance(item, dict)
+    ]
+    targeted_provider_waf = (
+        bool(targeted_stages)
+        and targeted_stages <= {"provider_waf_challenge"}
+        and any(int(item.get("status") or 0) in {401, 403, 429} for item in targeted_network)
+        and not targeted_observation.get("playableLanes")
+        and not targeted_observation.get("verifiedLanes")
+    )
+    if targeted_provider_waf:
+        # A current provider-origin WAF response is transport evidence, not proof
+        # that provider code is defective. Keep mutation authority withheld until
+        # a browser/native/residential differential implicates provider-owned code.
+        failure = "transport_environment_gap"
+
     refined_groups = _provider_refined_groups(
         refined,
         provider_id,
