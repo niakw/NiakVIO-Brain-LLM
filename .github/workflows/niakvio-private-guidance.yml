@@ -29,10 +29,10 @@ permissions:
   actions: write
 
 concurrency:
-  group: niakvio-private-guidance-v2
-  # Continuation pages dispatch the same workflow before the current page has
-  # fully finished artifact/post steps. Queue them instead of cancelling the
-  # page that just published durable state.
+  # Pages from one pinned Brain revision serialize together. A newer Brain
+  # cycle gets a distinct group so GitHub cannot replace the older cycle's
+  # single pending continuation.
+  group: niakvio-private-guidance-v3-${{ inputs.brain_sha || github.sha }}
   cancel-in-progress: false
 
 jobs:
