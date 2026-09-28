@@ -445,9 +445,9 @@ def _force_edit_units(value: Any, failure_class: str, *, max_chars: int = 2600, 
     ranked = []
     seen = set()
 
-    def safe(fragment: str, absolute: int) -> bool:
+    def safe(fragment: str, absolute: int, *, max_len: int = 320) -> bool:
         stripped = fragment.strip()
-        if len(stripped) < 6 or len(stripped) > 320:
+        if len(stripped) < 6 or len(stripped) > max_len:
             return False
         if stripped.startswith(("function ", "async function ", "class ", "else", "catch", "finally")):
             return False
@@ -513,21 +513,42 @@ def _force_edit_units(value: Any, failure_class: str, *, max_chars: int = 2600, 
                 candidates.append((left, right))
             statement_start = index + 1
 
-        for left, right in candidates:
+        candidates.sort()
+        expanded: list[tuple[int, int, str]] = [(left, right, "statement") for left, right in candidates]
+        # Add bounded adjacent statement sequences. Gaps must be whitespace only,
+        # so a sequence never crosses a brace or another structural delimiter.
+        for start_index, (left, right) in enumerate(candidates):
+            end = right
+            for width in range(2, 5):
+                next_index = start_index + width - 1
+                if next_index >= len(candidates):
+                    break
+                next_left, next_right = candidates[next_index]
+                if source[end:next_left].strip():
+                    break
+                end = next_right
+                fragment = source[left:end]
+                if len(fragment.strip()) > 700:
+                    break
+                expanded.append((left, end, "statement_sequence"))
+
+        for left, right, kind in expanded:
             fragment = source[left:right]
             absolute = base + left
             key = (absolute, absolute + len(fragment))
-            if key in seen or not safe(fragment, absolute):
+            if key in seen or not safe(fragment, absolute, max_len=700 if kind == "statement_sequence" else 320):
                 continue
             seen.add(key)
             center = left + max(1, len(fragment)) // 2
             contains_focus = left <= focus < right
             distance = 0 if contains_focus else abs(center - focus)
-            ranked.append(((0 if contains_focus else 1, distance, window_index, absolute), {
+            kind_rank = 0 if kind == "statement_sequence" else 1
+            ranked.append(((0 if contains_focus else 1, kind_rank, distance, window_index, absolute), {
                 "window_id": str(window.get("id") or ""),
                 "offset": absolute,
                 "end_offset": absolute + len(fragment),
                 "reason": str(window.get("reason") or ""),
+                "kind": kind,
                 "source": fragment,
             }))
 

@@ -141,7 +141,9 @@ class PromptingTests(unittest.TestCase):
         units = payload["mutation_target"]["editable_units"]
         self.assertTrue(units)
         self.assertTrue(all(row["source"] == source[row["offset"]:row["end_offset"]] for row in units))
-        self.assertTrue(all(len(row["source"]) <= 320 for row in units))
+        self.assertTrue(all(len(row["source"]) <= 700 for row in units))
+        self.assertTrue(any(row.get("kind") == "statement_sequence" for row in units))
+        self.assertTrue(any(row["source"].count(";") >= 2 for row in units if row.get("kind") == "statement_sequence"))
         self.assertTrue(all(row["window_id"] in {window["id"] for window in windows} for row in units))
 
 

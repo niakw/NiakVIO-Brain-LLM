@@ -4,8 +4,8 @@ import unittest
 from niakvio_brain_llm.backend import StaticBackend
 from niakvio_brain_llm.contracts import RepairRequest
 from niakvio_brain_llm.document_memory import DocumentStore
-from niakvio_brain_llm.planner import BrainPlanner, _resolve_structured_anchor
-from niakvio_brain_llm.prompting import _force_source_windows
+from niakvio_brain_llm.planner import BrainPlanner, _compact_edit_to_mutation, _resolve_structured_anchor
+from niakvio_brain_llm.prompting import _force_source_windows, build_force_prompt_payload
 
 class PlannerTests(unittest.TestCase):
     def test_accepts_bounded_provider_mutation(self):
@@ -320,7 +320,61 @@ class PlannerTests(unittest.TestCase):
             },
             "abstain_reason": "",
         })
-        with self.assertRaisesRegex(ValueError, "syntax validation|structurally incomplete"):
+        with self.assertRaisesRegex(ValueError, "syntax validation|structurally incomplete|removes live binding"):
+            BrainPlanner(StaticBackend(response)).plan(
+                RepairRequest(
+                    provider_id="demo",
+                    failure_class="chain_terminal_gap",
+                    status="CHAIN REACHED",
+                    provider_context={
+                        "runtimeMutationFilename": "providers/demo.js",
+                        "runtimeMutationSource": source,
+                    },
+                    allowed_mutations=["provider_bloc"],
+                ),
+                compact_force=True,
+            )
+
+    def test_compact_force_provider_bloc_allows_novel_helper(self):
+        source = "var seed=1;\n"
+        response = json.dumps({
+            "edit": {
+                "scope": "provider_bloc",
+                "family": "novel_terminal_helper",
+                "find": "var seed=1;",
+                "replace": "function freshHelper(){return 2;}\nvar seed=freshHelper();",
+            },
+            "abstain_reason": "",
+        })
+        proposal = BrainPlanner(StaticBackend(response)).plan(
+            RepairRequest(
+                provider_id="demo",
+                failure_class="chain_terminal_gap",
+                status="CHAIN REACHED",
+                provider_context={
+                    "runtimeMutationFilename": "providers/demo.js",
+                    "runtimeMutationSource": source,
+                },
+                allowed_mutations=["provider_bloc"],
+            ),
+            compact_force=True,
+        )
+        self.assertFalse(proposal.abstain)
+        self.assertEqual(proposal.mutations[0]["scope"], "provider_bloc")
+        self.assertIn("function freshHelper()", proposal.mutations[0]["replace"])
+
+    def test_compact_force_provider_bloc_rejects_helper_collision(self):
+        source = "function existing(){return 1;}\nvar seed=1;\n"
+        response = json.dumps({
+            "edit": {
+                "scope": "provider_bloc",
+                "family": "novel_terminal_helper",
+                "find": "var seed=1;",
+                "replace": "function existing(){return 2;}\nvar seed=existing();",
+            },
+            "abstain_reason": "",
+        })
+        with self.assertRaisesRegex(ValueError, "helper name collides"):
             BrainPlanner(StaticBackend(response)).plan(
                 RepairRequest(
                     provider_id="demo",
@@ -560,6 +614,28 @@ class PlannerTests(unittest.TestCase):
         )
         self.assertEqual(proposal.provider_id, "wrong-id")
         self.assertEqual(proposal.strategy, "wrong_strategy")
+
+class PlannerGuardTests(unittest.TestCase):
+    def test_force_rejects_removed_live_binding_and_pure_traversal_deletion(self):
+        source = "function scan(text){const out=[];const normalized=_embeddedText(text);if(normalized)out.push(normalized);return out;}"
+        request = RepairRequest(
+            provider_id="demo",
+            failure_class="route_proven_gap",
+            provider_context={"runtimeMutationSource": source},
+        )
+        payload = build_force_prompt_payload(
+            request,
+            {"target_layer":"provider","confidence":0.96,"strategy_prior":"search_detail_player_terminal_traversal"},
+            {"allow_mutations":True,"allowed_scopes":["provider_bloc"]},
+        )
+        units = payload["new_bloc_target"]["editable_units"]
+        target = next(row for row in units if "normalized=_embeddedText" in row["source"] and "const out" in row["source"])
+        with self.assertRaisesRegex(ValueError, "removes live binding|pure deletion"):
+            _compact_edit_to_mutation(
+                request,
+                {"scope":"provider_bloc","family":"url_extractor","unit_id":target["id"],"replace":"const out=[];"},
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

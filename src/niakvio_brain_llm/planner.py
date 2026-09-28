@@ -50,7 +50,7 @@ Rules:
 - One edit max; never invent URLs/routes/hosts/headers/tokens/cookies/placeholders or facts.
 - provider_data: {scope,operation,path,value?}
 - provider_patch/provider_js: {scope,path,unit_id,replace}; no unified diff.
-- provider_bloc for a new mechanism: {scope:"provider_bloc",family,unit_id,replace}.
+- provider_bloc for a new mechanism: {scope:"provider_bloc",family,unit_id,replace}; family must be lowercase snake_case.
 - unit_id must come from editable_units. Brain owns the exact current-byte find text; never copy or invent find bytes.
 - Existing-file replace <=640 chars; provider_bloc replace <=1200 chars.
 - Preserve syntax/function boundaries; do not emit partial function declarations.
@@ -107,7 +107,12 @@ def _reject_semantic_identity_edit(find: str, replace: str) -> None:
         raise ValueError("compact Force edit is a semantic no-op")
 
 
-def _reject_partial_function_anchor(find: str, replace: str) -> None:
+def _reject_partial_function_anchor(
+    find: str,
+    replace: str,
+    *,
+    allow_new_helpers: bool = False,
+) -> None:
     """Reject structurally partial or neighbor-smashing helper edits."""
     find_names = _function_names(find)
     replace_names = _function_names(replace)
@@ -120,7 +125,7 @@ def _reject_partial_function_anchor(find: str, replace: str) -> None:
         if missing:
             raise ValueError("compact Force replacement may not silently remove a helper function declaration")
     added = replace_names - find_names
-    if added:
+    if added and not allow_new_helpers:
         raise ValueError("compact Force replacement may not absorb a neighboring helper function")
     if re.search(r"\basync\s+async\b|\bfunction\s+function\b|\breturn\s+return\b", replace):
         raise ValueError("compact Force replacement contains duplicated JavaScript control tokens")
@@ -131,6 +136,38 @@ def _reject_partial_function_anchor(find: str, replace: str) -> None:
         neutral = re.sub(r"\|\|\s*(?:0|false)\b|&&\s*(?:1|true)\b", "", replace, flags=re.I)
         if _compact_without_space(neutral) == _compact_without_space(find) and _compact_without_space(replace) != _compact_without_space(find):
             raise ValueError("compact Force replacement is a boolean-neutral no-op")
+
+
+def _reject_removed_live_binding(source: str, absolute_start: int, find: str, replace: str) -> None:
+    declared = set(re.findall(r"\b(?:const|let|var)\s+([A-Za-z_$][A-Za-z0-9_$]*)\b", find))
+    retained = set(re.findall(r"\b(?:const|let|var)\s+([A-Za-z_$][A-Za-z0-9_$]*)\b", replace))
+    removed = declared - retained
+    if not removed:
+        return
+    tail = source[absolute_start + len(find): absolute_start + len(find) + 1400]
+    for name in sorted(removed):
+        use = re.search(rf"\b{re.escape(name)}\b", tail)
+        if not use:
+            continue
+        redeclare = re.search(rf"\b(?:const|let|var)\s+{re.escape(name)}\b", tail)
+        if redeclare is None or use.start() < redeclare.start():
+            raise ValueError(
+                f"compact Force replacement removes live binding still referenced nearby: {name}"
+            )
+
+
+def _reject_causally_empty_deletion(failure_class: str, find: str, replace: str) -> None:
+    failure = str(failure_class or "").strip().casefold().replace("-", "_")
+    if failure not in {"route_proven_gap", "chain_terminal_gap", "media_extraction_gap"}:
+        return
+    compact_find = _compact_without_space(find)
+    compact_replace = _compact_without_space(replace)
+    if not compact_replace or compact_replace == compact_find:
+        return
+    if compact_replace in compact_find and len(compact_replace) < len(compact_find):
+        raise ValueError(
+            "compact Force traversal repair may not be a pure deletion of existing logic"
+        )
 
 
 def _node_check_javascript(source: str) -> None:
@@ -221,6 +258,7 @@ def _resolve_structured_anchor(
     max_replace: int,
     window_kwargs: dict[str, int] | None = None,
     absolute_start_hint: int | None = None,
+    allow_new_helpers: bool = False,
 ) -> tuple[str, str]:
     """Compile a window-local semantic edit into one globally unique anchor.
 
@@ -368,7 +406,13 @@ def _resolve_structured_anchor(
 
     if len(anchor_find) > max_find or len(anchor_replace) > max_replace:
         raise ValueError("compact Force resolved find/replace is oversized")
-    _reject_partial_function_anchor(anchor_find, anchor_replace)
+    _reject_partial_function_anchor(
+        anchor_find,
+        anchor_replace,
+        allow_new_helpers=allow_new_helpers,
+    )
+    _reject_removed_live_binding(source, absolute_start, find, replace)
+    _reject_causally_empty_deletion(failure_class, find, replace)
     return anchor_find, anchor_replace
 
 
@@ -438,7 +482,16 @@ def _compact_edit_to_mutation(
             max_replace=1200,
             window_kwargs=window_kwargs,
             absolute_start_hint=absolute_start_hint,
+            allow_new_helpers=True,
         )
+        added_helpers = _function_names(replace) - _function_names(find)
+        existing_helpers = _function_names(source)
+        collisions = sorted(added_helpers & existing_helpers)
+        if collisions:
+            raise ValueError(
+                "compact Force provider_bloc helper name collides with current runtime: "
+                + ",".join(collisions)
+            )
         updated = source.replace(find, replace, 1)
         _node_check_javascript(updated)
         return {
@@ -552,7 +605,7 @@ def _compact_wire_schema_for(
                 "required": ["scope", "family", "unit_id", "replace"],
                 "properties": {
                     "scope": {"type": "string", "enum": ["provider_bloc"]},
-                    "family": {"type": "string", "maxLength": 49},
+                    "family": {"type": "string", "minLength": 3, "maxLength": 49, "pattern": "^[a-z][a-z0-9_]{2,48}$"},
                     "unit_id": {"type": "string", "enum": unit_ids},
                     "replace": {"type": "string", "maxLength": 1200},
                 },

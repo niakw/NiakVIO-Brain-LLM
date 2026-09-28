@@ -268,7 +268,7 @@
   - `provider_js`: 320 tokens,
   - `provider_bloc`: 448 tokens.
 - This preserves extra room for genuinely new provider-local Bloc synthesis while making ordinary local edits materially cheaper on the CPU Qwen runtime.
-- The workflow-level `--max-tokens 512` remains an upper ceiling; the planner applies the lower per-scope cap internally.
+- The workflow-level `--max-tokens 768` remains an upper ceiling; the planner applies the lower per-scope cap internally.
 - Brain CI is green on `65ad59f86830a5555823aed30fe101118c9d3bd8`. Live three-family latency/mutation proof is still pending and must not be inferred from CI.
 
 
@@ -316,3 +316,13 @@
 - Real-unit inspection after the change produced complete causal statements for AllAnime, MalluMV and 4KHDHub (for example `if(!raw)continue;`, `if(!best||bestScore<c.minIdentityScore)return null;`, `var q=req(a);`) instead of truncated function prefixes.
 - This is a quality improvement, not a safety relaxation: the model reasons about what logic to replace, while deterministic Brain owns where/current bytes; NiakVIO remains the runtime proof/publication authority.
 - Local Mac suite: 150/150 tests green after the migration. Fresh remote three-family proof is still required.
+
+
+## 2026-09-28 — Local M1 Force proof: composite units and causal deletion guards
+
+- Running the same Qwen2.5-Coder-3B Q4_K_M model through llama.cpp/Metal on the M1 materially accelerates iteration versus GitHub CPU while GitHub remains final CI/proof authority.
+- Exact-SHA local cohort AllAnime/MalluMV/4KHDHub on NiakVIO `9363614e3d5ac9b918ac7264c0f8459c2ad1467b` produced 2 selected sandbox mutations (AllAnime and 4KHDHub) versus 0/3 on GitHub CPU. NiakVIO isolated candidate evaluation accepted 0/2: AllAnime remained `no_streams`; 4KHDHub remained `provider_unreachable`. No provider mutation was published.
+- Root lesson: exact statement units fixed malformed-byte ownership but were sometimes too atomically local to express a causal traversal repair. Brain now exposes bounded adjacent statement sequences (2-4 statements, <=700 chars, whitespace-only gaps, never crossing braces) alongside single-statement units.
+- A second local cohort with composite units showed AllAnime and MalluMV still tending toward no-op/abstention; 4KHDHub produced a candidate that merely removed `normalized = _embeddedText(text)` and had no runtime improvement.
+- Deterministic compiler guards now reject (a) removal of a local binding that is still referenced nearby before redeclaration and (b) pure-deletion repairs for `route_proven_gap`, `chain_terminal_gap`, or `media_extraction_gap`. This blocks byte-changing but causally empty edits before NiakVIO sandbox time is spent.
+- Local Brain suite after these changes: 153/153 tests green. Fresh three-family model proof is still required before claiming any provider repair.

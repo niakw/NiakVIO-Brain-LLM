@@ -13,7 +13,7 @@ assert "recovery_token_cap = {" in source
 assert '"provider_data": 256' in source
 assert '"provider_patch": 384' in source
 assert '"provider_js": 384' in source
-assert '"provider_bloc": 512' in source
+assert '"provider_bloc": 768' in source
 assert "primary_tokens = max(128, min(int(args.max_tokens), scope_token_cap))" in source
 assert "retry_tokens = max(primary_tokens, min(int(args.max_tokens), recovery_token_cap))" in source
 assert '120 if scope == "provider_bloc" else 90' in source
@@ -28,8 +28,9 @@ assert '"function anchor is structurally incomplete", "truncated_fragment"' in s
 assert "except ValueError as validation_exc:" in source
 assert "timeout_seconds=validation_timeout" in source
 assert "timeout_seconds=transport_timeout" in source
-assert "max_validation_corrections = 1" in source
+assert 'max_validation_corrections = 3 if scope == "provider_bloc" else 1' in source
 assert "for correction_index in range(1, max_validation_corrections + 1):" in source
+assert "helper_collision" in source
 assert "window-local edit in the same scope or abstain" in source
 assert "force provider budget exhausted" in source
 assert "FIELD_BRAIN_FORCE_PROVIDER_BUDGET_EXHAUSTED" in source
@@ -37,7 +38,7 @@ assert "--force-provider-budget-seconds" in source
 assert "prefill_prompt=True" in source
 assert 'prefill_prompt=(args.mode == "repair" and not args.advisor_only)' in source
 
-assert "--max-tokens 512" in workflow
+assert "--max-tokens 768" in workflow
 assert "--timeout-seconds 120" in workflow
 assert "--force-provider-budget-seconds 240" in workflow
 assert "FIELD_NIAKVIO_FORCE_MUTATIONS_READY ready=false" in workflow
@@ -50,3 +51,10 @@ assert 'status_key == "ROUTE PROVEN"' in source
 assert 'budget_seconds = min(budget_cap, 120)' in source
 assert "FIELD_BRAIN_FORCE_PROVIDER_BUDGET " in source
 assert "max_tokens=primary_tokens" in source
+
+assert "targeted-regression-current" in source
+assert "census_current" in source
+assert "prior_feedback" in source
+
+assert "removed_live_binding" in source
+assert "causally_empty_deletion" in source

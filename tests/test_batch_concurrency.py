@@ -29,7 +29,7 @@ for token in (
     '"provider_bloc": 448',
     "recovery_token_cap = {",
     '"provider_patch": 384',
-    '"provider_bloc": 512',
+    '"provider_bloc": 768',
     "primary_tokens = max(128, min(int(args.max_tokens), scope_token_cap))",
     "retry_tokens = max(primary_tokens, min(int(args.max_tokens), recovery_token_cap))",
     "FIELD_BRAIN_FORCE_PROVIDER_BUDGET ",
@@ -59,7 +59,7 @@ assert "-c 32768" in wf
 assert "-np 1" in wf
 assert "--workers 1" in wf
 assert "--advisor-only" in wf
-assert "--max-tokens 512" in wf
+assert "--max-tokens 768" in wf
 assert "--timeout-seconds 120" in wf
 assert "--force-provider-budget-seconds 240" in wf
 assert wf.index("-np 1") < wf.index("--workers 1")

@@ -157,6 +157,9 @@ def main() -> int:
             ("python syntax validation failed", "syntax_error"),
             ("duplicated javascript control tokens", "duplicated_tokens"),
             ("may not absorb a neighboring helper", "neighbor_absorption"),
+            ("helper name collides with current runtime", "helper_collision"),
+            ("removes live binding still referenced nearby", "removed_live_binding"),
+            ("pure deletion of existing logic", "causally_empty_deletion"),
             ("helper function declaration", "helper_declaration_removed"),
             ("forbidden runtime capability", "forbidden_capability"),
             ("remains ambiguous after causal-focus resolution", "ambiguous_window_occurrence"),
@@ -213,7 +216,7 @@ def main() -> int:
             "provider_data": 256,
             "provider_patch": 384,
             "provider_js": 384,
-            "provider_bloc": 512,
+            "provider_bloc": 768,
         }.get(scope, 384)
         primary_tokens = max(128, min(int(args.max_tokens), scope_token_cap))
         retry_tokens = max(primary_tokens, min(int(args.max_tokens), recovery_token_cap))
@@ -225,7 +228,7 @@ def main() -> int:
             90,
             min(int(args.timeout_seconds) + 15, 120),
         )
-        max_validation_corrections = 1
+        max_validation_corrections = 3 if scope == "provider_bloc" else 1
 
         def _remaining_timeout(desired: int) -> int:
             remaining = force_deadline - time.monotonic()
@@ -285,6 +288,19 @@ def main() -> int:
                     "previous replacement absorbed neighboring helper code; edit only the "
                     "minimal expression or statement inside the intended helper"
                 ),
+                "helper_collision": (
+                    "previous Bloc redeclared a helper that already exists in the current runtime; "
+                    "reuse/call the existing helper instead of declaring it again, and change only "
+                    "the selected statement or add a uniquely named helper if genuinely required"
+                ),
+                "removed_live_binding": (
+                    "previous edit removed a local variable that later code still uses; preserve or "
+                    "replace that binding and make the repair behavior explicit instead of deleting it"
+                ),
+                "causally_empty_deletion": (
+                    "previous traversal repair only deleted existing logic; add or replace concrete "
+                    "route/player/terminal traversal behavior on the selected unit, or abstain"
+                ),
             }
             feedback = {
                 "stage": "force_validation_feedback",
@@ -296,10 +312,32 @@ def main() -> int:
                     "window-local edit in the same scope or abstain",
                 ),
             }
-            retry_request.observations = [
-                feedback,
-                *list(retry_request.observations or []),
-            ][:3]
+            existing_observations = [
+                row for row in list(retry_request.observations or [])
+                if isinstance(row, dict)
+            ]
+            prior_feedback = [
+                row for row in existing_observations
+                if str(row.get("stage") or "") == "force_validation_feedback"
+            ][:1]
+            required_evidence = [
+                row for row in existing_observations
+                if str(row.get("source") or "").strip().casefold()
+                in {"census_current", "targeted-regression-current"}
+            ]
+            retained = [feedback, *prior_feedback, *required_evidence]
+            seen = set()
+            retry_request.observations = []
+            for row in retained:
+                fingerprint = (
+                    str(row.get("stage") or ""),
+                    str(row.get("source") or ""),
+                    str(row.get("reason") or ""),
+                )
+                if fingerprint in seen:
+                    continue
+                seen.add(fingerprint)
+                retry_request.observations.append(row)
             print(
                 "FIELD_BRAIN_FORCE_SCOPE_FEEDBACK "
                 f"provider={provider} scope={scope} reason={reason} "
@@ -413,10 +451,11 @@ def main() -> int:
                 )
                 if error is not None:
                     last_error = error
+                    error_detail = re.sub(r"[^a-zA-Z0-9._:/ -]+", "_", str(error).strip())[:240] or "unspecified"
                     print(
                         "FIELD_BRAIN_FORCE_SCOPE_REJECTED "
                         f"provider={provider} scope={scope} error={type(error).__name__} "
-                        f"reason={_force_rejection_reason(error)}",
+                        f"reason={_force_rejection_reason(error)} detail={error_detail}",
                         flush=True,
                     )
                     continue

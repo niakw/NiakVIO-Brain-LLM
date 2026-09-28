@@ -276,7 +276,7 @@ Current generated-token ceilings are:
 | provider_data | 192 | 256 |
 | provider_patch | 320 | 384 |
 | provider_js | 320 | 384 |
-| provider_bloc | 448 | 512 |
+| provider_bloc | 448 | 768 |
 
 The workflow hard wall-clock ceiling is 240 seconds per provider, but effective
 budgets depend on evidence depth: chain/terminal extraction cases may consume the
@@ -294,3 +294,10 @@ Compact Force must not ask the model to reproduce exact minified source bytes. C
 For provider patch/JS mutations the model emits only `{scope, path, unit_id, replace}`; for a novel provider Bloc it emits `{scope, family, unit_id, replace}`. Brain resolves `unit_id` back to the exact current-byte statement and offset, expands uniqueness only when required, then performs full syntax, ownership, placeholder/network and no-op validation.
 
 Editable units may not be partial function/class prefixes, unmatched-brace fragments, or mid-token window slices. This preserves model creativity for replacement logic while removing exact-byte copying from the probabilistic part of the pipeline.
+
+
+### Composite editable units and causal deletion rejection
+
+A single exact statement is sometimes too small for a real route/player/terminal repair, while exposing a whole function gives the model too much byte ownership. Force therefore offers both single statements and bounded adjacent statement sequences. A sequence may span 2-4 statements, is capped at 700 characters, and may only join statements separated by whitespace; braces or other structural delimiters stop composition. The deterministic compiler still owns the exact source bytes and offsets.
+
+For traversal-class failures (`route_proven_gap`, `chain_terminal_gap`, `media_extraction_gap`), the compiler also rejects edits that merely delete existing logic without introducing replacement behavior. It rejects removal of `const`/`let`/`var` bindings that remain referenced nearby before redeclaration. These are pre-sandbox causal guards, not proof shortcuts: any surviving mutation must still pass NiakVIO isolated application, Deep/health, playable-media, identity and non-regression gates.
