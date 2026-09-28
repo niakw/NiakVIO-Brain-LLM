@@ -165,6 +165,36 @@ def _provider_negative_memory(payload: Any, provider_id: str) -> list[dict[str, 
         })
     return out[:32]
 
+def _provider_force_negative_memory(payload: Any, provider_id: str) -> list[dict[str, Any]]:
+    """Return safe rejected Force execution outcomes without mutation/source text."""
+    if not isinstance(payload, dict):
+        return []
+    wanted = _canon(provider_id)
+    entries = payload.get("entries")
+    if not isinstance(entries, list):
+        return []
+    out: list[dict[str, Any]] = []
+    for value in entries:
+        if not isinstance(value, dict) or _canon(value.get("providerId")) != wanted:
+            continue
+        failures = int(value.get("consecutiveFailures") or 0)
+        successes = int(value.get("successes") or 0)
+        if failures <= 0 and successes <= 0:
+            continue
+        out.append({
+            "memoryRole": "force_sandbox_execution",
+            "consecutiveFailures": failures,
+            "failures": int(value.get("failures") or 0),
+            "successes": successes,
+            "lastOutcome": str(value.get("lastOutcome") or "")[:80],
+            "lastReason": str(value.get("lastReason") or "")[:240],
+            "lastCurrentSha": str(value.get("lastCurrentSha") or "")[:40],
+            "sourceNiakvioSha": str(value.get("sourceNiakvioSha") or "")[:40],
+            "sourceBrainLlmSha": str(value.get("sourceBrainLlmSha") or "")[:40],
+            "executionObserved": True,
+        })
+    return out[:8]
+
 def classify_census_failure(row: dict[str, Any]) -> str:
     explicit = str(row.get("failureClass") or "").strip()
     if explicit:
@@ -210,6 +240,7 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
     census = _load(root / "automation" / "provider-census-status.json", {})
     experience = _load(root / "automation" / "brain-repair-experience.json", {})
     memory = _load(root / "automation" / "brain-repair-memory.json", {})
+    force_memory = _load(root / "automation" / "brain-llm-force-memory.json", {})
     targeted = _load(root / "automation" / "provider-targeted-regression-recovery-latest.json", {})
     waf = _load(root / "automation" / "provider-waf-browser-session-latest.json", {})
     refined = _load(root / "automation" / "provider-repair-batch-refined-latest.json", {})
@@ -232,6 +263,7 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
                     provider_experience.append(value)
 
     negative_memory = _provider_negative_memory(memory, provider_id)
+    force_negative_memory = _provider_force_negative_memory(force_memory, provider_id)
 
     supported = (
         row.get("declaredLanes")
@@ -342,7 +374,10 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
     }
 
     provider_context = build_provider_context(root, provider_id)
-    provider_context["advisor_experiment_history"] = negative_memory
+    provider_context["advisor_experiment_history"] = [
+        *negative_memory,
+        *force_negative_memory,
+    ][-32:]
     references = build_validated_reference_patterns(
         root,
         provider_id,
@@ -376,6 +411,10 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
             ),
             {"source": "brain-repair-experience", "value": provider_experience[:4]},
             {"source": "brain-repair-memory", "value": negative_memory[:4]},
+            *(
+                [{"source": "brain-force-sandbox-memory", "value": force_negative_memory[:4]}]
+                if force_negative_memory else []
+            ),
         ],
         provider_context=provider_context,
     )
