@@ -50,6 +50,7 @@ force_payload = {
         "successes": 0,
         "lastOutcome": "rejected",
         "lastReason": "required_category_playable_proof:anime",
+        "lastMutationSummary": [{"scope": "provider_bloc", "operation": "upsert", "family": "url_extractor"}],
         "lastCurrentSha": "1" * 40,
         "sourceNiakvioSha": "2" * 40,
         "sourceBrainLlmSha": "3" * 40,
@@ -61,6 +62,7 @@ assert len(force_rows) == 1, force_rows
 assert force_rows[0]["memoryRole"] == "force_sandbox_execution"
 assert force_rows[0]["executionObserved"] is True
 assert force_rows[0]["lastReason"] == "required_category_playable_proof:anime"
+assert force_rows[0]["lastMutationSummary"][0]["family"] == "url_extractor"
 encoded_force = json.dumps(force_rows)
 assert "mutationFingerprint" not in encoded_force
 assert "mutationContextFingerprint" not in encoded_force
