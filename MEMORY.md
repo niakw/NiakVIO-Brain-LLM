@@ -439,3 +439,10 @@
 - MovieBox final persisted local result: `CHAIN REACHED`; provider patch was rejected as a no-op, provider Bloc entered validation feedback, then the correction call timed out. No candidate gained publication authority.
 - AllAnime began a new pass but was interrupted before a final result. Anime-Ultime, AnimeSultra and VidFast were not executed in this final sequence.
 - No provider from this stop-state is to be marked repaired or promoted. Existing NiakVIO playback/census authority remains unchanged.
+
+## 2026-09-28 — GitHub executable FORCE budget aligned
+
+- The authoritative `NiakVIO Private-Guided Advisor` workflow is the executable Brain-to-NiakVIO bridge: it produces sanitized advisor guidance **and** `niakvio-force-mutations.json`, publishes both on the orphan `niakvio-guidance` branch, and grants only sandbox mutation authority.
+- Its provider-repair generation budget is now aligned with current Brain contracts: one model worker, 768 max tokens, 180 s model timeout and 360 s total per-provider Force budget.
+- This closes the GitHub/local split where current Brain supported 180/360 but the guidance workflow still cut structural provider patches/Blocs at 120/240.
+- Publication authority remains false. NiakVIO Recognition must still evaluate every concrete Force mutation in isolated current-byte provider sandboxes, persist negative memory, and require playable/identity-safe improvement before direct application.
