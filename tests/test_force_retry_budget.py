@@ -20,7 +20,7 @@ assert "timeout_seconds=validation_timeout" in source
 assert "timeout_seconds=transport_timeout" in source
 assert "max_validation_corrections = 1" in source
 assert "for correction_index in range(1, max_validation_corrections + 1):" in source
-assert "minimal exact window-local edit" in source
+assert "window-local edit in the same scope or abstain" in source
 assert "force provider budget exhausted" in source
 assert "FIELD_BRAIN_FORCE_PROVIDER_BUDGET_EXHAUSTED" in source
 assert "--force-provider-budget-seconds" in source
