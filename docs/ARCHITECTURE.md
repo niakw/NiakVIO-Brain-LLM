@@ -189,3 +189,19 @@ This is a latency/attention bound, not a creativity whitelist. The model may sti
 adapt, combine, ignore references, or synthesize a genuinely new provider-local
 Bloc/script. Deterministic Brain code owns exact-byte targeting and safety; NiakVIO
 owns runtime proof and publication.
+
+
+### Prompt prefill and KV reuse
+
+Compact Force runs on a local llama.cpp server with prompt caching enabled. Force
+requests explicitly set `cache_prompt=true`. Before the constrained edit generation,
+the backend may issue a one-token prefill for the exact system+user prompt so the
+subsequent generation can reuse the evaluated prefix.
+
+The prefill is not a second unbounded phase: prefill and generation share the same
+backend deadline, and all calls remain inside the provider-wide Force deadline.
+Production compact Force decoding is capped at 512 tokens because the schema permits
+only one bounded edit.
+
+Prompt caching is a performance primitive only. It does not change mutation authority,
+proof authority, or acceptance criteria.
