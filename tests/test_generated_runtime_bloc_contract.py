@@ -47,6 +47,20 @@ assert mutation == {
 }
 validate_mutation("demo", mutation)
 
+unit_mutation = _compact_edit_to_mutation(
+    request,
+    {
+        "scope": "provider_bloc",
+        "family": "terminal_resolution",
+        "unit_id": "w1u1",
+        "replace": "return resolveTerminalMedia();",
+    },
+)
+assert unit_mutation and unit_mutation["scope"] == "provider_bloc", unit_mutation
+unit_updated = runtime_source.replace(unit_mutation["find"], unit_mutation["replace"], 1)
+assert "return resolveTerminalMedia();" in unit_updated, unit_updated
+validate_mutation("demo", unit_mutation)
+
 for bad in (
     {**mutation, "family": "../escape"},
     {**mutation, "replace": "return eval(payload);"},

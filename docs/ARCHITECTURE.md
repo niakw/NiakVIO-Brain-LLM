@@ -285,3 +285,12 @@ seconds, and transport/environment cases 120 seconds.
 
 No proof gate is weakened by these budgets. Novel Bloc synthesis remains first-class;
 the scheduler only decides how much compute a causally justified attempt receives.
+
+
+### Deterministic editable units
+
+Compact Force must not ask the model to reproduce exact minified source bytes. Causal source windows remain visible for reasoning, but the deterministic Brain compiler derives a bounded set of exact, statement-sized `editable_units` from current bytes.
+
+For provider patch/JS mutations the model emits only `{scope, path, unit_id, replace}`; for a novel provider Bloc it emits `{scope, family, unit_id, replace}`. Brain resolves `unit_id` back to the exact current-byte statement and offset, expands uniqueness only when required, then performs full syntax, ownership, placeholder/network and no-op validation.
+
+Editable units may not be partial function/class prefixes, unmatched-brace fragments, or mid-token window slices. This preserves model creativity for replacement logic while removing exact-byte copying from the probabilistic part of the pipeline.

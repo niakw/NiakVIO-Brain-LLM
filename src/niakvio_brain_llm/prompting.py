@@ -428,6 +428,122 @@ def _force_source_windows(
         used += len(source)
     return windows
 
+
+def _force_window_kwargs_for_request(request: RepairRequest) -> dict[str, int]:
+    feedback = any(
+        isinstance(row, dict)
+        and str(row.get("stage") or "") == "force_validation_feedback"
+        for row in (request.observations or [])
+    )
+    return {"max_chars": 2200, "max_windows": 2} if feedback else {"max_chars": 2600, "max_windows": 3}
+
+
+def _force_edit_units(value: Any, failure_class: str, *, max_chars: int = 2600, max_windows: int = 3, max_units: int = 9) -> list[dict[str, Any]]:
+    """Return exact, statement-sized, structurally safe edit units."""
+    text = str(value or "")
+    windows = _force_source_windows(text, failure_class, max_chars=max_chars, max_windows=max_windows)
+    ranked = []
+    seen = set()
+
+    def safe(fragment: str, absolute: int) -> bool:
+        stripped = fragment.strip()
+        if len(stripped) < 6 or len(stripped) > 320:
+            return False
+        if stripped.startswith(("function ", "async function ", "class ", "else", "catch", "finally")):
+            return False
+        if "function " in stripped or stripped.count("{") != stripped.count("}"):
+            return False
+        if absolute > 0 and text[absolute - 1:absolute].isalnum() and text[absolute:absolute + 1].isalnum():
+            return False
+        end = absolute + len(fragment)
+        if end < len(text) and text[end - 1:end].isalnum() and text[end:end + 1].isalnum():
+            return False
+        return True
+
+    for window_index, window in enumerate(windows):
+        source = str(window.get("source") or "")
+        if not source:
+            continue
+        base = int(window.get("offset") or 0)
+        focus = int(window.get("focus_offset") or 0)
+        quote = ""
+        escaped = False
+        paren_depth = bracket_depth = 0
+        statement_start = 0
+        candidates = []
+        for index, char in enumerate(source):
+            if quote:
+                if escaped:
+                    escaped = False
+                    continue
+                if char == "\\":
+                    escaped = True
+                    continue
+                if char == quote:
+                    quote = ""
+                continue
+            if char in {'"', "'", "`"}:
+                quote = char
+                continue
+            if char == "(":
+                paren_depth += 1
+                continue
+            if char == ")":
+                paren_depth = max(0, paren_depth - 1)
+                continue
+            if char == "[":
+                bracket_depth += 1
+                continue
+            if char == "]":
+                bracket_depth = max(0, bracket_depth - 1)
+                continue
+            if paren_depth or bracket_depth:
+                continue
+            if char in "{}\n":
+                statement_start = index + 1
+                continue
+            if char != ";":
+                continue
+            left, right = statement_start, index + 1
+            while left < right and source[left].isspace():
+                left += 1
+            while right > left and source[right - 1].isspace():
+                right -= 1
+            if right > left:
+                candidates.append((left, right))
+            statement_start = index + 1
+
+        for left, right in candidates:
+            fragment = source[left:right]
+            absolute = base + left
+            key = (absolute, absolute + len(fragment))
+            if key in seen or not safe(fragment, absolute):
+                continue
+            seen.add(key)
+            center = left + max(1, len(fragment)) // 2
+            contains_focus = left <= focus < right
+            distance = 0 if contains_focus else abs(center - focus)
+            ranked.append(((0 if contains_focus else 1, distance, window_index, absolute), {
+                "window_id": str(window.get("id") or ""),
+                "offset": absolute,
+                "end_offset": absolute + len(fragment),
+                "reason": str(window.get("reason") or ""),
+                "source": fragment,
+            }))
+
+    ranked.sort(key=lambda item: item[0])
+    per_window = {}
+    units = []
+    for _, row in ranked:
+        wid = str(row.get("window_id") or "")
+        per_window[wid] = per_window.get(wid, 0) + 1
+        item = dict(row)
+        item["id"] = f"{wid}u{per_window[wid]}"
+        units.append(item)
+        if len(units) >= max_units:
+            break
+    return units
+
 def build_force_prompt_payload(
     request: RepairRequest,
     causal_prior: dict[str, Any] | None = None,
@@ -454,11 +570,7 @@ def build_force_prompt_payload(
         ),
         None,
     )
-    force_window_kwargs = (
-        {"max_chars": 2200, "max_windows": 2}
-        if validation_feedback is not None
-        else {"max_chars": 2600, "max_windows": 3}
-    )
+    force_window_kwargs = _force_window_kwargs_for_request(request)
     registered = context.get("registered_patch_sources")
     target: dict[str, Any] = {}
     if "provider_patch" in allowed_scopes and isinstance(registered, dict) and registered:
@@ -467,12 +579,14 @@ def build_force_prompt_payload(
             "scope": "provider_patch",
             "path": str(path)[:240],
             "source_windows": _force_source_windows(source, request.failure_class, **force_window_kwargs),
+            "editable_units": _force_edit_units(source, request.failure_class, **force_window_kwargs),
         }
     elif "provider_js" in allowed_scopes and context.get("authored_module"):
         target = {
             "scope": "provider_js",
             "path": f"engine_v2/providers/{request.provider_id}.mjs",
             "source_windows": _force_source_windows(context.get("authored_module"), request.failure_class, **force_window_kwargs),
+            "editable_units": _force_edit_units(context.get("authored_module"), request.failure_class, **force_window_kwargs),
         }
     elif "provider_data" in allowed_scopes and context.get("override"):
         target = {
@@ -488,6 +602,7 @@ def build_force_prompt_payload(
             "scope": "provider_bloc",
             "filename": _clip(context.get("runtimeMutationFilename"), 180),
             "source_windows": _force_source_windows(runtime_source, request.failure_class, **force_window_kwargs),
+            "editable_units": _force_edit_units(runtime_source, request.failure_class, **force_window_kwargs),
         }
 
     observation_source = (
@@ -551,12 +666,11 @@ def build_force_prompt_payload(
         "output_contract": {
             "max_edits": 1,
             "provider_local_only": True,
-            "file_edit_format": "window_local_find_replace" if target.get("scope") in {"provider_patch", "provider_js"} else "provider_data_mutation",
-            "generated_bloc_format": "family_window_local_find_replace" if new_bloc_target else None,
-            "find_must_be_exact_in_selected_window": bool(target.get("scope") in {"provider_patch", "provider_js"} or new_bloc_target),
-            "find_may_repeat_in_selected_window": True,
+            "file_edit_format": "unit_id_replace" if target.get("scope") in {"provider_patch", "provider_js"} else "provider_data_mutation",
+            "generated_bloc_format": "family_unit_id_replace" if new_bloc_target else None,
+            "unit_id_selects_exact_current_bytes": bool(target.get("scope") in {"provider_patch", "provider_js"} or new_bloc_target),
+            "model_never_copies_find_bytes": True,
             "brain_resolves_window_occurrence_by_causal_focus": True,
-            "window_id_required_for_model_edits": bool(target.get("scope") in {"provider_patch", "provider_js"} or new_bloc_target),
             "brain_resolves_global_anchor_uniqueness": True,
             "source_windows_are_exact_current_bytes": True,
             "validation_retry_context": "focused" if validation_feedback is not None else "compact_initial",

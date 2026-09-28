@@ -17,7 +17,7 @@ from .document_memory import DocumentStore
 from .mutation_guard import validate_mutations
 from .policy import build_mutation_policy
 from .priors import build_causal_prior
-from .prompting import _force_source_windows, build_force_prompt_payload, build_prompt_payload
+from .prompting import _force_edit_units, _force_source_windows, _force_window_kwargs_for_request, build_force_prompt_payload, build_prompt_payload
 from .retrieval import ExperienceStore
 from .schema import REPAIR_PROPOSAL_SCHEMA, compact_force_schema_for, proposal_schema_for
 from .verification_plan import recommended_tests
@@ -49,14 +49,14 @@ COMPACT_FORCE_SYSTEM_PROMPT = """NiakVIO Brain Force. Return JSON only:
 Rules:
 - One edit max; never invent URLs/routes/hosts/headers/tokens/cookies/placeholders or facts.
 - provider_data: {scope,operation,path,value?}
-- provider_patch/provider_js: {scope,path,window_id,find,replace}; no unified diff.
-- provider_bloc for a new mechanism: {scope:"provider_bloc",family,window_id,find,replace}.
-- window_id must come from the supplied target windows. find must be exact current bytes, <=320 chars, and should be the smallest causal expression/statement. It may repeat; Brain resolves occurrence/global uniqueness.
+- provider_patch/provider_js: {scope,path,unit_id,replace}; no unified diff.
+- provider_bloc for a new mechanism: {scope:"provider_bloc",family,unit_id,replace}.
+- unit_id must come from editable_units. Brain owns the exact current-byte find text; never copy or invent find bytes.
 - Existing-file replace <=640 chars; provider_bloc replace <=1200 chars.
 - Preserve syntax/function boundaries; do not emit partial function declarations.
 - FULL OK references are optional inspiration only: adapt/combine/ignore them or invent a new provider-local mechanism. Never copy provider-specific network facts.
-- force_validation_feedback means the previous shape failed; make a materially different exact edit in the same scope or abstain.
-If safe exact bytes are unavailable, return edit:null."""
+- force_validation_feedback means the previous shape failed; choose a materially different unit/replacement in the same scope or abstain.
+If no supplied editable unit can safely express the repair, return edit:null."""
 
 
 def _extract_json(text: str) -> dict[str, Any]:
@@ -219,6 +219,8 @@ def _resolve_structured_anchor(
     *,
     max_find: int,
     max_replace: int,
+    window_kwargs: dict[str, int] | None = None,
+    absolute_start_hint: int | None = None,
 ) -> tuple[str, str]:
     """Compile a window-local semantic edit into one globally unique anchor.
 
@@ -233,8 +235,12 @@ def _resolve_structured_anchor(
         raise ValueError("compact Force find snippet is missing")
 
     absolute_start: int
-    if window_id:
-        windows = _force_source_windows(source, failure_class)
+    if absolute_start_hint is not None:
+        absolute_start = int(absolute_start_hint)
+        if absolute_start < 0 or source[absolute_start:absolute_start + len(find)] != find:
+            raise ValueError("compact Force edit unit drifted from current exact bytes")
+    elif window_id:
+        windows = _force_source_windows(source, failure_class, **(window_kwargs or {}))
         window = next(
             (row for row in windows if str(row.get("id") or "") == window_id),
             None,
@@ -365,6 +371,33 @@ def _resolve_structured_anchor(
     _reject_partial_function_anchor(anchor_find, anchor_replace)
     return anchor_find, anchor_replace
 
+
+def _force_unit_for_edit(
+    request: RepairRequest,
+    source: str,
+    unit_id: str,
+) -> tuple[dict[str, Any], dict[str, int]]:
+    if not unit_id:
+        raise ValueError("compact Force unit_id is missing")
+    window_kwargs = _force_window_kwargs_for_request(request)
+    units = _force_edit_units(
+        source,
+        request.failure_class,
+        **window_kwargs,
+    )
+    unit = next(
+        (row for row in units if str(row.get("id") or "") == unit_id),
+        None,
+    )
+    if unit is None:
+        raise ValueError("compact Force unit_id is not valid for current source")
+    find = str(unit.get("source") or "")
+    absolute = int(unit.get("offset") or 0)
+    if not find or source[absolute:absolute + len(find)] != find:
+        raise ValueError("compact Force edit unit drifted from current exact bytes")
+    return unit, window_kwargs
+
+
 def _compact_edit_to_mutation(
     request: RepairRequest,
     edit: dict[str, Any] | None,
@@ -377,14 +410,24 @@ def _compact_edit_to_mutation(
 
     if scope == "provider_bloc":
         family = str(edit.get("family") or "").strip().casefold()
+        unit_id = str(edit.get("unit_id") or "").strip()
         window_id = str(edit.get("window_id") or "").strip()
         find = str(edit.get("find") or "")
         replace = str(edit.get("replace") or "")
         source = str((request.provider_context or {}).get("runtimeMutationSource") or "")
-        if not family or not find or len(find) > 320 or not replace or len(replace) > 1200:
+        if not family or not replace or len(replace) > 1200:
             raise ValueError("compact Force provider_bloc edit is missing or oversized")
         if not source:
             raise ValueError("compact Force provider_bloc runtime source is unavailable")
+        window_kwargs = _force_window_kwargs_for_request(request)
+        absolute_start_hint = None
+        if unit_id:
+            unit, window_kwargs = _force_unit_for_edit(request, source, unit_id)
+            window_id = str(unit.get("window_id") or "")
+            find = str(unit.get("source") or "")
+            absolute_start_hint = int(unit.get("offset") or 0)
+        elif not find or len(find) > 320:
+            raise ValueError("compact Force provider_bloc exact edit target is missing or oversized")
         find, replace = _resolve_structured_anchor(
             source,
             request.failure_class,
@@ -393,6 +436,8 @@ def _compact_edit_to_mutation(
             replace,
             max_find=320,
             max_replace=1200,
+            window_kwargs=window_kwargs,
+            absolute_start_hint=absolute_start_hint,
         )
         updated = source.replace(find, replace, 1)
         _node_check_javascript(updated)
@@ -407,20 +452,12 @@ def _compact_edit_to_mutation(
     if scope not in {"provider_patch", "provider_js"}:
         raise ValueError("compact Force edit has unsupported scope")
     path = str(edit.get("path") or "")
+    unit_id = str(edit.get("unit_id") or "").strip()
     window_id = str(edit.get("window_id") or "").strip()
     find = str(edit.get("find") or "")
     replace = str(edit.get("replace") or "")
-    if not find or len(find) > 320 or len(replace) > 640:
-        raise ValueError("compact Force find/replace is missing or oversized")
-    stripped_find = find.strip()
-    stripped_replace = replace.strip()
-    if (
-        stripped_replace
-        and len(stripped_find) >= 48
-        and len(stripped_replace) * 2 < len(stripped_find)
-        and stripped_replace in stripped_find
-    ):
-        raise ValueError("compact Force replacement looks like a truncated source fragment")
+    if len(replace) > 640:
+        raise ValueError("compact Force replacement is oversized")
     context = request.provider_context or {}
     if scope == "provider_patch":
         sources = context.get("registered_patch_sources")
@@ -435,6 +472,26 @@ def _compact_edit_to_mutation(
 
     if not source:
         raise ValueError("compact Force exact source is unavailable")
+    window_kwargs = _force_window_kwargs_for_request(request)
+    absolute_start_hint = None
+    if unit_id:
+        unit, window_kwargs = _force_unit_for_edit(request, source, unit_id)
+        window_id = str(unit.get("window_id") or "")
+        find = str(unit.get("source") or "")
+        absolute_start_hint = int(unit.get("offset") or 0)
+    elif not find or len(find) > 320:
+        raise ValueError("compact Force exact edit target is missing or oversized")
+
+    stripped_find = find.strip()
+    stripped_replace = replace.strip()
+    if (
+        stripped_replace
+        and len(stripped_find) >= 48
+        and len(stripped_replace) * 2 < len(stripped_find)
+        and stripped_replace in stripped_find
+    ):
+        raise ValueError("compact Force replacement looks like a truncated source fragment")
+
     find, replace = _resolve_structured_anchor(
         source,
         request.failure_class,
@@ -443,6 +500,8 @@ def _compact_edit_to_mutation(
         replace,
         max_find=320,
         max_replace=640,
+        window_kwargs=window_kwargs,
+        absolute_start_hint=absolute_start_hint,
     )
 
     updated = source.replace(find, replace, 1)
@@ -479,20 +538,22 @@ def _compact_wire_schema_for(
     for scope in allowed:
         if scope == "provider_bloc":
             source = str(context.get("runtimeMutationSource") or "")
-            window_ids = [
-                str(row.get("id"))
-                for row in _force_source_windows(source, request.failure_class)
-                if str(row.get("id") or "")
-            ]
+            units = _force_edit_units(
+                source,
+                request.failure_class,
+                **_force_window_kwargs_for_request(request),
+            )
+            unit_ids = [str(row.get("id")) for row in units if str(row.get("id") or "")]
+            if not unit_ids:
+                continue
             variants.append({
                 "type": "object",
                 "additionalProperties": False,
-                "required": ["scope", "family", "window_id", "find", "replace"],
+                "required": ["scope", "family", "unit_id", "replace"],
                 "properties": {
                     "scope": {"type": "string", "enum": ["provider_bloc"]},
                     "family": {"type": "string", "maxLength": 49},
-                    "window_id": {"type": "string", "enum": window_ids or ["w1"]},
-                    "find": {"type": "string", "maxLength": 320},
+                    "unit_id": {"type": "string", "enum": unit_ids},
                     "replace": {"type": "string", "maxLength": 1200},
                 },
             })
@@ -514,20 +575,22 @@ def _compact_wire_schema_for(
                 source = str(next(iter((context.get("registered_patch_sources") or {}).values()), ""))
             else:
                 source = str(context.get("authored_module") or "")
-            window_ids = [
-                str(row.get("id"))
-                for row in _force_source_windows(source, request.failure_class)
-                if str(row.get("id") or "")
-            ]
+            units = _force_edit_units(
+                source,
+                request.failure_class,
+                **_force_window_kwargs_for_request(request),
+            )
+            unit_ids = [str(row.get("id")) for row in units if str(row.get("id") or "")]
+            if not unit_ids:
+                continue
             variants.append({
                 "type": "object",
                 "additionalProperties": False,
-                "required": ["scope", "path", "window_id", "find", "replace"],
+                "required": ["scope", "path", "unit_id", "replace"],
                 "properties": {
                     "scope": {"type": "string", "enum": [scope]},
                     "path": path_schema,
-                    "window_id": {"type": "string", "enum": window_ids or ["w1"]},
-                    "find": {"type": "string", "maxLength": 320},
+                    "unit_id": {"type": "string", "enum": unit_ids},
                     "replace": {"type": "string", "maxLength": 640},
                 },
             })

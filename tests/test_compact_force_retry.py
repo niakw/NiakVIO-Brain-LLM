@@ -116,18 +116,20 @@ class CompactForceRetryTest(unittest.TestCase):
         patch_variant = patch_schema["properties"]["edit"]["anyOf"][0]
         self.assertEqual(
             set(patch_variant["required"]),
-            {"scope", "path", "window_id", "find", "replace"},
+            {"scope", "path", "unit_id", "replace"},
         )
         self.assertEqual(
             patch_variant["properties"]["path"]["enum"],
             ["scripts/provider_patches/demo_runtime_v1.py"],
         )
-        self.assertEqual(patch_variant["properties"]["window_id"]["enum"], ["w1"])
+        self.assertEqual(patch_variant["properties"]["unit_id"]["enum"], ["w1u1"])
+        self.assertNotIn("find", patch_variant["properties"])
+        self.assertNotIn("window_id", patch_variant["properties"])
 
         bloc_request = RepairRequest(
             provider_id="demo",
             failure_class="chain_terminal_gap",
-            provider_context={"runtimeMutationSource": "function resolve(){}"},
+            provider_context={"runtimeMutationSource": "function resolve(){return oldResolver();}"},
             allowed_mutations=["provider_bloc"],
         )
         bloc_schema = _compact_wire_schema_for(
@@ -137,14 +139,16 @@ class CompactForceRetryTest(unittest.TestCase):
         bloc_variant = bloc_schema["properties"]["edit"]["anyOf"][0]
         self.assertEqual(
             set(bloc_variant["required"]),
-            {"scope", "family", "window_id", "find", "replace"},
+            {"scope", "family", "unit_id", "replace"},
         )
         self.assertEqual(
             bloc_variant["properties"]["scope"]["enum"],
             ["provider_bloc"],
         )
         self.assertNotIn("path", bloc_variant["properties"])
-        self.assertEqual(bloc_variant["properties"]["window_id"]["enum"], ["w1"])
+        self.assertEqual(bloc_variant["properties"]["unit_id"]["enum"], ["w1u1"])
+        self.assertNotIn("find", bloc_variant["properties"])
+        self.assertNotIn("window_id", bloc_variant["properties"])
 
 
 

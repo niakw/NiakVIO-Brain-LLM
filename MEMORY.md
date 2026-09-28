@@ -305,3 +305,14 @@
 - Provider wall-clock budget is evidence/status aware under a hard workflow cap of 240s: CHAIN REACHED / chain-terminal / media-extraction cases may use the full cap; ROUTE PROVEN is capped at 180s; ordinary unresolved cases at 150s; transport/environment cases at 120s.
 - These are compute allocation rules, not acceptance relaxations. Syntax, ownership, exact-byte compilation, synthetic-network rejection, novelty freedom, NiakVIO sandbox/playback/identity and non-regression gates are unchanged.
 - This is the intended several-hundred-provider scaling model: cheap abstention for causally unsupported cases, bounded local edits for ordinary cases, and expensive synthesis only for evidence-rich hard cases.
+
+
+## 2026-09-28 — Force exact-byte ownership moved fully to deterministic Brain compiler
+
+- Three-family adaptive proof `36388332434` remained 0/3 even with correct causal windows and bounded compute. AllAnime, MalluMV and 4KHDHub abstained cleanly because the model could not guarantee exact safe bytes.
+- Local reproduction proved the causal windows were correct; the defect was the editable-unit layer. Previous units could expose structurally incomplete fragments such as function prefixes or mid-token snippets.
+- Force wire contract is now `unit_id + replace` for provider_patch/provider_js and `family + unit_id + replace` for provider_bloc. Qwen no longer copies or invents `find` bytes.
+- Brain deterministically derives exact current-byte statement units from the causal windows, rejects partial function/control fragments and token-edge truncation, and resolves the selected unit back to exact bytes/offsets before syntax/ownership/mutation validation.
+- Real-unit inspection after the change produced complete causal statements for AllAnime, MalluMV and 4KHDHub (for example `if(!raw)continue;`, `if(!best||bestScore<c.minIdentityScore)return null;`, `var q=req(a);`) instead of truncated function prefixes.
+- This is a quality improvement, not a safety relaxation: the model reasons about what logic to replace, while deterministic Brain owns where/current bytes; NiakVIO remains the runtime proof/publication authority.
+- Local Mac suite: 150/150 tests green after the migration. Fresh remote three-family proof is still required.

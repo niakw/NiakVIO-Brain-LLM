@@ -104,7 +104,7 @@ class PromptingTests(unittest.TestCase):
             observations=[{"stage": "player", "blob": "Z" * 5000} for _ in range(8)],
             provider_context={
                 "registered_patch_sources": {
-                    "scripts/provider_patches/demo_runtime_v1.py": "HEAD" + ("A" * 10000) + "TAIL",
+                    "scripts/provider_patches/demo_runtime_v1.py": "HEAD\nfunction resolve(){var media=null; if(!media)return null;}\n" + ("A" * 10000) + "\nvar tailValue=1;\nTAIL",
                     "scripts/provider_patches/demo_extra_v1.py": "B" * 10000,
                 },
                 "authored_module": "M" * 10000,
@@ -123,25 +123,26 @@ class PromptingTests(unittest.TestCase):
         self.assertLessEqual(sum(len(row["source"]) for row in windows), 2600)
         joined = "\n".join(row["source"] for row in windows)
         self.assertIn("HEAD", joined)
-        self.assertIn("TAIL", joined)
+        self.assertIn("function resolve()", joined)
         self.assertTrue(payload["output_contract"]["source_windows_are_exact_current_bytes"])
         self.assertEqual(len(payload["current_observations"]), 2)
         self.assertNotIn("retrieved_experiences", payload)
         self.assertNotIn("retrieved_documents", payload)
         self.assertNotIn("published_bundle", payload)
-        self.assertEqual(payload["output_contract"]["file_edit_format"], "window_local_find_replace")
-        self.assertTrue(payload["output_contract"]["find_must_be_exact_in_selected_window"])
-        self.assertTrue(payload["output_contract"]["find_may_repeat_in_selected_window"])
+        self.assertEqual(payload["output_contract"]["file_edit_format"], "unit_id_replace")
+        self.assertTrue(payload["output_contract"]["unit_id_selects_exact_current_bytes"])
+        self.assertTrue(payload["output_contract"]["model_never_copies_find_bytes"])
         self.assertTrue(payload["output_contract"]["brain_resolves_window_occurrence_by_causal_focus"])
-        self.assertTrue(payload["output_contract"]["window_id_required_for_model_edits"])
         self.assertTrue(payload["output_contract"]["brain_resolves_global_anchor_uniqueness"])
         self.assertEqual([row["id"] for row in windows], [f"w{i}" for i in range(1, len(windows) + 1)])
         self.assertTrue(all(isinstance(row.get("focus_offset"), int) for row in windows))
-        self.assertTrue(all(row["source"] == (
-            request.provider_context["registered_patch_sources"]["scripts/provider_patches/demo_runtime_v1.py"][
-                row["offset"]:row["end_offset"]
-            ]
-        ) for row in windows))
+        source = request.provider_context["registered_patch_sources"]["scripts/provider_patches/demo_runtime_v1.py"]
+        self.assertTrue(all(row["source"] == source[row["offset"]:row["end_offset"]] for row in windows))
+        units = payload["mutation_target"]["editable_units"]
+        self.assertTrue(units)
+        self.assertTrue(all(row["source"] == source[row["offset"]:row["end_offset"]] for row in units))
+        self.assertTrue(all(len(row["source"]) <= 320 for row in units))
+        self.assertTrue(all(row["window_id"] in {window["id"] for window in windows} for row in units))
 
 
     def test_force_validation_retry_uses_focused_context(self):
