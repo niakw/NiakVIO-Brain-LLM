@@ -120,7 +120,33 @@ STATIC_FAILURE_PRIORS: dict[str, dict[str, Any]] = {
 def _canon(value: object) -> str:
     return "-".join(str(value or "").strip().casefold().replace("_", "-").split())
 
+def _residential_provider_replay_signal(request: RepairRequest) -> bool:
+    """Return true when full current provider replay outranks a narrow WAF seed."""
+    for row in request.observations or []:
+        if not isinstance(row, dict) or _canon(row.get("source")) != "waf-client-differential-current":
+            continue
+        value = row.get("value")
+        if not isinstance(value, dict):
+            continue
+        replay = [item for item in value.get("residentialReplay") or [] if isinstance(item, dict)]
+        if replay and all(
+            item.get("identitySafe") is True
+            and int(item.get("contradictions") or 0) == 0
+            and _canon(item.get("debugStage"))
+            not in {"provider-waf-challenge", "provider-network-timeout", "timeout"}
+            and _canon(item.get("status")) != "timeout"
+            for item in replay
+        ):
+            return True
+    return False
+
+
 def _targeted_interactive_challenge(request: RepairRequest) -> bool:
+    # A full identity-safe provider replay is stronger causal evidence than a
+    # seed/route-level interactive challenge. Do not reclassify the provider as
+    # harness after request_from_checkout already preserved its provider gap.
+    if _residential_provider_replay_signal(request):
+        return False
     for row in request.observations or []:
         if not isinstance(row, dict):
             continue
