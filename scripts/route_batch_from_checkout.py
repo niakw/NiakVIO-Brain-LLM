@@ -44,6 +44,14 @@ def main() -> int:
         request.advisor_only = bool(args.advisor_only)
         routing = route_request(request, store)
         modes[routing.mode] += 1
+        safe_reason = " ".join(str(routing.reason or "").split())[:220]
+        print(
+            "FIELD_BRAIN_ROUTE "
+            f"provider={provider} mode={routing.mode} layer={routing.target_layer} "
+            f"failure={request.failure_class} scopes={','.join(routing.allowed_mutations) or 'none'} "
+            f"reason={safe_reason}",
+            flush=True,
+        )
         rows.append({
             "position": position,
             "provider": provider,
