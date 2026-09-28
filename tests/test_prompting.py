@@ -147,6 +147,33 @@ class PromptingTests(unittest.TestCase):
         self.assertTrue(all(row["window_id"] in {window["id"] for window in windows} for row in units))
 
 
+    def test_force_edit_units_include_bounded_causal_function(self):
+        source = (
+            "function noise(){return 1;} "
+            "function confirmLinks(page){var raw=page.url;if(!raw)return [];return [raw];} "
+            "function unrelated(){return 2;}"
+        )
+        request = RepairRequest(
+            provider_id="demo",
+            failure_class="chain_terminal_gap",
+            provider_context={
+                "registered_patch_sources": {
+                    "scripts/provider_patches/demo_runtime_v1.py": source,
+                },
+            },
+        )
+        payload = build_force_prompt_payload(
+            request,
+            {"target_layer": "provider", "confidence": 0.96, "strategy_prior": "chain_terminal_extractor_v1"},
+            {"allow_mutations": True, "allowed_scopes": ["provider_patch"]},
+        )
+        units = payload["mutation_target"]["editable_units"]
+        causal = [row for row in units if row.get("kind") == "function_unit"]
+        self.assertTrue(causal)
+        self.assertIn("function confirmLinks", causal[0]["source"])
+        self.assertNotIn("function unrelated", causal[0]["source"])
+        self.assertLessEqual(len(causal[0]["source"]), 1800)
+
     def test_force_validation_retry_uses_focused_context(self):
         source = (
             "H" * 5000
