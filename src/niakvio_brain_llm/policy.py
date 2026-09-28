@@ -52,6 +52,13 @@ def _has_targeted_provider_evidence(observations: Any) -> bool:
             return True
     return False
 
+def _is_checkout_evidence_request(observations: Any) -> bool:
+    return any(
+        isinstance(row, dict)
+        and str(row.get("source") or "").strip().casefold() == "census_current"
+        for row in (observations or [])
+    )
+
 def _has_fresh_url(value: Any) -> bool:
     if isinstance(value, dict):
         source = str(value.get("source") or "").strip().casefold()
@@ -102,7 +109,11 @@ def build_mutation_policy(
     allowed = set(request.allowed_mutations)
 
     failure = _canon_failure(request.failure_class)
-    if failure in TARGETED_EVIDENCE_FAILURES and not _has_targeted_provider_evidence(request.observations):
+    if (
+        failure in TARGETED_EVIDENCE_FAILURES
+        and _is_checkout_evidence_request(request.observations)
+        and not _has_targeted_provider_evidence(request.observations)
+    ):
         return {
             "allow_mutations": False,
             "allowed_scopes": [],
