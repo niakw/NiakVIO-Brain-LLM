@@ -225,3 +225,13 @@
 - FULL OK references remain optional prior art. Causal-focus compilation and validation correction apply equally to adapted known patterns and genuinely novel provider-local Blocs/scripts.
 - Brain LLM CI run `36356184279` is green on `24039ff307c85cfef984110bd727e2c260b20a35`. This validates the compiler/test contract only; a fresh three-family generative proof is still required before any NiakVIO Deep execution.
 
+
+## 2026-09-28 — Three-family focused retry proof: 1/3 exposed structural + safety gaps
+
+- Guidance run `36358296711` tested Brain SHA `c015cbc610d8feba1b99fe5a3637db1551285603` against NiakVIO SHA `b570076d299d1871437d0065aec63caef768dd3e` for `allwish`, `4khdhub`, and `mallumv`.
+- Workflow completion was **not** repair proof: only **1/3** executable Force rows were published. `mallumv` remained syntax-invalid after focused retries; `4khdhub` ended on a source-window/find mismatch; `allwish` produced a structurally accepted Bloc mutation that invented `https://invalid.local/` and is therefore reclassified unsafe/non-causal rather than usable evidence.
+- Brain now rejects synthetic/reserved network endpoints in generated provider data/Blocs/patches, including reserved `.example`, `.invalid`, `.localhost`, `.local`, and `.test` hosts. Novel code remains allowed; invented network facts do not.
+- Structural compilation now owns cross-window relocation: when an exact current-byte `find` is attached to the wrong `window_id`, Brain searches the bounded causal windows, deterministically relocates a unique best causal occurrence, and still fails closed on ambiguity.
+- Validation feedback is reason-specific for syntax, window mismatch, ambiguity, synthetic endpoints, truncation, and neighbor absorption instead of collapsing to generic `ValueError`.
+- Force cost is now bounded per provider. The private guidance workflow passes `--force-provider-budget-seconds 180`; every model timeout is capped by remaining provider budget and only one validation correction is allowed. This prevents a single provider from consuming the previous ~15-17 minute worst-case cascade.
+- CI is green on Brain SHA `93217a4c0747c466687def9aae243ba1ab4aaaee`. This validates structure/tests only; a fresh three-family Qwen proof is still required before NiakVIO Deep.
