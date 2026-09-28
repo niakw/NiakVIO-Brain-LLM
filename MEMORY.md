@@ -337,3 +337,15 @@
 - The causal-function extraction test now passes; CI is green on Brain SHA 89cae9f8f4088c0351c1cb3926613be3e4faeba4 before the focused MalluMV proof trigger.
 - Focused MalluMV proof run 36408982707 tests trigger SHA 6b4740af9e7a7551b249ab40033de4e86fb77222 against NiakVIO SHA d17f241726180d727152dd4e460cfafd7a725d4f. Do not treat this run as proof until its Force artifact is inspected.
 - Local Mac is no longer required for correctness. It accelerated diagnosis of JSON serialization and edit-unit expressiveness; GitHub remains proof authority.
+
+
+## 2026-09-28 — Fleet-scale Force paging and fresh-evidence bridge
+
+- Full 14-provider repair cohort was paged as 8 + 6 with exact source/Brain SHA state and no starvation.
+- The first continuation exposed a real orchestration bug: `cancel-in-progress: true` allowed a self-dispatched next page to cancel the page that had just published state. The guidance workflow now serializes continuation pages with `cancel-in-progress: false`.
+- `tests/test_guidance_paging.py` now proves exact, duplicate-free coverage of a 250-provider cohort at page size 8.
+- Force policy correctly refuses provider mutation when `targeted-regression-current` evidence is missing. The full 14-provider run proved the workflow previously stopped at that guard for most providers instead of collecting evidence.
+- NiakVIO targeted recovery run `36412614349` was triggered for all 14 providers and persisted fresh network/debug evidence on NiakVIO main. Brain must replan from that newer NiakVIO SHA rather than treating checkout-only census evidence as sufficient.
+- GitHub CPU remains the expensive path for the small subset that genuinely needs Qwen synthesis. Prompt context is now deduplicated from exact editable-unit bytes: editable units are still derived from the wider causal windows, while the displayed context window is smaller.
+- Scale principle: healthy providers never enter LLM repair; the Brain operates on the repair queue. For large catalogues, NiakVIO already has sharded targeted recovery (8 shards, up to 20 probe workers each); Brain guidance paging is independently bounded and resumable.
+- Current validation state at this checkpoint: paging/orchestration improvements are CI-backed; the fresh-evidence 14-provider Force replan is still running and must not be recorded as repaired until NiakVIO current-byte validation succeeds.
