@@ -65,6 +65,13 @@ class CompactForceRetryTest(unittest.TestCase):
         self.assertIn("_force_edit_units(runtime_source, request.failure_class, **force_window_kwargs)", prompting)
         self.assertIn("source_windows", prompting)
 
+    def test_force_prompt_prefill_is_aggressively_bounded(self):
+        prompting = (ROOT / "src" / "niakvio_brain_llm" / "prompting.py").read_text(encoding="utf-8")
+        self.assertIn('{"max_chars": 2000, "max_windows": 2, "max_units": 4}', prompting)
+        self.assertIn('{"max_chars": 1600, "max_windows": 2, "max_units": 3}', prompting)
+        self.assertIn('{"max_chars": 800, "max_windows": 1}', prompting)
+        self.assertIn('{"max_chars": 650, "max_windows": 1}', prompting)
+
     def test_timeout_retry_uses_compact_planner(self):
         script = (ROOT / "scripts" / "plan_batch_from_checkout.py").read_text(encoding="utf-8")
         planner = (ROOT / "src" / "niakvio_brain_llm" / "planner.py").read_text(encoding="utf-8")
