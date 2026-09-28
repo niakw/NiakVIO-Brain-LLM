@@ -507,6 +507,9 @@ def _compact_edit_to_mutation(
             find = str(unit.get("source") or "")
             absolute_start_hint = int(unit.get("offset") or 0)
             if str(unit.get("kind") or "") == "function_unit":
+                # Keep deletion/live-behavior guards meaningful on the raw model
+                # body before adding the deterministic declaration envelope.
+                _reject_causally_empty_deletion(request.failure_class, find, replace)
                 replace = _preserve_selected_function_envelope(find, replace)
         elif not find or len(find) > 320:
             raise ValueError("compact Force provider_bloc exact edit target is missing or oversized")
