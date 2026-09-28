@@ -202,7 +202,38 @@ class PromptingTests(unittest.TestCase):
         self.assertGreaterEqual(len(functions), 2)
         self.assertTrue(any("function a(" in row and "/confirm/" in row for row in functions))
         self.assertTrue(any("function b(" in row and "/internal/" in row for row in functions))
-        self.assertFalse(any("function unrelated" in row for row in functions))
+        # Causal keyword matches rank first, but generic complete functions remain
+        # available as a bounded invention fallback instead of being hidden.
+        self.assertIn("function a(", functions[0])
+        self.assertIn("function b(", functions[1])
+
+    def test_force_edit_units_keep_generic_function_fallback_when_taxonomy_has_no_name_match(self):
+        source = (
+            "function a(page){var next=page.next;return next;} "
+            "function b(page){var rows=page.rows||[];return rows;} "
+            "function c(){return 3;}"
+        )
+        request = RepairRequest(
+            provider_id="demo",
+            failure_class="chain_terminal_gap",
+            provider_context={
+                "runtimeMutationSource": source,
+                "runtimeMutationFilename": "providers/demo.js",
+            },
+        )
+        payload = build_force_prompt_payload(
+            request,
+            {"target_layer": "provider", "confidence": 0.96, "strategy_prior": "chain_terminal_extractor_v1"},
+            {"allow_mutations": True, "allowed_scopes": ["provider_bloc"]},
+        )
+        functions = [
+            row
+            for row in payload["new_bloc_target"]["editable_units"]
+            if row.get("kind") == "function_unit"
+        ]
+        self.assertTrue(functions)
+        self.assertTrue(any(row.get("reason") == "generic_function_fallback" for row in functions))
+        self.assertTrue(any("function a(" in row.get("source", "") for row in functions))
 
     def test_force_validation_retry_uses_focused_context(self):
         source = (
