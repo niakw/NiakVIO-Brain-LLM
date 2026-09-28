@@ -3,6 +3,7 @@ import unittest
 
 from niakvio_brain_llm.contracts import RepairRequest
 from niakvio_brain_llm.planner import _compact_wire_schema_for
+from niakvio_brain_llm.prompting import build_force_prompt_payload
 from niakvio_brain_llm.prompting import _force_window_kwargs_for_request
 from niakvio_brain_llm.schema import compact_force_schema_for
 
@@ -71,6 +72,38 @@ class CompactForceRetryTest(unittest.TestCase):
         self.assertIn('{"max_chars": 1600, "max_windows": 2, "max_units": 3}', prompting)
         self.assertIn('{"max_chars": 1000, "max_windows": 2}', prompting)
         self.assertIn('{"max_chars": 650, "max_windows": 1}', prompting)
+
+    def test_compact_force_prompt_carries_executed_sandbox_failure(self):
+        request = RepairRequest(
+            provider_id="demo",
+            failure_class="route_proven_gap",
+            status="ROUTE PROVEN",
+            provider_context={
+                "runtimeMutationFilename": "providers/demo.js",
+                "runtimeMutationSource": "function resolve(){const normalized=_embeddedText(text);return normalized;}",
+                "advisor_experiment_history": [{
+                    "memoryRole": "force_sandbox_execution",
+                    "consecutiveFailures": 1,
+                    "failures": 1,
+                    "successes": 0,
+                    "lastOutcome": "rejected",
+                    "lastReason": "required_category_playable_proof:movie",
+                    "executionObserved": True,
+                    "mutationFingerprint": "secret-mutation-fingerprint",
+                }],
+            },
+            allowed_mutations=["provider_bloc"],
+        )
+        payload = build_force_prompt_payload(
+            request,
+            {"confidence": 0.96, "target_layer": "provider", "strategy_prior": "search_detail_player_terminal_traversal"},
+            {"allow_mutations": True, "allowed_scopes": ["provider_bloc"]},
+        )
+        failures = payload["prior_force_sandbox_failures"]
+        self.assertEqual(len(failures), 1)
+        self.assertEqual(failures[0]["lastReason"], "required_category_playable_proof:movie")
+        self.assertTrue(failures[0]["executionObserved"])
+        self.assertNotIn("mutationFingerprint", failures[0])
 
     def test_timeout_retry_uses_compact_planner(self):
         script = (ROOT / "scripts" / "plan_batch_from_checkout.py").read_text(encoding="utf-8")
