@@ -280,3 +280,14 @@
 - Durable distinction: performance proof and repair proof are separate. A fast abstention is preferable to malformed code, but it is not a repaired provider.
 - Abstention observability is now explicit: `FIELD_BRAIN_FORCE_SCOPE_ABSTAIN` carries a bounded sanitized `reason=` so future runs distinguish insufficient causal bytes, unavailable network facts, incompatible scope, or other model reasons without retaining raw private/model content.
 - The next live proof adds scope-aware generation caps (192 data / 320 patch+js / 448 new Bloc) on top of the compact protocol. NiakVIO Deep remains blocked until complete 3/3 executable coverage is published.
+
+
+## 2026-09-28 — Fresh targeted evidence reclassifies WAF outside provider mutation
+
+- NiakVIO targeted diagnostic run `36383608344` tested exactly `allwish`, `4khdhub`, and `mallumv` on NiakVIO `cb5146437fbe801ccdb53a3ff40ab25f04a93cb1` and persisted its verdict on main as `bfb4a4c1a1902cb26f764826cc09a03d75f0f40e`.
+- AllWish current evidence is unambiguous transport/WAF evidence: movie and TV both reach TMDB 200, then `all-wish.me /filter` returns HTTP 403 with debug stage `provider_waf_challenge`. No playable or verified lane exists.
+- This does **not** justify a provider-local mutation. Brain now reclassifies fresh targeted WAF-only evidence with 401/403/429 into `transport_environment_gap`, withholding provider mutation authority until browser/native/residential evidence implicates provider-owned code.
+- 4KHDHub remains a provider-local route-to-terminal case: provider root responds 200 but both lanes end `provider_network_zero_result`.
+- MalluMV remains a provider-local terminal-extraction case with a fresh observed chain through MalluMV search/detail/internal pages into `vik1ngfile.site /f/...`, its custom asset, and `vikingfile.com /fast-download/...`, all returning 200 but still no terminal playable stream.
+- The previous three-family proof contract using AllWish as a required mutation representative was causally wrong. A valid family proof must use provider-local representatives for mutation synthesis and treat justified non-provider outcomes as abstention/diagnostic evidence, never force a patch.
+- Brain CI `36383933144` is green for the fresh-WAF reclassification contract.
