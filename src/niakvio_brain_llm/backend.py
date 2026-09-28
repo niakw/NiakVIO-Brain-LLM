@@ -47,8 +47,12 @@ class LocalOpenAICompatibleBackend:
         }
         if response_schema:
             payload["response_format"] = {
-                "type": "json_object",
-                "schema": response_schema,
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "niakvio_force_response",
+                    "strict": True,
+                    "schema": response_schema,
+                },
             }
 
         deadline = time.monotonic() + max(1, int(self.timeout_seconds))
