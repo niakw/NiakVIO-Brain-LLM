@@ -236,3 +236,19 @@ Force telemetry must distinguish:
 
 Only the third state may enter NiakVIO sandbox evaluation; only NiakVIO proof may
 change provider/census state.
+
+
+### Evidence readiness before provider mutation
+
+A provider status alone is not sufficient mutation evidence. Current targeted
+provider evidence may override a generic census failure class when it proves the
+failure belongs to transport/environment rather than provider code.
+
+In particular, a fresh targeted observation whose provider lanes consistently
+end in `provider_waf_challenge` with provider-origin 401/403/429 responses and
+no playable/verified lane is classified as `transport_environment_gap`.
+Provider mutation is withheld until a discriminating browser/native/residential
+probe implicates provider-owned behavior.
+
+This prevents the generative Brain from being rewarded for inventing a patch
+when the correct causal action is to abstain and gather transport evidence.
