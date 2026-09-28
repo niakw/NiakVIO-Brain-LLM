@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "niakvio_sha": "53ed9623b2f69119b0e6c9919fb3371a18d30ab7",
-  "reason": "Authoritative full repairQueue executable FORCE after provider-Bloc invention fallback and clean full-provider replay over narrow WAF causal-prior fix; Brain CI 885 green.",
+  "reason": "Authoritative 13-provider executable FORCE after invention fallback, replay-over-WAF precedence and current-census fresh-proof gate; all related Brain tests green.",
   "requested_repair_queue": [
     "4khdhub",
     "allanime",
