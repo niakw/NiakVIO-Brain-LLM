@@ -186,7 +186,7 @@ def main() -> int:
         # Chain-terminal failures usually require composing/traversing runtime
         # helpers. Spend the provider budget on the expressive Bloc surface
         # first; ordinary patch/JS/data surfaces remain fallbacks.
-        if failure_key == "chain_terminal_gap" and bloc_ready:
+        if failure_key in {"chain_terminal_gap", "route_proven_gap", "media_extraction_gap"} and bloc_ready:
             scopes.append("provider_bloc")
 
         if (
@@ -253,7 +253,10 @@ def main() -> int:
                 timeout_seconds=bounded_timeout,
                 temperature=0.0,
                 max_tokens=max_tokens,
-                prefill_prompt=True,
+                # cache_prompt on the real constrained request already persists
+                # the evaluated prefix for identical retries. An explicit
+                # one-token prefill only adds another request on CPU runners.
+                prefill_prompt=False,
             )
             return BrainOrchestrator(
                 BrainPlanner(retry_backend, store, documents),
