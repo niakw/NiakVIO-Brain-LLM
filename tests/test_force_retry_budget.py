@@ -35,7 +35,7 @@ assert "window-local edit in the same scope or abstain" in source
 assert "force provider budget exhausted" in source
 assert "FIELD_BRAIN_FORCE_PROVIDER_BUDGET_EXHAUSTED" in source
 assert "--force-provider-budget-seconds" in source
-assert "prefill_prompt=True" in source
+assert "prefill_prompt=False" in source
 assert 'prefill_prompt=(args.mode == "repair" and not args.advisor_only)' in source
 
 assert "--max-tokens 768" in workflow
