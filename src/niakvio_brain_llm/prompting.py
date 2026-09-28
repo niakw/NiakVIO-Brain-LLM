@@ -437,7 +437,15 @@ def _force_window_kwargs_for_request(request: RepairRequest) -> dict[str, int]:
         and str(row.get("stage") or "") == "force_validation_feedback"
         for row in (request.observations or [])
     )
-    return {"max_chars": 2200, "max_windows": 2} if feedback else {"max_chars": 2600, "max_windows": 3}
+    # GitHub CPU spends most Force wall time ingesting repeated editable-source
+    # bytes, not generating the compact edit JSON. Keep enough alternatives for
+    # causal choice while bounding prefill cost. Unit ids stay deterministic and
+    # exact current bytes remain available to Brain validation outside the prompt.
+    return (
+        {"max_chars": 2200, "max_windows": 2, "max_units": 4}
+        if feedback
+        else {"max_chars": 2600, "max_windows": 3, "max_units": 6}
+    )
 
 
 def _force_edit_units(value: Any, failure_class: str, *, max_chars: int = 2600, max_windows: int = 3, max_units: int = 9) -> list[dict[str, Any]]:
