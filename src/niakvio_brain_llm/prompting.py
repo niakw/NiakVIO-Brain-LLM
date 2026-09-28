@@ -546,8 +546,11 @@ def _force_edit_units(value: Any, failure_class: str, *, max_chars: int = 2600, 
         )
         for match in function_pattern.finditer(source):
             name = str(match.group(1) or "").casefold()
-            if family_keywords and not any(keyword in name for keyword in family_keywords):
-                continue
+            # Do not hide generic provider functions from FORCE. Provider-owned
+            # functions such as getStreams/extract/resolve are often the safest
+            # place to invent a new bounded Bloc even when their names do not
+            # contain the failure taxonomy keywords. Keyword matches still rank
+            # higher below; generic complete functions remain a fallback.
             brace = source.find("{", match.start(), match.end() + 1)
             if brace < 0:
                 continue
@@ -676,8 +679,6 @@ def _force_edit_units(value: Any, failure_class: str, *, max_chars: int = 2600, 
         lowered_fragment = fragment.casefold()
         if not (24 <= len(fragment.strip()) <= 1800):
             continue
-        if family_keywords and not any(keyword in lowered_fragment for keyword in family_keywords):
-            continue
         key = (match.start(), end)
         if key in seen or not safe(fragment, match.start(), max_len=1800, allow_function=True):
             continue
@@ -698,7 +699,7 @@ def _force_edit_units(value: Any, failure_class: str, *, max_chars: int = 2600, 
                 "window_id": str(nearest.get("id") or "w1"),
                 "offset": match.start(),
                 "end_offset": end,
-                "reason": "causal_function_body",
+                "reason": "causal_function_body" if causal_hits else "generic_function_fallback",
                 "kind": "function_unit",
                 "source": fragment,
             },
