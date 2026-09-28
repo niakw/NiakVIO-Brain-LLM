@@ -253,11 +253,13 @@ class PromptingTests(unittest.TestCase):
             {"allow_mutations": True, "allowed_scopes": ["provider_patch"]},
         )
         windows = payload["mutation_target"]["source_windows"]
+        units = payload["mutation_target"]["editable_units"]
         joined = "\n".join(row["source"] for row in windows)
-        self.assertLessEqual(sum(len(row["source"]) for row in windows), 2600)
+        unit_source = "\n".join(row["source"] for row in units)
+        self.assertLessEqual(sum(len(row["source"]) for row in windows), 1400)
         self.assertIn("confirmLink", joined)
         self.assertIn("internalLink", joined)
-        self.assertIn("resolveMedia", joined)
+        self.assertIn("resolveMedia", unit_source)
         self.assertTrue(all("...<middle-clipped>..." not in row["source"] for row in windows))
 
     def test_force_initial_prompt_is_compact_and_keeps_one_optional_reference(self):
