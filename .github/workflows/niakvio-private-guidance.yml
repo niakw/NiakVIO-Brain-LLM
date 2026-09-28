@@ -11,6 +11,10 @@ on:
         description: "Exact NiakVIO main SHA to advise"
         required: false
         default: ""
+      brain_sha:
+        description: "Exact Brain SHA pinned across continuation pages"
+        required: false
+        default: ""
       target_providers:
         description: "Optional comma-separated exact Repair cohort; empty uses trigger requested_repair_queue, then current repairQueue"
         required: false
@@ -39,6 +43,7 @@ jobs:
       - name: Checkout Brain LLM
         uses: actions/checkout@v4
         with:
+          ref: ${{ inputs.brain_sha || github.sha }}
           path: brain
           fetch-depth: 0
 
@@ -449,6 +454,7 @@ jobs:
             --repo "$GITHUB_REPOSITORY" \
             --ref main \
             -f niakvio_sha="${{ steps.source.outputs.sha }}" \
+            -f brain_sha="$(git -C brain rev-parse HEAD)" \
             -f target_providers="${{ steps.cohort.outputs.csv }}" \
             -f page_size="${{ inputs.page_size || '8' }}"
           echo "FIELD_NIAKVIO_GUIDANCE_CONTINUE remaining=${{ steps.page.outputs.remaining }} source=${{ steps.source.outputs.sha }}"
