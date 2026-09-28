@@ -97,7 +97,7 @@ class CompactForceRetryTest(unittest.TestCase):
         self.assertIn("--timeout-seconds 120", workflow)
         self.assertIn("--force-provider-budget-seconds 240", workflow)
         self.assertIn("retry_tokens = max(", script)
-        self.assertIn("prefill_prompt=True", script)
+        self.assertIn("prefill_prompt=False", script)
         self.assertIn("force_deadline = time.monotonic() + budget_seconds", script)
         self.assertIn("FIELD_BRAIN_FORCE_PROVIDER_BUDGET_EXHAUSTED", script)
         self.assertNotIn("1280", script)
