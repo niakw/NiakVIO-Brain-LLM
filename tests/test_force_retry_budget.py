@@ -24,8 +24,10 @@ assert "window-local edit in the same scope or abstain" in source
 assert "force provider budget exhausted" in source
 assert "FIELD_BRAIN_FORCE_PROVIDER_BUDGET_EXHAUSTED" in source
 assert "--force-provider-budget-seconds" in source
+assert "prefill_prompt=True" in source
+assert 'prefill_prompt=(args.mode == "repair" and not args.advisor_only)' in source
 
-assert "--max-tokens 768" in workflow
+assert "--max-tokens 512" in workflow
 assert "--timeout-seconds 120" in workflow
 assert "--force-provider-budget-seconds 180" in workflow
 assert "FIELD_NIAKVIO_FORCE_MUTATIONS_READY ready=false" in workflow
