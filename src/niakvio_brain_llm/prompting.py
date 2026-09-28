@@ -455,9 +455,9 @@ def build_force_prompt_payload(
         None,
     )
     force_window_kwargs = (
-        {"max_chars": 3200, "max_windows": 4}
+        {"max_chars": 2200, "max_windows": 2}
         if validation_feedback is not None
-        else {}
+        else {"max_chars": 2600, "max_windows": 3}
     )
     registered = context.get("registered_patch_sources")
     target: dict[str, Any] = {}
@@ -493,7 +493,7 @@ def build_force_prompt_payload(
     observation_source = (
         [validation_feedback]
         if validation_feedback is not None
-        else list(request.observations or [])[:3]
+        else list(request.observations or [])[:2]
     )
     observations = [
         _compact(row, string_limit=260)
@@ -504,7 +504,7 @@ def build_force_prompt_payload(
     reference_source = (
         []
         if validation_feedback is not None
-        else (context.get("validated_reference_patterns") or [])[:2]
+        else (context.get("validated_reference_patterns") or [])[:1]
     )
     for raw in reference_source:
         if not isinstance(raw, dict):
@@ -513,17 +513,13 @@ def build_force_prompt_payload(
             "provider": _clip(raw.get("provider"), 80),
             "status": "FULL OK",
             "source_kind": _clip(raw.get("source_kind"), 180),
-            "technical_features": [str(x)[:40] for x in (raw.get("technical_features") or [])[:12]],
-            "snippet": _clip(raw.get("snippet"), 1100),
+            "technical_features": [str(x)[:40] for x in (raw.get("technical_features") or [])[:8]],
+            "snippet": _clip(raw.get("snippet"), 520),
             "proof_authority": False,
             "copy_policy": "pattern_reference_only",
             "novelty_allowed": True,
         })
-    census = (
-        {}
-        if validation_feedback is not None
-        else _compact(request.census_prior or {}, string_limit=320)
-    )
+    census = {}
     return {
         "provider_id": request.provider_id,
         "failure_class": request.failure_class,
@@ -563,6 +559,6 @@ def build_force_prompt_payload(
             "window_id_required_for_model_edits": bool(target.get("scope") in {"provider_patch", "provider_js"} or new_bloc_target),
             "brain_resolves_global_anchor_uniqueness": True,
             "source_windows_are_exact_current_bytes": True,
-            "validation_retry_context": "focused" if validation_feedback is not None else "full",
+            "validation_retry_context": "focused" if validation_feedback is not None else "compact_initial",
         },
     }
