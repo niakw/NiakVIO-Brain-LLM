@@ -34,6 +34,27 @@ class GuidancePagingTests(unittest.TestCase):
         self.assertTrue(state["complete"])
         self.assertEqual(state["remainingProviders"],[])
 
+    def test_large_cohort_pages_cover_250_without_starvation(self):
+        requested=[f"p{i:03d}" for i in range(250)]
+        state={}
+        seen=[]
+        for _ in range(32):
+            current,state=page.select(
+                requested,state,
+                source_sha="a"*40,
+                brain_sha="b"*40,
+                page_size=8,
+            )
+            seen.extend(current)
+            if state["complete"]:
+                break
+        self.assertEqual(seen,requested)
+        self.assertEqual(len(seen),250)
+        self.assertEqual(len(set(seen)),250)
+        self.assertTrue(state["complete"])
+        self.assertEqual(state["processedCount"],250)
+        self.assertEqual(state["remainingProviders"],[])
+
     def test_completed_explicit_cohort_starts_new_cycle(self):
         requested=["a","b","c"]
         first,state=page.select(
