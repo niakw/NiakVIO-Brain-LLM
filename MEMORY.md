@@ -471,3 +471,11 @@
 - Mutation policy accepts current-census provider proof only when `testedThisRun=true` and the row carries route proof, candidate proof, residential provider replay evidence, or explicit route/chain evidence depth. Stale current-census rows remain fail-closed.
 - Tests cover current proof allowed, stale proof rejected, and replay fields reaching policy context. CI #892/#893 passed.
 - The standalone WAF/replay artifact remains insufficient freshness authority because it has no census/SHA pin; this fix deliberately does not trust it directly.
+
+## 2026-09-28 — Guidance publication race closed; authoritative cohort is now 14
+
+- Confirmed a publication race on `niakvio-guidance`: a late older guidance run could refetch the branch, satisfy `force-with-lease`, and overwrite a newer Brain/source state. This occurred when the branch fell back to Brain `32244976822e...` / NiakVIO `803ab253...` after a newer cycle had run.
+- Current workflow now has semantic stale-publication protection: a candidate Brain revision that is an ancestor of the already-published Brain is skipped, divergent histories fail closed, and stale runs do not launch continuation pages. Contract tests passed; current Brain CI #902 is green at `9cb448519e2a8089219e96cb2620e815b79e1a53`.
+- Routing observability is retained in artifacts (`routing.jsonl`, `routing-force.jsonl`) and emits bounded `FIELD_BRAIN_ROUTE` lines with mode/layer/failure/scopes/reason.
+- The current NiakVIO census `36484610716` has **14** repairQueue providers, not 13: the prior cohort plus `vostfree`. Any final convergence claim must therefore cover 14/14.
+- `vostfree` is currently ROUTE PROVEN but `testedThisRun=false`, reconciled from carried green with a contradictory latest WAF lane verdict. It must receive fresh current evidence before provider mutation authority is granted.
