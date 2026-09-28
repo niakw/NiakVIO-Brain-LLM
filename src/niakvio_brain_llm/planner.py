@@ -423,12 +423,17 @@ def _force_unit_for_edit(
 ) -> tuple[dict[str, Any], dict[str, int]]:
     if not unit_id:
         raise ValueError("compact Force unit_id is missing")
-    window_kwargs = _force_window_kwargs_for_request(request)
+    edit_kwargs = _force_window_kwargs_for_request(request)
     units = _force_edit_units(
         source,
         request.failure_class,
-        **window_kwargs,
+        **edit_kwargs,
     )
+    window_kwargs = {
+        key: value
+        for key, value in edit_kwargs.items()
+        if key in {"max_chars", "max_windows"}
+    }
     unit = next(
         (row for row in units if str(row.get("id") or "") == unit_id),
         None,
@@ -463,7 +468,11 @@ def _compact_edit_to_mutation(
             raise ValueError("compact Force provider_bloc edit is missing or oversized")
         if not source:
             raise ValueError("compact Force provider_bloc runtime source is unavailable")
-        window_kwargs = _force_window_kwargs_for_request(request)
+        window_kwargs = {
+            key: value
+            for key, value in _force_window_kwargs_for_request(request).items()
+            if key in {"max_chars", "max_windows"}
+        }
         absolute_start_hint = None
         if unit_id:
             unit, window_kwargs = _force_unit_for_edit(request, source, unit_id)
@@ -525,7 +534,11 @@ def _compact_edit_to_mutation(
 
     if not source:
         raise ValueError("compact Force exact source is unavailable")
-    window_kwargs = _force_window_kwargs_for_request(request)
+    window_kwargs = {
+        key: value
+        for key, value in _force_window_kwargs_for_request(request).items()
+        if key in {"max_chars", "max_windows"}
+    }
     absolute_start_hint = None
     if unit_id:
         unit, window_kwargs = _force_unit_for_edit(request, source, unit_id)
