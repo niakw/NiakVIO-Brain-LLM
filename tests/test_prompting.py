@@ -120,12 +120,12 @@ class PromptingTests(unittest.TestCase):
         self.assertEqual(payload["mutation_target"]["scope"], "provider_patch")
         self.assertEqual(payload["mutation_target"]["path"], "scripts/provider_patches/demo_runtime_v1.py")
         windows = payload["mutation_target"]["source_windows"]
-        self.assertLessEqual(sum(len(row["source"]) for row in windows), 4000)
+        self.assertLessEqual(sum(len(row["source"]) for row in windows), 2600)
         joined = "\n".join(row["source"] for row in windows)
         self.assertIn("HEAD", joined)
         self.assertIn("TAIL", joined)
         self.assertTrue(payload["output_contract"]["source_windows_are_exact_current_bytes"])
-        self.assertEqual(len(payload["current_observations"]), 3)
+        self.assertEqual(len(payload["current_observations"]), 2)
         self.assertNotIn("retrieved_experiences", payload)
         self.assertNotIn("retrieved_documents", payload)
         self.assertNotIn("published_bundle", payload)
@@ -190,8 +190,8 @@ class PromptingTests(unittest.TestCase):
             {"allow_mutations": True, "allowed_scopes": ["provider_patch"]},
         )
         windows = payload["mutation_target"]["source_windows"]
-        self.assertLessEqual(sum(len(row["source"]) for row in windows), 3200)
-        self.assertLessEqual(len(windows), 4)
+        self.assertLessEqual(sum(len(row["source"]) for row in windows), 2200)
+        self.assertLessEqual(len(windows), 2)
         self.assertEqual(len(payload["current_observations"]), 1)
         self.assertEqual(payload["current_observations"][0]["stage"], "force_validation_feedback")
         self.assertEqual(payload["validated_reference_patterns"], [])
@@ -224,11 +224,64 @@ class PromptingTests(unittest.TestCase):
         )
         windows = payload["mutation_target"]["source_windows"]
         joined = "\n".join(row["source"] for row in windows)
-        self.assertLessEqual(sum(len(row["source"]) for row in windows), 4000)
+        self.assertLessEqual(sum(len(row["source"]) for row in windows), 2600)
         self.assertIn("confirmLink", joined)
         self.assertIn("internalLink", joined)
         self.assertIn("resolveMedia", joined)
         self.assertTrue(all("...<middle-clipped>..." not in row["source"] for row in windows))
+
+    def test_force_initial_prompt_is_compact_and_keeps_one_optional_reference(self):
+        source = (
+            "H" * 5000
+            + "\nfunction confirmLink(){ return '/confirm/' + id; }\n"
+            + "I" * 2200
+            + "\nfunction resolveMedia(){ return url.includes('.m3u8') ? url : null; }\n"
+            + "T" * 5000
+        )
+        request = RepairRequest(
+            provider_id="demo",
+            failure_class="chain_terminal_gap",
+            observations=[
+                {"stage": "player", "blob": "Z" * 5000},
+                {"stage": "detail", "blob": "Y" * 5000},
+                {"stage": "other", "blob": "X" * 5000},
+            ],
+            census_prior={"blob": "C" * 5000},
+            provider_context={
+                "registered_patch_sources": {
+                    "scripts/provider_patches/demo_runtime_v1.py": source,
+                },
+                "validated_reference_patterns": [
+                    {
+                        "provider": "healthy-a",
+                        "status": "FULL OK",
+                        "source_kind": "registered_bloc:a",
+                        "technical_features": ["fetch", "iframe", "m3u8"],
+                        "snippet": "S" * 1100,
+                    },
+                    {
+                        "provider": "healthy-b",
+                        "status": "FULL OK",
+                        "source_kind": "registered_bloc:b",
+                        "technical_features": ["fetch", "json"],
+                        "snippet": "R" * 1100,
+                    },
+                ],
+            },
+        )
+        payload = build_force_prompt_payload(
+            request,
+            {"target_layer": "provider", "confidence": 0.96, "strategy_prior": "chain_terminal_extractor_v1"},
+            {"allow_mutations": True, "allowed_scopes": ["provider_patch"]},
+        )
+        windows = payload["mutation_target"]["source_windows"]
+        self.assertLessEqual(sum(len(row["source"]) for row in windows), 2600)
+        self.assertLessEqual(len(windows), 3)
+        self.assertEqual(len(payload["current_observations"]), 2)
+        self.assertEqual(len(payload["validated_reference_patterns"]), 1)
+        self.assertLessEqual(len(payload["validated_reference_patterns"][0]["snippet"]), 520)
+        self.assertEqual(payload["census_prior"], {})
+        self.assertEqual(payload["output_contract"]["validation_retry_context"], "compact_initial")
 
     def test_force_prompt_references_are_optional_and_novelty_allowed(self):
         request = RepairRequest(
