@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "niakvio_sha": "6f3beaad1f6fc47f55f63edad06c4a1d2365a95b",
-  "reason": "Current 13-provider repair queue with fresh targeted recovery and WAF/client differential causal routing.",
+  "reason": "Current 13-provider repair queue with fresh targeted/WAF evidence and pinned Brain SHA across pages.",
   "requested_repair_queue": [
     "4khdhub",
     "allanime",
