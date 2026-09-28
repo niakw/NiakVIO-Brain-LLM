@@ -81,6 +81,7 @@ def main() -> int:
         timeout_seconds=max(30, min(int(args.timeout_seconds), 240)),
         temperature=0.0,
         max_tokens=max(128, min(int(args.max_tokens), 2048)),
+        prefill_prompt=(args.mode == "repair" and not args.advisor_only),
     )
     store = ExperienceStore.from_jsonl_many(
         [args.experience, *args.extra_experience]
@@ -226,6 +227,7 @@ def main() -> int:
                 timeout_seconds=bounded_timeout,
                 temperature=0.0,
                 max_tokens=max_tokens,
+                prefill_prompt=True,
             )
             return BrainOrchestrator(
                 BrainPlanner(retry_backend, store, documents),
