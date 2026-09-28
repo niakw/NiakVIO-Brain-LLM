@@ -6,13 +6,13 @@ workflow = (ROOT / ".github" / "workflows" / "niakvio-private-guidance.yml").rea
 
 assert "scope_token_cap = {" in source
 assert '"provider_data": 192' in source
-assert '"provider_patch": 320' in source
-assert '"provider_js": 320' in source
+assert '"provider_patch": 640' in source
+assert '"provider_js": 640' in source
 assert '"provider_bloc": 448' in source
 assert "recovery_token_cap = {" in source
 assert '"provider_data": 256' in source
-assert '"provider_patch": 384' in source
-assert '"provider_js": 384' in source
+assert '"provider_patch": 768' in source
+assert '"provider_js": 768' in source
 assert '"provider_bloc": 768' in source
 assert "primary_tokens = max(128, min(int(args.max_tokens), scope_token_cap))" in source
 assert "retry_tokens = max(primary_tokens, min(int(args.max_tokens), recovery_token_cap))" in source
@@ -59,5 +59,6 @@ assert "prior_feedback" in source
 assert "removed_live_binding" in source
 assert "causally_empty_deletion" in source
 
-assert '{"chain_terminal_gap", "route_proven_gap", "media_extraction_gap"}' in source
+assert '{"chain_terminal_gap", "media_extraction_gap"}' in source
+assert 'failure_key == "route_proven_gap"' in source
 assert 'scopes.append("provider_bloc")' in source

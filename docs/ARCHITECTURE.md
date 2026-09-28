@@ -213,13 +213,27 @@ Compact Force output is intentionally asymmetric by mutation surface. Local edit
 should not pay the same generation ceiling as a genuinely new runtime Bloc.
 
 - provider_data: 192 generated tokens maximum;
-- provider_patch/provider_js: 320 generated tokens maximum;
+- provider_patch/provider_js: 640 generated tokens maximum;
 - provider_bloc: 448 generated tokens maximum.
 
 The workflow-level token argument is only an upper bound. Brain chooses the lower
 scope-specific cap before each model call. This is a performance constraint only:
 it does not remove provider_bloc novelty, FULL OK references remain optional, and
 NiakVIO proof requirements are unchanged.
+
+
+### Existing provider surface before novel Bloc fallback
+
+Force spends the first repair attempt on the narrowest existing provider-owned surface
+that can express the failure: registered provider patch first, then authored provider
+module/data when available. A novel `provider_bloc` remains the invention fallback
+after that surface abstains or is structurally rejected.
+
+This ordering is not a novelty restriction. The model may still synthesize a new
+mechanism when existing code is insufficient; it simply avoids spending most of a
+bounded provider budget rewriting broad generated-runtime helpers before the
+provider-authored implementation has been tested. Every scope remains subject to the
+same deterministic compiler and NiakVIO proof gates.
 
 
 ### Fast abstention is not repair proof
@@ -244,14 +258,23 @@ A provider status alone is not sufficient mutation evidence. Current targeted
 provider evidence may override a generic census failure class when it proves the
 failure belongs to transport/environment rather than provider code.
 
-In particular, a fresh targeted observation whose provider lanes consistently
-end in `provider_waf_challenge` with provider-origin 401/403/429 responses and
-no playable/verified lane is classified as `transport_environment_gap`.
-Provider mutation is withheld until a discriminating browser/native/residential
-probe implicates provider-owned behavior.
+In particular, a fresh targeted observation whose provider lanes explicitly
+end in `provider_waf_challenge` is transport evidence even when the challenge
+page or script returns HTTP 200. Provider mutation is withheld until a stronger
+browser/native/residential replay disproves the challenge classification or
+otherwise implicates provider-owned behavior.
+
+For provider-local zero-result/parser failures, targeted evidence may also carry
+a bounded `shape` per network observation. Brain accepts only a second sanitized
+view: validated JSON schema-key names and coarse types/buckets, or bounded
+HTML/JavaScript element/function counts plus a closed marker vocabulary. Raw
+response bodies, values, cookies, headers and query secrets are never admitted
+to prompt context. Shape evidence can justify *where* to edit, but never grants
+publication authority.
 
 This prevents the generative Brain from being rewarded for inventing a patch
-when the correct causal action is to abstain and gather transport evidence.
+when the correct causal action is to abstain and gather transport evidence, while
+giving real parser/schema failures enough causal structure to avoid blind edits.
 
 
 ### Adaptive quality/compute allocation
@@ -274,8 +297,8 @@ Current generated-token ceilings are:
 | scope | primary | structural recovery |
 | --- | ---: | ---: |
 | provider_data | 192 | 256 |
-| provider_patch | 320 | 384 |
-| provider_js | 320 | 384 |
+| provider_patch | 640 | 768 |
+| provider_js | 640 | 768 |
 | provider_bloc | 448 | 768 |
 
 The workflow hard wall-clock ceiling is 240 seconds per provider, but effective
@@ -289,9 +312,9 @@ the scheduler only decides how much compute a causally justified attempt receive
 
 ### Deterministic editable units
 
-Compact Force must not ask the model to reproduce exact minified source bytes. Causal source windows remain visible for reasoning, but the deterministic Brain compiler derives a bounded set of exact, statement-sized `editable_units` from current bytes.
+Compact Force must not ask the model to reproduce exact minified source bytes. Causal source windows remain visible for reasoning, but the deterministic Brain compiler derives a bounded set of exact statement/sequence units plus bounded causal whole-function units from current bytes.
 
-For provider patch/JS mutations the model emits only `{scope, path, unit_id, replace}`; for a novel provider Bloc it emits `{scope, family, unit_id, replace}`. Brain resolves `unit_id` back to the exact current-byte statement and offset, expands uniqueness only when required, then performs full syntax, ownership, placeholder/network and no-op validation.
+For provider patch/JS mutations the model emits only `{scope, path, unit_id, replace}`; for a novel provider Bloc it emits `{scope, family, unit_id, replace}`. Brain resolves `unit_id` back to exact current bytes and offsets, expands uniqueness only when required, then performs full syntax, ownership, placeholder/network and no-op validation. Statement/sequence replacements remain capped at 640 characters; a supplied `function_unit` may use up to 1800 characters so the replacement can remain structurally complete.
 
 Editable units may not be partial function/class prefixes, unmatched-brace fragments, or mid-token window slices. This preserves model creativity for replacement logic while removing exact-byte copying from the probabilistic part of the pipeline.
 
@@ -307,7 +330,7 @@ For traversal-class failures (`route_proven_gap`, `chain_terminal_gap`, `media_e
 
 Force uses strict JSON-Schema constrained generation when the local OpenAI-compatible backend supports it. This removes malformed-JSON retries from the probabilistic path while preserving deterministic Brain validation as final authority.
 
-Editable-unit granularity is progressive: statement units for local edits, bounded adjacent statement sequences when needed, and bounded causal function units only when a function name matches the current failure-family keywords. A function unit is not a free-form whole-file edit: Brain extracts exact current bytes, requires balanced braces and a bounded size, assigns a stable unit_id, and keeps all downstream syntax, ownership, network-fact, no-op and NiakVIO runtime proof gates unchanged.
+Editable-unit granularity is progressive: statement units for local edits, bounded adjacent statement sequences when needed, and bounded causal function units when the function body carries current failure-family evidence. Function names are not required to encode the failure; generic/minified names therefore remain repairable. Function-unit selection is diversified across causal helpers so one rejected micro-anchor cannot monopolize every choice. A function unit is not a free-form whole-file edit: Brain extracts exact current bytes, requires balanced braces and a bounded size, assigns a stable unit_id, and keeps all downstream syntax, ownership, network-fact, no-op and NiakVIO runtime proof gates unchanged.
 
 
 ### WAF/client differential as a causal routing input
@@ -319,9 +342,10 @@ Evidence precedence is:
 2. WAF/client-profile differential;
 3. targeted network status/HTTP code.
 
-A narrow 401/403/429 is never sufficient by itself to classify a provider as environment-only.
+A narrow 401/403/429 is never sufficient by itself to classify a provider as environment-only. Conversely, an explicitly detected interactive challenge is transport evidence even when the HTTP status is 200. NiakVIO's targeted probe may classify bounded HTML/JavaScript responses as `provider_waf_challenge`; Brain must not turn that explicit challenge back into provider mutation authority merely because the request succeeded at the HTTP layer.
 
 - If full residential provider replay completes identity-safe without a WAF/timeout stage but still ends in provider zero/error, retain the ordinary provider failure class so Force can repair provider logic.
+- If current targeted regression evidence explicitly reports `provider_waf_challenge` and no stronger replay disproves it, causal routing moves to the transport/harness diagnostic layer with `compare_browser_native_residential_profiles_without_provider_mutation`; provider mutation scopes are empty.
 - If browser and residential probes both confirm persistent challenge and no stronger provider replay contradicts that result, classify as `transport_environment_gap` and withhold provider mutation.
 - If the failed target becomes reachable with an audited Nuvio-like profile and no stronger full-provider replay has isolated provider-local failure, classify as `client_transport_gap` and route to the harness/client layer.
 - Current provider-local zero-result/terminal evidence remains eligible for provider repair.

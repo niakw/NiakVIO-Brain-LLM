@@ -52,7 +52,7 @@ Rules:
 - provider_patch/provider_js: {scope,path,unit_id,replace}; no unified diff.
 - provider_bloc for a new mechanism: {scope:"provider_bloc",family,unit_id,replace}; family must be lowercase snake_case.
 - unit_id must come from editable_units. Brain owns the exact current-byte find text; never copy or invent find bytes.
-- Existing-file replace <=640 chars; provider_bloc replace <=1200 chars.
+- Existing-file replace <=640 chars, or <=1800 only for a supplied function_unit; provider_bloc replace <=1200 chars.
 - Preserve syntax/function boundaries; do not emit partial function declarations.
 - FULL OK references are optional inspiration only: adapt/combine/ignore them or invent a new provider-local mechanism. Never copy provider-specific network facts.
 - force_validation_feedback means the previous shape failed; choose a materially different unit/replacement in the same scope or abstain.\n- prior_force_sandbox_failures are executed negative evidence: if a prior edit applied but did not improve playable proof, do not make a cosmetic variant of that mechanism; choose a materially different causal mechanism/unit or abstain.
@@ -518,7 +518,7 @@ def _compact_edit_to_mutation(
     window_id = str(edit.get("window_id") or "").strip()
     find = str(edit.get("find") or "")
     replace = str(edit.get("replace") or "")
-    if len(replace) > 640:
+    if len(replace) > 1800:
         raise ValueError("compact Force replacement is oversized")
     context = request.provider_context or {}
     if scope == "provider_patch":
@@ -540,13 +540,18 @@ def _compact_edit_to_mutation(
         if key in {"max_chars", "max_windows"}
     }
     absolute_start_hint = None
+    max_replace = 640
     if unit_id:
         unit, window_kwargs = _force_unit_for_edit(request, source, unit_id)
         window_id = str(unit.get("window_id") or "")
         find = str(unit.get("source") or "")
         absolute_start_hint = int(unit.get("offset") or 0)
+        if str(unit.get("kind") or "") == "function_unit":
+            max_replace = 1800
     elif not find or len(find) > 320:
         raise ValueError("compact Force exact edit target is missing or oversized")
+    if len(replace) > max_replace:
+        raise ValueError("compact Force replacement is oversized for selected edit unit")
 
     stripped_find = find.strip()
     stripped_replace = replace.strip()
@@ -565,7 +570,7 @@ def _compact_edit_to_mutation(
         find,
         replace,
         max_find=320,
-        max_replace=640,
+        max_replace=max_replace,
         window_kwargs=window_kwargs,
         absolute_start_hint=absolute_start_hint,
     )
@@ -657,7 +662,7 @@ def _compact_wire_schema_for(
                     "scope": {"type": "string", "enum": [scope]},
                     "path": path_schema,
                     "unit_id": {"type": "string", "enum": unit_ids},
-                    "replace": {"type": "string", "maxLength": 640},
+                    "replace": {"type": "string", "maxLength": 1800},
                 },
             })
             continue

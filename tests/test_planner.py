@@ -568,6 +568,36 @@ class PlannerTests(unittest.TestCase):
                 compact_force=True,
             )
 
+    def test_compact_force_function_unit_allows_bounded_large_replacement(self):
+        path = "scripts/provider_patches/demo_runtime_v1.py"
+        source = 'WRAPPER = """function a(page){var href="/confirm/"+page.id;return href;}"""\n'
+        request = RepairRequest(
+            provider_id="demo",
+            failure_class="chain_terminal_gap",
+            status="CHAIN REACHED",
+            provider_context={"registered_patch_sources": {path: source}},
+        )
+        payload = build_force_prompt_payload(
+            request,
+            {"target_layer": "provider", "confidence": 0.96, "strategy_prior": "chain_terminal_extractor_v1"},
+            {"allow_mutations": True, "allowed_scopes": ["provider_patch"]},
+        )
+        unit = next(
+            row for row in payload["mutation_target"]["editable_units"]
+            if row.get("kind") == "function_unit"
+        )
+        replacement = (
+            'function a(page){/*' + ("x" * 700)
+            + '*/var href="/confirm/"+page.id;return href;}'
+        )
+        self.assertGreater(len(replacement), 640)
+        mutation = _compact_edit_to_mutation(
+            request,
+            {"scope": "provider_patch", "path": path, "unit_id": unit["id"], "replace": replacement},
+        )
+        self.assertEqual(mutation["scope"], "provider_patch")
+        self.assertIn("unified_diff", mutation["operation"])
+
     def test_private_chat_document_reaches_planner_prompt(self):
         planner = BrainPlanner(
             StaticBackend("{}"),
@@ -630,7 +660,7 @@ class PlannerGuardTests(unittest.TestCase):
         )
         units = payload["new_bloc_target"]["editable_units"]
         target = next(row for row in units if "normalized=_embeddedText" in row["source"] and "const out" in row["source"])
-        with self.assertRaisesRegex(ValueError, "removes live binding|pure deletion"):
+        with self.assertRaisesRegex(ValueError, "removes live binding|pure deletion|helper function declaration"):
             _compact_edit_to_mutation(
                 request,
                 {"scope":"provider_bloc","family":"url_extractor","unit_id":target["id"],"replace":"const out=[];"},

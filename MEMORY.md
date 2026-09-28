@@ -387,3 +387,29 @@
 - moviesmod ended in a bounded local timeout and remains unresolved.
 - Evidence is persisted under evidence/local-force/2026-09-28/; these results must be reused before generating a new cohort from scratch.
 - Candidate status is NOT repair proof. Each accepted local candidate still requires current-byte NiakVIO sandbox evaluation, playable-stream/identity validation and relevant non-regression before publication.
+## 2026-09-28 — FORCE context diversity and authored-surface priority
+
+- ROUND3 negative-memory replay proved a generic Brain limitation rather than a MalluMV-specific provider bug: several providers spent their budget on repeated micro-units, no-op/syntax corrections or broad generated-runtime Blocs and produced no publishable candidate.
+- MalluMV's compact provider-patch context was initially four variants of the same already-rejected `confirm_links` area. Brain now derives bounded causal whole-function units from exact provider-owned bytes and reserves space for diverse causal helpers; current MalluMV context exposes `resolveCandidate`, `resolve`, `plausible` and `internalFrom` instead of one repeated micro-anchor.
+- Function-unit selection uses causal evidence in the function body, not semantic function names, so generic/minified helper names remain eligible. Exact-byte ownership, brace/syntax checks, provider ownership, network-fact guards, no-op guards and NiakVIO sandbox proof are unchanged.
+- Existing provider-owned surfaces are now attempted before a novel `provider_bloc`; new Bloc synthesis remains available as the fallback after abstention/rejection. This avoids burning bounded compute on broad generated-runtime helpers before the authored provider implementation has been tested.
+- Statement/sequence replacements remain capped at 640 characters. A supplied bounded `function_unit` may replace up to 1800 characters, with strict JSON schema widened accordingly; provider_patch/provider_js generation budgets are now 640 primary / 768 structural recovery tokens so structurally complete replacements can actually be emitted.
+- Local focused MalluMV run after context diversification still abstained on provider_patch and provider_bloc. This is not a provider repair and must not be promoted as one.
+- Focused Brain regression suite is green: 47 tests across prompting, compact Force retry, generated runtime Bloc contract, planner, batch concurrency and provider context; `git diff --check` is clean.
+
+## 2026-09-28 — Same-census evidence continuity and HTTP-200 WAF routing
+
+- NiakVIO targeted run 36461136076 refreshed only MalluMV but had overwritten a same-census 13-provider snapshot, which made the other 12 providers appear `not-probed` to Brain. NiakVIO commit `471d652dbebe487f6418218211f6b5d44ec2cc24` now retains untouched provider rows for the same `sourceCensusRunId` and starts fresh only on a new census epoch.
+- Brain current-byte replanning must consume the cumulative same-census targeted snapshot instead of treating a one-provider targeted run as the whole fleet state.
+- MalluMV current targeted evidence is `provider_waf_challenge` despite HTTP 200 responses. The terminal Viking handoff is an interactive Turnstile gate, so this is transport/WAF evidence rather than provider-code mutation authority.
+- Brain keeps the descriptive failure as `provider_transport_gap`, while the causal prior promotes explicit current targeted WAF evidence to the harness/transport diagnostic layer with `compare_browser_native_residential_profiles_without_provider_mutation`.
+- On the restored 13-provider evidence snapshot, MalluMV, MoviesMod and AllWish route without provider mutation; 4KHDHub, AnimeSultra, VidFast and YFlix retain provider-repair eligibility from their non-WAF targeted evidence; AllAnime and MovieBox retain chain-terminal provider repair.
+- Stronger identity-safe full residential provider replay can still override a narrow WAF seed and return a provider to ordinary repair.
+
+## 2026-09-28 — Response-shape evidence bridge
+
+- Post-fix local Qwen validation against NiakVIO same-census evidence produced no accepted mutation: AllAnime abstained on both authored provider patch and generated Bloc; 4KHDHub abstained on the authored patch and exhausted the Bloc provider budget. These are not repaired providers.
+- The remaining seven provider-repair lanes had current request/status evidence but no persisted response structure; historical `provider_value_trace_v18/v21` is null for these specific current providers, so simply importing that trace would not resolve the evidence gap.
+- NiakVIO `a2ff1ef592a7a164ec46ddf6af628df317c0c593` now emits and persists a bounded response-shape summary: sanitized JSON schema keys/types or fixed HTML/JavaScript counts/markers only. It never persists response bodies or values.
+- Brain now re-sanitizes targeted `shape` evidence on ingestion before it can enter compact Force prompt context. Unknown fields/markers and unsafe key names are dropped.
+- Shape evidence is diagnostic context, not proof or mutation authority. Candidate acceptance still belongs exclusively to isolated NiakVIO current-byte playback/identity/non-regression validation.

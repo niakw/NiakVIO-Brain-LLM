@@ -174,6 +174,36 @@ class PromptingTests(unittest.TestCase):
         self.assertNotIn("function unrelated", causal[0]["source"])
         self.assertLessEqual(len(causal[0]["source"]), 1800)
 
+    def test_force_edit_units_include_generic_named_causal_function_bodies(self):
+        source = (
+            "function a(page){var href=\'/confirm/\'+page.id;return href;} "
+            "function b(page){var path='/internal/'+page.id;return path;} "
+            "function unrelated(){return 2;}"
+        )
+        request = RepairRequest(
+            provider_id="demo",
+            failure_class="chain_terminal_gap",
+            provider_context={
+                "registered_patch_sources": {
+                    "scripts/provider_patches/demo_runtime_v1.py": source,
+                },
+            },
+        )
+        payload = build_force_prompt_payload(
+            request,
+            {"target_layer": "provider", "confidence": 0.96, "strategy_prior": "chain_terminal_extractor_v1"},
+            {"allow_mutations": True, "allowed_scopes": ["provider_patch"]},
+        )
+        functions = [
+            row["source"]
+            for row in payload["mutation_target"]["editable_units"]
+            if row.get("kind") == "function_unit"
+        ]
+        self.assertGreaterEqual(len(functions), 2)
+        self.assertTrue(any("function a(" in row and "/confirm/" in row for row in functions))
+        self.assertTrue(any("function b(" in row and "/internal/" in row for row in functions))
+        self.assertFalse(any("function unrelated" in row for row in functions))
+
     def test_force_validation_retry_uses_focused_context(self):
         source = (
             "H" * 5000

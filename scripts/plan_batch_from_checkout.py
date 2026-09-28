@@ -183,12 +183,11 @@ def main() -> int:
             and bool(context.get("runtimeMutationSource"))
         )
 
-        # Chain-terminal failures usually require composing/traversing runtime
-        # helpers. Spend the provider budget on the expressive Bloc surface
-        # first; ordinary patch/JS/data surfaces remain fallbacks.
-        if failure_key in {"chain_terminal_gap", "route_proven_gap", "media_extraction_gap"} and bloc_ready:
-            scopes.append("provider_bloc")
-
+        # Prefer the narrowest authored provider-local surface first. A managed
+        # provider_bloc remains the invention fallback when the existing patch/JS
+        # cannot express the repair. This keeps novel Bloc synthesis available
+        # without spending most of the budget rewriting broad generated runtime
+        # helpers before the provider-owned implementation has been tried.
         if (
             "provider_patch" in allowed
             and isinstance(context.get("registered_patch_sources"), dict)
@@ -200,9 +199,9 @@ def main() -> int:
         elif "provider_data" in allowed and (context.get("override") or context.get("hub")):
             scopes.append("provider_data")
 
-        if bloc_ready and "provider_bloc" not in scopes:
+        if bloc_ready:
             scopes.append("provider_bloc")
-        return scopes
+        return list(dict.fromkeys(scopes))
 
     def _run_force_scope(
         position: int,
@@ -217,14 +216,14 @@ def main() -> int:
 
         scope_token_cap = {
             "provider_data": 192,
-            "provider_patch": 320,
-            "provider_js": 320,
+            "provider_patch": 640,
+            "provider_js": 640,
             "provider_bloc": 448,
         }.get(scope, 320)
         recovery_token_cap = {
             "provider_data": 256,
-            "provider_patch": 384,
-            "provider_js": 384,
+            "provider_patch": 768,
+            "provider_js": 768,
             "provider_bloc": 768,
         }.get(scope, 384)
         primary_tokens = max(128, min(int(args.max_tokens), scope_token_cap))

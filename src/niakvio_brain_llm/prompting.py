@@ -449,7 +449,7 @@ def _force_window_kwargs_for_request(request: RepairRequest) -> dict[str, int]:
 
 
 def _force_edit_units(value: Any, failure_class: str, *, max_chars: int = 2600, max_windows: int = 3, max_units: int = 9) -> list[dict[str, Any]]:
-    """Return exact, statement-sized, structurally safe edit units."""
+    """Return exact, bounded, structurally safe edit units with causal diversity."""
     text = str(value or "")
     windows = _force_source_windows(text, failure_class, max_chars=max_chars, max_windows=max_windows)
     ranked = []
@@ -629,17 +629,115 @@ def _force_edit_units(value: Any, failure_class: str, *, max_chars: int = 2600, 
                 "source": fragment,
             }))
 
+    # Compact windows can land inside a useful function and hide its declaration
+    # or closing brace. Scan the complete exact provider-owned source for bounded
+    # causal functions too. This expands choice, not authority: the selected bytes
+    # are still exact current bytes and the deterministic sandbox remains proof.
+    function_pattern = re.compile(
+        r"\b(?:async\s+)?function\s+[A-Za-z_$][A-Za-z0-9_$]*\s*\([^)]*\)\s*\{"
+    )
+    absolute_focuses = [
+        int(window.get("offset") or 0) + int(window.get("focus_offset") or 0)
+        for window in windows
+    ]
+    for match in function_pattern.finditer(text):
+        brace = text.find("{", match.start(), match.end() + 1)
+        if brace < 0:
+            continue
+        quote = ""
+        escaped = False
+        depth = 0
+        end = -1
+        for cursor in range(brace, len(text)):
+            char = text[cursor]
+            if quote:
+                if escaped:
+                    escaped = False
+                    continue
+                if char == "\\":
+                    escaped = True
+                    continue
+                if char == quote:
+                    quote = ""
+                continue
+            if char in {'"', "\'", "`"}:
+                quote = char
+                continue
+            if char == "{":
+                depth += 1
+            elif char == "}":
+                depth -= 1
+                if depth == 0:
+                    end = cursor + 1
+                    break
+        if end < 0:
+            continue
+        fragment = text[match.start():end]
+        lowered_fragment = fragment.casefold()
+        if not (24 <= len(fragment.strip()) <= 1800):
+            continue
+        if family_keywords and not any(keyword in lowered_fragment for keyword in family_keywords):
+            continue
+        key = (match.start(), end)
+        if key in seen or not safe(fragment, match.start(), max_len=1800, allow_function=True):
+            continue
+        seen.add(key)
+        center = match.start() + max(1, len(fragment)) // 2
+        nearest_index = (
+            min(range(len(windows)), key=lambda index: abs(center - absolute_focuses[index]))
+            if windows else 0
+        )
+        nearest = windows[nearest_index] if windows else {}
+        focus = absolute_focuses[nearest_index] if absolute_focuses else center
+        contains_focus = match.start() <= focus < end
+        distance = 0 if contains_focus else abs(center - focus)
+        causal_hits = sum(1 for keyword in family_keywords if keyword in lowered_fragment)
+        ranked.append((
+            (0 if contains_focus else 1, 0, -causal_hits, distance, nearest_index, match.start()),
+            {
+                "window_id": str(nearest.get("id") or "w1"),
+                "offset": match.start(),
+                "end_offset": end,
+                "reason": "causal_function_body",
+                "kind": "function_unit",
+                "source": fragment,
+            },
+        ))
+
     ranked.sort(key=lambda item: item[0])
+
+    # Reserve room for whole causal functions before filling with statement-level
+    # candidates. This prevents one rejected micro-anchor from monopolizing every
+    # option while preserving a bounded prompt and exact-byte unit ids.
+    selected = []
+    selected_keys = set()
+    for _, row in ranked:
+        if row.get("kind") != "function_unit":
+            continue
+        key = (int(row.get("offset") or 0), int(row.get("end_offset") or 0))
+        if key in selected_keys:
+            continue
+        selected.append(row)
+        selected_keys.add(key)
+        if len(selected) >= min(2, max_units):
+            break
+    for _, row in ranked:
+        key = (int(row.get("offset") or 0), int(row.get("end_offset") or 0))
+        if key in selected_keys:
+            continue
+        selected.append(row)
+        selected_keys.add(key)
+        if len(selected) >= max_units:
+            break
+
     per_window = {}
     units = []
-    for _, row in ranked:
+    for row in selected:
         wid = str(row.get("window_id") or "")
         per_window[wid] = per_window.get(wid, 0) + 1
         item = dict(row)
         item["id"] = f"{wid}u{per_window[wid]}"
         units.append(item)
-        if len(units) >= max_units:
-            break
     return units
 
 def build_force_prompt_payload(

@@ -16,6 +16,39 @@ def _load(path: Path, default: Any) -> Any:
 def _canon(value: object) -> str:
     return " ".join(str(value or "").strip().casefold().replace("_", " ").split())
 
+def _safe_response_shape(value: Any) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        return {}
+    kind = str(value.get("kind") or "")[:24]
+    if kind not in {"json", "html", "javascript"}:
+        return {}
+    out: dict[str, Any] = {"kind": kind}
+    if kind == "json":
+        top = str(value.get("top") or "")[:24]
+        if top:
+            out["top"] = top
+        for key, rows in value.items():
+            if key == "keys" or key == "itemKeys" or key.endswith("Keys") or key.endswith("ItemKeys"):
+                if isinstance(rows, list):
+                    out[key] = [
+                        str(item)[:48]
+                        for item in rows[:16]
+                        if str(item) and all(ch.isalnum() or ch in "_.:-" for ch in str(item))
+                    ]
+            elif key == "lengthBucket" or key.endswith("Type"):
+                out[key] = str(rows)[:24]
+        return out
+    for key in ("sampleBytes", "forms", "iframes", "videos", "sources", "scripts", "anchors", "functions", "fetchCalls"):
+        raw = value.get(key)
+        if isinstance(raw, int):
+            out[key] = max(0, min(raw, 65536 if key == "sampleBytes" else 99))
+    markers = value.get("markers")
+    allowed = {"next-data", "json-ld", "player", "download", "episode", "hls-literal", "mp4-literal", "turnstile", "embed"}
+    if isinstance(markers, list):
+        out["markers"] = [str(item) for item in markers[:12] if str(item) in allowed]
+    return out
+
+
 def _provider_targeted_observation(payload: Any, provider_id: str) -> dict[str, Any]:
     providers = payload.get("providers") if isinstance(payload, dict) else None
     if not isinstance(providers, dict):
@@ -40,11 +73,13 @@ def _provider_targeted_observation(payload: Any, provider_id: str) -> dict[str, 
         for value in values[:16]:
             if not isinstance(value, dict):
                 continue
+            shape = _safe_response_shape(value.get("shape"))
             safe_rows.append({
                 "method": str(value.get("method") or "")[:12],
                 "host": str(value.get("host") or "")[:120],
                 "path": str(value.get("path") or "")[:180],
                 "status": value.get("status"),
+                **({"shape": shape} if shape else {}),
             })
         if safe_rows:
             network_out[str(lane)[:40]] = safe_rows
@@ -287,7 +322,18 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
     if not isinstance(supported, list):
         supported = []
 
-    targeted_observation = _provider_targeted_observation(targeted, provider_id)
+    targeted_source_run = str(targeted.get("sourceCensusRunId") or "") if isinstance(targeted, dict) else ""
+    census_run = str(census.get("runId") or "") if isinstance(census, dict) else ""
+    targeted_current = (
+        not targeted_source_run
+        or not census_run
+        or targeted_source_run == census_run
+    )
+    targeted_observation = (
+        _provider_targeted_observation(targeted, provider_id)
+        if targeted_current
+        else {}
+    )
     waf_observation = _provider_waf_observation(waf, provider_id)
     targeted_stages = {
         str(value or "").strip().casefold()
@@ -309,12 +355,18 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
             "www.themoviedb.org",
         }
     ]
+    targeted_explicit_waf = "provider_waf_challenge" in targeted_stages
     targeted_provider_waf = (
         bool(provider_origin_network)
-        and all(int(item.get("status") or 0) in {401, 403, 429} for item in provider_origin_network)
         and (
-            targeted_stages <= {"provider_waf_challenge", "provider_network_http_error"}
-            or not targeted_stages
+            targeted_explicit_waf
+            or (
+                all(int(item.get("status") or 0) in {401, 403, 429} for item in provider_origin_network)
+                and (
+                    targeted_stages <= {"provider_waf_challenge", "provider_network_http_error"}
+                    or not targeted_stages
+                )
+            )
         )
         and not targeted_observation.get("playableLanes")
         and not targeted_observation.get("verifiedLanes")
@@ -359,6 +411,12 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
         # The seed URL is reachable with audited Nuvio-like transport, but no
         # full provider replay has yet isolated a provider-local failure.
         failure = "client_transport_gap"
+    elif targeted_explicit_waf:
+        # A current provider probe has already classified an actual provider
+        # request as an interactive challenge. HTTP 200 does not make that a
+        # provider-code defect; keep it outside mutation until stronger replay
+        # evidence proves a provider-local failure.
+        failure = "provider_transport_gap"
 
     refined_groups = _provider_refined_groups(
         refined,

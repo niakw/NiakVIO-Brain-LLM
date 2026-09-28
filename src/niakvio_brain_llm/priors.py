@@ -120,6 +120,22 @@ STATIC_FAILURE_PRIORS: dict[str, dict[str, Any]] = {
 def _canon(value: object) -> str:
     return "-".join(str(value or "").strip().casefold().replace("_", "-").split())
 
+def _targeted_interactive_challenge(request: RepairRequest) -> bool:
+    for row in request.observations or []:
+        if not isinstance(row, dict):
+            continue
+        if _canon(row.get("source")) != "targeted-regression-current":
+            continue
+        value = row.get("value")
+        if not isinstance(value, dict):
+            continue
+        stages = value.get("debugStages")
+        if not isinstance(stages, dict):
+            continue
+        if any(_canon(stage) == "provider-waf-challenge" for stage in stages.values()):
+            return True
+    return False
+
 def taxonomy_prior(failure_class: object) -> dict[str, Any] | None:
     prior = STATIC_FAILURE_PRIORS.get(_canon(failure_class))
     return dict(prior) if prior else None
@@ -169,6 +185,14 @@ def build_causal_prior(
         return status_prior("network", 0.99)
     if status == "disabled" or "disabled" in status:
         return status_prior("unknown", 0.99, "lifecycle_disabled")
+
+    if _targeted_interactive_challenge(request):
+        return {
+            "target_layer": "harness",
+            "confidence": 0.99,
+            "source": "targeted_interactive_challenge",
+            "strategy_prior": "compare_browser_native_residential_profiles_without_provider_mutation",
+        }
 
     if static:
         prior = dict(static)

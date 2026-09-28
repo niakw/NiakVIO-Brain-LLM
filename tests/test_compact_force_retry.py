@@ -112,6 +112,8 @@ class CompactForceRetryTest(unittest.TestCase):
         planner = (ROOT / "src" / "niakvio_brain_llm" / "planner.py").read_text(encoding="utf-8")
         self.assertIn('if args.mode == "repair" and not args.advisor_only:', script)
         self.assertIn("_force_scope_order", script)
+        scope_order = script[script.index("def _force_scope_order"):script.index("def _run_force_scope")]
+        self.assertLess(scope_order.index('scopes.append("provider_patch")'), scope_order.index('scopes.append("provider_bloc")'))
         self.assertIn("scoped_request.allowed_mutations = [scope]", script)
         self.assertIn("FIELD_BRAIN_FORCE_SCOPE_SELECTED", script)
         self.assertIn("_validation_feedback(", script)

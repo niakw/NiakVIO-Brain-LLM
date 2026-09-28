@@ -72,6 +72,30 @@ class PriorTests(unittest.TestCase):
         self.assertEqual(prior["strategy_prior"], "native_tls_browser_differential_v1")
         self.assertGreaterEqual(prior["confidence"], 0.99)
 
+    def test_targeted_interactive_challenge_overrides_provider_transport_taxonomy(self):
+        prior = build_causal_prior(
+            RepairRequest(
+                provider_id="demo",
+                failure_class="provider_transport_gap",
+                status="CHAIN REACHED",
+                observations=[{
+                    "source": "targeted-regression-current",
+                    "value": {
+                        "debugStages": {"movie": "provider_waf_challenge"},
+                        "network": {"movie": [{"host": "provider.example", "status": 200}]},
+                    },
+                }],
+            ),
+            [],
+        )
+        self.assertEqual(prior["target_layer"], "harness")
+        self.assertEqual(prior["source"], "targeted_interactive_challenge")
+        self.assertEqual(
+            prior["strategy_prior"],
+            "compare_browser_native_residential_profiles_without_provider_mutation",
+        )
+        self.assertGreaterEqual(prior["confidence"], 0.99)
+
     def test_chain_terminal_taxonomy_is_provider(self):
         prior = build_causal_prior(
             RepairRequest(provider_id="demo", failure_class="chain_terminal_gap"),

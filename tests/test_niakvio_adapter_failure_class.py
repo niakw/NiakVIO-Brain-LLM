@@ -72,6 +72,13 @@ class AdapterFailureClassTests(unittest.TestCase):
                                     "path": "/search/123",
                                     "status": 403,
                                     "headers": {"Authorization": "must-not-leak"},
+                                    "shape": {
+                                        "kind": "json",
+                                        "top": "object",
+                                        "keys": ["data", "episode", "unsafe value"],
+                                        "episodeKeys": ["sourceUrls", "tobeparsed"],
+                                        "secret": "must-not-leak",
+                                    },
                                 }],
                             },
                         }
@@ -103,6 +110,13 @@ class AdapterFailureClassTests(unittest.TestCase):
             self.assertEqual(current["debugStages"]["anime"], "provider_network_exception")
             self.assertEqual(current["network"]["anime"][0]["host"], "example.test")
             self.assertNotIn("headers", current["network"]["anime"][0])
+            self.assertEqual(current["network"]["anime"][0]["shape"], {
+                "kind": "json",
+                "top": "object",
+                "keys": ["data", "episode"],
+                "episodeKeys": ["sourceUrls", "tobeparsed"],
+            })
+            self.assertNotIn("secret", current["network"]["anime"][0]["shape"])
             refined = by_source["refined-repair-batch-current"][0]
             self.assertEqual(refined["splitReason"], "observed-signature-divergence")
             self.assertEqual(refined["networkShape"], ["anime:GET:example.test:403:/search/{id}"])
@@ -137,8 +151,8 @@ class AdapterFailureClassTests(unittest.TestCase):
                             "verifiedLanes": [],
                             "playableLanes": [],
                             "network": {
-                                "movie": [{"method": "GET", "host": "provider.example.org", "path": "/filter", "status": 403}],
-                                "tv": [{"method": "GET", "host": "provider.example.org", "path": "/filter", "status": 403}],
+                                "movie": [{"method": "GET", "host": "provider.example.org", "path": "/interactive", "status": 200}],
+                                "tv": [{"method": "GET", "host": "provider.example.org", "path": "/interactive", "status": 200}],
                             },
                         }
                     }
@@ -359,6 +373,52 @@ class AdapterFailureClassTests(unittest.TestCase):
             by_source = {row["source"]: row["value"] for row in request.observations}
             self.assertIn("waf-client-differential-current", by_source)
             self.assertIn("nuvio-tv-okhttp-jvm", by_source["waf-client-differential-current"]["contentProfiles"])
+
+    def test_stale_targeted_evidence_is_not_injected_or_routed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "automation").mkdir(parents=True)
+            (root / "automation" / "provider-census-status.json").write_text(
+                json.dumps({
+                    "runId": "new",
+                    "providers": [{
+                        "provider": "demo",
+                        "status": "ROUTE PROVEN",
+                        "dominantIssue": "provider_network_zero_result",
+                        "declaredLanes": ["movie"],
+                    }],
+                }),
+                encoding="utf-8",
+            )
+            for name in ("brain-repair-experience.json", "brain-repair-memory.json"):
+                (root / "automation" / name).write_text("{}", encoding="utf-8")
+            (root / "automation" / "provider-targeted-regression-recovery-latest.json").write_text(
+                json.dumps({
+                    "sourceCensusRunId": "old",
+                    "providers": {"demo": {
+                        "debugStages": {"movie": "provider_waf_challenge"},
+                        "verifiedLanes": [],
+                        "playableLanes": [],
+                        "network": {"movie": [{
+                            "method": "GET",
+                            "host": "provider.example.org",
+                            "path": "/interactive",
+                            "status": 200,
+                        }]},
+                    }},
+                }),
+                encoding="utf-8",
+            )
+            (root / "automation" / "provider-repair-batch-refined-latest.json").write_text(
+                json.dumps({"sourceRunId": "new", "groups": []}),
+                encoding="utf-8",
+            )
+            request = request_from_checkout(root, "demo")
+            self.assertEqual(request.failure_class, "route_proven_gap")
+            self.assertNotIn(
+                "targeted-regression-current",
+                {row["source"] for row in request.observations},
+            )
 
     def test_stale_refined_evidence_is_not_injected(self):
         with tempfile.TemporaryDirectory() as tmp:
