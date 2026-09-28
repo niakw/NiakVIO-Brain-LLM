@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "014c73b8b8e68fb7a7975a46bec8d133de56ee02",
-  "reason": "Authoritative guarded current 14-provider FORCE cohort after Bloc invention fallback, current replay/evidence authority fixes, stale-publication protection and routing observability. Recompute all mutations against current NiakVIO bytes; include Vostfree fresh-evidence routing.",
+  "niakvio_sha": "a7c1ad0013394fb010bcc176447554bc53a8f454",
+  "reason": "Authoritative 14-provider FORCE cycle on current green NiakVIO after complete-function Bloc receiver alignment and structural-proof causal precedence fixes. Recompute from current bytes; stale older aa2e8b cycles are evidence-only.",
   "requested_repair_queue": [
     "4khdhub",
     "allanime",
