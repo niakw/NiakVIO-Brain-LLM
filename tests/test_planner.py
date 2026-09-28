@@ -170,11 +170,12 @@ class PlannerTests(unittest.TestCase):
     def test_structured_anchor_relocates_exact_find_from_wrong_window(self):
         source = (
             "function confirmTarget(){return null;}\n"
-            + "/*" + ("x" * 7000) + "*/\n"
+            + "/*" + ("x" * 14000) + "*/\n"
             + "function terminalTarget(){const media='ok';return media;}\n"
         )
         find = "return media;"
         windows = _force_source_windows(source, "chain_terminal_gap")
+        self.assertGreaterEqual(len(windows), 2)
         wrong = next(
             row for row in windows
             if find not in str(row.get("source") or "")
