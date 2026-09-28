@@ -52,7 +52,57 @@ class PolicyTests(unittest.TestCase):
         })
         self.assertFalse(policy["allow_mutations"])
         self.assertTrue(policy["force_abstain"])
-        self.assertIn("targeted provider evidence", policy["reason"])
+        self.assertIn("current-census provider evidence", policy["reason"])
+
+    def test_route_repair_with_current_census_proof_can_synthesize(self):
+        request = RepairRequest(
+            provider_id="demo",
+            failure_class="route_proven_gap",
+            allowed_mutations=["provider_bloc"],
+            provider_context={
+                "runtimeMutationSource": "function getStreams(item){return [];}",
+            },
+            observations=[{
+                "source": "census_current",
+                "value": {
+                    "status": "ROUTE PROVEN",
+                    "testedThisRun": True,
+                    "routeProof": ["1 live route"],
+                    "residentialProviderReplayEvidence": [
+                        "movie:provider_zero_before_provider_network:raw=0:playable=0:verified=0"
+                    ],
+                },
+            }],
+        )
+        policy = build_mutation_policy(request, {
+            "target_layer": "provider",
+            "strategy_prior": "search_detail_player_terminal_traversal",
+        })
+        self.assertTrue(policy["allow_mutations"])
+        self.assertFalse(policy["force_abstain"])
+        self.assertEqual(policy["allowed_scopes"], ["provider_bloc"])
+
+    def test_current_census_proof_must_be_from_current_test_run(self):
+        request = RepairRequest(
+            provider_id="demo",
+            failure_class="route_proven_gap",
+            allowed_mutations=["provider_bloc"],
+            provider_context={"runtimeMutationSource": "function getStreams(item){return [];}"},
+            observations=[{
+                "source": "census_current",
+                "value": {
+                    "status": "ROUTE PROVEN",
+                    "testedThisRun": False,
+                    "routeProof": ["stale route"],
+                },
+            }],
+        )
+        policy = build_mutation_policy(request, {
+            "target_layer": "provider",
+            "strategy_prior": "search_detail_player_terminal_traversal",
+        })
+        self.assertFalse(policy["allow_mutations"])
+        self.assertTrue(policy["force_abstain"])
 
     def test_route_repair_with_targeted_evidence_can_synthesize(self):
         request = RepairRequest(
