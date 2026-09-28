@@ -49,7 +49,7 @@ assert "-c 32768" in wf
 assert "-np 1" in wf
 assert "--workers 1" in wf
 assert "--advisor-only" in wf
-assert "--max-tokens 768" in wf
+assert "--max-tokens 512" in wf
 assert "--timeout-seconds 120" in wf
 assert "--force-provider-budget-seconds 180" in wf
 assert wf.index("-np 1") < wf.index("--workers 1")
