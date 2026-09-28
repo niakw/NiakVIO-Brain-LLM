@@ -395,3 +395,9 @@ Provider mutation must be backed by fresh provider-local evidence, but freshness
 A current targeted-regression observation may authorize synthesis when it contains provider debug/network evidence. If that artifact is stale or absent, the authoritative current census may authorize synthesis only when the provider row is `testedThisRun=true` and contains provider proof already incorporated into that census: route proof, candidate proof, residential provider replay evidence, or explicit route/chain evidence depth.
 
 A standalone WAF/browser/replay file without a source census/SHA pin is never used by itself as mutation-freshness authority. It may inform causality, but current census integration is required before it can unlock provider mutation.
+
+## Guidance publication monotonicity
+
+The `niakvio-guidance` branch is a current-state transport, not an eventually-consistent log. Publication must be monotonic in Brain history. A run whose Brain SHA is an ancestor of the Brain SHA already published is stale and must not overwrite the branch or dispatch another page. Divergent Brain histories fail closed. `force-with-lease` remains a byte-level race guard but is not sufficient by itself because a stale run can legally refetch a newer branch immediately before pushing.
+
+Continuation is permitted only after the current page reports `published=true`. Detailed routing decisions are retained as workflow artifacts so a deterministic/probe/LLM decision can be audited without relying on incomplete live job logs.
