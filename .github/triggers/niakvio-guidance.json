@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "niakvio_sha": "d17f241726180d727152dd4e460cfafd7a725d4f",
-  "reason": "MallumV focused proof after strict JSON schema and bounded causal function units",
+  "reason": "MallumV focused proof with chain-terminal provider_bloc priority and strict JSON",
   "requested_repair_queue": [
     "mallumv"
   ]
