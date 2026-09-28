@@ -453,13 +453,19 @@ def _force_edit_units(value: Any, failure_class: str, *, max_chars: int = 2600, 
         if str(keyword or "").strip()
     )
 
-    def safe(fragment: str, absolute: int, *, max_len: int = 320) -> bool:
+    def safe(
+        fragment: str,
+        absolute: int,
+        *,
+        max_len: int = 320,
+        allow_function: bool = False,
+    ) -> bool:
         stripped = fragment.strip()
         if len(stripped) < 6 or len(stripped) > max_len:
             return False
-        if stripped.startswith(("function ", "async function ", "class ", "else", "catch", "finally")):
+        if not allow_function and stripped.startswith(("function ", "async function ", "class ", "else", "catch", "finally")):
             return False
-        if "function " in stripped or stripped.count("{") != stripped.count("}"):
+        if (not allow_function and "function " in stripped) or stripped.count("{") != stripped.count("}"):
             return False
         if absolute > 0 and text[absolute - 1:absolute].isalnum() and text[absolute:absolute + 1].isalnum():
             return False
@@ -594,7 +600,12 @@ def _force_edit_units(value: Any, failure_class: str, *, max_chars: int = 2600, 
             absolute = base + left
             key = (absolute, absolute + len(fragment))
             max_len = 1800 if kind == "function_unit" else 700 if kind == "statement_sequence" else 320
-            if key in seen or not safe(fragment, absolute, max_len=max_len):
+            if key in seen or not safe(
+                fragment,
+                absolute,
+                max_len=max_len,
+                allow_function=kind == "function_unit",
+            ):
                 continue
             seen.add(key)
             center = left + max(1, len(fragment)) // 2
