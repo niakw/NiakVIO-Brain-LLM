@@ -482,13 +482,17 @@ def _compact_edit_to_mutation(
             absolute_start_hint = int(unit.get("offset") or 0)
         elif not find or len(find) > 320:
             raise ValueError("compact Force provider_bloc exact edit target is missing or oversized")
+        # A provider_bloc selected through a complete function_unit may need
+        # the full bounded function bytes to remain a unique exact anchor. The
+        # free-form/backward-compatible path stays capped at 320 above.
+        bloc_max_find = 1800 if unit_id else 320
         find, replace = _resolve_structured_anchor(
             source,
             request.failure_class,
             window_id,
             find,
             replace,
-            max_find=320,
+            max_find=bloc_max_find,
             max_replace=1800,
             window_kwargs=window_kwargs,
             absolute_start_hint=absolute_start_hint,
