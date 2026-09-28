@@ -4,7 +4,12 @@ ROOT = Path(__file__).resolve().parents[1]
 source = (ROOT / "scripts" / "plan_batch_from_checkout.py").read_text(encoding="utf-8")
 workflow = (ROOT / ".github" / "workflows" / "niakvio-private-guidance.yml").read_text(encoding="utf-8")
 
-assert "max(int(args.max_tokens), 512)" in source
+assert "scope_token_cap = {" in source
+assert '"provider_data": 192' in source
+assert '"provider_patch": 320' in source
+assert '"provider_js": 320' in source
+assert '"provider_bloc": 448' in source
+assert "primary_tokens = max(128, min(int(args.max_tokens), scope_token_cap))" in source
 assert "retry_tokens = max(" in source
 assert "validation_timeout = max(" in source
 assert "transport_timeout = max(" in source
