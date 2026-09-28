@@ -93,8 +93,9 @@ Invariants:
    mutation scope.
 7. Call the local model only when the route requires it.
 8. Compile the model's window-local semantic edit into a concrete bounded
-   provider mutation, resolving repeated local anchors by causal focus and using
-   at most two validation-feedback corrections before rejecting unsafe/no-op output.
+   provider mutation, resolving repeated local anchors by causal focus. Production
+   guidance permits one bounded validation-feedback correction inside the shared
+   per-provider wall-clock deadline before rejecting unsafe/no-op output.
 9. Publish sanitized guidance/mutations with exact Brain and NiakVIO SHA pins.
 10. NiakVIO imports the pinned artifact and may execute it only in its existing
     isolated current-byte sandbox.
@@ -168,3 +169,23 @@ Force synthesis is deliberately asymmetric: the model may invent **new provider-
 The model selects a causal source window and proposes a local transformation. Window identity is advisory rather than authoritative: if the exact current-byte `find` is attached to the wrong bounded window, the structural compiler may relocate it across the current causal windows using their deterministic focus metadata. Ambiguous relocation fails closed. This keeps textual targeting in deterministic Brain code instead of asking Qwen to solve repository-global uniqueness.
 
 Each provider has a wall-clock Force budget. Initial synthesis, transport recovery and validation feedback all consume the same deadline. Time remaining bounds every subsequent model call; once exhausted, Brain records a bounded failure and proceeds rather than monopolizing the cohort. Validation retries are surgical and reason-specific, with at most one correction in the production guidance workflow.
+
+
+### Compact initial Force synthesis
+
+The first Force call must be compact enough to be operationally useful on the local
+Qwen runtime. Initial synthesis therefore receives only the causal provider-owned
+surface needed for one bounded edit:
+
+- at most 2600 source characters across up to 3 exact current-byte windows;
+- at most 2 compact current observations;
+- at most 1 short sanitized FULL OK implementation reference;
+- no census bulk or unrelated historical/RAG payload.
+
+A validation-feedback retry is narrower still: at most 2200 source characters
+across 2 windows and no reference/census bulk.
+
+This is a latency/attention bound, not a creativity whitelist. The model may still
+adapt, combine, ignore references, or synthesize a genuinely new provider-local
+Bloc/script. Deterministic Brain code owns exact-byte targeting and safety; NiakVIO
+owns runtime proof and publication.
