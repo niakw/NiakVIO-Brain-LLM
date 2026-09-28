@@ -24,7 +24,6 @@ for token in (
     "retry_tokens = max(",
     "max(int(args.max_tokens), 512)",
     "min(int(args.timeout_seconds) + 15, 120)",
-    "min(int(args.timeout_seconds) + 45, 150)",
     "force_validation_feedback",
     "FIELD_BRAIN_FORCE_SCOPE_FEEDBACK",
     "minimal exact window-local edit",\n    "force provider budget exhausted",\n    "FIELD_BRAIN_FORCE_PROVIDER_BUDGET_EXHAUSTED",
@@ -49,6 +48,7 @@ assert "--workers 1" in wf
 assert "--advisor-only" in wf
 assert "--max-tokens 768" in wf
 assert "--timeout-seconds 120" in wf
+assert "--force-provider-budget-seconds 180" in wf
 assert wf.index("-np 1") < wf.index("--workers 1")
 
 print("bounded concurrent private-guidance batch contract passed")
