@@ -246,3 +246,13 @@
 - This does not reduce generative freedom: FULL OK patterns remain optional inspiration only and novel provider-local Blocs/scripts remain first-class. The change removes irrelevant prompt mass, not capabilities.
 - Structural compiler protections remain active: synthetic network endpoints are rejected, exact finds may be relocated across bounded causal windows, and one production validation correction remains available inside the provider deadline.
 - Brain CI is green on `a50e951dccb91f0fbcd4716b2ecf113a776550d5`. A fresh three-family Qwen proof is required before any NiakVIO Deep execution.
+
+
+## 2026-09-28 — Compact prompt proof exposed prefill/cache opportunity
+
+- Guidance run `36369813714` on Brain `f8a7fe053b8dee0df7b450bd4cf1c81683cf9b83` against NiakVIO `1ba50c4e3d79ca68c6b61306cdb4976d3d3ecfa5` still published **0/3** executable Force mutations.
+- Initial Force prompt size fell materially from ~10-13k characters to ~6.1-7.4k, proving the compact-context change worked.
+- The remaining latency pattern was highly asymmetric: first identical calls timed out at ~120s, while immediate retries on the same prompt returned in ~22-45s for MalluMV/4KHDHub. This indicates prompt/KV reuse is operationally valuable on the local llama.cpp server.
+- Force backend now sends `cache_prompt=true` explicitly and supports a bounded one-token prefill before constrained generation. Prefill + generation share one backend deadline, so caching cannot silently exceed the per-provider wall-clock budget.
+- Production Force generation is capped at 512 tokens. The compact schema permits only one local edit; 768-token decoding was unnecessary overhead.
+- CI is green on Brain `92971e26af8d11c71fed0b384fe7d3dbfd090a32`. A fresh three-family proof is required before any NiakVIO Deep execution.
