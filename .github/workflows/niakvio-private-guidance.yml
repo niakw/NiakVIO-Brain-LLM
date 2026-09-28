@@ -403,6 +403,18 @@ jobs:
           set -euo pipefail
           git -C brain config user.name "niakvio-brain-llm"
           git -C brain config user.email "actions@users.noreply.github.com"
+          candidate_brain="${{ steps.page.outputs.brain_sha }}"
+          git -C brain fetch origin "+refs/heads/main:refs/remotes/origin/main"
+          current_main="$(git -C brain rev-parse refs/remotes/origin/main)"
+          if [ "$candidate_brain" != "$current_main" ]; then
+            if git -C brain merge-base --is-ancestor "$candidate_brain" "$current_main"; then
+              echo "published=false" >> "$GITHUB_OUTPUT"
+              echo "FIELD_NIAKVIO_GUIDANCE_STALE_PUBLISH skipped=true reason=brain_main_advanced candidate=$candidate_brain current=$current_main"
+              exit 0
+            fi
+            echo "candidate Brain revision diverges from current main; refusing guidance publication" >&2
+            exit 5
+          fi
           git -C brain fetch origin "+refs/heads/$BRANCH:refs/remotes/origin/$BRANCH" || true
           expected_sha=""
           previous_advisor_args=()
