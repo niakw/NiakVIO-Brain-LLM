@@ -446,3 +446,11 @@
 - Its provider-repair generation budget is now aligned with current Brain contracts: one model worker, 768 max tokens, 180 s model timeout and 360 s total per-provider Force budget.
 - This closes the GitHub/local split where current Brain supported 180/360 but the guidance workflow still cut structural provider patches/Blocs at 120/240.
 - Publication authority remains false. NiakVIO Recognition must still evaluate every concrete Force mutation in isolated current-byte provider sandboxes, persist negative memory, and require playable/identity-safe improvement before direct application.
+
+## 2026-09-28 — FORCE invention fallback unblocked
+
+- Final executable-guidance cycle on Brain `cf4e6c8e…` completed the full 13-provider repairQueue but produced **0 executable mutations**. Logs showed repeated `No_suitable_editable_unit_found` / `no_suitable_unit_found_to_express_the_repair` for provider-layer ROUTE/CHAIN gaps.
+- Root cause was architectural: compact FORCE described `provider_bloc` as a “new mechanism” but still filtered complete functions by failure-taxonomy keywords and explicitly told Qwen to abstain when existing editable units did not already express the mechanism.
+- `provider_bloc` is now an actual invention fallback. Generic complete provider-owned functions remain eligible even without taxonomy keyword matches; keyword matches still rank first. The model is instructed to rewrite the nearest complete function with a novel bounded provider-local mechanism when evidence is sufficient, rather than abstaining merely because no existing helper matches.
+- Generated Bloc replacement bound is aligned with complete function units at **1800 chars** across planner, Brain mutation guard and NiakVIO application guard. Exact current bytes, syntax checks, dangerous-capability guards, mutation-context fingerprints, isolated Deep sandbox and NiakVIO proof remain mandatory.
+- Do not interpret this as provider repair proof. The next authoritative guidance cycle must produce and sandbox concrete mutations before any provider status changes.
