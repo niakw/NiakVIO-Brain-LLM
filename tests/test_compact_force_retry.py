@@ -86,7 +86,7 @@ class CompactForceRetryTest(unittest.TestCase):
         self.assertIn("_compact_wire_schema_for(request, mutation_policy)", planner)
         self.assertIn('_compact_edit_to_mutation(', planner)
         self.assertIn("COMPACT_FORCE_SYSTEM_PROMPT", planner)
-        self.assertIn("Emit at most one edit.", planner)
+        self.assertIn("One edit max", planner)
         workflow = (ROOT / ".github" / "workflows" / "niakvio-private-guidance.yml").read_text(encoding="utf-8")
         self.assertIn("--max-tokens 512", workflow)
         self.assertIn("--timeout-seconds 120", workflow)
