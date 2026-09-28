@@ -69,7 +69,7 @@ class CompactForceRetryTest(unittest.TestCase):
         prompting = (ROOT / "src" / "niakvio_brain_llm" / "prompting.py").read_text(encoding="utf-8")
         self.assertIn('{"max_chars": 2000, "max_windows": 2, "max_units": 4}', prompting)
         self.assertIn('{"max_chars": 1600, "max_windows": 2, "max_units": 3}', prompting)
-        self.assertIn('{"max_chars": 800, "max_windows": 1}', prompting)
+        self.assertIn('{"max_chars": 1000, "max_windows": 2}', prompting)
         self.assertIn('{"max_chars": 650, "max_windows": 1}', prompting)
 
     def test_timeout_retry_uses_compact_planner(self):
@@ -122,8 +122,8 @@ class CompactForceRetryTest(unittest.TestCase):
             failure_class="chain_terminal_gap",
             observations=[{"stage": "force_validation_feedback", "reason": "no_op"}],
         )
-        self.assertEqual(_force_window_kwargs_for_request(initial)["max_units"], 6)
-        self.assertEqual(_force_window_kwargs_for_request(retry)["max_units"], 4)
+        self.assertEqual(_force_window_kwargs_for_request(initial)["max_units"], 4)
+        self.assertEqual(_force_window_kwargs_for_request(retry)["max_units"], 3)
         self.assertLess(
             _force_window_kwargs_for_request(retry)["max_units"],
             _force_window_kwargs_for_request(initial)["max_units"],
