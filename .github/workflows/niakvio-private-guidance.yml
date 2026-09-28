@@ -310,8 +310,8 @@ jobs:
             --model qwen2.5-coder-3b \
             --workers 1 \
             --max-tokens 768 \
-            --timeout-seconds 120 \
-            --force-provider-budget-seconds 240 \
+            --timeout-seconds 180 \
+            --force-provider-budget-seconds 360 \
             --output private-force-batch.jsonl
           python brain/scripts/plan_batch_from_checkout.py \
             --niakvio-root niakvio \
