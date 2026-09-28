@@ -534,7 +534,7 @@ def _force_edit_units(value: Any, failure_class: str, *, max_chars: int = 2600, 
         # model still selects a stable unit id; Brain owns current bytes.
         function_units: list[tuple[int, int, str]] = []
         function_pattern = re.compile(
-            r"\\b(?:async\\s+)?function\\s+([A-Za-z_$][A-Za-z0-9_$]*)\\s*\\([^)]*\\)\\s*\\{"
+            r"\b(?:async\s+)?function\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*\([^)]*\)\s*\{"
         )
         for match in function_pattern.finditer(source):
             name = str(match.group(1) or "").casefold()
