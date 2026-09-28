@@ -302,7 +302,7 @@ jobs:
             --workers 1 \
             --max-tokens 512 \
             --timeout-seconds 120 \
-            --force-provider-budget-seconds 180 \
+            --force-provider-budget-seconds 240 \
             --output private-force-batch.jsonl
           python brain/scripts/plan_batch_from_checkout.py \
             --niakvio-root niakvio \

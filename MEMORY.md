@@ -291,3 +291,17 @@
 - MalluMV remains a provider-local terminal-extraction case with a fresh observed chain through MalluMV search/detail/internal pages into `vik1ngfile.site /f/...`, its custom asset, and `vikingfile.com /fast-download/...`, all returning 200 but still no terminal playable stream.
 - The previous three-family proof contract using AllWish as a required mutation representative was causally wrong. A valid family proof must use provider-local representatives for mutation synthesis and treat justified non-provider outcomes as abstention/diagnostic evidence, never force a patch.
 - Brain CI `36383933144` is green for the fresh-WAF reclassification contract.
+
+
+## 2026-09-28 — Adaptive Force quality budget for portfolio scale
+
+- Local Mac execution is now part of the development loop only: Python 3.12 runs the full Brain suite in about 0.3-0.4s, while GitHub Actions remains the immutable remote proof authority.
+- Uniformly shrinking Force budgets would trade away repair quality. The production contract is now progressive instead:
+  - compact first attempt for cheap provider-local edits,
+  - larger validation-recovery output budget only after a structurally promising rejected candidate,
+  - more room for genuinely novel provider_bloc synthesis than ordinary patch/js edits.
+- Scope caps: primary data/patch/js/bloc = 192/320/320/448 tokens; validation recovery = 256/384/384/512 tokens.
+- Transport retry does not receive the quality-escalation token budget because it repeats the same synthesis after a transport/timeout failure; escalation is reserved for deterministic structural feedback.
+- Provider wall-clock budget is evidence/status aware under a hard workflow cap of 240s: CHAIN REACHED / chain-terminal / media-extraction cases may use the full cap; ROUTE PROVEN is capped at 180s; ordinary unresolved cases at 150s; transport/environment cases at 120s.
+- These are compute allocation rules, not acceptance relaxations. Syntax, ownership, exact-byte compilation, synthetic-network rejection, novelty freedom, NiakVIO sandbox/playback/identity and non-regression gates are unchanged.
+- This is the intended several-hundred-provider scaling model: cheap abstention for causally unsupported cases, bounded local edits for ordinary cases, and expensive synthesis only for evidence-rich hard cases.

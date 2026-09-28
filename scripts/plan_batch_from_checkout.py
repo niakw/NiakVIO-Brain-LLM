@@ -209,11 +209,17 @@ def main() -> int:
             "provider_js": 320,
             "provider_bloc": 448,
         }.get(scope, 320)
+        recovery_token_cap = {
+            "provider_data": 256,
+            "provider_patch": 384,
+            "provider_js": 384,
+            "provider_bloc": 512,
+        }.get(scope, 384)
         primary_tokens = max(128, min(int(args.max_tokens), scope_token_cap))
-        retry_tokens = max(128, min(primary_tokens, scope_token_cap))
+        retry_tokens = max(primary_tokens, min(int(args.max_tokens), recovery_token_cap))
         validation_timeout = max(
             60,
-            min(int(args.timeout_seconds), 90),
+            min(int(args.timeout_seconds), 120 if scope == "provider_bloc" else 90),
         )
         transport_timeout = max(
             90,
@@ -341,9 +347,10 @@ def main() -> int:
                 return None, exc
             transport_request = copy.deepcopy(scoped_request)
             try:
-                retry = _run_retry(
+                retry = _run_once(
                     transport_request,
                     timeout_seconds=transport_timeout,
+                    max_tokens=primary_tokens,
                 )
                 return _row(position, 1, provider, transport_request, retry), None
             except ValueError as validation_exc:
@@ -369,7 +376,24 @@ def main() -> int:
             scopes = _force_scope_order(request)
             last_error: Exception | None = None
             last_row: dict | None = None
-            budget_seconds = max(60, min(int(args.force_provider_budget_seconds), 900))
+            budget_cap = max(60, min(int(args.force_provider_budget_seconds), 900))
+            failure_key = str(request.failure_class or "").strip().casefold().replace("-", "_")
+            status_key = str(request.status or "").strip().upper()
+            if failure_key in {"chain_terminal_gap", "media_extraction_gap"} or status_key == "CHAIN REACHED":
+                budget_seconds = budget_cap
+            elif failure_key == "route_proven_gap" or status_key == "ROUTE PROVEN":
+                budget_seconds = min(budget_cap, 180)
+            elif failure_key in {"provider_transport_gap", "transport_environment_gap"}:
+                budget_seconds = min(budget_cap, 120)
+            else:
+                budget_seconds = min(budget_cap, 150)
+            budget_seconds = max(60, budget_seconds)
+            print(
+                "FIELD_BRAIN_FORCE_PROVIDER_BUDGET "
+                f"provider={provider} failure={failure_key or 'unknown'} status={status_key or 'unknown'} "
+                f"budget_seconds={budget_seconds} cap_seconds={budget_cap}",
+                flush=True,
+            )
             force_deadline = time.monotonic() + budget_seconds
             for scope in scopes:
                 if time.monotonic() >= force_deadline:

@@ -252,3 +252,36 @@ probe implicates provider-owned behavior.
 
 This prevents the generative Brain from being rewarded for inventing a patch
 when the correct causal action is to abstain and gather transport evidence.
+
+
+### Adaptive quality/compute allocation
+
+Force does not use one uniform budget for every provider. Uniformly constraining all
+cases would make the system fast by lowering repair quality; uniformly granting the
+maximum budget would not scale to hundreds of providers.
+
+The scheduler therefore separates three concerns:
+
+1. **causal readiness** — transport/WAF or insufficient-evidence cases abstain rather
+   than spend provider-mutation compute;
+2. **surface complexity** — ordinary provider_data/patch/js edits receive a compact
+   primary generation budget, while a new provider_bloc receives more room;
+3. **quality recovery** — only a deterministic structural rejection (syntax,
+   truncation, anchor mismatch, etc.) unlocks a larger focused correction budget.
+
+Current generated-token ceilings are:
+
+| scope | primary | structural recovery |
+| --- | ---: | ---: |
+| provider_data | 192 | 256 |
+| provider_patch | 320 | 384 |
+| provider_js | 320 | 384 |
+| provider_bloc | 448 | 512 |
+
+The workflow hard wall-clock ceiling is 240 seconds per provider, but effective
+budgets depend on evidence depth: chain/terminal extraction cases may consume the
+full cap, route-proven cases up to 180 seconds, ordinary unresolved cases 150
+seconds, and transport/environment cases 120 seconds.
+
+No proof gate is weakened by these budgets. Novel Bloc synthesis remains first-class;
+the scheduler only decides how much compute a causally justified attempt receives.

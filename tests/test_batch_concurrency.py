@@ -27,8 +27,13 @@ for token in (
     '"provider_patch": 320',
     '"provider_js": 320',
     '"provider_bloc": 448',
+    "recovery_token_cap = {",
+    '"provider_patch": 384',
+    '"provider_bloc": 512',
     "primary_tokens = max(128, min(int(args.max_tokens), scope_token_cap))",
-    "min(int(args.timeout_seconds), 90)",
+    "retry_tokens = max(primary_tokens, min(int(args.max_tokens), recovery_token_cap))",
+    "FIELD_BRAIN_FORCE_PROVIDER_BUDGET ",
+    '120 if scope == "provider_bloc" else 90',
     "min(int(args.timeout_seconds) + 15, 120)",
     "force_validation_feedback",
     "FIELD_BRAIN_FORCE_SCOPE_FEEDBACK",
@@ -56,7 +61,7 @@ assert "--workers 1" in wf
 assert "--advisor-only" in wf
 assert "--max-tokens 512" in wf
 assert "--timeout-seconds 120" in wf
-assert "--force-provider-budget-seconds 180" in wf
+assert "--force-provider-budget-seconds 240" in wf
 assert wf.index("-np 1") < wf.index("--workers 1")
 
 print("bounded concurrent private-guidance batch contract passed")
