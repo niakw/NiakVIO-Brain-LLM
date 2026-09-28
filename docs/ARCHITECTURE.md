@@ -365,3 +365,11 @@ Model-call timeout and total provider budget are separate controls. `--timeout-s
 Route-proven providers may consume up to 360 seconds of an explicitly granted provider budget; the current GitHub workflow still grants only 240 seconds. Chain-terminal/media-extraction cases may consume the caller's full bounded provider budget. Validation-feedback calls stay focused and keep their smaller scope-specific timeout.
 
 This distinction prevents long but structurally valid function replacements from being cut off solely by a hard-coded model ceiling while retaining a finite provider-level compute budget.
+
+## Executable FORCE guidance lane
+
+The GitHub `niakvio-private-guidance.yml` workflow is the canonical executable-advisor producer. It runs current Brain in provider `repair` mode before advisor-only generation, sanitizes concrete mutations through `publish_niakvio_force_mutations.py`, and publishes them with exact NiakVIO/Brain SHA and mutation-context fingerprints.
+
+Structural generation uses a single Qwen slot with 768 tokens, a 180-second model timeout and a 360-second per-provider Force budget. These limits match the current compact Force planner and are intentionally larger than advisor-only guidance.
+
+The resulting `niakvio-force-mutations.json` has sandbox authority only. NiakVIO owns baseline/candidate Deep proof, identity validation, negative memory, materialization and publication.
