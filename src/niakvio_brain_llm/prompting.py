@@ -740,6 +740,17 @@ def build_force_prompt_payload(
             "copy_policy": "pattern_reference_only",
             "novelty_allowed": True,
         })
+    force_failures = [
+        {
+            "lastReason": _clip(row.get("lastReason"), 180),
+            "lastOutcome": _clip(row.get("lastOutcome"), 60),
+            "consecutiveFailures": int(row.get("consecutiveFailures") or 0),
+            "executionObserved": row.get("executionObserved") is True,
+        }
+        for row in (context.get("advisor_experiment_history") or [])
+        if isinstance(row, dict)
+        and str(row.get("memoryRole") or "") == "force_sandbox_execution"
+    ][:3]
     census = {}
     return {
         "provider_id": request.provider_id,
@@ -758,6 +769,7 @@ def build_force_prompt_payload(
             "reason": _clip(policy.get("reason"), 260),
         },
         "current_observations": observations,
+        "prior_force_sandbox_failures": force_failures,
         "census_prior": census,
         "validated_reference_patterns": references,
         "reference_policy": {
