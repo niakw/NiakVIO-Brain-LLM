@@ -256,3 +256,17 @@
 - Force backend now sends `cache_prompt=true` explicitly and supports a bounded one-token prefill before constrained generation. Prefill + generation share one backend deadline, so caching cannot silently exceed the per-provider wall-clock budget.
 - Production Force generation is capped at 512 tokens. The compact schema permits only one local edit; 768-token decoding was unnecessary overhead.
 - CI is green on Brain `92971e26af8d11c71fed0b384fe7d3dbfd090a32`. A fresh three-family proof is required before any NiakVIO Deep execution.
+
+
+## 2026-09-28 — Force protocol + generation budget compacted by scope
+
+- Cached/prefilled three-family proof `36370919531` remained **0/3 executable mutations**. Prefill/cache and a global 512-token ceiling improved infrastructure reuse but did not remove the 120-second provider_patch timeouts.
+- Compact Force system instructions were reduced to the strict mutation protocol only; deterministic Brain schema/guards remain authoritative for scope, syntax, ownership, synthetic-network facts and exact-byte compilation.
+- Generation output budget is now mutation-scope aware instead of paying the same ceiling everywhere:
+  - `provider_data`: 192 tokens,
+  - `provider_patch`: 320 tokens,
+  - `provider_js`: 320 tokens,
+  - `provider_bloc`: 448 tokens.
+- This preserves extra room for genuinely new provider-local Bloc synthesis while making ordinary local edits materially cheaper on the CPU Qwen runtime.
+- The workflow-level `--max-tokens 512` remains an upper ceiling; the planner applies the lower per-scope cap internally.
+- Brain CI is green on `65ad59f86830a5555823aed30fe101118c9d3bd8`. Live three-family latency/mutation proof is still pending and must not be inferred from CI.
