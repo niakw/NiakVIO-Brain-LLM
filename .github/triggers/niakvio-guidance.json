@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "niakvio_sha": "6f3beaad1f6fc47f55f63edad06c4a1d2365a95b",
-  "reason": "FORCE continuation only for the five remaining providers after first 8-provider page; continuation SHA bug fixed.",
+  "reason": "FORCE retry for the five remaining providers with bounded editable-unit prefill on GitHub CPU.",
   "requested_repair_queue": [
     "mallumv",
     "moviebox",
