@@ -1,10 +1,8 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "9363614e3d5ac9b918ac7264c0f8459c2ad1467b",
-  "reason": "three-family proof after composite causal units and deterministic rejection of causally empty repairs",
+  "niakvio_sha": "d17f241726180d727152dd4e460cfafd7a725d4f",
+  "reason": "MallumV focused proof after strict JSON schema and bounded causal function units",
   "requested_repair_queue": [
-    "4khdhub",
-    "mallumv",
-    "allanime"
+    "mallumv"
   ]
 }
