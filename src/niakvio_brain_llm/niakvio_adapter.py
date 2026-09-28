@@ -103,6 +103,8 @@ def _provider_waf_observation(payload: Any, provider_id: str) -> dict[str, Any]:
                 "raw": int(row.get("raw") or 0),
                 "playable": int(row.get("playable") or 0),
                 "verified": int(row.get("verified") or 0),
+                "contradictions": int(row.get("contradictions") or 0),
+                "identitySafe": row.get("identitySafe") is True,
             }
             for row in replay_rows[:8]
         ],
@@ -276,21 +278,44 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
         and not targeted_observation.get("verifiedLanes")
     )
     content_profiles = set(waf_observation.get("contentProfiles") or [])
+    browser_outcomes = set(waf_observation.get("browserOutcomes") or [])
+    residential_outcomes = set(waf_observation.get("residentialOutcomes") or [])
     browser_content_reached = (
-        "browser_content_reached" in set(waf_observation.get("browserOutcomes") or [])
-        or "browser_content_reached" in set(waf_observation.get("residentialOutcomes") or [])
+        "browser_content_reached" in browser_outcomes
+        or "browser_content_reached" in residential_outcomes
     )
     native_like_content_reached = bool(
         content_profiles & {"nuvio-tv-ua-browser", "nuvio-tv-direct-http-approx", "nuvio-tv-okhttp-jvm"}
     )
-    if targeted_provider_waf and not browser_content_reached:
-        # Challenge persists across ordinary browser/residential evidence: this
-        # is environment/WAF evidence, not provider-code proof.
+    replay_rows = [
+        row for row in (waf_observation.get("residentialReplay") or [])
+        if isinstance(row, dict)
+    ]
+    replay_provider_signal = bool(replay_rows) and all(
+        row.get("identitySafe") is True
+        and int(row.get("contradictions") or 0) == 0
+        and str(row.get("debugStage") or "").strip().casefold()
+        not in {"provider_waf_challenge", "provider_network_timeout", "timeout"}
+        and str(row.get("status") or "").strip().casefold() != "timeout"
+        for row in replay_rows
+    )
+    persistent_waf = bool(browser_outcomes) and bool(residential_outcomes) and all(
+        "challenge_persisted" in outcome
+        for outcome in (browser_outcomes | residential_outcomes)
+        if outcome
+    )
+
+    if targeted_provider_waf and replay_provider_signal:
+        # Full provider replay through the residential exit outranks a narrow
+        # WAF seed. If the actual provider runtime still reaches a clean
+        # identity-safe zero/error after residential routing, keep the normal
+        # provider failure class so Brain can repair it.
+        pass
+    elif targeted_provider_waf and persistent_waf:
         failure = "transport_environment_gap"
     elif targeted_provider_waf and browser_content_reached and native_like_content_reached:
-        # The exact failed URL is reachable with audited Nuvio-like transport,
-        # while the provider harness still fails. Route this to client/Core
-        # transport adaptation rather than inventing a provider patch.
+        # The seed URL is reachable with audited Nuvio-like transport, but no
+        # full provider replay has yet isolated a provider-local failure.
         failure = "client_transport_gap"
 
     refined_groups = _provider_refined_groups(
