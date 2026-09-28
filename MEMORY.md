@@ -326,3 +326,14 @@
 - A second local cohort with composite units showed AllAnime and MalluMV still tending toward no-op/abstention; 4KHDHub produced a candidate that merely removed `normalized = _embeddedText(text)` and had no runtime improvement.
 - Deterministic compiler guards now reject (a) removal of a local binding that is still referenced nearby before redeclaration and (b) pure-deletion repairs for `route_proven_gap`, `chain_terminal_gap`, or `media_extraction_gap`. This blocks byte-changing but causally empty edits before NiakVIO sandbox time is spent.
 - Local Brain suite after these changes: 153/153 tests green. Fresh three-family model proof is still required before claiming any provider repair.
+
+
+## 2026-09-28 — Strict Force JSON and bounded causal function units
+
+- MalluMV malformed JSON was isolated to permissive model response formatting, not provider reasoning. The local OpenAI-compatible backend now requests strict json_schema responses; MalluMV no longer emits malformed JSON and instead cleanly abstains when it cannot express a repair.
+- Brain CI is green for the strict JSON change.
+- Statement and small statement-sequence units were still too local for some chain repairs. Force now also exposes exact bounded function_unit candidates only when the function name matches the active failure-family causal keywords (for example confirm/internal/resolve for chain-terminal gaps).
+- Function units are exact current bytes, brace-balanced, size-bounded, and selected only by unit_id. All normal mutation/syntax/network/no-op/NiakVIO proof gates remain authoritative.
+- The causal-function extraction test now passes; CI is green on Brain SHA 89cae9f8f4088c0351c1cb3926613be3e4faeba4 before the focused MalluMV proof trigger.
+- Focused MalluMV proof run 36408982707 tests trigger SHA 6b4740af9e7a7551b249ab40033de4e86fb77222 against NiakVIO SHA d17f241726180d727152dd4e460cfafd7a725d4f. Do not treat this run as proof until its Force artifact is inspected.
+- Local Mac is no longer required for correctness. It accelerated diagnosis of JSON serialization and edit-unit expressiveness; GitHub remains proof authority.
