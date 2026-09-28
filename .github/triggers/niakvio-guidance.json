@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "43f53c6e7bc0af44bb0746f3245528ce345d2d83",
-  "reason": "three-family proof after synthetic-endpoint guard, cross-window relocation, reason-specific feedback, and 180s/provider Force budget",
+  "niakvio_sha": "1ba50c4e3d79ca68c6b61306cdb4976d3d3ecfa5",
+  "reason": "three-family proof after compact initial causal Force context, bounded provider wall time, synthetic-endpoint rejection and cross-window relocation",
   "requested_repair_queue": [
     "allwish",
     "4khdhub",
