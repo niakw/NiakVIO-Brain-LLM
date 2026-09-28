@@ -359,3 +359,13 @@
 - If the same failed target is reachable through an audited Nuvio-like profile (UA browser, direct HTTP approximation, or OkHttp JVM), Brain classifies the differential as `client_transport_gap`; this maps to the harness/client layer and forbids provider mutation.
 - This prevents false provider patches for transport/TLS/client-profile failures while still allowing real provider-local zero-result/terminal-extraction failures to enter Force.
 - Current NiakVIO targeted evidence run `36415009826` covered all 13 providers still in the repair queue after Vostfree became FULL OK. The current provider-code queue must be derived from this evidence, not from census status alone.
+
+
+## 2026-09-28 — Residential provider replay outranks narrow WAF seeds
+
+- WAF automation is operational: Browser Session diagnostics ran the targeted repair cohort through GitHub-hosted and Tailscale residential paths, and full residential provider replay recovered Vostfree to FULL OK.
+- A causal bug was found in Brain routing: a targeted provider-origin 401/403/429 could classify a provider as `transport_environment_gap` before considering the stronger full residential provider replay.
+- Evidence priority is now explicit: full residential provider replay > WAF seed/client-profile probe > targeted network status.
+- If residential full-provider replay finishes identity-safe with no WAF/timeout stage but still produces zero/error, Brain keeps the ordinary provider failure class (route/chain/provider gap) so Force may repair provider logic.
+- Only persistent WAF confirmed across browser and residential evidence may route to `transport_environment_gap`; client-transport routing remains reserved for audited Nuvio-like reachability when no stronger full-provider replay has isolated provider-local failure.
+- Brain CI is green on SHA 34941459752f5f820df7f794b577cc484503cf57; clean 13-provider replan trigger SHA c017874390e8630bc0cad0e66cb8017b7768dc6e is running against NiakVIO 6f3beaad1f6fc47f55f63edad06c4a1d2365a95b.
