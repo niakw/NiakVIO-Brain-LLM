@@ -56,6 +56,44 @@ class BackendSchemaFallbackTests(unittest.TestCase):
         self.assertEqual(len(calls), 2)
         self.assertIn("response_format", calls[0])
         self.assertNotIn("response_format", calls[1])
+        self.assertTrue(calls[0].get("cache_prompt"))
+        self.assertTrue(calls[1].get("cache_prompt"))
+
+    def test_prefill_shares_one_backend_deadline_and_uses_cache(self):
+        calls = []
+        original = backend_mod.urlopen
+
+        def fake_urlopen(request, timeout=0):
+            body = json.loads(request.data.decode("utf-8"))
+            calls.append((body, timeout))
+            return _Response({
+                "choices": [{"message": {"content": '{"ok":true}'}}],
+            })
+
+        backend_mod.urlopen = fake_urlopen
+        try:
+            backend = LocalOpenAICompatibleBackend(
+                timeout_seconds=30,
+                max_tokens=512,
+                prefill_prompt=True,
+            )
+            result = backend.complete(
+                system="system",
+                user="user",
+                response_schema={"type": "object"},
+            )
+        finally:
+            backend_mod.urlopen = original
+
+        self.assertEqual(result, '{"ok":true}')
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(calls[0][0]["max_tokens"], 1)
+        self.assertNotIn("response_format", calls[0][0])
+        self.assertTrue(calls[0][0].get("cache_prompt"))
+        self.assertEqual(calls[1][0]["max_tokens"], 512)
+        self.assertIn("response_format", calls[1][0])
+        self.assertTrue(calls[1][0].get("cache_prompt"))
+        self.assertLessEqual(calls[1][1], calls[0][1])
 
     def test_non_400_is_not_retried(self):
         calls = []
