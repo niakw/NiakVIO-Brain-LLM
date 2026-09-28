@@ -675,7 +675,7 @@ def build_force_prompt_payload(
     context_window_kwargs = (
         {"max_chars": 650, "max_windows": 1}
         if validation_feedback is not None
-        else {"max_chars": 800, "max_windows": 1}
+        else {"max_chars": 1000, "max_windows": 2}
     )
     registered = context.get("registered_patch_sources")
     target: dict[str, Any] = {}
