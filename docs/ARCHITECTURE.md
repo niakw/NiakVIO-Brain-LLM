@@ -373,3 +373,11 @@ The GitHub `niakvio-private-guidance.yml` workflow is the canonical executable-a
 Structural generation uses a single Qwen slot with 768 tokens, a 180-second model timeout and a 360-second per-provider Force budget. These limits match the current compact Force planner and are intentionally larger than advisor-only guidance.
 
 The resulting `niakvio-force-mutations.json` has sandbox authority only. NiakVIO owns baseline/candidate Deep proof, identity validation, negative memory, materialization and publication.
+
+## Provider Bloc invention fallback
+
+`provider_bloc` is not limited to pre-existing repair helpers. It is the bounded provider-local invention surface when registered patches or authored modules do not already contain the needed mechanism.
+
+The Brain must expose complete exact provider-owned functions as candidate edit units even when their names/body do not match failure-taxonomy keywords. Keyword-aligned functions rank first; generic complete functions near the causal focus remain available as fallback. Qwen may replace one such function with a novel provider-local mechanism using only observed current facts.
+
+A generated Bloc replacement is bounded to 1800 characters. The model never owns the exact find bytes or publication. Brain resolves the selected unit to exact current bytes, validates JavaScript syntax and capabilities, then NiakVIO revalidates context and executes the candidate in isolated baseline/candidate sandboxes before any persistence.
