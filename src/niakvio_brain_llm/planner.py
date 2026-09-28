@@ -640,6 +640,7 @@ class BrainPlanner:
                 print(
                     "FIELD_BRAIN_FORCE_MODEL "
                     f"provider={request.provider_id} scopes={','.join(request.allowed_mutations)} chars={len(user)} "
+                    f"system_chars={len(COMPACT_FORCE_SYSTEM_PROMPT)} total_chars={len(user) + len(COMPACT_FORCE_SYSTEM_PROMPT)} "
                     f"seconds={time.monotonic() - started:.2f} outcome=error "
                     f"error={type(exc).__name__} "
                     f"max_tokens={getattr(self.backend, 'max_tokens', 'unknown')}"
@@ -649,6 +650,7 @@ class BrainPlanner:
             print(
                 "FIELD_BRAIN_FORCE_MODEL "
                 f"provider={request.provider_id} scopes={','.join(request.allowed_mutations)} chars={len(user)} "
+                f"system_chars={len(COMPACT_FORCE_SYSTEM_PROMPT)} total_chars={len(user) + len(COMPACT_FORCE_SYSTEM_PROMPT)} "
                 f"seconds={time.monotonic() - started:.2f} outcome=success "
                 f"max_tokens={getattr(self.backend, 'max_tokens', 'unknown')}"
             )
