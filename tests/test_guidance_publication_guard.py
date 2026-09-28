@@ -102,6 +102,7 @@ for marker in (
     "actions: write",
     "FIELD_NIAKVIO_GUIDANCE_STALE_PUBLISH",
     "newer_brain_already_published",
+    "brain_main_advanced",
     "steps.publish.outputs.published == 'true'",
 ):
     assert marker in workflow, marker
@@ -121,3 +122,4 @@ assert "files=3" in workflow
 print("paged guidance publication guard contract passed")
 
 # A late old Brain run must not clobber a newer published cycle merely because\n# force-with-lease was refreshed just before the push.\nassert 'merge-base --is-ancestor "$candidate_brain" "$published_brain"' in workflow\nassert 'echo "published=false" >> "$GITHUB_OUTPUT"' in workflow\nassert 'echo "published=true" >> "$GITHUB_OUTPUT"' in workflow\n
+# Publication also fails closed when Brain/main advances while a long Qwen page is running.\nassert '+refs/heads/main:refs/remotes/origin/main' in workflow\nassert 'merge-base --is-ancestor "$candidate_brain" "$current_main"' in workflow\nassert 'reason=brain_main_advanced' in workflow\n
