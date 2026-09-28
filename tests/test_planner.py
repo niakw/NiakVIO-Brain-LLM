@@ -635,6 +635,41 @@ class PlannerTests(unittest.TestCase):
         self.assertEqual(mutation["operation"], "upsert")
         self.assertIn("function resolve(page)", mutation["replace"])
 
+    def test_compact_force_provider_bloc_preserves_selected_function_envelope_for_body_only_rewrite(self):
+        source = "async function resolve(page){return page.url;}"
+        request = RepairRequest(
+            provider_id="demo",
+            failure_class="chain_terminal_gap",
+            status="CHAIN REACHED",
+            allowed_mutations=["provider_bloc"],
+            provider_context={
+                "runtimeMutationSource": source,
+                "runtimeMutationFilename": "providers/demo.js",
+            },
+        )
+        payload = build_force_prompt_payload(
+            request,
+            {"target_layer": "provider", "confidence": 0.96, "strategy_prior": "chain_terminal_extractor_v1"},
+            {"allow_mutations": True, "allowed_scopes": ["provider_bloc"]},
+        )
+        unit = next(
+            row for row in payload["new_bloc_target"]["editable_units"]
+            if row.get("kind") == "function_unit"
+        )
+        mutation = _compact_edit_to_mutation(
+            request,
+            {
+                "scope": "provider_bloc",
+                "family": "terminal_resolution",
+                "unit_id": unit["id"],
+                "replace": "const finalUrl=page.finalUrl||page.url;return finalUrl;",
+            },
+        )
+        self.assertEqual(mutation["find"], source)
+        self.assertTrue(mutation["replace"].startswith("async function resolve(page){"))
+        self.assertIn("const finalUrl=page.finalUrl||page.url;return finalUrl;", mutation["replace"])
+        self.assertTrue(mutation["replace"].rstrip().endswith("}"))
+
     def test_compact_force_provider_bloc_allows_long_exact_function_anchor(self):
         old_body = "a" * 900
         new_body = "b" * 900
