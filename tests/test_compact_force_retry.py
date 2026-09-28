@@ -88,6 +88,7 @@ class CompactForceRetryTest(unittest.TestCase):
                     "successes": 0,
                     "lastOutcome": "rejected",
                     "lastReason": "required_category_playable_proof:movie",
+                    "lastMutationSummary": [{"scope": "provider_bloc", "operation": "upsert", "family": "resolve_urls"}],
                     "executionObserved": True,
                     "mutationFingerprint": "secret-mutation-fingerprint",
                 }],
@@ -103,6 +104,7 @@ class CompactForceRetryTest(unittest.TestCase):
         self.assertEqual(len(failures), 1)
         self.assertEqual(failures[0]["lastReason"], "required_category_playable_proof:movie")
         self.assertTrue(failures[0]["executionObserved"])
+        self.assertEqual(failures[0]["rejectedMechanisms"][0]["family"], "resolve_urls")
         self.assertNotIn("mutationFingerprint", failures[0])
 
     def test_timeout_retry_uses_compact_planner(self):
