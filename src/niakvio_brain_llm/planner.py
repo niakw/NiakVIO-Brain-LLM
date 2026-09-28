@@ -82,6 +82,32 @@ def _function_names(value: str) -> set[str]:
     ))
 
 
+def _preserve_selected_function_envelope(find: str, replace: str) -> str:
+    """Keep the exact selected function declaration when Qwen returns only a body.
+
+    function_unit gives Brain the exact current signature. The generative part is
+    the replacement body/logic, not permission to silently delete or rename the
+    selected helper. Wrong explicit function declarations still fail closed.
+    """
+    find_names = _function_names(find)
+    if len(find_names) != 1:
+        return replace
+    original_name = next(iter(find_names))
+    replace_names = _function_names(replace)
+    if original_name in replace_names:
+        return replace
+    stripped = str(replace or "").lstrip()
+    if stripped.startswith("function ") or stripped.startswith("async function "):
+        return replace
+    match = re.match(
+        r"(?s)^(\s*(?:async\s+)?function\s+[A-Za-z_$][A-Za-z0-9_$]*\s*\([^)]*\)\s*\{)(.*)(\}\s*)$",
+        find,
+    )
+    if not match:
+        return replace
+    return match.group(1) + str(replace or "").strip() + match.group(3)
+
+
 def _compact_without_space(value: str) -> str:
     return re.sub(r"\s+", "", str(value or ""))
 
@@ -480,6 +506,8 @@ def _compact_edit_to_mutation(
             window_id = str(unit.get("window_id") or "")
             find = str(unit.get("source") or "")
             absolute_start_hint = int(unit.get("offset") or 0)
+            if str(unit.get("kind") or "") == "function_unit":
+                replace = _preserve_selected_function_envelope(find, replace)
         elif not find or len(find) > 320:
             raise ValueError("compact Force provider_bloc exact edit target is missing or oversized")
         # A provider_bloc selected through a complete function_unit may need
