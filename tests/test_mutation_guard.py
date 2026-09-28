@@ -14,6 +14,18 @@ class MutationGuardTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "contract placeholder"):
             validate_mutation("demo", mutation)
 
+    def test_generated_bloc_accepts_bounded_full_function_rewrite(self):
+        replacement = "function resolve(page){/*" + ("x" * 1250) + "*/return page.url;}"
+        self.assertGreater(len(replacement), 1200)
+        self.assertLessEqual(len(replacement), 1800)
+        validate_mutation("demo", {
+            "scope": "provider_bloc",
+            "operation": "upsert",
+            "family": "terminal_resolution",
+            "find": "function resolve(page){return page.url;}",
+            "replace": replacement,
+        })
+
     def test_provider_data_set_allowed(self):
         validate_mutation("demo", {
             "scope": "provider_data",
