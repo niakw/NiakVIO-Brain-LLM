@@ -50,13 +50,14 @@ Rules:
 - One edit max; never invent URLs/routes/hosts/headers/tokens/cookies/placeholders or facts.
 - provider_data: {scope,operation,path,value?}
 - provider_patch/provider_js: {scope,path,unit_id,replace}; no unified diff.
-- provider_bloc for a new mechanism: {scope:"provider_bloc",family,unit_id,replace}; family must be lowercase snake_case.
+- provider_bloc is the invention fallback for a new provider-local mechanism: {scope:"provider_bloc",family,unit_id,replace}; family must be lowercase snake_case.
 - unit_id must come from editable_units. Brain owns the exact current-byte find text; never copy or invent find bytes.
-- Existing-file replace <=640 chars, or <=1800 only for a supplied function_unit; provider_bloc replace <=1200 chars.
+- Existing-file replace <=640 chars, or <=1800 only for a supplied function_unit; provider_bloc replace <=1800 chars.
 - Preserve syntax/function boundaries; do not emit partial function declarations.
 - FULL OK references are optional inspiration only: adapt/combine/ignore them or invent a new provider-local mechanism. Never copy provider-specific network facts.
-- force_validation_feedback means the previous shape failed; choose a materially different unit/replacement in the same scope or abstain.\n- prior_force_sandbox_failures are executed negative evidence: if a prior edit applied but did not improve playable proof, do not make a cosmetic variant of that mechanism; choose a materially different causal mechanism/unit or abstain.
-If no supplied editable unit can safely express the repair, return edit:null."""
+- For provider_bloc, an editable unit does NOT need to already implement the missing mechanism. Prefer the nearest complete function_unit and rewrite it with a new bounded provider-local mechanism using only observed current facts.
+- Do not abstain merely because existing code lacks the desired helper/strategy. Abstain only when current evidence lacks a required network fact/value or no complete syntax-safe unit can carry a provider-local repair.
+- force_validation_feedback means the previous shape failed; choose a materially different unit/replacement in the same scope or abstain.\n- prior_force_sandbox_failures are executed negative evidence: if a prior edit applied but did not improve playable proof, do not make a cosmetic variant of that mechanism; choose a materially different causal mechanism/unit or abstain."""
 
 
 def _extract_json(text: str) -> dict[str, Any]:
@@ -464,7 +465,7 @@ def _compact_edit_to_mutation(
         find = str(edit.get("find") or "")
         replace = str(edit.get("replace") or "")
         source = str((request.provider_context or {}).get("runtimeMutationSource") or "")
-        if not family or not replace or len(replace) > 1200:
+        if not family or not replace or len(replace) > 1800:
             raise ValueError("compact Force provider_bloc edit is missing or oversized")
         if not source:
             raise ValueError("compact Force provider_bloc runtime source is unavailable")
@@ -488,7 +489,7 @@ def _compact_edit_to_mutation(
             find,
             replace,
             max_find=320,
-            max_replace=1200,
+            max_replace=1800,
             window_kwargs=window_kwargs,
             absolute_start_hint=absolute_start_hint,
             allow_new_helpers=True,
@@ -625,7 +626,7 @@ def _compact_wire_schema_for(
                     "scope": {"type": "string", "enum": ["provider_bloc"]},
                     "family": {"type": "string", "minLength": 3, "maxLength": 49, "pattern": "^[a-z][a-z0-9_]{2,48}$"},
                     "unit_id": {"type": "string", "enum": unit_ids},
-                    "replace": {"type": "string", "maxLength": 1200},
+                    "replace": {"type": "string", "maxLength": 1800},
                 },
             })
             continue
