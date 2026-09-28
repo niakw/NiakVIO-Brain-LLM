@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "b570076d299d1871437d0065aec63caef768dd3e",
-  "reason": "three-family proof after focused validation-retry prompt context; keep initial synthesis rich, retry surgical",
+  "niakvio_sha": "43f53c6e7bc0af44bb0746f3245528ce345d2d83",
+  "reason": "three-family proof after synthetic-endpoint guard, cross-window relocation, reason-specific feedback, and 180s/provider Force budget",
   "requested_repair_queue": [
     "allwish",
     "4khdhub",
