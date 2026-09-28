@@ -210,10 +210,21 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
         for item in rows
         if isinstance(item, dict)
     ]
+    provider_origin_network = [
+        item
+        for item in targeted_network
+        if str(item.get("host") or "").strip().casefold() not in {
+            "api.themoviedb.org",
+            "www.themoviedb.org",
+        }
+    ]
     targeted_provider_waf = (
-        bool(targeted_stages)
-        and targeted_stages <= {"provider_waf_challenge"}
-        and any(int(item.get("status") or 0) in {401, 403, 429} for item in targeted_network)
+        bool(provider_origin_network)
+        and all(int(item.get("status") or 0) in {401, 403, 429} for item in provider_origin_network)
+        and (
+            targeted_stages <= {"provider_waf_challenge", "provider_network_http_error"}
+            or not targeted_stages
+        )
         and not targeted_observation.get("playableLanes")
         and not targeted_observation.get("verifiedLanes")
     )
