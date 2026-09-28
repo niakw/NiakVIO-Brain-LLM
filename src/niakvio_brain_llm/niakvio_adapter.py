@@ -70,17 +70,40 @@ def _provider_targeted_observation(payload: Any, provider_id: str) -> dict[str, 
         if not isinstance(values, list):
             continue
         safe_rows: list[dict[str, Any]] = []
+        shape_index: dict[tuple[str, str, str, str], int] = {}
         for value in values[:16]:
             if not isinstance(value, dict):
                 continue
+            method = str(value.get("method") or "")[:12]
+            host = str(value.get("host") or "")[:120]
+            path = str(value.get("path") or "")[:180]
+            status = value.get("status")
             shape = _safe_response_shape(value.get("shape"))
-            safe_rows.append({
-                "method": str(value.get("method") or "")[:12],
-                "host": str(value.get("host") or "")[:120],
-                "path": str(value.get("path") or "")[:180],
-                "status": value.get("status"),
+            if shape:
+                signature = (
+                    method,
+                    host,
+                    str(status),
+                    json.dumps(shape, sort_keys=True, separators=(",", ":")),
+                )
+                prior_index = shape_index.get(signature)
+                if prior_index is not None:
+                    safe_rows[prior_index]["sameShapeRoutes"] = int(
+                        safe_rows[prior_index].get("sameShapeRoutes") or 1
+                    ) + 1
+                    continue
+            row_out = {
+                "method": method,
+                "host": host,
+                "path": path,
+                "status": status,
                 **({"shape": shape} if shape else {}),
-            })
+            }
+            safe_rows.append(row_out)
+            if shape:
+                shape_index[signature] = len(safe_rows) - 1
+            if len(safe_rows) >= 10:
+                break
         if safe_rows:
             network_out[str(lane)[:40]] = safe_rows
 

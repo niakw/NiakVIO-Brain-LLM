@@ -79,6 +79,17 @@ class AdapterFailureClassTests(unittest.TestCase):
                                         "episodeKeys": ["sourceUrls", "tobeparsed"],
                                         "secret": "must-not-leak",
                                     },
+                                }, {
+                                    "method": "GET",
+                                    "host": "example.test",
+                                    "path": "/search/456",
+                                    "status": 403,
+                                    "shape": {
+                                        "kind": "json",
+                                        "top": "object",
+                                        "keys": ["data", "episode", "unsafe value"],
+                                        "episodeKeys": ["sourceUrls", "tobeparsed"],
+                                    },
                                 }],
                             },
                         }
@@ -108,7 +119,9 @@ class AdapterFailureClassTests(unittest.TestCase):
             by_source = {row["source"]: row["value"] for row in request.observations}
             current = by_source["targeted-regression-current"]
             self.assertEqual(current["debugStages"]["anime"], "provider_network_exception")
+            self.assertEqual(len(current["network"]["anime"]), 1)
             self.assertEqual(current["network"]["anime"][0]["host"], "example.test")
+            self.assertEqual(current["network"]["anime"][0]["sameShapeRoutes"], 2)
             self.assertNotIn("headers", current["network"]["anime"][0])
             self.assertEqual(current["network"]["anime"][0]["shape"], {
                 "kind": "json",

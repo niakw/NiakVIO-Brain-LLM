@@ -351,3 +351,9 @@ A narrow 401/403/429 is never sufficient by itself to classify a provider as env
 - Current provider-local zero-result/terminal evidence remains eligible for provider repair.
 
 This ordering is required for fleet-scale operation: hundreds of providers must not spend LLM mutation budget on transport/TLS/IP-reputation failures, but WAF seeds must also not suppress valid provider repair when the complete provider runtime already disproves transport as the sole blocker.
+
+## Targeted shape deduplication
+
+Compact Force treats repeated response structures as one causal observation. When several current targeted routes share the same method, host, HTTP status and sanitized response shape, Brain keeps one representative route and a bounded `sameShapeRoutes` count instead of repeating equivalent structures in the prompt.
+
+Rows without a response shape are not deduplicated by this rule because distinct failed routes/hosts can still discriminate transport ownership. The optimization reduces prompt evaluation cost only; exact-byte mutation compilation and NiakVIO playback/identity proof remain unchanged.

@@ -413,3 +413,11 @@
 - NiakVIO `a2ff1ef592a7a164ec46ddf6af628df317c0c593` now emits and persists a bounded response-shape summary: sanitized JSON schema keys/types or fixed HTML/JavaScript counts/markers only. It never persists response bodies or values.
 - Brain now re-sanitizes targeted `shape` evidence on ingestion before it can enter compact Force prompt context. Unknown fields/markers and unsafe key names are dropped.
 - Shape evidence is diagnostic context, not proof or mutation authority. Candidate acceptance still belongs exclusively to isolated NiakVIO current-byte playback/identity/non-regression validation.
+
+## 2026-09-28 — Targeted response-shape deduplication
+
+- Current targeted recovery can contain many routes from the same host/status that expose an identical bounded response shape. Repeating all of them in compact Force wastes prompt evaluation without adding causal structure.
+- Brain now deduplicates shape-bearing targeted network rows by method + host + status + sanitized response shape, keeps one representative route, and records `sameShapeRoutes` as a bounded count.
+- Shape-less transport failures keep their individual route paths, so distinct unreachable hosts/routes are not collapsed.
+- AllAnime current targeted observation shrinks from 2742 to 1708 characters on the same NiakVIO evidence while retaining its current API and HTML shape families.
+- This is prompt compaction only; it does not change failure classification, mutation authority, proof gates or provider status.
