@@ -145,6 +145,47 @@ class RoutingTests(unittest.TestCase):
         self.assertFalse(decision.requires_llm)
         self.assertEqual(decision.strategy, "same_provider_candidate_program_replay")
 
+    def test_clean_residential_replay_routes_provider_gap_to_llm_repair(self):
+        decision = route_request(
+            RepairRequest(
+                provider_id="demo",
+                failure_class="route_proven_gap",
+                status="ROUTE PROVEN",
+                allowed_mutations=["provider_bloc"],
+                provider_context={
+                    "runtimeMutationSource": "function getStreams(item){return [];}",
+                },
+                observations=[
+                    {
+                        "source": "census_current",
+                        "value": {"status": "ROUTE PROVEN"},
+                    },
+                    {
+                        "source": "targeted-regression-current",
+                        "value": {
+                            "debugStages": {"movie": "provider_waf_challenge"},
+                            "network": {"movie": [{"host": "provider.example", "status": 403}]},
+                        },
+                    },
+                    {
+                        "source": "waf-client-differential-current",
+                        "value": {
+                            "residentialReplay": [{
+                                "status": "no_streams",
+                                "debugStage": "provider_zero_before_provider_network",
+                                "contradictions": 0,
+                                "identitySafe": True,
+                            }],
+                        },
+                    },
+                ],
+            )
+        )
+        self.assertEqual(decision.target_layer, "provider")
+        self.assertEqual(decision.mode, "llm_repair")
+        self.assertTrue(decision.requires_llm)
+        self.assertEqual(decision.allowed_mutations, ["provider_bloc"])
+
     def test_unknown_failure_uses_llm_diagnosis_without_mutations(self):
         decision = route_request(
             RepairRequest(provider_id="demo", failure_class="novel_unknown_failure")
