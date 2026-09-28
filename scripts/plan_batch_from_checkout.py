@@ -183,11 +183,19 @@ def main() -> int:
             and bool(context.get("runtimeMutationSource"))
         )
 
-        # Prefer the narrowest authored provider-local surface first. A managed
-        # provider_bloc remains the invention fallback when the existing patch/JS
-        # cannot express the repair. This keeps novel Bloc synthesis available
-        # without spending most of the budget rewriting broad generated runtime
-        # helpers before the provider-owned implementation has been tried.
+        structural_gap = (
+            failure_key in {"route_proven_gap", "chain_terminal_gap", "media_extraction_gap"}
+            or str(request.status or "").strip().upper() in {"ROUTE PROVEN", "CHAIN REACHED"}
+        )
+
+        # Structural traversal/extraction gaps have repeatedly spent 80-155s on
+        # an authored patch that then abstains, starving the generated Bloc of
+        # its deterministic correction budget. Let the explicit invention
+        # surface go first for those classes; authored patch/JS/data remain
+        # fallbacks when Bloc cannot express a safe repair.
+        if bloc_ready and structural_gap:
+            scopes.append("provider_bloc")
+
         if (
             "provider_patch" in allowed
             and isinstance(context.get("registered_patch_sources"), dict)
@@ -199,7 +207,7 @@ def main() -> int:
         elif "provider_data" in allowed and (context.get("override") or context.get("hub")):
             scopes.append("provider_data")
 
-        if bloc_ready:
+        if bloc_ready and "provider_bloc" not in scopes:
             scopes.append("provider_bloc")
         return list(dict.fromkeys(scopes))
 
@@ -307,6 +315,11 @@ def main() -> int:
                     "previous Bloc redeclared a helper that already exists in the current runtime; "
                     "reuse/call the existing helper instead of declaring it again, and change only "
                     "the selected statement or add a uniquely named helper if genuinely required"
+                ),
+                "helper_declaration_removed": (
+                    "the selected unit is a complete existing function; preserve its exact original "
+                    "function name/signature and change only its body/logic. Brain will preserve the "
+                    "declaration envelope when you return only the new body"
                 ),
                 "removed_live_binding": (
                     "previous edit removed a local variable that later code still uses; preserve or "
