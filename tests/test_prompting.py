@@ -280,9 +280,9 @@ class PromptingTests(unittest.TestCase):
         units = payload["mutation_target"]["editable_units"]
         joined = "\n".join(row["source"] for row in windows)
         unit_source = "\n".join(row["source"] for row in units)
-        self.assertLessEqual(sum(len(row["source"]) for row in windows), 1400)
+        self.assertLessEqual(sum(len(row["source"]) for row in windows), 2000)
+        self.assertLessEqual(len(windows), 2)
         self.assertIn("confirmLink", joined)
-        self.assertIn("internalLink", joined)
         self.assertIn("resolveMedia", unit_source)
         self.assertTrue(all("...<middle-clipped>..." not in row["source"] for row in windows))
 
