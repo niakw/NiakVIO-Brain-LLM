@@ -132,7 +132,7 @@ class CompactForceRetryTest(unittest.TestCase):
         self.assertIn("window-local edit in the same scope or abstain", script)
         self.assertIn('120 if scope == "provider_bloc" else 90', script)
         self.assertIn("min(int(args.timeout_seconds), 180)", script)
-        self.assertIn('budget_seconds = min(budget_cap, 240)', script)
+        self.assertIn('budget_seconds = min(budget_cap, 360)', script)
         self.assertNotIn("timeout_seconds=150", script)
         self.assertIn("build_force_prompt_payload(", planner)
         self.assertIn('"required": ["edit", "abstain_reason"]', planner)

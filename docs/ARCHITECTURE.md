@@ -362,6 +362,6 @@ Rows without a response shape are not deduplicated by this rule because distinct
 
 Model-call timeout and total provider budget are separate controls. `--timeout-seconds` can now grant up to 180 seconds to a primary or transport-retry generation; the workflow's existing 120-second argument therefore preserves its prior default, while a local hard-case run may explicitly grant more time.
 
-Route-proven providers may consume up to 240 seconds of an explicitly granted provider budget. Chain-terminal/media-extraction cases may consume the caller's full bounded provider budget. Validation-feedback calls stay focused and keep their smaller scope-specific timeout.
+Route-proven providers may consume up to 360 seconds of an explicitly granted provider budget; the current GitHub workflow still grants only 240 seconds. Chain-terminal/media-extraction cases may consume the caller's full bounded provider budget. Validation-feedback calls stay focused and keep their smaller scope-specific timeout.
 
 This distinction prevents long but structurally valid function replacements from being cut off solely by a hard-coded model ceiling while retaining a finite provider-level compute budget.

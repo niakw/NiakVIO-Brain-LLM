@@ -63,5 +63,5 @@ assert "causally_empty_deletion" in source
 
 assert '{"chain_terminal_gap", "media_extraction_gap"}' in source
 assert 'failure_key == "route_proven_gap"' in source
-assert 'budget_seconds = min(budget_cap, 240)' in source
+assert 'budget_seconds = min(budget_cap, 360)' in source
 assert 'scopes.append("provider_bloc")' in source
