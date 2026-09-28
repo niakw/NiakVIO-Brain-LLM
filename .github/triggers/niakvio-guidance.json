@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "niakvio_sha": "9363614e3d5ac9b918ac7264c0f8459c2ad1467b",
-  "reason": "three-family proof after deterministic unit_id edit compilation; preserve adaptive quality budget and strict exact-byte safety",
+  "reason": "three-family proof after composite causal units and deterministic rejection of causally empty repairs",
   "requested_repair_queue": [
     "4khdhub",
     "mallumv",
