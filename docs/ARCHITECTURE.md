@@ -205,3 +205,18 @@ only one bounded edit.
 
 Prompt caching is a performance primitive only. It does not change mutation authority,
 proof authority, or acceptance criteria.
+
+
+### Scope-aware Force generation budget
+
+Compact Force output is intentionally asymmetric by mutation surface. Local edits
+should not pay the same generation ceiling as a genuinely new runtime Bloc.
+
+- provider_data: 192 generated tokens maximum;
+- provider_patch/provider_js: 320 generated tokens maximum;
+- provider_bloc: 448 generated tokens maximum.
+
+The workflow-level token argument is only an upper bound. Brain chooses the lower
+scope-specific cap before each model call. This is a performance constraint only:
+it does not remove provider_bloc novelty, FULL OK references remain optional, and
+NiakVIO proof requirements are unchanged.
