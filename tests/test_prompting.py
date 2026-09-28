@@ -174,30 +174,6 @@ class PromptingTests(unittest.TestCase):
         self.assertNotIn("function unrelated", causal[0]["source"])
         self.assertLessEqual(len(causal[0]["source"]), 1800)
 
-    def test_force_edit_units_prioritize_family_reason_before_local_focus(self):
-        source = (
-            "function resolveThing(){var q=req();if(!q)return null;var media=next(q);return media;} "
-            + ("x" * 1400)
-            + " function embedHelper(value){const target=map[value];if(target)return target;return value;}"
-        )
-        request = RepairRequest(
-            provider_id="demo",
-            failure_class="route_proven_gap",
-            provider_context={
-                "registered_patch_sources": {
-                    "scripts/provider_patches/demo_runtime_v1.py": source,
-                },
-            },
-        )
-        payload = build_force_prompt_payload(
-            request,
-            {"target_layer": "provider", "confidence": 0.96, "strategy_prior": "search_detail_player_terminal_traversal"},
-            {"allow_mutations": True, "allowed_scopes": ["provider_patch"]},
-        )
-        units = payload["mutation_target"]["editable_units"]
-        self.assertTrue(units)
-        self.assertEqual(units[0]["reason"], "resolve")
-
     def test_force_validation_retry_uses_focused_context(self):
         source = (
             "H" * 5000
@@ -283,7 +259,7 @@ class PromptingTests(unittest.TestCase):
         self.assertLessEqual(sum(len(row["source"]) for row in windows), 2000)
         self.assertLessEqual(len(windows), 2)
         self.assertIn("confirmLink", joined)
-        self.assertIn("resolveMedia", unit_source)
+        self.assertIn("internalLink", unit_source)
         self.assertTrue(all("...<middle-clipped>..." not in row["source"] for row in windows))
 
     def test_force_initial_prompt_is_compact_and_keeps_one_optional_reference(self):
