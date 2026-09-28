@@ -433,6 +433,44 @@ class AdapterFailureClassTests(unittest.TestCase):
                 {row["source"] for row in request.observations},
             )
 
+    def test_current_census_replay_evidence_reaches_policy_context(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "automation").mkdir(parents=True)
+            (root / "automation" / "provider-census-status.json").write_text(
+                json.dumps({
+                    "runId": "run-current",
+                    "providers": [{
+                        "provider": "demo",
+                        "status": "ROUTE PROVEN",
+                        "dominantIssue": "provider_network_zero_result",
+                        "declaredLanes": ["movie"],
+                        "routeProof": ["1 live route"],
+                        "testedThisRun": True,
+                        "residentialProviderReplayClass": "provider_zero_before_provider_network",
+                        "residentialProviderReplayEvidence": [
+                            "movie:provider_zero_before_provider_network:raw=0:playable=0:verified=0"
+                        ],
+                    }],
+                }),
+                encoding="utf-8",
+            )
+            for name in (
+                "brain-repair-experience.json",
+                "brain-repair-memory.json",
+                "provider-targeted-regression-recovery-latest.json",
+                "provider-waf-browser-session-latest.json",
+                "provider-repair-batch-refined-latest.json",
+            ):
+                (root / "automation" / name).write_text("{}", encoding="utf-8")
+            request = request_from_checkout(root, "demo")
+            self.assertTrue(request.census_prior["testedThisRun"])
+            self.assertEqual(
+                request.census_prior["residentialProviderReplayClass"],
+                "provider_zero_before_provider_network",
+            )
+            self.assertEqual(len(request.census_prior["residentialProviderReplayEvidence"]), 1)
+
     def test_stale_refined_evidence_is_not_injected(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
