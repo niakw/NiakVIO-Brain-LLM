@@ -235,3 +235,14 @@
 - Validation feedback is reason-specific for syntax, window mismatch, ambiguity, synthetic endpoints, truncation, and neighbor absorption instead of collapsing to generic `ValueError`.
 - Force cost is now bounded per provider. The private guidance workflow passes `--force-provider-budget-seconds 180`; every model timeout is capped by remaining provider budget and only one validation correction is allowed. This prevents a single provider from consuming the previous ~15-17 minute worst-case cascade.
 - CI is green on Brain SHA `93217a4c0747c466687def9aae243ba1ab4aaaee`. This validates structure/tests only; a fresh three-family Qwen proof is still required before NiakVIO Deep.
+
+
+## 2026-09-28 — Bounded three-family proof exposed initial Force prompt cost
+
+- Guidance run `36360823219` tested Brain `c62db332ab055667056f728ae4fe94afb6f55c7b` against NiakVIO `43f53c6e7bc0af44bb0746f3245528ce345d2d83` for `allwish`, `4khdhub`, and `mallumv`.
+- The wall-clock provider budget worked exactly as intended: each provider stopped around the 180-second Force ceiling instead of monopolizing the cohort for 15+ minutes.
+- The run still published **0/3 executable Force mutations**. The common cause moved earlier in the pipeline: each initial provider_patch prompt was still ~10-13k characters and timed out at 120 seconds before structural correction could do useful work.
+- Durable correction: compact Force **initial synthesis** is now causal and bounded too. Initial source windows are capped at 2600 characters / 3 windows, observations at 2, FULL OK implementation references at 1 short optional snippet, and census bulk is omitted. Validation feedback is tighter still at 2200 characters / 2 windows with no reference/census bulk.
+- This does not reduce generative freedom: FULL OK patterns remain optional inspiration only and novel provider-local Blocs/scripts remain first-class. The change removes irrelevant prompt mass, not capabilities.
+- Structural compiler protections remain active: synthetic network endpoints are rejected, exact finds may be relocated across bounded causal windows, and one production validation correction remains available inside the provider deadline.
+- Brain CI is green on `a50e951dccb91f0fbcd4716b2ecf113a776550d5`. A fresh three-family Qwen proof is required before any NiakVIO Deep execution.
