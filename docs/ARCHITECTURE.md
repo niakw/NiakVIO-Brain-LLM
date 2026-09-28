@@ -381,3 +381,9 @@ The resulting `niakvio-force-mutations.json` has sandbox authority only. NiakVIO
 The Brain must expose complete exact provider-owned functions as candidate edit units even when their names/body do not match failure-taxonomy keywords. Keyword-aligned functions rank first; generic complete functions near the causal focus remain available as fallback. Qwen may replace one such function with a novel provider-local mechanism using only observed current facts.
 
 A generated Bloc replacement is bounded to 1800 characters. The model never owns the exact find bytes or publication. Brain resolves the selected unit to exact current bytes, validates JavaScript syntax and capabilities, then NiakVIO revalidates context and executes the candidate in isolated baseline/candidate sandboxes before any persistence.
+
+## Causal evidence precedence: full provider replay over seed WAF
+
+A targeted WAF/challenge seed is narrower evidence than a current full-provider residential replay. If the full replay is identity-safe, contradiction-free, non-timeout and its provider debug stage is not itself a WAF/transport failure, Brain must preserve the provider-layer failure taxonomy rather than reclassify the request to harness.
+
+This precedence is applied consistently in both NiakVIO adapter failure classification and Brain causal-prior construction. A seed-level challenge may route to harness only when stronger full-provider replay has not disproved that causal layer. Real persistent WAF evidence remains non-provider mutation territory.
