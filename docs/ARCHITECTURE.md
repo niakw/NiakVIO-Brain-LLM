@@ -308,3 +308,14 @@ For traversal-class failures (`route_proven_gap`, `chain_terminal_gap`, `media_e
 Force uses strict JSON-Schema constrained generation when the local OpenAI-compatible backend supports it. This removes malformed-JSON retries from the probabilistic path while preserving deterministic Brain validation as final authority.
 
 Editable-unit granularity is progressive: statement units for local edits, bounded adjacent statement sequences when needed, and bounded causal function units only when a function name matches the current failure-family keywords. A function unit is not a free-form whole-file edit: Brain extracts exact current bytes, requires balanced braces and a bounded size, assigns a stable unit_id, and keeps all downstream syntax, ownership, network-fact, no-op and NiakVIO runtime proof gates unchanged.
+
+
+### WAF/client differential as a causal routing input
+
+Provider-network failures are not sufficient by themselves to grant provider mutation authority. Brain also consumes NiakVIO's current WAF/client differential ledger.
+
+- Challenge/error persists across ordinary browser and residential paths with no successful content profile: classify as `transport_environment_gap` and withhold provider mutation.
+- The failed target becomes reachable with an audited Nuvio-like transport profile while provider execution still fails: classify as `client_transport_gap`, route to the harness/client layer, and withhold provider mutation.
+- Current provider-local zero-result/terminal evidence without such a transport differential remains eligible for provider repair.
+
+This distinction is required for fleet-scale operation: hundreds of providers must not spend LLM mutation budget on transport/TLS/IP-reputation failures. Targeted recovery and WAF/client evidence therefore precede expensive Force synthesis whenever causality is not already established.
