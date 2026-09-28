@@ -3,6 +3,7 @@ import unittest
 
 from niakvio_brain_llm.contracts import RepairRequest
 from niakvio_brain_llm.planner import _compact_wire_schema_for
+from niakvio_brain_llm.prompting import _force_window_kwargs_for_request
 from niakvio_brain_llm.schema import compact_force_schema_for
 
 
@@ -102,6 +103,24 @@ class CompactForceRetryTest(unittest.TestCase):
         self.assertIn("FIELD_BRAIN_FORCE_PROVIDER_BUDGET_EXHAUSTED", script)
         self.assertNotIn("1280", script)
 
+
+    def test_force_edit_unit_budget_is_tighter_on_validation_retry(self):
+        initial = RepairRequest(
+            provider_id="demo",
+            failure_class="chain_terminal_gap",
+            observations=[],
+        )
+        retry = RepairRequest(
+            provider_id="demo",
+            failure_class="chain_terminal_gap",
+            observations=[{"stage": "force_validation_feedback", "reason": "no_op"}],
+        )
+        self.assertEqual(_force_window_kwargs_for_request(initial)["max_units"], 6)
+        self.assertEqual(_force_window_kwargs_for_request(retry)["max_units"], 4)
+        self.assertLess(
+            _force_window_kwargs_for_request(retry)["max_units"],
+            _force_window_kwargs_for_request(initial)["max_units"],
+        )
 
     def test_compact_wire_schema_requires_scope_specific_fields(self):
         patch_request = RepairRequest(
