@@ -46,6 +46,11 @@ STATIC_FAILURE_PRIORS: dict[str, dict[str, Any]] = {
         "confidence": 0.99,
         "strategy_prior": "compare_browser_native_residential_profiles_without_provider_mutation",
     },
+    "client-transport-gap": {
+        "target_layer": "harness",
+        "confidence": 0.99,
+        "strategy_prior": "compare_browser_native_residential_profiles_without_provider_mutation",
+    },
     "typed-api-execution": {
         "target_layer": "provider",
         "confidence": 0.96,
