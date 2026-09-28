@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "d17f241726180d727152dd4e460cfafd7a725d4f",
-  "reason": "Full 14-provider repair queue proof after strict JSON, causal function units, and chain-terminal Bloc-first routing",
+  "niakvio_sha": "4b5e5ff99e69ec1a29e06820bf070460a5234349",
+  "reason": "Full 14-provider Force replan on fresh targeted recovery evidence run 36412614349.",
   "requested_repair_queue": [
     "4khdhub",
     "allanime",
