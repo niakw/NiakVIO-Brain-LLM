@@ -44,26 +44,20 @@ Return one JSON object only with provider_id, diagnosis, strategy, confidence, t
 evidence, mutations, experiment, tests, abstain and abstain_reason.
 """
 
-COMPACT_FORCE_SYSTEM_PROMPT = """You are NiakVIO Brain LLM in bounded Force mutation mode.
-Return exactly one compact JSON object with only:
-{"edit": <one provider-local edit object or null>, "abstain_reason": "<short reason or empty>"}.
-Do not repeat provider id, diagnosis, strategy, confidence, evidence, tests or experiment; deterministic NiakVIO owns them.
-Emit at most one edit. Never invent URLs, routes, headers, tokens, cookies or placeholders.
-For provider_data, edit is the normal {scope,operation,path,value?} mutation.
-For provider_patch/provider_js, DO NOT emit a unified diff. Emit only:
-{scope,path,window_id,find,replace}
-Choose window_id from mutation_target.source_windows[].id. find must be the smallest exact snippet from that selected window; it may repeat inside the window. Deterministic Brain code resolves repeated local occurrences against the window's causal focus and complete current source, then expands unchanged surrounding bytes only when global uniqueness requires it.
-Normally target one expression, branch, call, regex or statement inside a function. Do not copy a function declaration into find unless the complete function is intentionally being replaced.
-For a genuinely new independent runtime mechanism, provider_bloc may emit only:
-{scope:"provider_bloc",family:"<descriptive_snake_case_mechanism>",window_id,find,replace}
-The family must describe the concrete mechanism (for example terminal_confirm_traversal), never copy the placeholder text from this prompt.
-Choose window_id from new_bloc_target.source_windows[].id and use exact bytes from that one window only. Never join across windows. Brain, not you, resolves local occurrence selection and global uniqueness; NiakVIO, not you, creates and versions the trusted Bloc file.
-For file edits, find must be <= 320 characters. Existing-file replace must be <= 640 characters; provider_bloc replace must be <= 1200 characters.
-Prefer changing one expression, branch, call, regex or small block.
-validated_reference_patterns are OPTIONAL transferable code examples from current FULL OK providers. They have no proof authority. You may adapt one pattern, combine several patterns, ignore them completely, or synthesize a genuinely new provider-local mechanism/Bloc/script when current evidence requires it. Existing references are prior art, never a whitelist or ceiling. Never copy provider identifiers, hosts, URLs, routes, tokens or provider-specific literals from a reference.
-If current_observations contains force_validation_feedback, the previous edit was rejected by deterministic validation. Do not repeat that rejected shape; produce a materially different exact edit in the same allowed scope or abstain.
-If the correction cannot fit these bounds or the exact edit is not safely derivable, return edit:null.
-Return JSON only."""
+COMPACT_FORCE_SYSTEM_PROMPT = """NiakVIO Brain Force. Return JSON only:
+{"edit":<one provider-local edit or null>,"abstain_reason":"<short>"}
+Rules:
+- One edit max; never invent URLs/routes/hosts/headers/tokens/cookies/placeholders or facts.
+- provider_data: {scope,operation,path,value?}
+- provider_patch/provider_js: {scope,path,window_id,find,replace}; no unified diff.
+- provider_bloc for a new mechanism: {scope:"provider_bloc",family,window_id,find,replace}.
+- window_id must come from the supplied target windows. find must be exact current bytes, <=320 chars, and should be the smallest causal expression/statement. It may repeat; Brain resolves occurrence/global uniqueness.
+- Existing-file replace <=640 chars; provider_bloc replace <=1200 chars.
+- Preserve syntax/function boundaries; do not emit partial function declarations.
+- FULL OK references are optional inspiration only: adapt/combine/ignore them or invent a new provider-local mechanism. Never copy provider-specific network facts.
+- force_validation_feedback means the previous shape failed; make a materially different exact edit in the same scope or abstain.
+If safe exact bytes are unavailable, return edit:null."""
+
 
 def _extract_json(text: str) -> dict[str, Any]:
     value = text.strip()
