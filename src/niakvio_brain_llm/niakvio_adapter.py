@@ -460,6 +460,9 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
         "evidenceDepth": row.get("evidenceDepth") or [],
         "routeProof": row.get("routeProof") or [],
         "candidateProof": row.get("candidateProof") or [],
+        "testedThisRun": row.get("testedThisRun") is True,
+        "residentialProviderReplayClass": row.get("residentialProviderReplayClass"),
+        "residentialProviderReplayEvidence": row.get("residentialProviderReplayEvidence") or [],
         "harnessTransportClass": row.get("harnessTransportClass"),
         "harnessTransportEvidence": row.get("harnessTransportEvidence") or [],
     }
