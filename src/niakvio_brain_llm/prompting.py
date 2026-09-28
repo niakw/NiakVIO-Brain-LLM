@@ -460,10 +460,6 @@ def _force_edit_units(value: Any, failure_class: str, *, max_chars: int = 2600, 
         for keyword in _FORCE_SOURCE_KEYWORDS.get(family_key, ())
         if str(keyword or "").strip()
     )
-    keyword_order = {
-        keyword: index
-        for index, keyword in enumerate(family_keywords)
-    }
 
     def safe(
         fragment: str,
@@ -624,11 +620,7 @@ def _force_edit_units(value: Any, failure_class: str, *, max_chars: int = 2600, 
             contains_focus = left <= focus < right
             distance = 0 if contains_focus else abs(center - focus)
             kind_rank = 0 if kind == "function_unit" else 1 if kind == "statement_sequence" else 2
-            reason_rank = keyword_order.get(
-                str(window.get("reason") or "").casefold(),
-                len(keyword_order) + window_index,
-            )
-            ranked.append(((reason_rank, 0 if contains_focus else 1, kind_rank, distance, window_index, absolute), {
+            ranked.append(((0 if contains_focus else 1, kind_rank, distance, window_index, absolute), {
                 "window_id": str(window.get("id") or ""),
                 "offset": absolute,
                 "end_offset": absolute + len(fragment),
