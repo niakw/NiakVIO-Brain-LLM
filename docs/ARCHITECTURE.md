@@ -387,3 +387,11 @@ A generated Bloc replacement is bounded to 1800 characters. The model never owns
 A targeted WAF/challenge seed is narrower evidence than a current full-provider residential replay. If the full replay is identity-safe, contradiction-free, non-timeout and its provider debug stage is not itself a WAF/transport failure, Brain must preserve the provider-layer failure taxonomy rather than reclassify the request to harness.
 
 This precedence is applied consistently in both NiakVIO adapter failure classification and Brain causal-prior construction. A seed-level challenge may route to harness only when stronger full-provider replay has not disproved that causal layer. Real persistent WAF evidence remains non-provider mutation territory.
+
+## FORCE evidence freshness contract
+
+Provider mutation must be backed by fresh provider-local evidence, but freshness must not depend on a single auxiliary artifact.
+
+A current targeted-regression observation may authorize synthesis when it contains provider debug/network evidence. If that artifact is stale or absent, the authoritative current census may authorize synthesis only when the provider row is `testedThisRun=true` and contains provider proof already incorporated into that census: route proof, candidate proof, residential provider replay evidence, or explicit route/chain evidence depth.
+
+A standalone WAF/browser/replay file without a source census/SHA pin is never used by itself as mutation-freshness authority. It may inform causality, but current census integration is required before it can unlock provider mutation.
