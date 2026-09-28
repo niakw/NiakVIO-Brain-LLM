@@ -63,6 +63,51 @@ def _provider_targeted_observation(payload: Any, provider_id: str) -> dict[str, 
         "network": network_out,
     }
 
+def _provider_waf_observation(payload: Any, provider_id: str) -> dict[str, Any]:
+    if not isinstance(payload, dict):
+        return {}
+    wanted = _canon(provider_id)
+    rows = [
+        row for row in payload.get("rows") or []
+        if isinstance(row, dict) and _canon(row.get("provider")) == wanted
+    ]
+    replay_rows = [
+        row for row in ((payload.get("residentialProviderReplay") or {}).get("rows") or [])
+        if isinstance(row, dict) and _canon(row.get("provider")) == wanted
+    ]
+    if not rows and not replay_rows:
+        return {}
+    return {
+        "browserOutcomes": sorted({
+            str(row.get("outcome") or "") for row in rows if str(row.get("outcome") or "")
+        }),
+        "residentialOutcomes": sorted({
+            str((row.get("residentialExitNodeProfile") or {}).get("outcome") or "")
+            for row in rows
+            if str((row.get("residentialExitNodeProfile") or {}).get("outcome") or "")
+        }),
+        "contentProfiles": sorted({
+            str(profile)
+            for row in rows
+            for profile in (row.get("contentProfiles") or [])
+            if str(profile)
+        }),
+        "nativeTvTransportStillUnproven": any(
+            row.get("nativeTvTransportStillUnproven") is True for row in rows
+        ),
+        "residentialReplay": [
+            {
+                "lane": str(row.get("lane") or "")[:40],
+                "status": str(row.get("status") or "")[:80],
+                "debugStage": str(row.get("debugStage") or "")[:120],
+                "raw": int(row.get("raw") or 0),
+                "playable": int(row.get("playable") or 0),
+                "verified": int(row.get("verified") or 0),
+            }
+            for row in replay_rows[:8]
+        ],
+    }
+
 def _provider_refined_groups(payload: Any, provider_id: str, *, census_run_id: str) -> list[dict[str, Any]]:
     if not isinstance(payload, dict):
         return []
@@ -164,6 +209,7 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
     experience = _load(root / "automation" / "brain-repair-experience.json", {})
     memory = _load(root / "automation" / "brain-repair-memory.json", {})
     targeted = _load(root / "automation" / "provider-targeted-regression-recovery-latest.json", {})
+    waf = _load(root / "automation" / "provider-waf-browser-session-latest.json", {})
     refined = _load(root / "automation" / "provider-repair-batch-refined-latest.json", {})
 
     row: dict[str, Any] = {}
@@ -198,6 +244,7 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
         supported = []
 
     targeted_observation = _provider_targeted_observation(targeted, provider_id)
+    waf_observation = _provider_waf_observation(waf, provider_id)
     targeted_stages = {
         str(value or "").strip().casefold()
         for value in (targeted_observation.get("debugStages") or {}).values()
@@ -228,11 +275,23 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
         and not targeted_observation.get("playableLanes")
         and not targeted_observation.get("verifiedLanes")
     )
-    if targeted_provider_waf:
-        # A current provider-origin WAF response is transport evidence, not proof
-        # that provider code is defective. Keep mutation authority withheld until
-        # a browser/native/residential differential implicates provider-owned code.
+    content_profiles = set(waf_observation.get("contentProfiles") or [])
+    browser_content_reached = (
+        "browser_content_reached" in set(waf_observation.get("browserOutcomes") or [])
+        or "browser_content_reached" in set(waf_observation.get("residentialOutcomes") or [])
+    )
+    native_like_content_reached = bool(
+        content_profiles & {"nuvio-tv-ua-browser", "nuvio-tv-direct-http-approx", "nuvio-tv-okhttp-jvm"}
+    )
+    if targeted_provider_waf and not browser_content_reached:
+        # Challenge persists across ordinary browser/residential evidence: this
+        # is environment/WAF evidence, not provider-code proof.
         failure = "transport_environment_gap"
+    elif targeted_provider_waf and browser_content_reached and native_like_content_reached:
+        # The exact failed URL is reachable with audited Nuvio-like transport,
+        # while the provider harness still fails. Route this to client/Core
+        # transport adaptation rather than inventing a provider patch.
+        failure = "client_transport_gap"
 
     refined_groups = _provider_refined_groups(
         refined,
@@ -281,6 +340,10 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
             *(
                 [{"source": "targeted-regression-current", "value": targeted_observation}]
                 if targeted_observation else []
+            ),
+            *(
+                [{"source": "waf-client-differential-current", "value": waf_observation}]
+                if waf_observation else []
             ),
             *(
                 [{"source": "refined-repair-batch-current", "value": refined_groups}]
