@@ -301,3 +301,10 @@ Editable units may not be partial function/class prefixes, unmatched-brace fragm
 A single exact statement is sometimes too small for a real route/player/terminal repair, while exposing a whole function gives the model too much byte ownership. Force therefore offers both single statements and bounded adjacent statement sequences. A sequence may span 2-4 statements, is capped at 700 characters, and may only join statements separated by whitespace; braces or other structural delimiters stop composition. The deterministic compiler still owns the exact source bytes and offsets.
 
 For traversal-class failures (`route_proven_gap`, `chain_terminal_gap`, `media_extraction_gap`), the compiler also rejects edits that merely delete existing logic without introducing replacement behavior. It rejects removal of `const`/`let`/`var` bindings that remain referenced nearby before redeclaration. These are pre-sandbox causal guards, not proof shortcuts: any surviving mutation must still pass NiakVIO isolated application, Deep/health, playable-media, identity and non-regression gates.
+
+
+### Strict structured output and bounded causal functions
+
+Force uses strict JSON-Schema constrained generation when the local OpenAI-compatible backend supports it. This removes malformed-JSON retries from the probabilistic path while preserving deterministic Brain validation as final authority.
+
+Editable-unit granularity is progressive: statement units for local edits, bounded adjacent statement sequences when needed, and bounded causal function units only when a function name matches the current failure-family keywords. A function unit is not a free-form whole-file edit: Brain extracts exact current bytes, requires balanced braces and a bounded size, assigns a stable unit_id, and keeps all downstream syntax, ownership, network-fact, no-op and NiakVIO runtime proof gates unchanged.
