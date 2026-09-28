@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "4b5e5ff99e69ec1a29e06820bf070460a5234349",
-  "reason": "Full 14-provider Force replan on fresh targeted evidence with deduplicated causal prompt context.",
+  "niakvio_sha": "9c41dc6fac4f3814eb9b5d136b7ab5ee1f1a35aa",
+  "reason": "Full current 13-provider repair queue after fresh targeted evidence; Vostfree is FULL OK and excluded.",
   "requested_repair_queue": [
     "4khdhub",
     "allanime",
@@ -15,7 +15,6 @@
     "moviebox",
     "moviesmod",
     "vidfast",
-    "vostfree",
     "yflix"
   ]
 }
