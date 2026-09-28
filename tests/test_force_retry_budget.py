@@ -59,5 +59,5 @@ assert "prior_feedback" in source
 assert "removed_live_binding" in source
 assert "causally_empty_deletion" in source
 
-assert 'failure_key == "chain_terminal_gap" and bloc_ready' in source
+assert '{"chain_terminal_gap", "route_proven_gap", "media_extraction_gap"}' in source
 assert 'scopes.append("provider_bloc")' in source
