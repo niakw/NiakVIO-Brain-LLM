@@ -5,6 +5,7 @@ import argparse
 import copy
 import json
 import os
+import re
 import time
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor, as_completed
