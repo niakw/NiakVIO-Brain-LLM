@@ -47,12 +47,22 @@ assert mutation == {
 }
 validate_mutation("demo", mutation)
 
+unit_payload = build_force_prompt_payload(
+    request,
+    {"target_layer": "provider", "confidence": 0.96, "strategy_prior": "chain_terminal_extractor_v1"},
+    {"allow_mutations": True, "allowed_scopes": ["provider_bloc"]},
+)
+statement_unit = next(
+    row
+    for row in unit_payload["new_bloc_target"]["editable_units"]
+    if row.get("kind") != "function_unit" and row.get("source") == "return oldResolver();"
+)
 unit_mutation = _compact_edit_to_mutation(
     request,
     {
         "scope": "provider_bloc",
         "family": "terminal_resolution",
-        "unit_id": "w1u1",
+        "unit_id": statement_unit["id"],
         "replace": "return resolveTerminalMedia();",
     },
 )
