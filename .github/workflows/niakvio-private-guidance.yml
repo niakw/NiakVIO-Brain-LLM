@@ -395,6 +395,7 @@ jobs:
           rm -rf private
 
       - name: Publish merged paged guidance ref
+        id: publish
         shell: bash
         env:
           BRANCH: niakvio-guidance
@@ -413,6 +414,31 @@ jobs:
             fi
             if git -C brain show "refs/remotes/origin/$BRANCH:guidance/niakvio-force-mutations.json" > "$RUNNER_TEMP/niakvio-force.previous.json" 2>/dev/null; then
               previous_force_args=(--previous-force "$RUNNER_TEMP/niakvio-force.previous.json")
+            fi
+                    if git -C brain show "refs/remotes/origin/$BRANCH:guidance/niakvio-guidance-state.json" > "$RUNNER_TEMP/niakvio-guidance-state.publish-previous.json" 2>/dev/null; then
+              read -r published_brain published_source < <(python - "$RUNNER_TEMP/niakvio-guidance-state.publish-previous.json" <<'PY'
+          import json,sys
+          d=json.load(open(sys.argv[1],encoding="utf-8"))
+          print(str(d.get("brainLlmSha") or "").strip().lower(), str(d.get("sourceNiakvioSha") or "").strip().lower())
+          PY
+              )
+              candidate_brain="${{ steps.page.outputs.brain_sha }}"
+              candidate_source="${{ steps.source.outputs.sha }}"
+              if [ -n "$published_brain" ] && [ "$published_brain" != "$candidate_brain" ]; then
+                if git -C brain merge-base --is-ancestor "$candidate_brain" "$published_brain"; then
+                  echo "published=false" >> "$GITHUB_OUTPUT"
+                  echo "FIELD_NIAKVIO_GUIDANCE_STALE_PUBLISH skipped=true reason=newer_brain_already_published candidate=$candidate_brain published=$published_brain"
+                  exit 0
+                fi
+                if ! git -C brain merge-base --is-ancestor "$published_brain" "$candidate_brain"; then
+                  echo "published Brain revision diverges from candidate; refusing destructive guidance overwrite" >&2
+                  exit 3
+                fi
+              elif [ -n "$published_brain" ] && [ "$published_brain" = "$candidate_brain" ] \
+                   && [ -n "$published_source" ] && [ "$published_source" != "$candidate_source" ]; then
+                echo "same Brain revision already published for a different NiakVIO source; refusing ambiguous overwrite" >&2
+                exit 4
+              fi
             fi
           fi
           python brain/scripts/merge_niakvio_guidance_page.py \
@@ -442,10 +468,11 @@ jobs:
           else
             git -C brain push origin HEAD:"$BRANCH"
           fi
+          echo "published=true" >> "$GITHUB_OUTPUT"
           echo "FIELD_NIAKVIO_GUIDANCE_PUBLISH files=3 private_content=false force_mutations=true complete=${{ steps.page.outputs.complete }} remaining=${{ steps.page.outputs.remaining }}"
 
       - name: Continue remaining guidance page
-        if: ${{ steps.page.outputs.complete != 'true' }}
+        if: ${{ steps.publish.outputs.published == 'true' && steps.page.outputs.complete != 'true' }}
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
