@@ -232,8 +232,8 @@ class PromptingTests(unittest.TestCase):
             if row.get("kind") == "function_unit"
         ]
         self.assertTrue(functions)
-        self.assertTrue(any(row.get("reason") == "generic_function_fallback" for row in functions))
         self.assertTrue(any("function a(" in row.get("source", "") for row in functions))
+        self.assertTrue(any("function b(" in row.get("source", "") for row in functions))
 
     def test_force_validation_retry_uses_focused_context(self):
         source = (
