@@ -152,6 +152,51 @@ class AdapterFailureClassTests(unittest.TestCase):
             request = request_from_checkout(root, "demo")
             self.assertEqual(request.failure_class, "transport_environment_gap")
 
+    def test_fresh_provider_origin_403_routes_outside_provider_mutation_even_if_stage_is_http_error(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "automation").mkdir(parents=True)
+            (root / "automation" / "provider-census-status.json").write_text(
+                json.dumps({
+                    "runId": "run-http-403",
+                    "providers": [{
+                        "provider": "demo",
+                        "status": "ROUTE PROVEN",
+                        "dominantIssue": "provider_network_http_error",
+                        "declaredLanes": ["movie"],
+                        "routeProof": ["1 live route"],
+                    }],
+                }),
+                encoding="utf-8",
+            )
+            for name in ("brain-repair-experience.json", "brain-repair-memory.json"):
+                (root / "automation" / name).write_text("{}", encoding="utf-8")
+            (root / "automation" / "provider-targeted-regression-recovery-latest.json").write_text(
+                json.dumps({
+                    "providers": {
+                        "demo": {
+                            "debugStages": {"movie": "provider_network_http_error"},
+                            "statuses": {"movie": "no_streams"},
+                            "verifiedLanes": [],
+                            "playableLanes": [],
+                            "network": {
+                                "movie": [
+                                    {"method": "GET", "host": "api.themoviedb.org", "path": "/3/movie/1", "status": 200},
+                                    {"method": "POST", "host": "provider.example.org", "path": "/search", "status": 403},
+                                ],
+                            },
+                        }
+                    }
+                }),
+                encoding="utf-8",
+            )
+            (root / "automation" / "provider-repair-batch-refined-latest.json").write_text(
+                json.dumps({"sourceRunId": "run-http-403", "groups": []}),
+                encoding="utf-8",
+            )
+            request = request_from_checkout(root, "demo")
+            self.assertEqual(request.failure_class, "transport_environment_gap")
+
     def test_stale_refined_evidence_is_not_injected(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
