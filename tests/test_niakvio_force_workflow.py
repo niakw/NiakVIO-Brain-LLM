@@ -5,7 +5,7 @@ workflow = (ROOT / ".github/workflows/niakvio-private-guidance.yml").read_text(e
 
 assert "--mode repair" in workflow
 assert "--advisor-only" in workflow
-assert "routing-force-summary.json" in workflow
+assert "routing-force-summary.json" in workflow\nassert "routing-force.jsonl" in workflow\nassert "routing.jsonl" in workflow
 assert "force_llm_needed=" in workflow
 assert "-c 32768" in workflow
 assert "-np 1" in workflow
