@@ -270,3 +270,13 @@
 - This preserves extra room for genuinely new provider-local Bloc synthesis while making ordinary local edits materially cheaper on the CPU Qwen runtime.
 - The workflow-level `--max-tokens 512` remains an upper ceiling; the planner applies the lower per-scope cap internally.
 - Brain CI is green on `65ad59f86830a5555823aed30fe101118c9d3bd8`. Live three-family latency/mutation proof is still pending and must not be inferred from CI.
+
+
+## 2026-09-28 — Compact Force system protocol proved latency, not repair quality
+
+- Three-family guidance run `36382599941` on Brain `8831e5efaa6a1f9fc716f1fc5b97ffcb1f73b183` against NiakVIO `1ba50c4e3d79ca68c6b61306cdb4976d3d3ecfa5` completed operationally with **0/3 executable mutations**.
+- Unlike the preceding 105–120 second timeout-heavy proofs, every model call completed: MalluMV ~40s + 35s, 4KHDHub ~33s + 31s, AllWish ~31s + 30s for provider_patch/provider_bloc respectively.
+- Therefore compacting the Force system protocol is a real latency win. It does **not** by itself prove synthesis quality: Qwen abstained on all six scopes.
+- Durable distinction: performance proof and repair proof are separate. A fast abstention is preferable to malformed code, but it is not a repaired provider.
+- Abstention observability is now explicit: `FIELD_BRAIN_FORCE_SCOPE_ABSTAIN` carries a bounded sanitized `reason=` so future runs distinguish insufficient causal bytes, unavailable network facts, incompatible scope, or other model reasons without retaining raw private/model content.
+- The next live proof adds scope-aware generation caps (192 data / 320 patch+js / 448 new Bloc) on top of the compact protocol. NiakVIO Deep remains blocked until complete 3/3 executable coverage is published.
