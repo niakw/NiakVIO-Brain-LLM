@@ -357,3 +357,11 @@ This ordering is required for fleet-scale operation: hundreds of providers must 
 Compact Force treats repeated response structures as one causal observation. When several current targeted routes share the same method, host, HTTP status and sanitized response shape, Brain keeps one representative route and a bounded `sameShapeRoutes` count instead of repeating equivalent structures in the prompt.
 
 Rows without a response shape are not deduplicated by this rule because distinct failed routes/hosts can still discriminate transport ownership. The optimization reduces prompt evaluation cost only; exact-byte mutation compilation and NiakVIO playback/identity proof remain unchanged.
+
+## Force model timeout versus provider budget
+
+Model-call timeout and total provider budget are separate controls. `--timeout-seconds` can now grant up to 180 seconds to a primary or transport-retry generation; the workflow's existing 120-second argument therefore preserves its prior default, while a local hard-case run may explicitly grant more time.
+
+Route-proven providers may consume up to 240 seconds of an explicitly granted provider budget. Chain-terminal/media-extraction cases may consume the caller's full bounded provider budget. Validation-feedback calls stay focused and keep their smaller scope-specific timeout.
+
+This distinction prevents long but structurally valid function replacements from being cut off solely by a hard-coded model ceiling while retaining a finite provider-level compute budget.

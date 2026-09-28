@@ -421,3 +421,11 @@
 - Shape-less transport failures keep their individual route paths, so distinct unreachable hosts/routes are not collapsed.
 - AllAnime current targeted observation shrinks from 2742 to 1708 characters on the same NiakVIO evidence while retaining its current API and HTML shape families.
 - This is prompt compaction only; it does not change failure classification, mutation authority, proof gates or provider status.
+
+## 2026-09-28 — Force model timeout made quality-configurable
+
+- A real AllAnime local Force attempt proved the fixed 120s model ceiling was too short for structural output: the cold request timed out, prompt-cache retry was canceled at 533/640 generated tokens, and no model verdict could be parsed.
+- The scheduler now lets `--timeout-seconds` raise primary/transport model calls up to 180s. Existing GitHub guidance still passes 120s, so its current default runtime is unchanged.
+- Route-proven provider budget may now use up to 240s instead of 180s when the caller grants that budget. Transport/environment cases remain capped at 120s.
+- Validation correction timeouts remain deliberately smaller (90s patch/JS, 120s Bloc) because their focused prompts are much shorter.
+- Local hard-case proofs can therefore use 180s model timeout + a larger explicit provider budget without weakening exact-byte, syntax, ownership, sandbox, playback or identity gates.

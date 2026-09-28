@@ -18,8 +18,10 @@ assert "primary_tokens = max(128, min(int(args.max_tokens), scope_token_cap))" i
 assert "retry_tokens = max(primary_tokens, min(int(args.max_tokens), recovery_token_cap))" in source
 assert '120 if scope == "provider_bloc" else 90' in source
 assert "validation_timeout = max(" in source
+assert "primary_timeout = max(" in source
 assert "transport_timeout = max(" in source
-assert "min(int(args.timeout_seconds) + 15, 120)" in source
+assert "min(int(args.timeout_seconds), 180)" in source
+assert "timeout_seconds=primary_timeout" in source
 assert "1280" not in source
 assert "timeout_seconds=150" not in source
 assert '"unterminated string" in str(exc).casefold()' in source
@@ -61,4 +63,5 @@ assert "causally_empty_deletion" in source
 
 assert '{"chain_terminal_gap", "media_extraction_gap"}' in source
 assert 'failure_key == "route_proven_gap"' in source
+assert 'budget_seconds = min(budget_cap, 240)' in source
 assert 'scopes.append("provider_bloc")' in source
