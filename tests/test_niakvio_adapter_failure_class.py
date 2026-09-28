@@ -150,6 +150,50 @@ class AdapterFailureClassTests(unittest.TestCase):
                 encoding="utf-8",
             )
             request = request_from_checkout(root, "demo")
+            self.assertEqual(request.failure_class, "provider_transport_gap")
+
+    def test_persistent_waf_across_browser_and_residential_routes_outside_provider_mutation(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "automation").mkdir(parents=True)
+            (root / "automation" / "provider-census-status.json").write_text(
+                json.dumps({
+                    "runId": "run-waf-persist",
+                    "providers": [{
+                        "provider": "demo",
+                        "status": "NO PROOF",
+                        "dominantIssue": "provider_waf_challenge×2",
+                        "declaredLanes": ["movie"],
+                    }],
+                }),
+                encoding="utf-8",
+            )
+            for name in ("brain-repair-experience.json", "brain-repair-memory.json"):
+                (root / "automation" / name).write_text("{}", encoding="utf-8")
+            (root / "automation" / "provider-targeted-regression-recovery-latest.json").write_text(
+                json.dumps({"providers": {"demo": {
+                    "debugStages": {"movie": "provider_waf_challenge"},
+                    "statuses": {"movie": "no_streams"},
+                    "verifiedLanes": [],
+                    "playableLanes": [],
+                    "network": {"movie": [{"method": "GET", "host": "provider.example.org", "path": "/filter", "status": 403}]},
+                }}}),
+                encoding="utf-8",
+            )
+            (root / "automation" / "provider-waf-browser-session-latest.json").write_text(
+                json.dumps({"rows": [{
+                    "provider": "demo",
+                    "lane": "movie",
+                    "outcome": "browser_challenge_persisted",
+                    "residentialExitNodeProfile": {"outcome": "browser_challenge_persisted"},
+                }]}),
+                encoding="utf-8",
+            )
+            (root / "automation" / "provider-repair-batch-refined-latest.json").write_text(
+                json.dumps({"sourceRunId": "run-waf-persist", "groups": []}),
+                encoding="utf-8",
+            )
+            request = request_from_checkout(root, "demo")
             self.assertEqual(request.failure_class, "transport_environment_gap")
 
     def test_fresh_provider_origin_403_routes_outside_provider_mutation_even_if_stage_is_http_error(self):
@@ -195,7 +239,65 @@ class AdapterFailureClassTests(unittest.TestCase):
                 encoding="utf-8",
             )
             request = request_from_checkout(root, "demo")
-            self.assertEqual(request.failure_class, "transport_environment_gap")
+            self.assertEqual(request.failure_class, "route_proven_gap")
+
+    def test_residential_provider_replay_outranks_narrow_waf_seed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "automation").mkdir(parents=True)
+            (root / "automation" / "provider-census-status.json").write_text(
+                json.dumps({
+                    "runId": "run-replay",
+                    "providers": [{
+                        "provider": "demo",
+                        "status": "ROUTE PROVEN",
+                        "dominantIssue": "provider_waf_challenge",
+                        "declaredLanes": ["movie"],
+                        "routeProof": ["1 live route"],
+                    }],
+                }),
+                encoding="utf-8",
+            )
+            for name in ("brain-repair-experience.json", "brain-repair-memory.json"):
+                (root / "automation" / name).write_text("{}", encoding="utf-8")
+            (root / "automation" / "provider-targeted-regression-recovery-latest.json").write_text(
+                json.dumps({"providers": {"demo": {
+                    "debugStages": {"movie": "provider_waf_challenge"},
+                    "statuses": {"movie": "no_streams"},
+                    "verifiedLanes": [],
+                    "playableLanes": [],
+                    "network": {"movie": [{"method": "GET", "host": "provider.example.org", "path": "/filter", "status": 403}]},
+                }}}),
+                encoding="utf-8",
+            )
+            (root / "automation" / "provider-waf-browser-session-latest.json").write_text(
+                json.dumps({
+                    "rows": [{
+                        "provider": "demo",
+                        "lane": "movie",
+                        "outcome": "browser_challenge_persisted",
+                        "residentialExitNodeProfile": {"outcome": "browser_challenge_persisted"},
+                    }],
+                    "residentialProviderReplay": {"rows": [{
+                        "provider": "demo",
+                        "lane": "movie",
+                        "status": "no_streams",
+                        "debugStage": "provider_zero_before_provider_network",
+                        "raw": 0,
+                        "playable": 0,
+                        "verified": 0,
+                        "contradictions": 0,
+                        "identitySafe": True,
+                    }]},
+                }),
+                encoding="utf-8",
+            )
+            (root / "automation" / "provider-repair-batch-refined-latest.json").write_text(
+                json.dumps({"sourceRunId": "run-replay", "groups": []}),
+                encoding="utf-8",
+            )
+            request = request_from_checkout(root, "demo")
+            self.assertEqual(request.failure_class, "route_proven_gap")
 
     def test_waf_client_content_reached_routes_to_client_transport_gap(self):
         with tempfile.TemporaryDirectory() as tmp:
