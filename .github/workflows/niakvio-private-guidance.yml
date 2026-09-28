@@ -497,5 +497,7 @@ jobs:
             private-memory-report.json
             routing-summary.json
             routing-force-summary.json
+            routing.jsonl
+            routing-force.jsonl
           retention-days: 14
           if-no-files-found: warn
