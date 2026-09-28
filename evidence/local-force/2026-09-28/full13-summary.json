@@ -1,0 +1,118 @@
+{
+  "abstainedProviders": [
+    "allanime",
+    "moviebox",
+    "anime-ultime",
+    "animesalt",
+    "animevost-fr",
+    "flemmix"
+  ],
+  "brainLlmSha": "b1fc86b4652417795590f6650c8194202461a813",
+  "errorProviders": [
+    "moviesmod"
+  ],
+  "providerCount": 13,
+  "providers": [
+    {
+      "failureClass": "chain_terminal_gap",
+      "providerId": "allanime",
+      "reason": "No suitable editable unit found to express the repair.",
+      "result": "abstain",
+      "status": "CHAIN REACHED"
+    },
+    {
+      "failureClass": "chain_terminal_gap",
+      "providerId": "mallumv",
+      "reason": "",
+      "result": "candidate",
+      "status": "CHAIN REACHED"
+    },
+    {
+      "failureClass": "chain_terminal_gap",
+      "providerId": "moviebox",
+      "reason": "No suitable editable unit found to express the repair.",
+      "result": "abstain",
+      "status": "CHAIN REACHED"
+    },
+    {
+      "failureClass": "route_proven_gap",
+      "providerId": "4khdhub",
+      "reason": "",
+      "result": "candidate",
+      "status": "ROUTE PROVEN"
+    },
+    {
+      "failureClass": "route_proven_gap",
+      "providerId": "anime-ultime",
+      "reason": "No suitable editable unit found to express the repair.",
+      "result": "abstain",
+      "status": "ROUTE PROVEN"
+    },
+    {
+      "failureClass": "route_proven_gap",
+      "providerId": "animesalt",
+      "reason": "No suitable editable unit found to express the repair.",
+      "result": "abstain",
+      "status": "ROUTE PROVEN"
+    },
+    {
+      "failureClass": "route_proven_gap",
+      "providerId": "animesultra",
+      "reason": "",
+      "result": "candidate",
+      "status": "ROUTE PROVEN"
+    },
+    {
+      "failureClass": "route_proven_gap",
+      "providerId": "animevost-fr",
+      "reason": "No editable unit available to express the repair.",
+      "result": "abstain",
+      "status": "ROUTE PROVEN"
+    },
+    {
+      "failureClass": "route_proven_gap",
+      "providerId": "flemmix",
+      "reason": "No editable unit available to express the repair.",
+      "result": "abstain",
+      "status": "ROUTE PROVEN"
+    },
+    {
+      "failureClass": "route_proven_gap",
+      "providerId": "moviesmod",
+      "reason": "TimeoutError: timed out",
+      "result": "error",
+      "status": "ROUTE PROVEN"
+    },
+    {
+      "failureClass": "route_proven_gap",
+      "providerId": "vidfast",
+      "reason": "",
+      "result": "candidate",
+      "status": "ROUTE PROVEN"
+    },
+    {
+      "failureClass": "route_proven_gap",
+      "providerId": "yflix",
+      "reason": "",
+      "result": "candidate",
+      "status": "ROUTE PROVEN"
+    },
+    {
+      "failureClass": "provider_transport_gap",
+      "providerId": "allwish",
+      "reason": "",
+      "result": "candidate",
+      "status": "NO PROOF"
+    }
+  ],
+  "schemaVersion": 1,
+  "selectedProviders": [
+    "mallumv",
+    "4khdhub",
+    "animesultra",
+    "vidfast",
+    "yflix",
+    "allwish"
+  ],
+  "sourceNiakvioSha": "a218aaecb1764a74f9e2f26c10f2a10a7c8955f6"
+}

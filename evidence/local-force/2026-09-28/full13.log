@@ -1,0 +1,99 @@
+FIELD_BRAIN_FORCE_PROVIDER_BUDGET provider=allanime failure=chain_terminal_gap status=CHAIN REACHED budget_seconds=240 cap_seconds=240
+FIELD_BRAIN_FORCE_MODEL provider=allanime scopes=provider_bloc chars=6440 system_chars=1108 total_chars=7548 seconds=35.12 outcome=success max_tokens=448
+FIELD_BRAIN_FORCE_SCOPE_ABSTAIN provider=allanime scope=provider_bloc reason=No_suitable_editable_unit_found_to_express_the_repair.
+FIELD_BRAIN_FORCE_MODEL provider=allanime scopes=provider_patch chars=6266 system_chars=1108 total_chars=7374 seconds=23.37 outcome=success max_tokens=320
+FIELD_BRAIN_FORCE_SCOPE_ABSTAIN provider=allanime scope=provider_patch reason=No_suitable_editable_unit_found_to_express_the_repair.
+FIELD_BRAIN_FORCE_PROVIDER_BUDGET provider=mallumv failure=chain_terminal_gap status=CHAIN REACHED budget_seconds=240 cap_seconds=240
+FIELD_BRAIN_FORCE_MODEL provider=mallumv scopes=provider_bloc chars=6832 system_chars=1108 total_chars=7940 seconds=32.97 outcome=success max_tokens=448
+FIELD_BRAIN_FORCE_SCOPE_SELECTED provider=mallumv scope=provider_bloc
+FIELD_BRAIN_FORCE_PROVIDER_BUDGET provider=moviebox failure=chain_terminal_gap status=CHAIN REACHED budget_seconds=240 cap_seconds=240
+FIELD_BRAIN_FORCE_MODEL provider=moviebox scopes=provider_bloc chars=7778 system_chars=1108 total_chars=8886 seconds=57.90 outcome=success max_tokens=448
+FIELD_BRAIN_FORCE_SCOPE_FEEDBACK provider=moviebox scope=provider_bloc reason=syntax_error correction=1/3
+FIELD_BRAIN_FORCE_MODEL provider=moviebox scopes=provider_bloc chars=3307 system_chars=1108 total_chars=4415 seconds=21.15 outcome=success max_tokens=768
+FIELD_BRAIN_FORCE_SCOPE_FEEDBACK provider=moviebox scope=provider_bloc reason=no_op correction=2/3
+FIELD_BRAIN_FORCE_MODEL provider=moviebox scopes=provider_bloc chars=3212 system_chars=1108 total_chars=4320 seconds=23.13 outcome=success max_tokens=768
+FIELD_BRAIN_FORCE_SCOPE_FEEDBACK provider=moviebox scope=provider_bloc reason=no_op correction=3/3
+FIELD_BRAIN_FORCE_MODEL provider=moviebox scopes=provider_bloc chars=3212 system_chars=1108 total_chars=4320 seconds=22.83 outcome=success max_tokens=768
+FIELD_BRAIN_FORCE_SCOPE_REJECTED provider=moviebox scope=provider_bloc error=ValueError reason=no_op detail=compact Force edit is a no-op
+FIELD_BRAIN_FORCE_MODEL provider=moviebox scopes=provider_patch chars=7471 system_chars=1108 total_chars=8579 seconds=38.36 outcome=success max_tokens=320
+FIELD_BRAIN_FORCE_SCOPE_ABSTAIN provider=moviebox scope=provider_patch reason=No_suitable_editable_unit_found_to_express_the_repair.
+FIELD_BRAIN_FORCE_PROVIDER_BUDGET provider=4khdhub failure=route_proven_gap status=ROUTE PROVEN budget_seconds=180 cap_seconds=240
+FIELD_BRAIN_FORCE_MODEL provider=4khdhub scopes=provider_bloc chars=5773 system_chars=1108 total_chars=6881 seconds=32.45 outcome=success max_tokens=448
+FIELD_BRAIN_FORCE_SCOPE_FEEDBACK provider=4khdhub scope=provider_bloc reason=removed_live_binding correction=1/3
+FIELD_BRAIN_FORCE_MODEL provider=4khdhub scopes=provider_bloc chars=2912 system_chars=1108 total_chars=4020 seconds=19.50 outcome=success max_tokens=768
+FIELD_BRAIN_FORCE_SCOPE_SELECTED provider=4khdhub scope=provider_bloc
+FIELD_BRAIN_FORCE_PROVIDER_BUDGET provider=anime-ultime failure=route_proven_gap status=ROUTE PROVEN budget_seconds=180 cap_seconds=240
+FIELD_BRAIN_FORCE_MODEL provider=anime-ultime scopes=provider_bloc chars=5643 system_chars=1108 total_chars=6751 seconds=31.77 outcome=success max_tokens=448
+FIELD_BRAIN_FORCE_SCOPE_FEEDBACK provider=anime-ultime scope=provider_bloc reason=removed_live_binding correction=1/3
+FIELD_BRAIN_FORCE_MODEL provider=anime-ultime scopes=provider_bloc chars=2916 system_chars=1108 total_chars=4024 seconds=18.25 outcome=success max_tokens=768
+FIELD_BRAIN_FORCE_SCOPE_FEEDBACK provider=anime-ultime scope=provider_bloc reason=no_op correction=2/3
+FIELD_BRAIN_FORCE_MODEL provider=anime-ultime scopes=provider_bloc chars=2855 system_chars=1108 total_chars=3963 seconds=18.83 outcome=success max_tokens=768
+FIELD_BRAIN_FORCE_SCOPE_FEEDBACK provider=anime-ultime scope=provider_bloc reason=no_op correction=3/3
+FIELD_BRAIN_FORCE_MODEL provider=anime-ultime scopes=provider_bloc chars=2855 system_chars=1108 total_chars=3963 seconds=17.97 outcome=success max_tokens=768
+FIELD_BRAIN_FORCE_SCOPE_REJECTED provider=anime-ultime scope=provider_bloc error=ValueError reason=no_op detail=compact Force edit is a no-op
+FIELD_BRAIN_FORCE_MODEL provider=anime-ultime scopes=provider_patch chars=5468 system_chars=1108 total_chars=6576 seconds=22.79 outcome=success max_tokens=320
+FIELD_BRAIN_FORCE_SCOPE_ABSTAIN provider=anime-ultime scope=provider_patch reason=No_suitable_editable_unit_found_to_express_the_repair.
+FIELD_BRAIN_FORCE_PROVIDER_BUDGET provider=animesalt failure=route_proven_gap status=ROUTE PROVEN budget_seconds=180 cap_seconds=240
+FIELD_BRAIN_FORCE_MODEL provider=animesalt scopes=provider_bloc chars=5741 system_chars=1108 total_chars=6849 seconds=30.76 outcome=success max_tokens=448
+FIELD_BRAIN_FORCE_SCOPE_ABSTAIN provider=animesalt scope=provider_bloc reason=No_suitable_editable_unit_found_to_express_the_repair.
+FIELD_BRAIN_FORCE_MODEL provider=animesalt scopes=provider_patch chars=5681 system_chars=1108 total_chars=6789 seconds=28.50 outcome=success max_tokens=320
+FIELD_BRAIN_FORCE_SCOPE_ABSTAIN provider=animesalt scope=provider_patch reason=No_suitable_editable_unit_found_to_express_the_repair.
+FIELD_BRAIN_FORCE_PROVIDER_BUDGET provider=animesultra failure=route_proven_gap status=ROUTE PROVEN budget_seconds=180 cap_seconds=240
+FIELD_BRAIN_FORCE_MODEL provider=animesultra scopes=provider_bloc chars=5687 system_chars=1108 total_chars=6795 seconds=33.88 outcome=success max_tokens=448
+FIELD_BRAIN_FORCE_SCOPE_FEEDBACK provider=animesultra scope=provider_bloc reason=removed_live_binding correction=1/3
+FIELD_BRAIN_FORCE_MODEL provider=animesultra scopes=provider_bloc chars=2914 system_chars=1108 total_chars=4022 seconds=19.10 outcome=success max_tokens=768
+FIELD_BRAIN_FORCE_SCOPE_FEEDBACK provider=animesultra scope=provider_bloc reason=no_op correction=2/3
+FIELD_BRAIN_FORCE_MODEL provider=animesultra scopes=provider_bloc chars=2853 system_chars=1108 total_chars=3961 seconds=19.43 outcome=success max_tokens=768
+FIELD_BRAIN_FORCE_SCOPE_SELECTED provider=animesultra scope=provider_bloc
+FIELD_BRAIN_FORCE_PROVIDER_BUDGET provider=animevost-fr failure=route_proven_gap status=ROUTE PROVEN budget_seconds=180 cap_seconds=240
+FIELD_BRAIN_FORCE_MODEL provider=animevost-fr scopes=provider_bloc chars=5754 system_chars=1108 total_chars=6862 seconds=30.56 outcome=success max_tokens=448
+FIELD_BRAIN_FORCE_SCOPE_ABSTAIN provider=animevost-fr scope=provider_bloc reason=No_suitable_editable_unit_found_to_express_the_repair.
+FIELD_BRAIN_FORCE_MODEL provider=animevost-fr scopes=provider_patch chars=4308 system_chars=1108 total_chars=5416 seconds=20.73 outcome=success max_tokens=320
+FIELD_BRAIN_FORCE_SCOPE_ABSTAIN provider=animevost-fr scope=provider_patch reason=No_editable_unit_available_to_express_the_repair.
+FIELD_BRAIN_FORCE_PROVIDER_BUDGET provider=flemmix failure=route_proven_gap status=ROUTE PROVEN budget_seconds=180 cap_seconds=240
+FIELD_BRAIN_FORCE_MODEL provider=flemmix scopes=provider_bloc chars=5952 system_chars=1108 total_chars=7060 seconds=35.24 outcome=success max_tokens=448
+FIELD_BRAIN_FORCE_SCOPE_FEEDBACK provider=flemmix scope=provider_bloc reason=removed_live_binding correction=1/3
+FIELD_BRAIN_FORCE_MODEL provider=flemmix scopes=provider_bloc chars=2912 system_chars=1108 total_chars=4020 seconds=23.12 outcome=success max_tokens=768
+FIELD_BRAIN_FORCE_SCOPE_FEEDBACK provider=flemmix scope=provider_bloc reason=no_op correction=2/3
+FIELD_BRAIN_FORCE_MODEL provider=flemmix scopes=provider_bloc chars=2851 system_chars=1108 total_chars=3959 seconds=47.58 outcome=success max_tokens=768
+FIELD_BRAIN_FORCE_SCOPE_FEEDBACK provider=flemmix scope=provider_bloc reason=syntax_error correction=3/3
+FIELD_BRAIN_FORCE_MODEL provider=flemmix scopes=provider_bloc chars=2946 system_chars=1108 total_chars=4054 seconds=18.94 outcome=success max_tokens=768
+FIELD_BRAIN_FORCE_SCOPE_REJECTED provider=flemmix scope=provider_bloc error=ValueError reason=no_op detail=compact Force edit is a no-op
+FIELD_BRAIN_FORCE_MODEL provider=flemmix scopes=provider_patch chars=4925 system_chars=1108 total_chars=6033 seconds=24.11 outcome=success max_tokens=320
+FIELD_BRAIN_FORCE_SCOPE_ABSTAIN provider=flemmix scope=provider_patch reason=No_editable_unit_available_to_express_the_repair.
+FIELD_BRAIN_FORCE_PROVIDER_BUDGET provider=moviesmod failure=route_proven_gap status=ROUTE PROVEN budget_seconds=180 cap_seconds=240
+FIELD_BRAIN_FORCE_MODEL provider=moviesmod scopes=provider_bloc chars=6816 system_chars=1108 total_chars=7924 seconds=53.45 outcome=success max_tokens=448
+FIELD_BRAIN_FORCE_SCOPE_FEEDBACK provider=moviesmod scope=provider_bloc reason=no_op correction=1/3
+FIELD_BRAIN_FORCE_MODEL provider=moviesmod scopes=provider_bloc chars=2855 system_chars=1108 total_chars=3963 seconds=20.40 outcome=success max_tokens=768
+FIELD_BRAIN_FORCE_SCOPE_FEEDBACK provider=moviesmod scope=provider_bloc reason=no_op correction=2/3
+FIELD_BRAIN_FORCE_MODEL provider=moviesmod scopes=provider_bloc chars=2855 system_chars=1108 total_chars=3963 seconds=18.57 outcome=success max_tokens=768
+FIELD_BRAIN_FORCE_SCOPE_FEEDBACK provider=moviesmod scope=provider_bloc reason=no_op correction=3/3
+FIELD_BRAIN_FORCE_MODEL provider=moviesmod scopes=provider_bloc chars=2855 system_chars=1108 total_chars=3963 seconds=17.71 outcome=success max_tokens=768
+FIELD_BRAIN_FORCE_SCOPE_REJECTED provider=moviesmod scope=provider_bloc error=ValueError reason=no_op detail=compact Force edit is a no-op
+FIELD_BRAIN_FORCE_MODEL provider=moviesmod scopes=provider_data chars=5895 system_chars=1108 total_chars=7003 seconds=39.26 outcome=success max_tokens=192
+FIELD_BRAIN_FORCE_SCOPE_FEEDBACK provider=moviesmod scope=provider_data reason=valueerror correction=1/1
+FIELD_BRAIN_FORCE_MODEL provider=moviesmod scopes=provider_data chars=2811 system_chars=1108 total_chars=3919 seconds=30.02 outcome=error error=TimeoutError max_tokens=256
+FIELD_BRAIN_FORCE_SCOPE_REJECTED provider=moviesmod scope=provider_data error=TimeoutError reason=timeouterror detail=timed out
+FIELD_BRAIN_FORCE_PROVIDER_BUDGET provider=vidfast failure=route_proven_gap status=ROUTE PROVEN budget_seconds=180 cap_seconds=240
+FIELD_BRAIN_FORCE_MODEL provider=vidfast scopes=provider_bloc chars=5987 system_chars=1108 total_chars=7095 seconds=33.65 outcome=success max_tokens=448
+FIELD_BRAIN_FORCE_SCOPE_FEEDBACK provider=vidfast scope=provider_bloc reason=removed_live_binding correction=1/3
+FIELD_BRAIN_FORCE_MODEL provider=vidfast scopes=provider_bloc chars=2912 system_chars=1108 total_chars=4020 seconds=20.77 outcome=success max_tokens=768
+FIELD_BRAIN_FORCE_SCOPE_FEEDBACK provider=vidfast scope=provider_bloc reason=no_op correction=2/3
+FIELD_BRAIN_FORCE_MODEL provider=vidfast scopes=provider_bloc chars=2851 system_chars=1108 total_chars=3959 seconds=19.35 outcome=success max_tokens=768
+FIELD_BRAIN_FORCE_SCOPE_SELECTED provider=vidfast scope=provider_bloc
+FIELD_BRAIN_FORCE_PROVIDER_BUDGET provider=yflix failure=route_proven_gap status=ROUTE PROVEN budget_seconds=180 cap_seconds=240
+FIELD_BRAIN_FORCE_MODEL provider=yflix scopes=provider_bloc chars=6389 system_chars=1108 total_chars=7497 seconds=40.46 outcome=success max_tokens=448
+FIELD_BRAIN_FORCE_SCOPE_FEEDBACK provider=yflix scope=provider_bloc reason=removed_live_binding correction=1/3
+FIELD_BRAIN_FORCE_MODEL provider=yflix scopes=provider_bloc chars=2908 system_chars=1108 total_chars=4016 seconds=23.05 outcome=success max_tokens=768
+FIELD_BRAIN_FORCE_SCOPE_FEEDBACK provider=yflix scope=provider_bloc reason=no_op correction=2/3
+FIELD_BRAIN_FORCE_MODEL provider=yflix scopes=provider_bloc chars=2847 system_chars=1108 total_chars=3955 seconds=21.20 outcome=success max_tokens=768
+FIELD_BRAIN_FORCE_SCOPE_SELECTED provider=yflix scope=provider_bloc
+FIELD_BRAIN_FORCE_PROVIDER_BUDGET provider=allwish failure=provider_transport_gap status=NO PROOF budget_seconds=120 cap_seconds=240
+FIELD_BRAIN_FORCE_MODEL provider=allwish scopes=provider_patch chars=6075 system_chars=1108 total_chars=7183 seconds=34.04 outcome=success max_tokens=320
+FIELD_BRAIN_FORCE_SCOPE_ABSTAIN provider=allwish scope=provider_patch reason=No_suitable_editable_unit_found_to_express_the_repair.
+FIELD_BRAIN_FORCE_MODEL provider=allwish scopes=provider_bloc chars=6358 system_chars=1108 total_chars=7466 seconds=39.75 outcome=success max_tokens=448
+FIELD_BRAIN_FORCE_SCOPE_FEEDBACK provider=allwish scope=provider_bloc reason=removed_live_binding correction=1/3
+FIELD_BRAIN_FORCE_MODEL provider=allwish scopes=provider_bloc chars=3406 system_chars=1108 total_chars=4514 seconds=26.49 outcome=success max_tokens=768
+FIELD_BRAIN_FORCE_SCOPE_SELECTED provider=allwish scope=provider_bloc
+FIELD_BRAIN_FORCE_PLAN_ERRORS [{"provider": "moviesmod", "error": "TimeoutError: timed out"}]
+{"document_sources": 1, "errors": 1, "experience_sources": 1, "llm_call_rate": 0.9230769230769231, "llm_calls": 12, "maxHypothesesPerProvider": 1, "mode": "repair", "model_processes": 1, "ordered_by": "evidence_depth", "parallel_workers": 1, "planned": 12, "plannedHypotheses": 12, "plannedProviders": 12, "routing_modes": {"llm_repair": 12}, "statuses": {"CHAIN REACHED": 3, "NO PROOF": 1, "ROUTE PROVEN": 9}, "targets": 13}

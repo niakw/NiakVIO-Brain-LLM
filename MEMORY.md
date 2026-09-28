@@ -377,3 +377,13 @@
 - The 2026-09-28 reboot removed ephemeral `/tmp/niakvio-*` raw artifacts. The durable conclusions were already recorded in this `MEMORY.md` (including the AllAnime/MalluMV/4KHDHub local cohorts and 0/2 isolated NiakVIO acceptance), but raw temp bytes were not recoverable.
 - Going forward, any local FORCE batch that materially changes learning must persist a sanitized result/ledger under repository-owned data or `MEMORY.md` before the local session is considered complete. `/tmp` alone is never an accepted learning store.
 - Existing local dirty changes were audited against current `main`; causal family edit-unit priority was the only still-useful missing behavior and was reintroduced on current HEAD with a regression test, without reverting newer compact-context changes.
+
+
+## 2026-09-28 — Durable local FORCE 13-provider evidence
+
+- Local Qwen FORCE ran the complete current 13-provider repair cohort against NiakVIO a218aaecb1764a74f9e2f26c10f2a10a7c8955f6 with Brain b1fc86b4652417795590f6650c8194202461a813.
+- The sanitized Force bridge accepted 6 sandbox-authority candidates: mallumv, 4khdhub, animesultra, vidfast, yflix, allwish.
+- 6 providers abstained cleanly: allanime, moviebox, anime-ultime, animesalt, animevost-fr, flemmix.
+- moviesmod ended in a bounded local timeout and remains unresolved.
+- Evidence is persisted under evidence/local-force/2026-09-28/; these results must be reused before generating a new cohort from scratch.
+- Candidate status is NOT repair proof. Each accepted local candidate still requires current-byte NiakVIO sandbox evaluation, playable-stream/identity validation and relevant non-regression before publication.

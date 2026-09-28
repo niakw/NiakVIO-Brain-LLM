@@ -1,0 +1,150 @@
+{
+  "brainLlmSha": "b1fc86b4652417795590f6650c8194202461a813",
+  "minConfidence": 0.8,
+  "privateContentRetained": false,
+  "proofAuthority": false,
+  "providerCount": 6,
+  "providerMutationContentRetained": true,
+  "publicationAuthority": false,
+  "rows": [
+    {
+      "confidence": 0.96,
+      "failureClass": "chain-terminal-gap",
+      "mutationContextFingerprint": "81d9670beeecdccc4ede71c64bf229f6fd3faa33fa643801cc912fe85347137c",
+      "mutationFingerprint": "eccb35d951887b213b6d9a504b2871075e8cb2f3ec910d67a3a81cc4c3dbafc8",
+      "mutations": [
+        {
+          "family": "confirm_links",
+          "find": "var raw=s(v).replace(/&amp;/gi,\"&\").replace(/\\\\u002f/gi,\"/\").replace(/\\\\\\//g,\"/\");if(!raw)return;",
+          "operation": "upsert",
+          "replace": "var raw=s(v).replace(/&amp;/gi,\"&\").replace(/\\\\u002f/gi,\"/\").replace(/\\\\\\//g,\"/\");if(!raw)return;if(/^confirm\\//i.test(raw))raw=\"/\"+raw;",
+          "scope": "provider_bloc"
+        }
+      ],
+      "providerId": "mallumv",
+      "strategy": "terminal-media-extractor-with-playback-validation",
+      "targetLayer": "provider",
+      "tests": [
+        "replay_proven_chain_to_terminal_media",
+        "validate_media_signature_duration_and_identity"
+      ]
+    },
+    {
+      "confidence": 0.96,
+      "failureClass": "route-proven-gap",
+      "mutationContextFingerprint": "4907d0c3c3444fb10951030099cf07d95d440037ad0f3ed7fdcf85b10f397523",
+      "mutationFingerprint": "896636b7617d2ed66ea2ed01858d91af2bb06be426383e78943d2e7133a41e1e",
+      "mutations": [
+        {
+          "family": "resolve_urls",
+          "find": "const out = []; const normalized = _embeddedText(text);",
+          "operation": "upsert",
+          "replace": "const out = []; const normalized = _embeddedText(text); const urls = [];",
+          "scope": "provider_bloc"
+        }
+      ],
+      "providerId": "4khdhub",
+      "strategy": "search-detail-player-terminal-traversal",
+      "targetLayer": "provider",
+      "tests": [
+        "replay_proven_route",
+        "traverse_search_detail_player_terminal",
+        "validate_terminal_media_identity"
+      ]
+    },
+    {
+      "confidence": 0.96,
+      "failureClass": "route-proven-gap",
+      "mutationContextFingerprint": "48ee182afc932b23de6ec28926f4e0e072f44088ee564bd0990c6db02be41d7f",
+      "mutationFingerprint": "bb401423c13c2ab90d130b3efd68350980944239dd7af84eba0beb330dcb3edc",
+      "mutations": [
+        {
+          "family": "url_extractor",
+          "find": "const normalized = _embeddedText(text);",
+          "operation": "upsert",
+          "replace": "const normalized = _embeddedText(text, base);",
+          "scope": "provider_bloc"
+        }
+      ],
+      "providerId": "animesultra",
+      "strategy": "search-detail-player-terminal-traversal",
+      "targetLayer": "provider",
+      "tests": [
+        "replay_proven_route",
+        "traverse_search_detail_player_terminal",
+        "validate_terminal_media_identity"
+      ]
+    },
+    {
+      "confidence": 0.96,
+      "failureClass": "route-proven-gap",
+      "mutationContextFingerprint": "383353d14604ae84702dc7759fdca9a7dc6a14edb4aea8090f51feebcfb8eb0d",
+      "mutationFingerprint": "ab5003c457da50255d551124dc60ff76fd76d3d41868b30907bfa2d8b4c259b3",
+      "mutations": [
+        {
+          "family": "vidfast_url_extractor",
+          "find": "const normalized = _embeddedText(text);",
+          "operation": "upsert",
+          "replace": "const normalized = _embeddedText(text, base) || '';",
+          "scope": "provider_bloc"
+        }
+      ],
+      "providerId": "vidfast",
+      "strategy": "search-detail-player-terminal-traversal",
+      "targetLayer": "provider",
+      "tests": [
+        "replay_proven_route",
+        "traverse_search_detail_player_terminal",
+        "validate_terminal_media_identity"
+      ]
+    },
+    {
+      "confidence": 0.96,
+      "failureClass": "route-proven-gap",
+      "mutationContextFingerprint": "af4e55bb4cac9b515eab1534d79ec3c09464c6ba00b117ed0c3b6c54adfd7a95",
+      "mutationFingerprint": "1286aea36e9491f494939612012c489675d2e2ecf9334e2aba9e4112f960769a",
+      "mutations": [
+        {
+          "family": "yflix_url_extractor",
+          "find": "const normalized = _embeddedText(text);",
+          "operation": "upsert",
+          "replace": "const normalized = _embeddedText(text, base) || '';",
+          "scope": "provider_bloc"
+        }
+      ],
+      "providerId": "yflix",
+      "strategy": "search-detail-player-terminal-traversal",
+      "targetLayer": "provider",
+      "tests": [
+        "replay_proven_route",
+        "traverse_search_detail_player_terminal",
+        "validate_terminal_media_identity"
+      ]
+    },
+    {
+      "confidence": 0.96,
+      "failureClass": "provider-transport-gap",
+      "mutationContextFingerprint": "7191d9ed35d3cf898ec5c68bc2597d6fe6375f24782c728d2fa64105376ebe64",
+      "mutationFingerprint": "819282e3fb2d3c8caa21eab5e3e5385eb9c50a92b18852822410f71abdc3e490",
+      "mutations": [
+        {
+          "family": "fetch_request_headers",
+          "find": "const response = await _fetch(row.url, { headers: row.referer ? { Referer: row.referer } : {} }); const responseUrl = response.url || row.url;",
+          "operation": "upsert",
+          "replace": "const response = await _fetch(row.url, { headers: row.referer ? { Referer: row.referer } : {}, 'User-Agent': 'Mozilla/5.0 NiakVIO/3' }); const responseUrl = response.url || row.url;",
+          "scope": "provider_bloc"
+        }
+      ],
+      "providerId": "allwish",
+      "strategy": "provider-local-repair",
+      "targetLayer": "provider",
+      "tests": [
+        "replay_provider_on_current_bytes",
+        "validate_playback_identity_and_non_regression"
+      ]
+    }
+  ],
+  "sandboxMutationAuthority": true,
+  "schemaVersion": 1,
+  "sourceNiakvioSha": "a218aaecb1764a74f9e2f26c10f2a10a7c8955f6"
+}
