@@ -100,6 +100,9 @@ for marker in (
     "steps.source.outputs.sha",
     "steps.cohort.outputs.csv",
     "actions: write",
+    "FIELD_NIAKVIO_GUIDANCE_STALE_PUBLISH",
+    "newer_brain_already_published",
+    "steps.publish.outputs.published == 'true'",
 ):
     assert marker in workflow, marker
 
@@ -116,3 +119,5 @@ assert "guidance/niakvio-guidance-state.json" in workflow
 assert "files=3" in workflow
 
 print("paged guidance publication guard contract passed")
+
+# A late old Brain run must not clobber a newer published cycle merely because\n# force-with-lease was refreshed just before the push.\nassert 'merge-base --is-ancestor "$candidate_brain" "$published_brain"' in workflow\nassert 'echo "published=false" >> "$GITHUB_OUTPUT"' in workflow\nassert 'echo "published=true" >> "$GITHUB_OUTPUT"' in workflow\n
