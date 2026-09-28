@@ -29,6 +29,28 @@ NO_MUTATION_STRATEGIES = {
 FRESH_DISCOVERY_STRATEGIES = {
     "discover_api_from_current_page_and_bundles",
 }
+TARGETED_EVIDENCE_FAILURES = {
+    "provider-transport-gap",
+    "route-proven-gap",
+    "chain-terminal-gap",
+    "media-extraction-gap",
+}
+
+def _canon_failure(value: object) -> str:
+    return "-".join(str(value or "").strip().casefold().replace("_", "-").split())
+
+def _has_targeted_provider_evidence(observations: Any) -> bool:
+    for row in observations or []:
+        if not isinstance(row, dict):
+            continue
+        if str(row.get("source") or "").strip().casefold() != "targeted-regression-current":
+            continue
+        value = row.get("value")
+        if not isinstance(value, dict):
+            continue
+        if value.get("debugStages") or value.get("network"):
+            return True
+    return False
 
 def _has_fresh_url(value: Any) -> bool:
     if isinstance(value, dict):
@@ -78,6 +100,15 @@ def build_mutation_policy(
 
     context = request.provider_context or {}
     allowed = set(request.allowed_mutations)
+
+    failure = _canon_failure(request.failure_class)
+    if failure in TARGETED_EVIDENCE_FAILURES and not _has_targeted_provider_evidence(request.observations):
+        return {
+            "allow_mutations": False,
+            "allowed_scopes": [],
+            "force_abstain": True,
+            "reason": "fresh targeted provider evidence is required before patching",
+        }
 
     if not context.get("authored_module"):
         allowed.discard("provider_js")
