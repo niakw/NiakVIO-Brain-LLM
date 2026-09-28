@@ -220,3 +220,19 @@ The workflow-level token argument is only an upper bound. Brain chooses the lowe
 scope-specific cap before each model call. This is a performance constraint only:
 it does not remove provider_bloc novelty, FULL OK references remain optional, and
 NiakVIO proof requirements are unchanged.
+
+
+### Fast abstention is not repair proof
+
+The compact Force system protocol intentionally removes prose already enforced by
+the schema/compiler. This materially reduces local-model latency, but operational
+completion or fast abstention is never counted as a repair.
+
+Force telemetry must distinguish:
+- model timeout/rejection,
+- bounded abstention with a sanitized reason,
+- structurally executable mutation,
+- later NiakVIO runtime proof.
+
+Only the third state may enter NiakVIO sandbox evaluation; only NiakVIO proof may
+change provider/census state.
