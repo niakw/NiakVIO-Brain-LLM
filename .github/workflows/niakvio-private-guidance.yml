@@ -141,6 +141,7 @@ jobs:
             previous_args=(--previous-state "$RUNNER_TEMP/niakvio-guidance-state.previous.json")
           fi
           brain_sha="$(git -C brain rev-parse HEAD)"
+          echo "brain_sha=$brain_sha" >> "$GITHUB_OUTPUT"
           python brain/scripts/select_niakvio_guidance_page.py \
             --targets "$RUNNER_TEMP/niakvio-guidance-targets.txt" \
             "${previous_args[@]}" \
@@ -454,7 +455,7 @@ jobs:
             --repo "$GITHUB_REPOSITORY" \
             --ref main \
             -f niakvio_sha="${{ steps.source.outputs.sha }}" \
-            -f brain_sha="$(git -C brain rev-parse HEAD)" \
+            -f brain_sha="${{ steps.page.outputs.brain_sha }}" \
             -f target_providers="${{ steps.cohort.outputs.csv }}" \
             -f page_size="${{ inputs.page_size || '8' }}"
           echo "FIELD_NIAKVIO_GUIDANCE_CONTINUE remaining=${{ steps.page.outputs.remaining }} source=${{ steps.source.outputs.sha }}"
