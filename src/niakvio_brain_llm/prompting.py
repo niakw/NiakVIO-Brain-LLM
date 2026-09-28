@@ -442,9 +442,9 @@ def _force_window_kwargs_for_request(request: RepairRequest) -> dict[str, int]:
     # causal choice while bounding prefill cost. Unit ids stay deterministic and
     # exact current bytes remain available to Brain validation outside the prompt.
     return (
-        {"max_chars": 2200, "max_windows": 2, "max_units": 4}
+        {"max_chars": 1600, "max_windows": 2, "max_units": 3}
         if feedback
-        else {"max_chars": 2600, "max_windows": 3, "max_units": 6}
+        else {"max_chars": 2000, "max_windows": 2, "max_units": 4}
     )
 
 
@@ -673,9 +673,9 @@ def build_force_prompt_payload(
     # model does not need those same bytes duplicated verbatim as context.
     # Keep a smaller context view to reduce CPU prompt ingestion at fleet scale.
     context_window_kwargs = (
-        {"max_chars": 1000, "max_windows": 1}
+        {"max_chars": 650, "max_windows": 1}
         if validation_feedback is not None
-        else {"max_chars": 1400, "max_windows": 2}
+        else {"max_chars": 800, "max_windows": 1}
     )
     registered = context.get("registered_patch_sources")
     target: dict[str, Any] = {}
