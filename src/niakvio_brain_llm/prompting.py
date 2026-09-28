@@ -746,6 +746,16 @@ def build_force_prompt_payload(
             "lastOutcome": _clip(row.get("lastOutcome"), 60),
             "consecutiveFailures": int(row.get("consecutiveFailures") or 0),
             "executionObserved": row.get("executionObserved") is True,
+            "rejectedMechanisms": [
+                {
+                    "scope": _clip(item.get("scope"), 40),
+                    "operation": _clip(item.get("operation"), 40),
+                    **({"family": _clip(item.get("family"), 80)} if item.get("family") else {}),
+                    **({"path": _clip(item.get("path"), 160)} if item.get("path") else {}),
+                }
+                for item in (row.get("lastMutationSummary") or [])[:4]
+                if isinstance(item, dict)
+            ],
         }
         for row in (context.get("advisor_experiment_history") or [])
         if isinstance(row, dict)
