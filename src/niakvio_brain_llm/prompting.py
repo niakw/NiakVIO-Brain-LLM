@@ -514,7 +514,7 @@ def build_force_prompt_payload(
             "status": "FULL OK",
             "source_kind": _clip(raw.get("source_kind"), 180),
             "technical_features": [str(x)[:40] for x in (raw.get("technical_features") or [])[:8]],
-            "snippet": _clip(raw.get("snippet"), 520),
+            "snippet": _clip(raw.get("snippet"), 500),
             "proof_authority": False,
             "copy_policy": "pattern_reference_only",
             "novelty_allowed": True,
