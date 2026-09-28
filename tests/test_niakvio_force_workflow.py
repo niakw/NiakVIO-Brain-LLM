@@ -47,3 +47,7 @@ assert '-f brain_sha="$(git -C brain rev-parse HEAD)"' in workflow
 
 assert "niakvio-private-guidance-v3-${{ inputs.brain_sha || github.sha }}" in workflow
 assert "cancel-in-progress: false" in workflow
+
+assert 'echo "brain_sha=$brain_sha" >> "$GITHUB_OUTPUT"' in workflow
+assert '-f brain_sha="${{ steps.page.outputs.brain_sha }}"' in workflow
+assert '-f brain_sha="$(git -C brain rev-parse HEAD)"' not in workflow
