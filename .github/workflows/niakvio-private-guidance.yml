@@ -26,7 +26,10 @@ permissions:
 
 concurrency:
   group: niakvio-private-guidance-v2
-  cancel-in-progress: true
+  # Continuation pages dispatch the same workflow before the current page has
+  # fully finished artifact/post steps. Queue them instead of cancelling the
+  # page that just published durable state.
+  cancel-in-progress: false
 
 jobs:
   guidance:
