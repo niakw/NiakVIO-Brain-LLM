@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 from typing import Any
 
 from .contracts import RepairRequest
@@ -444,6 +446,12 @@ def _force_edit_units(value: Any, failure_class: str, *, max_chars: int = 2600, 
     windows = _force_source_windows(text, failure_class, max_chars=max_chars, max_windows=max_windows)
     ranked = []
     seen = set()
+    family_key = str(failure_class or "").strip().casefold()
+    family_keywords = tuple(
+        str(keyword or "").strip().casefold()
+        for keyword in _FORCE_SOURCE_KEYWORDS.get(family_key, ())
+        if str(keyword or "").strip()
+    )
 
     def safe(fragment: str, absolute: int, *, max_len: int = 320) -> bool:
         stripped = fragment.strip()
@@ -514,6 +522,53 @@ def _force_edit_units(value: Any, failure_class: str, *, max_chars: int = 2600, 
             statement_start = index + 1
 
         candidates.sort()
+
+        # Causally named functions are available as exact bounded units when a
+        # repair cannot be expressed by one or a few adjacent statements. The
+        # model still selects a stable unit id; Brain owns current bytes.
+        function_units: list[tuple[int, int, str]] = []
+        function_pattern = re.compile(
+            r"\\b(?:async\\s+)?function\\s+([A-Za-z_$][A-Za-z0-9_$]*)\\s*\\([^)]*\\)\\s*\\{"
+        )
+        for match in function_pattern.finditer(source):
+            name = str(match.group(1) or "").casefold()
+            if family_keywords and not any(keyword in name for keyword in family_keywords):
+                continue
+            brace = source.find("{", match.start(), match.end() + 1)
+            if brace < 0:
+                continue
+            quote = ""
+            escaped = False
+            depth = 0
+            end = -1
+            for cursor in range(brace, len(source)):
+                char = source[cursor]
+                if quote:
+                    if escaped:
+                        escaped = False
+                        continue
+                    if char == "\\":
+                        escaped = True
+                        continue
+                    if char == quote:
+                        quote = ""
+                    continue
+                if char in {'"', "'", "`"}:
+                    quote = char
+                    continue
+                if char == "{":
+                    depth += 1
+                elif char == "}":
+                    depth -= 1
+                    if depth == 0:
+                        end = cursor + 1
+                        break
+            if end < 0:
+                continue
+            fragment = source[match.start():end]
+            if 24 <= len(fragment.strip()) <= 1800:
+                function_units.append((match.start(), end, "function_unit"))
+
         expanded: list[tuple[int, int, str]] = [(left, right, "statement") for left, right in candidates]
         # Add bounded adjacent statement sequences. Gaps must be whitespace only,
         # so a sequence never crosses a brace or another structural delimiter.
@@ -532,17 +587,20 @@ def _force_edit_units(value: Any, failure_class: str, *, max_chars: int = 2600, 
                     break
                 expanded.append((left, end, "statement_sequence"))
 
+        expanded.extend(function_units[:3])
+
         for left, right, kind in expanded:
             fragment = source[left:right]
             absolute = base + left
             key = (absolute, absolute + len(fragment))
-            if key in seen or not safe(fragment, absolute, max_len=700 if kind == "statement_sequence" else 320):
+            max_len = 1800 if kind == "function_unit" else 700 if kind == "statement_sequence" else 320
+            if key in seen or not safe(fragment, absolute, max_len=max_len):
                 continue
             seen.add(key)
             center = left + max(1, len(fragment)) // 2
             contains_focus = left <= focus < right
             distance = 0 if contains_focus else abs(center - focus)
-            kind_rank = 0 if kind == "statement_sequence" else 1
+            kind_rank = 0 if kind == "function_unit" else 1 if kind == "statement_sequence" else 2
             ranked.append(((0 if contains_focus else 1, kind_rank, distance, window_index, absolute), {
                 "window_id": str(window.get("id") or ""),
                 "offset": absolute,
