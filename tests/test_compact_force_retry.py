@@ -113,7 +113,8 @@ class CompactForceRetryTest(unittest.TestCase):
         self.assertIn('if args.mode == "repair" and not args.advisor_only:', script)
         self.assertIn("_force_scope_order", script)
         scope_order = script[script.index("def _force_scope_order"):script.index("def _run_force_scope")]
-        self.assertLess(scope_order.index('scopes.append("provider_patch")'), scope_order.index('scopes.append("provider_bloc")'))
+        self.assertIn("structural_gap =", scope_order)
+        self.assertLess(scope_order.index('scopes.append("provider_bloc")'), scope_order.index('scopes.append("provider_patch")'))
         self.assertIn("scoped_request.allowed_mutations = [scope]", script)
         self.assertIn("FIELD_BRAIN_FORCE_SCOPE_SELECTED", script)
         self.assertIn("_validation_feedback(", script)
@@ -127,6 +128,8 @@ class CompactForceRetryTest(unittest.TestCase):
         self.assertIn('max_validation_corrections = 3 if scope == "provider_bloc" else 1', script)
         self.assertIn("for correction_index in range(1, max_validation_corrections + 1):", script)
         self.assertIn("helper_collision", script)
+        self.assertIn("helper_declaration_removed", script)
+        self.assertIn("preserve its exact original", script)
         self.assertIn("targeted-regression-current", script)
         self.assertIn("prior_feedback", script)
         self.assertIn("window-local edit in the same scope or abstain", script)
