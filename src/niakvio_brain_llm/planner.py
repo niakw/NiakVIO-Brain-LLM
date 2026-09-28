@@ -55,7 +55,7 @@ Rules:
 - Existing-file replace <=640 chars; provider_bloc replace <=1200 chars.
 - Preserve syntax/function boundaries; do not emit partial function declarations.
 - FULL OK references are optional inspiration only: adapt/combine/ignore them or invent a new provider-local mechanism. Never copy provider-specific network facts.
-- force_validation_feedback means the previous shape failed; choose a materially different unit/replacement in the same scope or abstain.
+- force_validation_feedback means the previous shape failed; choose a materially different unit/replacement in the same scope or abstain.\n- prior_force_sandbox_failures are executed negative evidence: if a prior edit applied but did not improve playable proof, do not make a cosmetic variant of that mechanism; choose a materially different causal mechanism/unit or abstain.
 If no supplied editable unit can safely express the repair, return edit:null."""
 
 
