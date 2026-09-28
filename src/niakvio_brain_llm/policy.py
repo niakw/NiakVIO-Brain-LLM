@@ -52,6 +52,28 @@ def _has_targeted_provider_evidence(observations: Any) -> bool:
             return True
     return False
 
+def _has_current_census_provider_evidence(observations: Any) -> bool:
+    """Accept only evidence already integrated into the current census row."""
+    for row in observations or []:
+        if not isinstance(row, dict):
+            continue
+        if str(row.get("source") or "").strip().casefold() != "census_current":
+            continue
+        value = row.get("value")
+        if not isinstance(value, dict) or value.get("testedThisRun") is not True:
+            continue
+        if (
+            value.get("routeProof")
+            or value.get("candidateProof")
+            or value.get("residentialProviderReplayEvidence")
+        ):
+            return True
+        depths = " ".join(str(item or "").casefold() for item in value.get("evidenceDepth") or [])
+        if "chain_reached" in depths or "route_proven" in depths:
+            return True
+    return False
+
+
 def _is_checkout_evidence_request(observations: Any) -> bool:
     return any(
         isinstance(row, dict)
@@ -112,13 +134,16 @@ def build_mutation_policy(
     if (
         failure in TARGETED_EVIDENCE_FAILURES
         and _is_checkout_evidence_request(request.observations)
-        and not _has_targeted_provider_evidence(request.observations)
+        and not (
+            _has_targeted_provider_evidence(request.observations)
+            or _has_current_census_provider_evidence(request.observations)
+        )
     ):
         return {
             "allow_mutations": False,
             "allowed_scopes": [],
             "force_abstain": True,
-            "reason": "fresh targeted provider evidence is required before patching",
+            "reason": "fresh targeted or current-census provider evidence is required before patching",
         }
 
     if not context.get("authored_module"):
