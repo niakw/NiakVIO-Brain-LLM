@@ -155,7 +155,7 @@ def validate_mutation(
             raise ValueError("provider_bloc family must be a bounded snake_case identifier")
         if family in BLOC_RESERVED_FAMILIES:
             raise ValueError("provider_bloc family must be descriptive, not a contract placeholder")
-        if not find or len(find) > 320 or not replace or len(replace) > 1800:
+        if not find or len(find) > 1800 or not replace or len(replace) > 1800:
             raise ValueError("provider_bloc find/replace is missing or oversized")
         if find == replace:
             raise ValueError("provider_bloc mutation is a no-op")
