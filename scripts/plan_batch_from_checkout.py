@@ -407,9 +407,13 @@ def main() -> int:
                         flush=True,
                     )
                     return [row]
+                abstain_reason = ""
+                if isinstance(proposal, dict):
+                    abstain_reason = str(proposal.get("abstain_reason") or "")
+                safe_reason = re.sub(r"[^a-zA-Z0-9._:-]+", "_", abstain_reason.strip())[:160] or "unspecified"
                 print(
                     "FIELD_BRAIN_FORCE_SCOPE_ABSTAIN "
-                    f"provider={provider} scope={scope}",
+                    f"provider={provider} scope={scope} reason={safe_reason}",
                     flush=True,
                 )
             if last_row is not None:
