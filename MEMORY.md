@@ -349,3 +349,13 @@
 - GitHub CPU remains the expensive path for the small subset that genuinely needs Qwen synthesis. Prompt context is now deduplicated from exact editable-unit bytes: editable units are still derived from the wider causal windows, while the displayed context window is smaller.
 - Scale principle: healthy providers never enter LLM repair; the Brain operates on the repair queue. For large catalogues, NiakVIO already has sharded targeted recovery (8 shards, up to 20 probe workers each); Brain guidance paging is independently bounded and resumable.
 - Current validation state at this checkpoint: paging/orchestration improvements are CI-backed; the fresh-evidence 14-provider Force replan is still running and must not be recorded as repaired until NiakVIO current-byte validation succeeds.
+
+
+## 2026-09-28 — WAF/client differential is now causal Brain input
+
+- Fresh targeted recovery on the current repair queue proved that census/provider-network errors alone are insufficient to decide provider-code ownership.
+- Brain now ingests `automation/provider-waf-browser-session-latest.json` alongside targeted regression evidence.
+- If a provider-origin 401/403/429 persists across ordinary browser and residential evidence with no content profile reaching the target, the failure remains `transport_environment_gap` and provider mutation authority is withheld.
+- If the same failed target is reachable through an audited Nuvio-like profile (UA browser, direct HTTP approximation, or OkHttp JVM), Brain classifies the differential as `client_transport_gap`; this maps to the harness/client layer and forbids provider mutation.
+- This prevents false provider patches for transport/TLS/client-profile failures while still allowing real provider-local zero-result/terminal-extraction failures to enter Force.
+- Current NiakVIO targeted evidence run `36415009826` covered all 13 providers still in the repair queue after Vostfree became FULL OK. The current provider-code queue must be derived from this evidence, not from census status alone.
