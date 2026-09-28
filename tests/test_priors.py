@@ -96,6 +96,72 @@ class PriorTests(unittest.TestCase):
         )
         self.assertGreaterEqual(prior["confidence"], 0.99)
 
+    def test_residential_provider_replay_outranks_targeted_waf_prior(self):
+        prior = build_causal_prior(
+            RepairRequest(
+                provider_id="demo",
+                failure_class="route_proven_gap",
+                status="ROUTE PROVEN",
+                observations=[
+                    {
+                        "source": "targeted-regression-current",
+                        "value": {
+                            "debugStages": {"movie": "provider_waf_challenge"},
+                            "network": {"movie": [{"host": "provider.example", "status": 403}]},
+                        },
+                    },
+                    {
+                        "source": "waf-client-differential-current",
+                        "value": {
+                            "residentialReplay": [{
+                                "lane": "movie",
+                                "status": "no_streams",
+                                "debugStage": "provider_zero_before_provider_network",
+                                "raw": 0,
+                                "playable": 0,
+                                "verified": 0,
+                                "contradictions": 0,
+                                "identitySafe": True,
+                            }],
+                        },
+                    },
+                ],
+            ),
+            [],
+        )
+        self.assertEqual(prior["target_layer"], "provider")
+        self.assertEqual(prior["source"], "failure_class_taxonomy")
+        self.assertEqual(prior["strategy_prior"], "search_detail_player_terminal_traversal")
+
+    def test_chain_replay_outranks_targeted_waf_prior(self):
+        prior = build_causal_prior(
+            RepairRequest(
+                provider_id="demo",
+                failure_class="chain_terminal_gap",
+                status="CHAIN REACHED",
+                observations=[
+                    {
+                        "source": "targeted-regression-current",
+                        "value": {"debugStages": {"movie": "provider_waf_challenge"}},
+                    },
+                    {
+                        "source": "waf-client-differential-current",
+                        "value": {
+                            "residentialReplay": [{
+                                "status": "no_streams",
+                                "debugStage": "provider_zero_before_provider_network",
+                                "contradictions": 0,
+                                "identitySafe": True,
+                            }],
+                        },
+                    },
+                ],
+            ),
+            [],
+        )
+        self.assertEqual(prior["target_layer"], "provider")
+        self.assertEqual(prior["strategy_prior"], "terminal_media_extractor_with_playback_validation")
+
     def test_chain_terminal_taxonomy_is_provider(self):
         prior = build_causal_prior(
             RepairRequest(provider_id="demo", failure_class="chain_terminal_gap"),
