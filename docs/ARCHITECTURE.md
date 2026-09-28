@@ -312,10 +312,18 @@ Editable-unit granularity is progressive: statement units for local edits, bound
 
 ### WAF/client differential as a causal routing input
 
-Provider-network failures are not sufficient by themselves to grant provider mutation authority. Brain also consumes NiakVIO's current WAF/client differential ledger.
+Provider-network failures are not sufficient by themselves to grant or deny provider mutation authority. Brain consumes NiakVIO's current WAF/client differential ledger **and** the stronger full residential provider replay when available.
 
-- Challenge/error persists across ordinary browser and residential paths with no successful content profile: classify as `transport_environment_gap` and withhold provider mutation.
-- The failed target becomes reachable with an audited Nuvio-like transport profile while provider execution still fails: classify as `client_transport_gap`, route to the harness/client layer, and withhold provider mutation.
-- Current provider-local zero-result/terminal evidence without such a transport differential remains eligible for provider repair.
+Evidence precedence is:
+1. full residential provider replay;
+2. WAF/client-profile differential;
+3. targeted network status/HTTP code.
 
-This distinction is required for fleet-scale operation: hundreds of providers must not spend LLM mutation budget on transport/TLS/IP-reputation failures. Targeted recovery and WAF/client evidence therefore precede expensive Force synthesis whenever causality is not already established.
+A narrow 401/403/429 is never sufficient by itself to classify a provider as environment-only.
+
+- If full residential provider replay completes identity-safe without a WAF/timeout stage but still ends in provider zero/error, retain the ordinary provider failure class so Force can repair provider logic.
+- If browser and residential probes both confirm persistent challenge and no stronger provider replay contradicts that result, classify as `transport_environment_gap` and withhold provider mutation.
+- If the failed target becomes reachable with an audited Nuvio-like profile and no stronger full-provider replay has isolated provider-local failure, classify as `client_transport_gap` and route to the harness/client layer.
+- Current provider-local zero-result/terminal evidence remains eligible for provider repair.
+
+This ordering is required for fleet-scale operation: hundreds of providers must not spend LLM mutation budget on transport/TLS/IP-reputation failures, but WAF seeds must also not suppress valid provider repair when the complete provider runtime already disproves transport as the sole blocker.
