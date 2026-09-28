@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "niakvio_sha": "e74fdc16fc4a2f9c36aebb357944e7c310cf407a",
-  "reason": "Fresh three-family provider-local proof from targeted diagnostics: route-to-terminal html scraper, terminal-extraction html scraper, terminal-extraction direct-media. Require current targeted evidence before synthesis.",
+  "reason": "three-family proof after abstain sanitizer import fix; preserve adaptive Force quality budgets",
   "requested_repair_queue": [
     "4khdhub",
     "mallumv",
