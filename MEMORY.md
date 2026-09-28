@@ -369,3 +369,11 @@
 - If residential full-provider replay finishes identity-safe with no WAF/timeout stage but still produces zero/error, Brain keeps the ordinary provider failure class (route/chain/provider gap) so Force may repair provider logic.
 - Only persistent WAF confirmed across browser and residential evidence may route to `transport_environment_gap`; client-transport routing remains reserved for audited Nuvio-like reachability when no stronger full-provider replay has isolated provider-local failure.
 - Brain CI is green on SHA 34941459752f5f820df7f794b577cc484503cf57; clean 13-provider replan trigger SHA c017874390e8630bc0cad0e66cb8017b7768dc6e is running against NiakVIO 6f3beaad1f6fc47f55f63edad06c4a1d2365a95b.
+
+
+## 2026-09-28 — Local FORCE evidence persistence rule
+
+- Local Mac experiments are development evidence only until their durable verdict is written to repository memory/corpus and their candidate outcome is externally verified by NiakVIO.
+- The 2026-09-28 reboot removed ephemeral `/tmp/niakvio-*` raw artifacts. The durable conclusions were already recorded in this `MEMORY.md` (including the AllAnime/MalluMV/4KHDHub local cohorts and 0/2 isolated NiakVIO acceptance), but raw temp bytes were not recoverable.
+- Going forward, any local FORCE batch that materially changes learning must persist a sanitized result/ledger under repository-owned data or `MEMORY.md` before the local session is considered complete. `/tmp` alone is never an accepted learning store.
+- Existing local dirty changes were audited against current `main`; causal family edit-unit priority was the only still-useful missing behavior and was reintroduced on current HEAD with a regression test, without reverting newer compact-context changes.
