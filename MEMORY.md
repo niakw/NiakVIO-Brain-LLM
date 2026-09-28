@@ -462,3 +462,12 @@
 - The causal prior now checks the current `waf-client-differential-current.residentialReplay` evidence before honoring a narrow targeted interactive-challenge seed. An identity-safe, contradiction-free replay whose debug stage is not WAF/timeout preserves the provider failure taxonomy and allows provider repair synthesis.
 - Tests cover both `route_proven_gap` and `chain_terminal_gap` preservation. Brain CI #885 passed on `bfcf26bf752176e2d6c4c96241870e434e182b18`.
 - Persistent/current challenge evidence without a clean full-provider replay remains non-provider/harness evidence; this change does not authorize provider code to bypass real WAF.
+
+## 2026-09-28 — FORCE fresh-evidence gate repaired
+
+- Brain executable-guidance runs #138/#139 proved that all 13 current symptomatic providers were provider-layer failures in repair mode (`CHAIN REACHED`, `ROUTE PROVEN`, or provider transport gap), but every scoped FORCE attempt returned immediately with `routing_modes={"probe":...}`, `llm_calls=0` and `FIELD_BRAIN_FORCE_SCOPE_ABSTAIN ... reason=unspecified`.
+- Root cause: mutation policy required `targeted-regression-current` for route/chain/provider-transport failures. The targeted artifact is intentionally discarded when its `sourceCensusRunId` differs from the current census, but policy ignored equally authoritative proof already integrated into the current census. This created a permanent no-LLM loop after every fresh census.
+- Adapter now carries `testedThisRun`, `residentialProviderReplayClass` and `residentialProviderReplayEvidence` into `census_current`.
+- Mutation policy accepts current-census provider proof only when `testedThisRun=true` and the row carries route proof, candidate proof, residential provider replay evidence, or explicit route/chain evidence depth. Stale current-census rows remain fail-closed.
+- Tests cover current proof allowed, stale proof rejected, and replay fields reaching policy context. CI #892/#893 passed.
+- The standalone WAF/replay artifact remains insufficient freshness authority because it has no census/SHA pin; this fix deliberately does not trust it directly.
