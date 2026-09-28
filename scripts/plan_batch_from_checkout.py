@@ -202,7 +202,14 @@ def main() -> int:
         scoped_request.advisor_only = False
         scoped_request.allowed_mutations = [scope]
 
-        retry_tokens = max(512, min(max(int(args.max_tokens), 512), 768))
+        scope_token_cap = {
+            "provider_data": 192,
+            "provider_patch": 320,
+            "provider_js": 320,
+            "provider_bloc": 448,
+        }.get(scope, 320)
+        primary_tokens = max(128, min(int(args.max_tokens), scope_token_cap))
+        retry_tokens = max(128, min(primary_tokens, scope_token_cap))
         validation_timeout = max(
             60,
             min(int(args.timeout_seconds), 90),
@@ -323,7 +330,7 @@ def main() -> int:
             outcome = _run_once(
                 scoped_request,
                 timeout_seconds=max(45, min(int(args.timeout_seconds), 120)),
-                max_tokens=max(512, min(int(args.max_tokens), 768)),
+                max_tokens=primary_tokens,
             )
             return _row(position, 1, provider, scoped_request, outcome), None
         except ValueError as validation_exc:
