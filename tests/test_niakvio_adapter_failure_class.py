@@ -107,6 +107,51 @@ class AdapterFailureClassTests(unittest.TestCase):
             self.assertEqual(refined["splitReason"], "observed-signature-divergence")
             self.assertEqual(refined["networkShape"], ["anime:GET:example.test:403:/search/{id}"])
 
+    def test_fresh_targeted_waf_routes_outside_provider_mutation(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "automation").mkdir(parents=True)
+            (root / "automation" / "provider-census-status.json").write_text(
+                json.dumps({
+                    "runId": "run-waf",
+                    "providers": [{
+                        "provider": "demo",
+                        "status": "NO PROOF",
+                        "dominantIssue": "provider_waf_challenge×2",
+                        "declaredLanes": ["movie", "tv"],
+                    }],
+                }),
+                encoding="utf-8",
+            )
+            for name in ("brain-repair-experience.json", "brain-repair-memory.json"):
+                (root / "automation" / name).write_text("{}", encoding="utf-8")
+            (root / "automation" / "provider-targeted-regression-recovery-latest.json").write_text(
+                json.dumps({
+                    "providers": {
+                        "demo": {
+                            "debugStages": {
+                                "movie": "provider_waf_challenge",
+                                "tv": "provider_waf_challenge",
+                            },
+                            "statuses": {"movie": "no_streams", "tv": "no_streams"},
+                            "verifiedLanes": [],
+                            "playableLanes": [],
+                            "network": {
+                                "movie": [{"method": "GET", "host": "provider.example.org", "path": "/filter", "status": 403}],
+                                "tv": [{"method": "GET", "host": "provider.example.org", "path": "/filter", "status": 403}],
+                            },
+                        }
+                    }
+                }),
+                encoding="utf-8",
+            )
+            (root / "automation" / "provider-repair-batch-refined-latest.json").write_text(
+                json.dumps({"sourceRunId": "run-waf", "groups": []}),
+                encoding="utf-8",
+            )
+            request = request_from_checkout(root, "demo")
+            self.assertEqual(request.failure_class, "transport_environment_gap")
+
     def test_stale_refined_evidence_is_not_injected(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
