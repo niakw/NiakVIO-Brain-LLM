@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "77985e9d316fbc600399d039dbc805ebc0b07cf8",
-  "reason": "Single-provider proof milestone after one week of zero fleet repairs. Validate recovered Brain compiler end-to-end on 4KHDHub only: current TMDB succeeds, current provider search returns HTTP 200 with many anchors, but runtime yields provider_network_zero_result before selecting a detail. Brain must own any provider mutation; NiakVIO remains isolated sandbox/playback/identity authority. Do not broaden cohort until one provider exits repairQueue.",
+  "niakvio_sha": "d067027893b1f19b7e7c511d21b2dfaed74f3cf7",
+  "reason": "Frozen single-provider 4KHDHub witness after CI-green compiler + exact dedicated runtime Bloc binding + current live DOM structure evidence. Current proof: TMDB 200; 4khdhub.one search 200; movie HTML still exposes movie-card/movie-card-title/movie-card-format/movie-card-meta; runtime stops before detail request. Brain may mutate only provider-owned current bytes; dedicated PROVIDER.4KHDHUB.RUNTIME.V1 must outrank generic ProviderBase. NiakVIO remains isolated sandbox/playback/identity authority. Do not broaden cohort until this provider either validates or yields a precise bounded blocker.",
   "requested_repair_queue": [
     "4khdhub"
   ]
