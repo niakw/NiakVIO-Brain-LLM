@@ -228,7 +228,7 @@ class PlannerTests(unittest.TestCase):
         self.assertNotIn("-function first(){return null;}", mutation["diff"])
         self.assertNotIn("-function helper(){return null;}", mutation["diff"])
 
-    def test_compact_force_minimizes_partial_function_copy_before_validation(self):
+    def test_compact_force_rejects_partial_function_copy_before_minimization(self):
         source = (
             "function resolve(url){const score=55;if(score<55)return null;return url;}\n"
         )
@@ -242,19 +242,17 @@ class PlannerTests(unittest.TestCase):
             },
             "abstain_reason": "",
         })
-        proposal = BrainPlanner(StaticBackend(response)).plan(
-            RepairRequest(
-                provider_id="demo",
-                failure_class="route_proven_gap",
-                status="ROUTE PROVEN",
-                provider_context={"authored_module": source},
-                allowed_mutations=["provider_js"],
-            ),
-            compact_force=True,
-        )
-        mutation = proposal.mutations[0]
-        self.assertIn("-function resolve(url){const score=55;if(score<55)return null;return url;}", mutation["diff"])
-        self.assertIn("+function resolve(url){const score=55;if(score<60)return null;return url;}", mutation["diff"])
+        with self.assertRaisesRegex(ValueError, "structurally incomplete"):
+            BrainPlanner(StaticBackend(response)).plan(
+                RepairRequest(
+                    provider_id="demo",
+                    failure_class="route_proven_gap",
+                    status="ROUTE PROVEN",
+                    provider_context={"authored_module": source},
+                    allowed_mutations=["provider_js"],
+                ),
+                compact_force=True,
+            )
 
     def test_compact_force_file_edit_rejects_non_unique_find(self):
         response = json.dumps({
@@ -737,6 +735,7 @@ class PlannerTests(unittest.TestCase):
                 request,
                 {
                     "scope": "provider_bloc",
+                    "family": "transport_response",
                     "unit_id": unit["id"],
                     "replace": "if(row.referer&&!headers.Referer)headers.Referer=recipe.referer;",
                 },
@@ -777,7 +776,7 @@ class PlannerTests(unittest.TestCase):
                 },
             )
 
-    def test_compact_force_provider_bloc_rejects_explicit_helper_rename_before_minimization(self):
+    def test_compact_force_provider_bloc_normalizes_explicit_helper_wrapper_to_selected_unit(self):
         source = "function _routeKind(route){return route;} function _extractUrls(text){return [text];}"
         request = RepairRequest(
             provider_id="demo",
@@ -798,16 +797,18 @@ class PlannerTests(unittest.TestCase):
             row for row in payload["new_bloc_target"]["editable_units"]
             if row.get("kind") == "function_unit" and "_routeKind" in row.get("source", "")
         )
-        with self.assertRaisesRegex(ValueError, "may not silently remove a helper function declaration"):
-            _compact_edit_to_mutation(
-                request,
-                {
-                    "scope": "provider_bloc",
-                    "family": "route_proven_gap",
-                    "unit_id": unit["id"],
-                    "replace": "function _extractUrls(text){return [text,text];}",
-                },
-            )
+        mutation = _compact_edit_to_mutation(
+            request,
+            {
+                "scope": "provider_bloc",
+                "family": "route_proven_gap",
+                "unit_id": unit["id"],
+                "replace": "function _extractUrls(text){return [text,text];}",
+            },
+        )
+        self.assertIn("function _routeKind(route){", mutation["replace"])
+        self.assertNotIn("function _extractUrls", mutation["replace"])
+        self.assertIn("return [text,text];", mutation["replace"])
 
     def test_compact_force_provider_bloc_allows_long_exact_function_anchor(self):
         old_body = "a" * 900
