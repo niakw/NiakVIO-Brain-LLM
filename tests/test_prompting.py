@@ -265,9 +265,10 @@ class PromptingTests(unittest.TestCase):
             if row.get("kind") == "function_unit"
         ]
         joined = "\n".join(row.get("source", "") for row in functions)
+        self.assertEqual(len(functions), 2)
         self.assertIn("function resolve(", joined)
-        self.assertIn("function candidateDownloadLinks(", joined)
         self.assertIn("function modLinks(", joined)
+        self.assertNotIn("function unrelated(", joined)
         self.assertTrue(
             any(
                 row.get("reason") == "causal_call_neighbor"
@@ -275,6 +276,86 @@ class PromptingTests(unittest.TestCase):
                 for row in functions
             )
         )
+
+    def test_route_gap_prefers_detail_selector_as_causal_pair(self):
+        source = (
+            "function req(a){return a;} "
+            "async function meta(q){return q;} "
+            "async function detail(q,m){var page=await fetch('/?s='+m.title);"
+            "var cards=classBlocks(await page.text(),'movie-card');return cards[0]||null;} "
+            "function classBlocks(html,cls){return [];} "
+            "async function resolve(args){var q=req(args),m=await meta(q);return await detail(q,m);} "
+            "function unrelated(){return 1;}"
+        )
+        request = RepairRequest(
+            provider_id="demo",
+            failure_class="route_proven_gap",
+            status="ROUTE PROVEN",
+            provider_context={
+                "registered_patch_sources": {
+                    "scripts/provider_patches/demo_runtime_v1.py": source,
+                },
+            },
+        )
+        payload = build_force_prompt_payload(
+            request,
+            {"target_layer": "provider", "confidence": 0.96, "strategy_prior": "route"},
+            {"allow_mutations": True, "allowed_scopes": ["provider_patch"]},
+        )
+        functions = [
+            row
+            for row in payload["mutation_target"]["editable_units"]
+            if row.get("kind") == "function_unit"
+        ]
+        joined = "\n".join(row.get("source", "") for row in functions)
+        self.assertEqual(len(functions), 2)
+        self.assertIn("function resolve(", joined)
+        self.assertIn("function detail(", joined)
+        self.assertNotIn("function unrelated(", joined)
+
+    def test_force_targeted_observation_keeps_shape_hint_and_summarizes_network(self):
+        request = RepairRequest(
+            provider_id="demo",
+            failure_class="route_proven_gap",
+            status="ROUTE PROVEN",
+            observations=[{
+                "source": "targeted-regression-current",
+                "value": {
+                    "debugStages": {"movie": "provider_network_zero_result"},
+                    "statuses": {"movie": "no_streams"},
+                    "sampleTitles": {"movie": ["Sinners"]},
+                    "structureHints": [
+                        "movie:classes=movie-card,movie-card-title,movie-card-format"
+                    ],
+                    "network": {
+                        "movie": [{
+                            "host": "provider.example",
+                            "status": 200,
+                            "shape": {"kind": "html", "anchors": 42},
+                        }],
+                    },
+                },
+            }],
+            provider_context={
+                "registered_patch_sources": {
+                    "scripts/provider_patches/demo_runtime_v1.py": (
+                        "async function detail(q){return await fetch(q.url);} "
+                        "async function resolve(a){return await detail({url:a[0]});}"
+                    ),
+                },
+            },
+        )
+        payload = build_force_prompt_payload(
+            request,
+            {"target_layer": "provider", "confidence": 0.96, "strategy_prior": "route"},
+            {"allow_mutations": True, "allowed_scopes": ["provider_patch"]},
+        )
+        observation = payload["current_observations"][0]
+        value = observation["value"]
+        self.assertIn("structureHints", value)
+        self.assertIn("movie-card-title", value["structureHints"][0])
+        self.assertEqual(value["networkSummary"], ["movie:provider.example:200:html"])
+        self.assertNotIn("network", value)
 
     def test_force_edit_units_follow_second_hop_runtime_callees(self):
         source = (
