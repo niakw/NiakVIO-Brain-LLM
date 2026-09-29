@@ -11,11 +11,23 @@ class ResponseShapeAdapterTests(unittest.TestCase):
             "anchors": 30,
             "classTokens": ["movie-card", "episode_row", "bad token", "1bad", "x", "A" * 60],
             "idTokens": ["results", "download-list", "bad token", "2bad"],
+            "classFacts": [
+                {"token": "movie-card", "count": 4, "tags": ["div"], "selfHref": 0, "nestedAnchors": 4, "signals": ["movie", "year", "forbidden"]},
+                {"token": "bad token", "count": 99, "tags": ["script"], "selfHref": 99, "nestedAnchors": 99, "signals": ["download"]},
+            ],
             "markers": ["download", "episode", "forbidden"],
         })
         self.assertEqual(shape["classTokens"], ["movie-card", "episode_row"])
         self.assertEqual(shape["idTokens"], ["results", "download-list"])
         self.assertEqual(shape["markers"], ["download", "episode"])
+        self.assertEqual(shape["classFacts"], [{
+            "token": "movie-card",
+            "count": 4,
+            "tags": ["div"],
+            "selfHref": 0,
+            "nestedAnchors": 4,
+            "signals": ["movie", "year"],
+        }])
         self.assertNotIn("bad token", repr(shape))
         self.assertNotIn("forbidden", repr(shape))
 
@@ -37,6 +49,9 @@ class ResponseShapeAdapterTests(unittest.TestCase):
                                     "kind": "html",
                                     "classTokens": ["movie-card", "movie-card-title", "movie-card-meta"],
                                     "idTokens": ["search", "results"],
+                                    "classFacts": [
+                                        {"token": "movie-card", "count": 5, "tags": ["div"], "selfHref": 0, "nestedAnchors": 5, "signals": ["movie", "year"]}
+                                    ],
                                     "markers": ["download", "episode"],
                                 },
                             }
@@ -51,6 +66,7 @@ class ResponseShapeAdapterTests(unittest.TestCase):
         self.assertIn("movie:classes=movie-card,movie-card-title,movie-card-meta", hint)
         self.assertIn("ids=search,results", hint)
         self.assertIn("markers=download,episode", hint)
+        self.assertIn("classFacts=[movie-card;count=5;selfHref=0;nestedAnchors=5;tags=div;signals=movie,year]", hint)
 
 
 
