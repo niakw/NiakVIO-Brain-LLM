@@ -825,13 +825,13 @@ def _force_edit_units(value: Any, failure_class: str, *, max_chars: int = 2600, 
                 break
 
     for _, row in ranked:
+        if len(selected) >= max_units:
+            break
         key = (int(row.get("offset") or 0), int(row.get("end_offset") or 0))
         if key in selected_keys:
             continue
         selected.append(row)
         selected_keys.add(key)
-        if len(selected) >= max_units:
-            break
 
     per_window = {}
     units = []
