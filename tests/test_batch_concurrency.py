@@ -38,7 +38,7 @@ for token in (
     "FIELD_BRAIN_FORCE_PROVIDER_BUDGET ",
     '120 if scope == "provider_bloc" else 90',
     "min(int(args.timeout_seconds), 180)",
-    'budget_seconds = min(budget_cap, 360)',
+    'budget_seconds = min(budget_cap, 600)',
     "force_validation_feedback",
     "FIELD_BRAIN_FORCE_SCOPE_FEEDBACK",
     "window-local edit in the same scope or abstain",
@@ -65,7 +65,7 @@ assert "--workers 1" in wf
 assert "--advisor-only" in wf
 assert "--max-tokens 768" in wf
 assert "--timeout-seconds 180" in wf
-assert "--force-provider-budget-seconds 360" in wf
+assert "--force-provider-budget-seconds 600" in wf
 assert wf.index("-np 1") < wf.index("--workers 1")
 
 print("bounded concurrent private-guidance batch contract passed")
