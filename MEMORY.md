@@ -656,3 +656,10 @@
 - Lane-prefixed hints such as `movie:classes=...` are explicitly parsed; the initial implementation missed the colon separator and the regression test caught it.
 - CI is green at `95e6f01d41c89997bc3bf6e6243a9fadae1e2624`. Regression coverage requires a `movie-card` / `movie-card-*` collision to expose `classBlocks` and `classText` within the two-unit route-gap budget.
 - This remains **repair guidance only**. No 4KHDHub provider mutation is validated yet; the next authoritative step is a single-provider 7B FORCE run against the current NiakVIO evidence, followed by NiakVIO sandbox playback/identity/non-regression proof.
+
+### 2026-09-29 — Provider hand-patch prohibition
+- Manual/provider-specific source fixes are diagnostic evidence only; they are not an acceptable terminal Brain Repair result.
+- When a provider-specific defect reveals a reusable mechanism, the Brain must generalize it into a provider-agnostic profile/strategy/layer, then generate the provider mutation itself.
+- Assistant/manual work may modify Brain infrastructure, orchestration, guards, profiles, tests and generic capability code when the Brain cannot execute; it must not retain a hand-written provider patch as the production repair.
+- Publication authority remains current-byte sandbox + playable media + identity + non-regression proof. A hand patch that passes locally is still non-authoritative until reproduced through the Brain pipeline.
+- This rule exists to keep NiakVIO scalable to hundreds of providers and to prevent repeated assistant-side repairs that bypass learning.
