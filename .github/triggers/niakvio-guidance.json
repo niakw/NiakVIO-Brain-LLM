@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "2d7c74e1402c7601e5277168703052ea9bc89955",
-  "reason": "Regenerate only the 3 FORCE #147 candidates invalidated by the pre-minimization helper-identity bug; current Brain guards complete helper identity before minimization. Reuse the other #147 abstentions as negative evidence.",
+  "niakvio_sha": "2fd4cfd674e6253b71b19a1c44ede5c019e243e7",
+  "reason": "Retry only anime-ultime, flemmix and moviesmod after enforcing body-only generation for function_unit edits and pre-minimization helper identity. Previous FORCE #147 renames are invalid negative evidence.",
   "requested_repair_queue": [
     "anime-ultime",
     "flemmix",
