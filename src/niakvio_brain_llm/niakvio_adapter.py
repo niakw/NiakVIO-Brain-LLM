@@ -120,6 +120,26 @@ def _provider_targeted_observation(payload: Any, provider_id: str) -> dict[str, 
         if safe_rows:
             network_out[str(lane)[:40]] = safe_rows
 
+    structure_hints: list[str] = []
+    for lane, values in network_out.items():
+        for value in values:
+            shape = value.get("shape") if isinstance(value, dict) else None
+            if not isinstance(shape, dict) or shape.get("kind") != "html":
+                continue
+            classes = [str(x) for x in (shape.get("classTokens") or [])[:12]]
+            ids = [str(x) for x in (shape.get("idTokens") or [])[:8]]
+            markers = [str(x) for x in (shape.get("markers") or [])[:8]]
+            parts = []
+            if classes:
+                parts.append("classes=" + ",".join(classes))
+            if ids:
+                parts.append("ids=" + ",".join(ids))
+            if markers:
+                parts.append("markers=" + ",".join(markers))
+            if parts:
+                structure_hints.append(str(lane)[:40] + ":" + ";".join(parts))
+            break
+
     return {
         "debugStages": row.get("debugStages") or {},
         "statuses": row.get("statuses") or {},
@@ -132,6 +152,7 @@ def _provider_targeted_observation(payload: Any, provider_id: str) -> dict[str, 
             if isinstance(values, list)
         },
         "network": network_out,
+        "structureHints": structure_hints[:8],
     }
 
 def _provider_waf_observation(payload: Any, provider_id: str) -> dict[str, Any]:
