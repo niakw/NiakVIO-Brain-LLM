@@ -141,7 +141,7 @@ class CompactForceRetryTest(unittest.TestCase):
         self.assertIn("window-local edit in the same scope or abstain", script)
         self.assertIn('120 if scope == "provider_bloc" else 90', script)
         self.assertIn("min(int(args.timeout_seconds), 180)", script)
-        self.assertIn('budget_seconds = min(budget_cap, 360)', script)
+        self.assertIn('budget_seconds = min(budget_cap, 600)', script)
         self.assertNotIn("timeout_seconds=150", script)
         self.assertIn("build_force_prompt_payload(", planner)
         self.assertIn('"required": ["edit", "abstain_reason"]', planner)
@@ -239,7 +239,7 @@ class CompactForceRetryTest(unittest.TestCase):
     def test_complete_wrong_function_wrapper_keeps_selected_identity(self):
         find = "async function resolveCandidate(url, ref){return await crawl(url, ref);}"
         wrapped = "async function extractUrls(url, ref){const rows=await crawl(url, ref);return rows.filter(Boolean);}"
-        rebuilt = _preserve_selected_function_envelope(find, wrapped)
+        rebuilt = _preserve_selected_function_envelope(find, wrapped, normalize_explicit_wrapper=True)
         self.assertTrue(rebuilt.startswith("async function resolveCandidate(url, ref){"))
         self.assertNotIn("function extractUrls", rebuilt)
         self.assertIn("const rows=await crawl(url, ref);", rebuilt)
