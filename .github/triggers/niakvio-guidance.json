@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "2fd4cfd674e6253b71b19a1c44ede5c019e243e7",
-  "reason": "Retry anime-ultime, flemmix and moviesmod with causal FORCE scope precedence: dedicated registered provider runtime first, generic Bloc fallback second; function-unit generation is body-only and helper identity is guarded before minimization.",
+  "niakvio_sha": "7365ed90a95d8fdf9aafe2da9c83a0fbd6d89903",
+  "reason": "Proof rerun for anime-ultime, flemmix and moviesmod after authored function-unit compiler repair: dedicated provider runtime first, body-only function edits receive deterministic envelope preservation, bounded 1800-char anchors, and shared runtime patch detection.",
   "requested_repair_queue": [
     "anime-ultime",
     "flemmix",
