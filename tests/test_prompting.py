@@ -653,10 +653,7 @@ class PromptingTests(unittest.TestCase):
 
     def test_route_force_focuses_html_class_prefix_collisions(self):
         source = (
-            "function classBlocks(html,cls){"
-            "var esc=String(cls||'');"
-            "var re=new RegExp('class=[\\"\\\'][^\\"\\\']*\\\\b'+esc+'\\\\b');"
-            "return re.test(html)?[html]:[];} "
+            "function classBlocks(html,cls){return html.indexOf(cls)>=0?[html]:[];} "
             "function classText(html,cls){return classBlocks(html,cls).join(' ');} "
             "async function detail(q){var cards=classBlocks(q.html,'movie-card');"
             "return cards.find(x=>classText(x,'movie-card-title'))||null;} "
@@ -692,7 +689,6 @@ class PromptingTests(unittest.TestCase):
         self.assertIn("function classBlocks(", joined)
         self.assertIn("function classText(", joined)
         self.assertLessEqual(len(units), 2)
-
     def test_force_prompt_preserves_all_allowed_mutation_scopes(self):
         request = RepairRequest(
             provider_id="demo",
