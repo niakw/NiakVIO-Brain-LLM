@@ -124,6 +124,31 @@ class GuidanceMergeTests(unittest.TestCase):
         self.assertEqual({r["profile"] for r in out["rows"]},{"new","keep"})
         self.assertEqual(out["providerCount"],2)
 
+    def diagnostics(self,source,brain,rows):
+        return {
+            "schemaVersion":1,
+            "sourceNiakvioSha":source,
+            "brainLlmSha":brain,
+            "providerCount":len({r["providerId"] for r in rows}),
+            "privateContentRetained":False,
+            "rows":rows,
+        }
+
+    def test_diagnostics_merge_preserves_unrefreshed_provider_trace(self):
+        source="a"*40;brain="b"*40
+        previous=self.diagnostics(source,brain,[
+            {"providerId":"a","scopeTrace":[{"scope":"provider_patch","outcome":"abstain","reason":"old"}]},
+            {"providerId":"b","scopeTrace":[{"scope":"provider_bloc","outcome":"rejected","reason":"syntax_error"}]},
+        ])
+        candidate=self.diagnostics(source,brain,[
+            {"providerId":"a","scopeTrace":[{"scope":"provider_patch","outcome":"rejected","reason":"no_op"}]},
+        ])
+        out=merge.merge(previous,candidate,{"a"},kind="diagnostics")
+        by_provider={row["providerId"]:row for row in out["rows"]}
+        self.assertEqual(by_provider["a"]["scopeTrace"][0]["reason"],"no_op")
+        self.assertEqual(by_provider["b"]["scopeTrace"][0]["reason"],"syntax_error")
+        self.assertEqual(out["providerCount"],2)
+
     def test_new_brain_revision_does_not_mix_old_rows(self):
         previous=self.force("a"*40,"b"*40,[
             {"providerId":"old","mutationFingerprint":"1"*64,"mutationContextFingerprint":"2"*64,"confidence":.9},
