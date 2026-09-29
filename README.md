@@ -186,3 +186,12 @@ experiment failed without suppressing every future experiment in the same
 strategy family. The model still has no publication or proof authority:
 NiakVIO sandbox execution, current-byte playback, identity and regression gates
 remain authoritative.
+
+
+## Provider mutation ownership
+
+Brain/LLM is the **author** of provider-local repair candidates. NiakVIO is the **verifier and publisher**.
+
+A NiakVIO orchestrator, assistant or operator must not replace a failed Brain attempt by directly hand-editing provider runtime Lego, provider JS, provider-specific override recipes or provider-local repair tests and then count that as Brain Repair success. Investigative code ideas may be converted into sanitized evidence/context, but provider-local mutations must be emitted through the Brain mutation contract and then survive NiakVIO isolated current-byte playback, identity and non-regression validation.
+
+Infrastructure changes remain legitimate when they improve the repair system itself (evidence freshness, harness, causal routing, mutation receiver, sandbox, validation, pagination, timeouts, publication guards, or genuinely generic Core behavior).
