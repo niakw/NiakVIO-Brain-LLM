@@ -33,6 +33,42 @@ def _compact(value: Any, *, depth: int = 0, string_limit: int = 500) -> Any:
         return value
     return _clip(value, string_limit)
 
+def _compact_force_observation(row: dict[str, Any]) -> dict[str, Any]:
+    source = str(row.get("source") or "").strip()
+    if source != "targeted-regression-current":
+        return _compact(row, string_limit=260)
+    value = row.get("value") if isinstance(row.get("value"), dict) else {}
+    network_summary: list[str] = []
+    network = value.get("network") if isinstance(value.get("network"), dict) else {}
+    for lane, rows in list(network.items())[:6]:
+        if not isinstance(rows, list):
+            continue
+        for item in rows[:4]:
+            if not isinstance(item, dict):
+                continue
+            shape = item.get("shape") if isinstance(item.get("shape"), dict) else {}
+            network_summary.append(
+                ":".join([
+                    str(lane)[:32],
+                    str(item.get("host") or "")[:80],
+                    str(item.get("status") or "")[:8],
+                    str(shape.get("kind") or "")[:16],
+                ])
+            )
+    return {
+        "source": source,
+        "value": {
+            "debugStages": _compact(value.get("debugStages") or {}, string_limit=120),
+            "statuses": _compact(value.get("statuses") or {}, string_limit=120),
+            "verifiedLanes": [str(x)[:32] for x in (value.get("verifiedLanes") or [])[:6]],
+            "playableLanes": [str(x)[:32] for x in (value.get("playableLanes") or [])[:6]],
+            "sampleTitles": _compact(value.get("sampleTitles") or {}, string_limit=100),
+            "structureHints": [str(x)[:240] for x in (value.get("structureHints") or [])[:6]],
+            "networkSummary": network_summary[:12],
+        },
+    }
+
+
 def compact_request(
     request: RepairRequest,
     *,
@@ -439,11 +475,11 @@ def _force_window_kwargs_for_request(request: RepairRequest) -> dict[str, int]:
     )
     failure = str(request.failure_class or "").strip().casefold()
     # Route-proven gaps are dominated by one route/search dispatcher plus
-    # the closest selector/parser helpers. Keep three units initially and two
-    # on validation retry. Chain/media gaps retain the wider four-unit graph
-    # because their terminal parser is frequently two calls downstream.
+    # its strongest selector/parser callee. Keep exactly that causal pair on
+    # both initial and validation attempts. Chain/media gaps retain the wider
+    # graph because their terminal parser is frequently two calls downstream.
     if failure == "route_proven_gap":
-        return {"max_chars": 1200 if feedback else 1400, "max_windows": 1, "max_units": 2 if feedback else 3}
+        return {"max_chars": 1100 if feedback else 1250, "max_windows": 1, "max_units": 2}
     return (
         {"max_chars": 1600, "max_windows": 2, "max_units": 3}
         if feedback
@@ -956,7 +992,7 @@ def build_force_prompt_payload(
         else list(request.observations or [])[:2]
     )
     observations = [
-        _compact(row, string_limit=260)
+        _compact_force_observation(row)
         for row in observation_source
         if isinstance(row, dict)
     ]
