@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "niakvio_sha": "5e981a76decca83e293c6099c5f8dd40f9651ac7",
-  "reason": "Resume authoritative FORCE after stalled self-continuation: first four are already adjudicated (4khdhub/allanime/anime-ultime abstained; AllWish candidate rejected for network-helper semantic collapse). Process only the nine unprocessed providers on current Brain guards and current provider-neutral NiakVIO receiver.",
+  "reason": "Single-job nine-provider FORCE after stalled continuation. First four of the prior 13 are already adjudicated; run only the nine remaining on current signature/network-semantic guards and page_size=9 workflow.",
   "requested_repair_queue": [
     "animesalt",
     "animesultra",
