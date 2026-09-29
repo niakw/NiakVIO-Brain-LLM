@@ -208,7 +208,12 @@ def _reject_removed_live_binding(source: str, absolute_start: int, find: str, re
 
 def _reject_causally_empty_deletion(failure_class: str, find: str, replace: str) -> None:
     failure = str(failure_class or "").strip().casefold().replace("-", "_")
-    if failure not in {"route_proven_gap", "chain_terminal_gap", "media_extraction_gap"}:
+    if failure not in {
+        "route_proven_gap",
+        "chain_terminal_gap",
+        "media_extraction_gap",
+        "provider_transport_gap",
+    }:
         return
     compact_find = _compact_without_space(find)
     compact_replace = _compact_without_space(replace)
@@ -217,6 +222,19 @@ def _reject_causally_empty_deletion(failure_class: str, find: str, replace: str)
     if compact_replace in compact_find and len(compact_replace) < len(compact_find):
         raise ValueError(
             "compact Force traversal repair may not be a pure deletion of existing logic"
+        )
+    # A selected network/helper body that already performs the request and
+    # returns its response cannot be replaced by a side-effect-only fragment.
+    # Doing so silently turns the helper into an undefined-return path even
+    # when the new fragment mentions causally relevant headers/referers.
+    if (
+        ("fetch(" in compact_find or "await_fetch(" in compact_find)
+        and "return" in compact_find
+        and "return" not in compact_replace
+        and "throw" not in compact_replace
+    ):
+        raise ValueError(
+            "compact Force network repair may not discard request return semantics"
         )
 
 
