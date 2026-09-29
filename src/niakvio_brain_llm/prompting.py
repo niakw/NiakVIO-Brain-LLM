@@ -707,12 +707,12 @@ def _force_edit_units(value: Any, failure_class: str, *, max_chars: int = 2600, 
 
     ranked.sort(key=lambda item: item[0])
 
-    # Reserve the two strongest whole functions, then follow one level of the
+    # Reserve the two strongest whole functions, then follow a bounded two-level
     # exact local call graph before spending remaining slots on micro-units.
     # Structural provider runtimes are commonly split as
-    # resolve -> search/find -> player/link/terminal helper. Proximity-only
-    # ranking can otherwise expose resolve while hiding the helper it actually
-    # invokes at the failing stage.
+    # resolve -> search/find/current -> player/link/parser/terminal helper.
+    # One-hop traversal can expose the dispatcher while still hiding the parser
+    # or terminal helper that actually owns the failing response shape.
     selected = []
     selected_keys = set()
     function_rows = []
@@ -746,8 +746,18 @@ def _force_edit_units(value: Any, failure_class: str, *, max_chars: int = 2600, 
         }
         role_tokens.update({"find", "link", "server", "tab"})
         neighbors: dict[tuple[int, int], tuple[tuple[int, ...], dict[str, Any]]] = {}
-        roots = list(selected)
-        for root_index, root in enumerate(roots):
+        frontier = [(index, row, 0) for index, row in enumerate(list(selected))]
+        seen_frontier: set[tuple[int, int, int]] = set()
+        while frontier:
+            root_index, root, depth = frontier.pop(0)
+            root_key = (
+                int(root.get("offset") or 0),
+                int(root.get("end_offset") or 0),
+                depth,
+            )
+            if root_key in seen_frontier or depth >= 2:
+                continue
+            seen_frontier.add(root_key)
             root_source = str(root.get("source") or "")
             for call_index, call in enumerate(
                 re.finditer(r"\b([A-Za-z_$][A-Za-z0-9_$]*)\s*\(", root_source)
@@ -760,8 +770,6 @@ def _force_edit_units(value: Any, failure_class: str, *, max_chars: int = 2600, 
                     int(callee.get("offset") or 0),
                     int(callee.get("end_offset") or 0),
                 )
-                if key in selected_keys:
-                    continue
                 lowered_name = name.casefold()
                 lowered_source = str(callee.get("source") or "").casefold()
                 name_hits = sum(1 for token in role_tokens if token in lowered_name)
@@ -770,17 +778,24 @@ def _force_edit_units(value: Any, failure_class: str, *, max_chars: int = 2600, 
                     if keyword in lowered_source
                 )
                 score = (
+                    depth + 1,
                     -name_hits,
                     -body_hits,
                     root_index,
                     call_index,
                     function_rank.get(key, 9999),
                 )
-                current = neighbors.get(key)
-                if current is None or score < current[0]:
-                    row_copy = dict(callee)
-                    row_copy["reason"] = "causal_call_neighbor"
-                    neighbors[key] = (score, row_copy)
+                if key not in selected_keys:
+                    current = neighbors.get(key)
+                    if current is None or score < current[0]:
+                        row_copy = dict(callee)
+                        row_copy["reason"] = (
+                            "causal_call_neighbor"
+                            if depth == 0
+                            else "causal_call_neighbor_depth2"
+                        )
+                        neighbors[key] = (score, row_copy)
+                frontier.append((root_index, callee, depth + 1))
         for _, row in sorted(neighbors.values(), key=lambda item: item[0]):
             key = (int(row.get("offset") or 0), int(row.get("end_offset") or 0))
             if key in selected_keys:
