@@ -191,6 +191,11 @@ def main() -> int:
         runtime_patch_ready = patch_ready and any(
             "NIAKVIO_PROVIDER_RUNTIME_RESOLVER_V1" in str(source)
             or "__niakvioProviderRuntimeResolverV1" in str(source)
+            or (
+                "MANAGED_FIX_ID" in str(source)
+                and "PROVIDER." in str(source)
+                and ".RUNTIME." in str(source)
+            )
             for source in registered_patch_sources.values()
         )
 
