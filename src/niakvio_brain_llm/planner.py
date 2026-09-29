@@ -17,7 +17,7 @@ from .document_memory import DocumentStore
 from .mutation_guard import validate_mutations
 from .policy import build_mutation_policy
 from .priors import build_causal_prior
-from .prompting import _force_edit_units, _force_source_windows, _force_window_kwargs_for_request, build_force_prompt_payload, build_prompt_payload
+from .prompting import _force_edit_units, _force_source_windows, _force_structural_focus_keywords, _force_window_kwargs_for_request, build_force_prompt_payload, build_prompt_payload
 from .retrieval import ExperienceStore
 from .schema import REPAIR_PROPOSAL_SCHEMA, compact_force_schema_for, proposal_schema_for
 from .verification_plan import recommended_tests
@@ -510,9 +510,11 @@ def _force_unit_for_edit(
     if not unit_id:
         raise ValueError("compact Force unit_id is missing")
     edit_kwargs = _force_window_kwargs_for_request(request)
+    focus_keywords = _force_structural_focus_keywords(request)
     units = _force_edit_units(
         source,
         request.failure_class,
+        focus_keywords=focus_keywords,
         **edit_kwargs,
     )
     window_kwargs = {
