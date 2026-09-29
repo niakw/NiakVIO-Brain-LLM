@@ -42,7 +42,7 @@ assert 'prefill_prompt=(args.mode == "repair" and not args.advisor_only)' in sou
 
 assert "--max-tokens 768" in workflow
 assert "--timeout-seconds 180" in workflow
-assert "--force-provider-budget-seconds 360" in workflow
+assert "--force-provider-budget-seconds 600" in workflow
 assert "FIELD_NIAKVIO_FORCE_MUTATIONS_READY ready=false" in workflow
 assert "raise SystemExit(f\"Force routing requested" not in workflow
 
@@ -50,7 +50,7 @@ print("compact Force retry budget and advisor-preservation contract passed")
 
 assert 'status_key == "CHAIN REACHED"' in source
 assert 'status_key == "ROUTE PROVEN"' in source
-assert 'budget_seconds = min(budget_cap, 120)' in source
+assert 'budget_seconds = min(budget_cap, 180)' in source
 assert "FIELD_BRAIN_FORCE_PROVIDER_BUDGET " in source
 assert "max_tokens=primary_tokens" in source
 
@@ -63,5 +63,5 @@ assert "causally_empty_deletion" in source
 
 assert '{"chain_terminal_gap", "media_extraction_gap"}' in source
 assert 'failure_key == "route_proven_gap"' in source
-assert 'budget_seconds = min(budget_cap, 360)' in source
+assert 'budget_seconds = min(budget_cap, 600)' in source
 assert 'scopes.append("provider_bloc")' in source
