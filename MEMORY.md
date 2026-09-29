@@ -548,3 +548,12 @@
 - `mallumv`: remains transport-owned as `HARNESS/ENV BLOCKED` / `residential-exit-all-challenged`; do not spend provider mutation budget on it until stronger transport evidence changes ownership.
 - Current FORCE provider cohort is therefore **12**: `4khdhub, allanime, allwish, anime-ultime, animesalt, animesultra, animevost-fr, flemmix, moviebox, moviesmod, vidfast, yflix`.
 - The adapter already implements the required precedence: `targeted_provider_waf && replay_provider_signal` preserves the normal provider failure class rather than forcing a transport gap.
+
+
+## 2026-09-29 — Adaptive replay sample causality must survive summarization
+
+- NiakVIO residential full-provider replay exposed an evidence-loss bug: the persisted replay row carried only the lane-level `debugStage`, which is the final adaptive fixture's stage, while earlier fixture stages lived only in `samples[]` and were discarded.
+- A later `provider_zero_before_provider_network` fixture could therefore make Brain believe a replay was clean even when an earlier fixture had already reached `provider_waf_challenge` or timeout.
+- Brain now retains privacy-safe `sampleDebugStages` / `sampleStatuses` from the NiakVIO replay artifact and requires the **entire adaptive sample set** to be free of WAF/timeout before full replay may outrank a targeted WAF seed.
+- `build_causal_prior()` and `request_from_checkout()` both enforce this rule. A regression test proves an earlier WAF sample keeps the causal layer on harness even when the final lane stage is pre-network zero.
+- Guidance generated from the older summary contract (including the already-triggered `213ebeb...` cycle) has no application authority for providers whose WAF ownership depends on that lost sample history. Re-run after fresh sample-aware residential evidence.
