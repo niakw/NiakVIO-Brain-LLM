@@ -549,7 +549,12 @@ def _compact_edit_to_mutation(
         window_id = str(edit.get("window_id") or "").strip()
         find = str(edit.get("find") or "")
         replace = str(edit.get("replace") or "")
-        source = str((request.provider_context or {}).get("runtimeMutationSource") or "")
+        context = request.provider_context or {}
+        source = str(
+            context.get("preferredRuntimeMutationSource")
+            or context.get("runtimeMutationSource")
+            or ""
+        )
         if not family or not replace or len(replace) > 1800:
             raise ValueError("compact Force provider_bloc edit is missing or oversized")
         if not source:
