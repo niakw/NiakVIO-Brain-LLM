@@ -651,6 +651,48 @@ class PromptingTests(unittest.TestCase):
         self.assertIn("function resolve(", joined + windows)
         self.assertNotIn("_routeKind", joined + windows)
 
+    def test_route_force_focuses_html_class_prefix_collisions(self):
+        source = (
+            "function classBlocks(html,cls){"
+            "var esc=String(cls||'');"
+            "var re=new RegExp('class=[\\"\\\'][^\\"\\\']*\\\\b'+esc+'\\\\b');"
+            "return re.test(html)?[html]:[];} "
+            "function classText(html,cls){return classBlocks(html,cls).join(' ');} "
+            "async function detail(q){var cards=classBlocks(q.html,'movie-card');"
+            "return cards.find(x=>classText(x,'movie-card-title'))||null;} "
+            "async function resolve(args){return detail({html:String(args&&args[0]||'')});}"
+        )
+        request = RepairRequest(
+            provider_id="demo",
+            failure_class="route_proven_gap",
+            status="ROUTE PROVEN",
+            observations=[{
+                "source": "targeted-regression-current",
+                "value": {
+                    "structureHints": [
+                        "movie:classes=movie-card,movie-card-format,movie-card-content,movie-card-title;markers=download"
+                    ],
+                },
+            }],
+            provider_context={
+                "registered_patch_sources": {
+                    "scripts/provider_patches/demo_runtime_v1.py": source,
+                },
+            },
+        )
+        payload = build_force_prompt_payload(
+            request,
+            {"target_layer": "provider", "confidence": 0.96, "strategy_prior": "route"},
+            {"allow_mutations": True, "allowed_scopes": ["provider_patch"]},
+        )
+        self.assertIn("movie-card", payload["structural_focus"])
+        self.assertIn("classblocks", payload["structural_focus"])
+        units = payload["mutation_target"]["editable_units"]
+        joined = "\n".join(str(row.get("source") or "") for row in units)
+        self.assertIn("function classBlocks(", joined)
+        self.assertIn("function classText(", joined)
+        self.assertLessEqual(len(units), 2)
+
     def test_force_prompt_preserves_all_allowed_mutation_scopes(self):
         request = RepairRequest(
             provider_id="demo",
