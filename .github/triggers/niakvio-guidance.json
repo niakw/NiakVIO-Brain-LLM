@@ -1,10 +1,20 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "7365ed90a95d8fdf9aafe2da9c83a0fbd6d89903",
-  "reason": "Proof rerun for anime-ultime, flemmix and moviesmod after clean-abstention diagnosis: provider-specific runtime first, authored function envelopes fixed, and editable-unit selection now follows one level of direct causal runtime callees.",
+  "niakvio_sha": "9cbc671ab8afbab5e486efe8a19340281a4b6596",
+  "reason": "Authoritative 13-provider FORCE rerun after same-census targeted response-shape refresh and causal direct-callee context fixes. Consume fresh provider-targeted-regression evidence for census 36531469863-retest; preserve WAF/client-transport non-provider routing and prior FORCE negative memory.",
   "requested_repair_queue": [
+    "4khdhub",
+    "allanime",
+    "allwish",
     "anime-ultime",
+    "animesalt",
+    "animesultra",
+    "animevost-fr",
     "flemmix",
-    "moviesmod"
+    "mallumv",
+    "moviebox",
+    "moviesmod",
+    "vidfast",
+    "yflix"
   ]
 }
