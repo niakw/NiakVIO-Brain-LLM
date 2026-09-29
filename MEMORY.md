@@ -613,3 +613,12 @@
 - Architectural boundary is explicit: Brain/LLM authors provider-local mutations; NiakVIO owns evidence, isolated application, Deep/Retest, playable/identity proof, non-regression, census and publication.
 - Plausible provider-local edits discovered by orchestration are input evidence only. They must be synthesized through the Brain mutation path before they can become a candidate.
 - Infrastructure/receiver/harness/Core changes remain allowed when they repair the repair mechanism rather than a specific provider.
+
+## 2026-09-29 — FORCE compiler/call-graph recovery is CI-green
+
+- Last complete 13-provider FORCE on Brain `7f343311...` published diagnostics for all 13 but **0 executable mutations**. Rejections clustered around `helper_declaration_removed`, `causally_empty_deletion`, `no_op`, and one MovieBox timeout.
+- Root cause in compact FORCE compilation: a selected exact `function_unit` could be discarded when the small model returned a complete function wrapper using a nearby helper name instead of the selected declaration. Generated `provider_bloc` now treats a single complete syntax-valid wrapper as transport noise, extracts its body, and deterministically reuses the exact selected function identity. Authored `provider_patch` / `provider_js` still fail closed on explicit async/name/parameter signature drift.
+- Editable-unit selection now hard-enforces the requested unit budget and, for structural gaps, reserves one strongest causal root instead of consuming slot 2 with an unrelated generic helper.
+- The causal call graph now follows both direct calls and named callbacks such as `.then(parser)`, `.map(normalize)`, etc., so second-hop parser/player/terminal helpers remain visible under the normal four-unit prompt budget.
+- Guidance workflow contracts are synchronized with current execution: page size 9, structural provider budget 600 s, and four-file guidance publication including FORCE diagnostics.
+- Brain CI run `36582057653` / job `109452493685` is **green** at commit `e5bbe01b5725acc70dc9602c02cd97074f805ec1` (189 tests). This validates the repair mechanism only; no provider is marked repaired until a fresh Brain mutation survives NiakVIO isolated playable/identity/non-regression proof.
