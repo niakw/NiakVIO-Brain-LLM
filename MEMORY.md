@@ -596,3 +596,12 @@
 - Current Brain raises the workflow provider budget to 600s, ROUTE/CHAIN provider budget to 600s, provider_transport_gap to 300s and transport_environment_gap to 180s. Page size 8 with 2 workers remains within the 60-minute workflow bound.
 - A separate pagination defect was confirmed: continuation pages are pinned to the cycle's Brain SHA, but publication rejected that pinned SHA once Brain main advanced after page 1. The publication guard now allows only **same Brain SHA + same NiakVIO SHA + existing incomplete guidance state** to continue across main advances; unrelated stale cycles remain rejected.
 - New authoritative 13-provider FORCE cycle is triggered at Brain `cc710af13cd07943db98b00aafb66975261af9e3` against NiakVIO `7fca1b606f6edc9b31a40bacd6f16e97d2dbf0d2`.
+
+
+## 2026-09-29 — Fast exhausted; invalid FORCE candidates guarded; stalled continuation bypassed
+
+- NiakVIO Fast Repair run `36545761845` visited the 12 provider-owned Fast targets and produced **0 candidates / 0 validated repairs** with `experiment_variants_exhausted`; this is a real strategy exhaustion, not a timeout. All 12 were handed to Learning.
+- FORCE candidate AnimeSalt (`function req -> async function req`) was rejected as invalid because its synchronous caller uses `var q=req(a)`; changing asyncness turns `q` into a Promise. Brain now preserves existing function asyncness/name/parameter signature.
+- FORCE candidate AllWish was also rejected: it replaced the complete network helper body (fetch/status/return) with a side-effect-only referer assignment referencing unrelated locals. Brain now rejects network helper rewrites that discard request return semantics.
+- The timeout-safe 13-provider cycle published only page 1 and its automatic continuation did not persist a second page. That continuation path is therefore not trusted for the current repair attempt.
+- Current workflow default is a single **9-provider page** with a 180-minute job timeout for the remaining cohort. The first four prior-cycle providers are already adjudicated (4khdhub/allanime/anime-ultime abstained; AllWish candidate invalid), so the active FORCE target is: animesalt, animesultra, animevost-fr, flemmix, mallumv, moviebox, moviesmod, vidfast, yflix.
