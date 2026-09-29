@@ -688,7 +688,9 @@ class PromptingTests(unittest.TestCase):
         joined = "\n".join(str(row.get("source") or "") for row in units)
         self.assertIn("function classBlocks(", joined)
         self.assertIn("function classText(", joined)
-        self.assertLessEqual(len(units), 2)
+        self.assertNotIn("function detail(", joined)
+        self.assertNotIn("function resolve(", joined)
+        self.assertEqual(len(units), 2)
     def test_force_prompt_preserves_all_allowed_mutation_scopes(self):
         request = RepairRequest(
             provider_id="demo",
