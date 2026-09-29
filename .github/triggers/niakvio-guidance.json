@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "niakvio_sha": "d067027893b1f19b7e7c511d21b2dfaed74f3cf7",
-  "reason": "4KHDHub witness rerun after CI-green causal prompt contraction. Current proof: TMDB 200; 4khdhub.one search response 200; movie-card/movie-card-title/movie-card-format/movie-card-meta structural tokens present; 42 movie / 31 tv anchors; provider returns zero streams. Expose route dispatcher plus causal selector/parser callees only. No batch expansion until one executable mutation survives NiakVIO sandbox.",
+  "reason": "refresh witness",
   "requested_repair_queue": [
     "4khdhub"
   ]
