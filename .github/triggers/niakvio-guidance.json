@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "520ce7a750475d847e8501c4b2934de5db8fa8fd",
-  "reason": "Authoritative FORCE on all 13 provider-owned failures after sample-aware residential replay proved WAF seeds non-causal. Use current Brain second-hop runtime-call context, current census/replay evidence, and prior FORCE negative memory. MalluMV is provider-owned again (CHAIN REACHED / provider_zero_before_provider_network), not transport-owned.",
+  "niakvio_sha": "969d1147f968be8e81304f8958257814ea003eb0",
+  "reason": "Authoritative current FORCE on the 13 real provider-owned failures after Vostfree residential playable_verified proof was restored. Use reserved second-hop structural edit slot, current sample-aware replay evidence, and prior negative memory. Evidence-only NiakVIO drift is neutral; exact mutation context fingerprint and sandbox remain mandatory.",
   "requested_repair_queue": [
     "4khdhub",
     "allanime",
