@@ -498,3 +498,12 @@
 - Current repairQueue audit shows 12/13 providers have a registered patch containing `NIAKVIO_PROVIDER_RUNTIME_RESOLVER_V1` / `__niakvioProviderRuntimeResolverV1`.
 - Scope precedence is now causal: for structural ROUTE/CHAIN/media gaps, a registered provider-local runtime resolver is attempted first; generic provider_bloc remains the invention fallback after that surface abstains/rejects or when no dedicated runtime exists.
 - This does not restore unrestricted patch-first behavior. Ordinary non-runtime patch surfaces do not outrank Bloc merely because a patch file exists.
+
+## 2026-09-29 — Authored function-unit compiler contract repaired
+
+- Dedicated-runtime-first FORCE still produced 0 executable mutations for Anime-Ultime, Flemmix and MoviesMod, exposing a compiler/prompt contradiction rather than provider proof.
+- Compact FORCE already instructed Qwen that a selected `function_unit` replacement is body-only, but authored `provider_patch`/`provider_js` compilation did not restore the selected function declaration. Only `provider_bloc` had deterministic envelope preservation.
+- A correct body-only authored-runtime proposal was therefore rejected as helper deletion. The authored compiler now preserves the exact selected declaration/signature before structured-anchor resolution, just like generated Bloc.
+- Authored function units may now retain a bounded exact anchor up to 1800 chars, matching the existing function-unit replacement bound. This matters for real provider `resolve`/search/terminal functions whose changed body exceeds the old 320-char anchor ceiling.
+- Regression coverage includes a provider_patch function unit larger than 320 chars rewritten from a body-only model response while preserving `function resolve(...)`.
+- Runtime-surface detection now also recognizes shared runtime patch wrappers via `MANAGED_FIX_ID = "PROVIDER.*.RUNTIME.*"`; this covers AnimeVOST-FR, whose provider patch delegates construction to a shared runtime helper and does not contain the direct resolver marker in the patch file itself.
