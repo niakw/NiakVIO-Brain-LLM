@@ -733,7 +733,12 @@ def _force_edit_units(value: Any, failure_class: str, *, max_chars: int = 2600, 
         if match and match.group(1) not in function_by_name:
             function_by_name[match.group(1)] = row
 
-    for row in function_rows[: min(2, max_units)]:
+    structural_gap = family_key in {"route_proven_gap", "chain_terminal_gap", "media_extraction_gap"}
+    # On structural gaps, reserve one strongest causal root and spend the remaining
+    # budget following its local call graph. Reserving an unrelated generic helper
+    # as slot two can hide the parser/terminal helper two calls downstream.
+    initial_function_slots = 1 if structural_gap and max_units >= 4 else min(2, max_units)
+    for row in function_rows[:initial_function_slots]:
         key = (int(row.get("offset") or 0), int(row.get("end_offset") or 0))
         selected.append(row)
         selected_keys.add(key)
