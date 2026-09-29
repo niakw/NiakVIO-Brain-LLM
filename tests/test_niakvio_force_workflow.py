@@ -41,7 +41,7 @@ assert "steps.page.outputs.complete" in workflow
 assert "actions: write" in workflow
 assert "mutationContextFingerprint" in workflow
 assert "guidance/niakvio-guidance-state.json" in workflow
-assert "files=3" in workflow
+assert "guidance/niakvio-force-diagnostics.json" in workflow\nassert "files=4" in workflow
 
 assert "brain_sha:" in workflow
 assert 'ref: ${{ inputs.brain_sha || github.sha }}' in workflow
