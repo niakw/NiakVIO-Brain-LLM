@@ -539,3 +539,12 @@
 - The five transport-owned providers retain their semantic proof but must not consume provider FORCE budget while `transportRepairEligible=false`; they remain candidates for browser/native/residential transport requalification.
 - Plain HTTP 403 is not sufficient to remove provider mutation authority. Anime-Ultime and VidFast remain in the provider cohort because their targeted classification is `provider_network_http_error`, not explicit `provider_waf_challenge`.
 - Future FORCE guidance must use the 8-provider census repairQueue rather than replaying the stale 13-provider cohort.
+
+
+## 2026-09-29 — Residential replay supersedes narrow WAF seeds for four providers
+
+- Fresh NiakVIO WAF/residential evidence run `36541459500` proves that narrow challenged seed requests are not always the causal provider blocker.
+- `allwish, animesalt, flemmix, moviesmod`: full provider replay through the residential exit completes identity-safe and stops at `provider_zero_before_provider_network`; keep normal provider failure classification and allow FORCE/Repair.
+- `mallumv`: remains transport-owned as `HARNESS/ENV BLOCKED` / `residential-exit-all-challenged`; do not spend provider mutation budget on it until stronger transport evidence changes ownership.
+- Current FORCE provider cohort is therefore **12**: `4khdhub, allanime, allwish, anime-ultime, animesalt, animesultra, animevost-fr, flemmix, moviebox, moviesmod, vidfast, yflix`.
+- The adapter already implements the required precedence: `targeted_provider_waf && replay_provider_signal` preserves the normal provider failure class rather than forcing a transport gap.
