@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "5e981a76decca83e293c6099c5f8dd40f9651ac7",
-  "reason": "Single-job nine-provider FORCE after stalled continuation. First four of the prior 13 are already adjudicated; run only the nine remaining on current signature/network-semantic guards and page_size=9 workflow.",
+  "niakvio_sha": "164159ae8386691a30f9d1b705ba83caba2d495e",
+  "reason": "Frozen authoritative single-page FORCE for the nine unprocessed providers. Brain main must remain unchanged until this page publishes. Prior four are adjudicated separately; current guards reject signature drift and network-helper semantic collapse.",
   "requested_repair_queue": [
     "animesalt",
     "animesultra",
