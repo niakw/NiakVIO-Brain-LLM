@@ -276,6 +276,50 @@ class PromptingTests(unittest.TestCase):
             )
         )
 
+    def test_force_edit_units_follow_second_hop_runtime_callees(self):
+        source = (
+            "function jsonGet(url){return fetch(url).then(r=>r.json());} "
+            "function currentRows(value){return value&&value.streams||[];} "
+            "function current(q){return jsonGet(q.url).then(value=>currentRows(value));} "
+            "function legacy(q){return [];} "
+            "function resolve(args){var q={url:String(args&&args[0]||'')};"
+            "return current(q).then(rows=>rows.length?rows:legacy(q));} "
+            "function unrelated(){return 1;}"
+        )
+        request = RepairRequest(
+            provider_id="demo",
+            failure_class="chain_terminal_gap",
+            status="CHAIN REACHED",
+            provider_context={
+                "registered_patch_sources": {
+                    "scripts/provider_patches/demo_runtime_v1.py": source,
+                },
+            },
+        )
+        payload = build_force_prompt_payload(
+            request,
+            {"target_layer": "provider", "confidence": 0.96, "strategy_prior": "terminal"},
+            {"allow_mutations": True, "allowed_scopes": ["provider_patch"]},
+        )
+        functions = [
+            row
+            for row in payload["mutation_target"]["editable_units"]
+            if row.get("kind") == "function_unit"
+        ]
+        joined = "\n".join(row.get("source", "") for row in functions)
+        self.assertIn("function resolve(", joined)
+        self.assertIn("function current(", joined)
+        self.assertTrue(
+            any(
+                row.get("reason") == "causal_call_neighbor_depth2"
+                and (
+                    "function currentRows(" in row.get("source", "")
+                    or "function jsonGet(" in row.get("source", "")
+                )
+                for row in functions
+            )
+        )
+
     def test_force_validation_retry_uses_focused_context(self):
         source = (
             "H" * 5000
