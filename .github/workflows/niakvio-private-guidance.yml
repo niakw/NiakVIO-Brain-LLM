@@ -22,7 +22,7 @@ on:
       page_size:
         description: "Bounded providers per guidance page (1..12)"
         required: false
-        default: "4"
+        default: "9"
 
 permissions:
   contents: write
