@@ -12,4 +12,7 @@ assert 'failure_key == "transport_environment_gap"' in batch
 assert 'budget_seconds = min(budget_cap, 180)' in batch
 assert '--force-provider-budget-seconds 600' in workflow
 assert '--force-provider-budget-seconds 360' not in workflow
+assert 'default: "4"' in workflow
+assert "PAGE_SIZE: ${{ inputs.page_size || '4' }}" in workflow
+assert '-f page_size="${{ inputs.page_size || \'4\' }}"' in workflow
 print("FORCE provider budget contract passed")
