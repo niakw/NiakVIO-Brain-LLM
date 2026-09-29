@@ -98,7 +98,7 @@ def _preserve_selected_function_envelope(find: str, replace: str) -> str:
     if len(find_names) != 1:
         return replace
     match = re.match(
-        r"(?s)^(\\s*(?:async\\s+)?function\\s+[A-Za-z_$][A-Za-z0-9_$]*\\s*\\([^)]*\\)\\s*\\{)(.*)(\\}\\s*)$",
+        r"(?s)^(\s*(?:async\s+)?function\s+[A-Za-z_$][A-Za-z0-9_$]*\s*\([^)]*\)\s*\{)(.*)(\}\s*)$",
         find,
     )
     if not match:
@@ -106,9 +106,9 @@ def _preserve_selected_function_envelope(find: str, replace: str) -> str:
 
     stripped = str(replace or "").strip()
     declaration = re.compile(
-        r"^\\s*(?P<async>async\\s+)?function\\s+"
-        r"(?P<name>[A-Za-z_$][A-Za-z0-9_$]*)\\s*"
-        r"\\((?P<params>[^)]*)\\)\\s*\\{",
+        r"^\s*(?P<async>async\s+)?function\s+"
+        r"(?P<name>[A-Za-z_$][A-Za-z0-9_$]*)\s*"
+        r"\((?P<params>[^)]*)\)\s*\{",
         re.S,
     )
     replace_decl = declaration.match(stripped)
