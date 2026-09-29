@@ -419,3 +419,9 @@ The generic Bloc remains first for structural providers that do not have a dedic
 A `function_unit` has one deterministic contract on every executable provider surface: the model generates replacement body/logic, while Brain owns and preserves the exact current function declaration/name/signature. This applies to `provider_patch`, `provider_js` and `provider_bloc`.
 
 The exact selected function may remain an anchor up to the bounded 1800-character function-unit limit. Statement-level edits keep their smaller limits. Brain validates helper identity before minimization, then syntax/ownership/no-op/live-binding constraints after anchor resolution. An authored runtime must therefore never be forced to reproduce or rename a declaration merely to express a structural repair.
+
+### Causal call-neighbor context
+
+For structural provider runtime failures, function proximity alone is insufficient. A selected `resolve` function often delegates the failing work to provider-local helpers such as search/find, player/server selection, link extraction, or terminal traversal.
+
+Within the existing bounded editable-unit budget, FORCE therefore reserves the strongest whole functions and follows one level of exact local function calls. Direct callees are preferred over unrelated nearby statements when their function name/body carries causal route/search/link/player/server/terminal signals. This does not expand mutation authority: every callee is an exact bounded function from the same provider-owned source, and the model still selects only one unit to replace.
