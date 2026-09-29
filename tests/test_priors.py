@@ -133,6 +133,44 @@ class PriorTests(unittest.TestCase):
         self.assertEqual(prior["source"], "failure_class_taxonomy")
         self.assertEqual(prior["strategy_prior"], "search_detail_player_terminal_traversal")
 
+    def test_earlier_replay_sample_challenge_keeps_targeted_waf_prior(self):
+        prior = build_causal_prior(
+            RepairRequest(
+                provider_id="demo",
+                failure_class="route_proven_gap",
+                status="ROUTE PROVEN",
+                observations=[
+                    {
+                        "source": "targeted-regression-current",
+                        "value": {
+                            "debugStages": {"movie": "provider_waf_challenge"},
+                            "network": {"movie": [{"host": "provider.example", "status": 403}]},
+                        },
+                    },
+                    {
+                        "source": "waf-client-differential-current",
+                        "value": {
+                            "residentialReplay": [{
+                                "lane": "movie",
+                                "status": "no_streams",
+                                "debugStage": "provider_zero_before_provider_network",
+                                "sampleDebugStages": [
+                                    "provider_waf_challenge",
+                                    "provider_zero_before_provider_network",
+                                ],
+                                "sampleStatuses": ["no_streams"],
+                                "contradictions": 0,
+                                "identitySafe": True,
+                            }],
+                        },
+                    },
+                ],
+            ),
+            [],
+        )
+        self.assertEqual(prior["target_layer"], "harness")
+        self.assertEqual(prior["source"], "targeted_interactive_challenge")
+
     def test_chain_replay_outranks_targeted_waf_prior(self):
         prior = build_causal_prior(
             RepairRequest(
