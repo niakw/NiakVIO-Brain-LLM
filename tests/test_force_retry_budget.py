@@ -20,7 +20,7 @@ assert '120 if scope == "provider_bloc" else 90' in source
 assert "validation_timeout = max(" in source
 assert "primary_timeout = max(" in source
 assert "transport_timeout = max(" in source
-assert "min(int(args.timeout_seconds), 180)" in source
+assert '120 if scope == "provider_bloc" else 180' in source
 assert "timeout_seconds=primary_timeout" in source
 assert "1280" not in source
 assert "timeout_seconds=150" not in source
@@ -42,7 +42,8 @@ assert 'prefill_prompt=(args.mode == "repair" and not args.advisor_only)' in sou
 
 assert "--max-tokens 768" in workflow
 assert "--timeout-seconds 180" in workflow
-assert "--force-provider-budget-seconds 360" in workflow
+assert "--force-provider-budget-seconds 480" in workflow
+assert 'default: "6"' in workflow
 assert "FIELD_NIAKVIO_FORCE_MUTATIONS_READY ready=false" in workflow
 assert "raise SystemExit(f\"Force routing requested" not in workflow
 
@@ -63,5 +64,5 @@ assert "causally_empty_deletion" in source
 
 assert '{"chain_terminal_gap", "media_extraction_gap"}' in source
 assert 'failure_key == "route_proven_gap"' in source
-assert 'budget_seconds = min(budget_cap, 360)' in source
+assert 'budget_seconds = min(budget_cap, 480)' in source
 assert 'scopes.append("provider_bloc")' in source
