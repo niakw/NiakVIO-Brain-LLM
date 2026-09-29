@@ -242,11 +242,11 @@ def main() -> int:
         )
         primary_timeout = max(
             45,
-            min(int(args.timeout_seconds), 180),
+            min(int(args.timeout_seconds), 120 if scope == "provider_bloc" else 180),
         )
         transport_timeout = max(
             90,
-            min(int(args.timeout_seconds), 180),
+            min(int(args.timeout_seconds), 120 if scope == "provider_bloc" else 180),
         )
         max_validation_corrections = 3 if scope == "provider_bloc" else 1
 
@@ -448,7 +448,7 @@ def main() -> int:
             if failure_key in {"chain_terminal_gap", "media_extraction_gap"} or status_key == "CHAIN REACHED":
                 budget_seconds = budget_cap
             elif failure_key == "route_proven_gap" or status_key == "ROUTE PROVEN":
-                budget_seconds = min(budget_cap, 360)
+                budget_seconds = min(budget_cap, 480)
             elif failure_key in {"provider_transport_gap", "transport_environment_gap"}:
                 budget_seconds = min(budget_cap, 120)
             else:
