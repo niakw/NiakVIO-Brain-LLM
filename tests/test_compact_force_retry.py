@@ -61,10 +61,10 @@ class CompactForceRetryTest(unittest.TestCase):
         prompting = (ROOT / "src" / "niakvio_brain_llm" / "prompting.py").read_text(encoding="utf-8")
         self.assertIn("sanitize_exact_source(", source)
         self.assertIn("Prompting owns", source)
-        self.assertIn("_force_source_windows(source, request.failure_class, **context_window_kwargs)", prompting)
-        self.assertIn("_force_source_windows(runtime_source, request.failure_class, **context_window_kwargs)", prompting)
-        self.assertIn("_force_edit_units(source, request.failure_class, **force_window_kwargs)", prompting)
-        self.assertIn("_force_edit_units(runtime_source, request.failure_class, **force_window_kwargs)", prompting)
+        self.assertIn("_force_source_windows(source, request.failure_class, focus_keywords=structural_focus_keywords, **context_window_kwargs)", prompting)
+        self.assertIn("_force_source_windows(runtime_source, request.failure_class, focus_keywords=structural_focus_keywords, **context_window_kwargs)", prompting)
+        self.assertIn("_force_edit_units(source, request.failure_class, focus_keywords=structural_focus_keywords, **force_window_kwargs)", prompting)
+        self.assertIn("_force_edit_units(runtime_source, request.failure_class, focus_keywords=structural_focus_keywords, **force_window_kwargs)", prompting)
         self.assertIn("source_windows", prompting)
 
     def test_force_prompt_prefill_is_aggressively_bounded(self):
