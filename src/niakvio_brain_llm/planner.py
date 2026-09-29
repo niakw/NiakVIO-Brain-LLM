@@ -96,6 +96,28 @@ def _preserve_selected_function_envelope(find: str, replace: str) -> str:
     original_name = next(iter(find_names))
     replace_names = _function_names(replace)
     if original_name in replace_names:
+        declaration = re.compile(
+            r"^\s*(?P<async>async\s+)?function\s+"
+            r"(?P<name>[A-Za-z_$][A-Za-z0-9_$]*)\s*"
+            r"\((?P<params>[^)]*)\)\s*\{",
+            re.S,
+        )
+        find_decl = declaration.match(find)
+        replace_decl = declaration.match(replace)
+        if not find_decl or not replace_decl:
+            raise ValueError("selected function declaration/signature could not be verified")
+        find_identity = (
+            bool(find_decl.group("async")),
+            find_decl.group("name"),
+            re.sub(r"\s+", "", find_decl.group("params")),
+        )
+        replace_identity = (
+            bool(replace_decl.group("async")),
+            replace_decl.group("name"),
+            re.sub(r"\s+", "", replace_decl.group("params")),
+        )
+        if replace_identity != find_identity:
+            raise ValueError("selected function declaration/signature changed")
         return replace
     stripped = str(replace or "").lstrip()
     if stripped.startswith("function ") or stripped.startswith("async function "):
