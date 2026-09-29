@@ -414,16 +414,45 @@ jobs:
           git -C brain config user.name "niakvio-brain-llm"
           git -C brain config user.email "actions@users.noreply.github.com"
           candidate_brain="${{ steps.page.outputs.brain_sha }}"
+          candidate_source="${{ steps.source.outputs.sha }}"
           git -C brain fetch origin "+refs/heads/main:refs/remotes/origin/main"
           current_main="$(git -C brain rev-parse refs/remotes/origin/main)"
+          # A continuation page is intentionally pinned to the Brain revision
+          # that published page 1. Brain main may advance while the cycle runs.
+          # Allow that exact incomplete cycle to finish, but do not let any
+          # other stale run publish after main has moved.
+          git -C brain fetch origin "+refs/heads/$BRANCH:refs/remotes/origin/$BRANCH" || true
+          same_incomplete_cycle=false
+          if git -C brain show "refs/remotes/origin/$BRANCH:guidance/niakvio-guidance-state.json" > "$RUNNER_TEMP/niakvio-guidance-state.continuation.json" 2>/dev/null; then
+            read -r continuation_brain continuation_source continuation_complete < <(python - "$RUNNER_TEMP/niakvio-guidance-state.continuation.json" <<'PY'
+          import json,sys
+          d=json.load(open(sys.argv[1],encoding="utf-8"))
+          print(
+              str(d.get("brainLlmSha") or "").strip().lower(),
+              str(d.get("sourceNiakvioSha") or "").strip().lower(),
+              "true" if d.get("complete") is True else "false",
+          )
+          PY
+            )
+            if [ "$continuation_brain" = "$candidate_brain" ] \
+               && [ "$continuation_source" = "$candidate_source" ] \
+               && [ "$continuation_complete" != "true" ]; then
+              same_incomplete_cycle=true
+            fi
+          fi
           if [ "$candidate_brain" != "$current_main" ]; then
             if git -C brain merge-base --is-ancestor "$candidate_brain" "$current_main"; then
-              echo "published=false" >> "$GITHUB_OUTPUT"
-              echo "FIELD_NIAKVIO_GUIDANCE_STALE_PUBLISH skipped=true reason=brain_main_advanced candidate=$candidate_brain current=$current_main"
-              exit 0
+              if [ "$same_incomplete_cycle" = "true" ]; then
+                echo "FIELD_NIAKVIO_GUIDANCE_CONTINUATION_PIN allowed=true candidate=$candidate_brain current=$current_main source=$candidate_source"
+              else
+                echo "published=false" >> "$GITHUB_OUTPUT"
+                echo "FIELD_NIAKVIO_GUIDANCE_STALE_PUBLISH skipped=true reason=brain_main_advanced candidate=$candidate_brain current=$current_main"
+                exit 0
+              fi
+            else
+              echo "candidate Brain revision diverges from current main; refusing guidance publication" >&2
+              exit 5
             fi
-            echo "candidate Brain revision diverges from current main; refusing guidance publication" >&2
-            exit 5
           fi
           git -C brain fetch origin "+refs/heads/$BRANCH:refs/remotes/origin/$BRANCH" || true
           expected_sha=""
