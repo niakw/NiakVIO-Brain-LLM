@@ -707,21 +707,89 @@ def _force_edit_units(value: Any, failure_class: str, *, max_chars: int = 2600, 
 
     ranked.sort(key=lambda item: item[0])
 
-    # Reserve room for whole causal functions before filling with statement-level
-    # candidates. This prevents one rejected micro-anchor from monopolizing every
-    # option while preserving a bounded prompt and exact-byte unit ids.
+    # Reserve the two strongest whole functions, then follow one level of the
+    # exact local call graph before spending remaining slots on micro-units.
+    # Structural provider runtimes are commonly split as
+    # resolve -> search/find -> player/link/terminal helper. Proximity-only
+    # ranking can otherwise expose resolve while hiding the helper it actually
+    # invokes at the failing stage.
     selected = []
     selected_keys = set()
+    function_rows = []
+    function_by_name: dict[str, dict[str, Any]] = {}
+    function_rank: dict[tuple[int, int], int] = {}
     for _, row in ranked:
         if row.get("kind") != "function_unit":
             continue
         key = (int(row.get("offset") or 0), int(row.get("end_offset") or 0))
-        if key in selected_keys:
+        if key in function_rank:
             continue
+        function_rank[key] = len(function_rows)
+        function_rows.append(row)
+        match = re.match(
+            r"\s*(?:async\s+)?function\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*\(",
+            str(row.get("source") or ""),
+        )
+        if match and match.group(1) not in function_by_name:
+            function_by_name[match.group(1)] = row
+
+    for row in function_rows[: min(2, max_units)]:
+        key = (int(row.get("offset") or 0), int(row.get("end_offset") or 0))
         selected.append(row)
         selected_keys.add(key)
-        if len(selected) >= min(2, max_units):
-            break
+
+    if len(selected) < max_units and function_by_name:
+        role_tokens = {
+            re.sub(r"[^a-z0-9_$]+", "", keyword.casefold())
+            for keyword in family_keywords
+            if re.sub(r"[^a-z0-9_$]+", "", keyword.casefold())
+        }
+        role_tokens.update({"find", "link", "server", "tab"})
+        neighbors: dict[tuple[int, int], tuple[tuple[int, ...], dict[str, Any]]] = {}
+        roots = list(selected)
+        for root_index, root in enumerate(roots):
+            root_source = str(root.get("source") or "")
+            for call_index, call in enumerate(
+                re.finditer(r"\b([A-Za-z_$][A-Za-z0-9_$]*)\s*\(", root_source)
+            ):
+                name = call.group(1)
+                callee = function_by_name.get(name)
+                if callee is None:
+                    continue
+                key = (
+                    int(callee.get("offset") or 0),
+                    int(callee.get("end_offset") or 0),
+                )
+                if key in selected_keys:
+                    continue
+                lowered_name = name.casefold()
+                lowered_source = str(callee.get("source") or "").casefold()
+                name_hits = sum(1 for token in role_tokens if token in lowered_name)
+                body_hits = sum(
+                    1 for keyword in family_keywords
+                    if keyword in lowered_source
+                )
+                score = (
+                    -name_hits,
+                    -body_hits,
+                    root_index,
+                    call_index,
+                    function_rank.get(key, 9999),
+                )
+                current = neighbors.get(key)
+                if current is None or score < current[0]:
+                    row_copy = dict(callee)
+                    row_copy["reason"] = "causal_call_neighbor"
+                    neighbors[key] = (score, row_copy)
+        for _, row in sorted(neighbors.values(), key=lambda item: item[0]):
+            key = (int(row.get("offset") or 0), int(row.get("end_offset") or 0))
+            if key in selected_keys:
+                continue
+            selected.append(row)
+            selected_keys.add(key)
+            if len(selected) >= max_units:
+                break
+
     for _, row in ranked:
         key = (int(row.get("offset") or 0), int(row.get("end_offset") or 0))
         if key in selected_keys:
