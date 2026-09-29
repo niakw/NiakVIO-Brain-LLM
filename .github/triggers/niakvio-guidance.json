@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "9521753bdeb310fadbbcde99673affe5c69c8b3d",
-  "reason": "Authoritative FORCE run on the fully reconciled causal state: 12 provider Repair rows, MalluMV alone environment/WAF, refined batches rebuilt from final census after residential replay. AllWish is normal BRAIN_LEARNING/NO PROOF; AnimeSalt/Flemmix/MoviesMod are provider Repair despite stale targeted seed challenge because full residential provider replay disproved WAF as causal blocker. Consume current targeted shapes, WAF residential replay, current refined batches, validated reference patterns and FORCE negative memory.",
+  "niakvio_sha": "1ae265c1cbbeb3a79b9524fa49f1d94c423c0648",
+  "reason": "Authoritative FORCE rerun on the final sample-aware 13-provider Repair cohort. All five prior seed-WAF providers are provider-owned after adaptive residential replay; consume current targeted response shapes, sampleDebugStages/sampleStatuses, second-hop runtime callees, validated provider references and FORCE negative memory. Sandbox/publication authority remains NiakVIO-only.",
   "requested_repair_queue": [
     "4khdhub",
     "allanime",
@@ -11,6 +11,7 @@
     "animesultra",
     "animevost-fr",
     "flemmix",
+    "mallumv",
     "moviebox",
     "moviesmod",
     "vidfast",
