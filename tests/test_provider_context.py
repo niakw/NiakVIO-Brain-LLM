@@ -15,6 +15,7 @@ class ProviderContextTests(unittest.TestCase):
             )
             (root / "scripts" / "provider_patches").mkdir(parents=True)
             (root / "scripts" / "provider_patches" / "demo_runtime_v1.py").write_text(
+                'MANAGED_FIX_ID = "PROVIDER.DEMO.RUNTIME.V1"\n'
                 "def apply(value):\n    return value\n"
             )
             (root / "provider-overrides.json").write_text(json.dumps({
@@ -69,6 +70,19 @@ class ProviderContextTests(unittest.TestCase):
             self.assertEqual(len(published_context["providerBlocks"]), 2)
             self.assertIn("publishedRuntime", published_context["providerBlocks"][1]["source"])
             self.assertNotIn("B" * 100, published_context["providerBlocks"][0]["source"])
+            self.assertNotIn("providerBlockSources", published_context)
+            self.assertEqual(
+                context["preferredRuntimeMutationBlockId"],
+                "PROVIDER.DEMO.RUNTIME.V1",
+            )
+            self.assertIn(
+                "publishedRuntime",
+                context["preferredRuntimeMutationSource"],
+            )
+            self.assertNotIn(
+                "publishedConfig",
+                context["preferredRuntimeMutationSource"],
+            )
 
     def test_full_ok_reference_patterns_are_sanitized_and_optional(self):
         from niakvio_brain_llm.provider_context import build_validated_reference_patterns
