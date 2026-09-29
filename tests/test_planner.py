@@ -4,10 +4,15 @@ import unittest
 from niakvio_brain_llm.backend import StaticBackend
 from niakvio_brain_llm.contracts import RepairRequest
 from niakvio_brain_llm.document_memory import DocumentStore
-from niakvio_brain_llm.planner import BrainPlanner, _compact_edit_to_mutation, _resolve_structured_anchor
+from niakvio_brain_llm.planner import BrainPlanner, COMPACT_FORCE_SYSTEM_PROMPT, _compact_edit_to_mutation, _resolve_structured_anchor
 from niakvio_brain_llm.prompting import _force_source_windows, build_force_prompt_payload
 
 class PlannerTests(unittest.TestCase):
+    def test_compact_force_function_unit_prompt_requires_body_only_rewrite(self):
+        self.assertIn("kind=function_unit", COMPACT_FORCE_SYSTEM_PROMPT)
+        self.assertIn("NEW FUNCTION BODY ONLY", COMPACT_FORCE_SYSTEM_PROMPT)
+        self.assertIn("Never emit or rename the function declaration/name/signature", COMPACT_FORCE_SYSTEM_PROMPT)
+
     def test_accepts_bounded_provider_mutation(self):
         response = json.dumps({
             "provider_id": "demo",
