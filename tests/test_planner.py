@@ -709,6 +709,41 @@ class PlannerTests(unittest.TestCase):
         self.assertIn("const finalUrl=page.finalUrl||page.url;return finalUrl;", updated)
         self.assertTrue(updated.rstrip().endswith("}"))
 
+    def test_compact_force_provider_patch_rejects_async_signature_drift(self):
+        source = (
+            "function req(a){return {tmdbId:String(a&&a[0]||'')}} "
+            "async function resolve(a){var q=req(a);return q.tmdbId?[]:[];}"
+        )
+        request = RepairRequest(
+            provider_id="demo",
+            failure_class="route_proven_gap",
+            status="ROUTE PROVEN",
+            allowed_mutations=["provider_patch"],
+            provider_context={
+                "registered_patch_sources": {
+                    "scripts/provider_patches/demo_runtime_v1.py": source,
+                },
+            },
+        )
+        payload = build_force_prompt_payload(
+            request,
+            {"target_layer": "provider", "confidence": 0.96, "strategy_prior": "route"},
+            {"allow_mutations": True, "allowed_scopes": ["provider_patch"]},
+        )
+        unit = next(
+            row for row in payload["mutation_target"]["editable_units"]
+            if row.get("kind") == "function_unit" and "function req(" in row.get("source", "")
+        )
+        with self.assertRaisesRegex(ValueError, "declaration/signature changed"):
+            _compact_edit_to_mutation(
+                request,
+                {
+                    "scope": "provider_patch",
+                    "unit_id": unit["id"],
+                    "replace": "async function req(a){return {tmdbId:String(a&&a[0]||'')}}",
+                },
+            )
+
     def test_compact_force_provider_bloc_rejects_explicit_helper_rename_before_minimization(self):
         source = "function _routeKind(route){return route;} function _extractUrls(text){return [text];}"
         request = RepairRequest(
