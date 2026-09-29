@@ -38,7 +38,7 @@ concurrency:
 jobs:
   guidance:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 180
     steps:
       - name: Checkout Brain LLM
         uses: actions/checkout@v4
@@ -131,7 +131,7 @@ jobs:
         id: page
         shell: bash
         env:
-          PAGE_SIZE: ${{ inputs.page_size || '4' }}
+          PAGE_SIZE: ${{ inputs.page_size || '9' }}
         run: |
           set -euo pipefail
           git -C brain fetch origin "+refs/heads/niakvio-guidance:refs/remotes/origin/niakvio-guidance" || true
@@ -544,7 +544,7 @@ jobs:
             -f niakvio_sha="${{ steps.source.outputs.sha }}" \
             -f brain_sha="${{ steps.page.outputs.brain_sha }}" \
             -f target_providers="${{ steps.cohort.outputs.csv }}" \
-            -f page_size="${{ inputs.page_size || '4' }}"
+            -f page_size="${{ inputs.page_size || '9' }}"
           echo "FIELD_NIAKVIO_GUIDANCE_CONTINUE remaining=${{ steps.page.outputs.remaining }} source=${{ steps.source.outputs.sha }}"
       - uses: actions/upload-artifact@v4
         if: always()
