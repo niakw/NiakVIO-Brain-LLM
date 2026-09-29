@@ -576,3 +576,12 @@
 - Current authoritative provider-mutation cohort is therefore 13: `4khdhub, allanime, allwish, anime-ultime, animesalt, animesultra, animevost-fr, flemmix, mallumv, moviebox, moviesmod, vidfast, yflix`.
 - The older `213ebeb...` 12-provider cycle predates both sample-aware causality and second-hop FORCE context and has no final authority for this cohort.
 - Next authoritative FORCE must use current Brain main with second-hop runtime callees and NiakVIO source at or after the sample-aware WAF persistence.
+
+
+## 2026-09-29 — Structural FORCE reserves one second-hop edit slot
+
+- The first second-hop call-graph implementation discovered depth-2 runtime helpers but still sorted every depth-1 callee ahead of every depth-2 callee.
+- With the normal 4-unit FORCE budget (2 strongest whole functions + 2 remaining slots), a dispatcher with several direct callees could therefore consume the whole budget before the parser/player/terminal helper behind an intermediate function was exposed.
+- Current Brain main reserves one remaining slot for the strongest `causal_call_neighbor_depth2` on `route_proven_gap` / `chain_terminal_gap` when the normal 4-unit budget is available, then fills the rest by the existing ranking.
+- Regression coverage reproduces a crowded `resolve -> current/legacy/decorate/metrics` surface where only `current -> terminalParser` owns the terminal parse and requires that depth-2 helper to survive selection.
+- This change does not alter mutation authority, exact-byte anchoring, syntax guards or NiakVIO sandbox proof. The already-running authoritative 13-provider FORCE remains pinned to its earlier Brain SHA; this fix is fallback architecture for a subsequent rerun only if needed.
