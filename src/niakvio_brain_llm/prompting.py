@@ -392,6 +392,7 @@ def _force_source_windows(
     *,
     max_chars: int = 4000,
     max_windows: int = 4,
+    focus_keywords: tuple[str, ...] = (),
 ) -> list[dict[str, Any]]:
     """Return exact current-byte slices around family-relevant runtime code.
 
@@ -406,10 +407,14 @@ def _force_source_windows(
         return []
 
     lowered = text.casefold()
-    keywords = _FORCE_SOURCE_KEYWORDS.get(
+    base_keywords = _FORCE_SOURCE_KEYWORDS.get(
         str(failure_class or "").strip().casefold(),
         ("resolve", "fetch(", "search", "player", "embed", "source"),
     )
+    keywords = tuple(dict.fromkeys([
+        *(str(x).casefold() for x in focus_keywords if str(x).strip()),
+        *base_keywords,
+    ]))
     minimum_code_offset = min(1000, max(0, len(text) // 8))
 
     def _focus_position() -> tuple[int, str]:
@@ -525,18 +530,39 @@ def _force_window_kwargs_for_request(request: RepairRequest) -> dict[str, int]:
     )
 
 
-def _force_edit_units(value: Any, failure_class: str, *, max_chars: int = 2600, max_windows: int = 3, max_units: int = 9) -> list[dict[str, Any]]:
+def _force_edit_units(
+    value: Any,
+    failure_class: str,
+    *,
+    max_chars: int = 2600,
+    max_windows: int = 3,
+    max_units: int = 9,
+    focus_keywords: tuple[str, ...] = (),
+) -> list[dict[str, Any]]:
     """Return exact, bounded, structurally safe edit units with causal diversity."""
     text = str(value or "")
-    windows = _force_source_windows(text, failure_class, max_chars=max_chars, max_windows=max_windows)
+    windows = _force_source_windows(
+        text,
+        failure_class,
+        max_chars=max_chars,
+        max_windows=max_windows,
+        focus_keywords=focus_keywords,
+    )
     ranked = []
     seen = set()
     family_key = str(failure_class or "").strip().casefold()
-    family_keywords = tuple(
-        str(keyword or "").strip().casefold()
-        for keyword in _FORCE_SOURCE_KEYWORDS.get(family_key, ())
-        if str(keyword or "").strip()
-    )
+    family_keywords = tuple(dict.fromkeys([
+        *(
+            str(keyword or "").strip().casefold()
+            for keyword in focus_keywords
+            if str(keyword or "").strip()
+        ),
+        *(
+            str(keyword or "").strip().casefold()
+            for keyword in _FORCE_SOURCE_KEYWORDS.get(family_key, ())
+            if str(keyword or "").strip()
+        ),
+    ]))
 
     def safe(
         fragment: str,
