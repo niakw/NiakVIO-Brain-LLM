@@ -709,6 +709,39 @@ class PlannerTests(unittest.TestCase):
         self.assertIn("const finalUrl=page.finalUrl||page.url;return finalUrl;", updated)
         self.assertTrue(updated.rstrip().endswith("}"))
 
+    def test_compact_force_provider_bloc_rejects_network_return_collapse(self):
+        source = (
+            "async function request(url, options){"
+            "const response=await fetch(url,options||{});"
+            "if(!response.ok)throw new Error('http');"
+            "return response;}"
+        )
+        request = RepairRequest(
+            provider_id="demo",
+            failure_class="provider_transport_gap",
+            status="NO PROOF",
+            allowed_mutations=["provider_bloc"],
+            provider_context={"runtimeMutationSource": source, "runtimeMutationFilename": "providers/demo.js"},
+        )
+        payload = build_force_prompt_payload(
+            request,
+            {"target_layer": "provider", "confidence": 0.96, "strategy_prior": "transport"},
+            {"allow_mutations": True, "allowed_scopes": ["provider_bloc"]},
+        )
+        unit = next(
+            row for row in payload["new_bloc_target"]["editable_units"]
+            if row.get("kind") == "function_unit" and "function request(" in row.get("source", "")
+        )
+        with self.assertRaisesRegex(ValueError, "discard request return semantics"):
+            _compact_edit_to_mutation(
+                request,
+                {
+                    "scope": "provider_bloc",
+                    "unit_id": unit["id"],
+                    "replace": "if(row.referer&&!headers.Referer)headers.Referer=recipe.referer;",
+                },
+            )
+
     def test_compact_force_provider_patch_rejects_async_signature_drift(self):
         source = (
             "function req(a){return {tmdbId:String(a&&a[0]||'')}} "
