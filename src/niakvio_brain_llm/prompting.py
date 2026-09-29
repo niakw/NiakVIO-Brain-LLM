@@ -930,7 +930,10 @@ def build_force_prompt_payload(
         }
 
     new_bloc_target: dict[str, Any] = {}
-    runtime_source = context.get("runtimeMutationSource")
+    runtime_source = (
+        context.get("preferredRuntimeMutationSource")
+        or context.get("runtimeMutationSource")
+    )
     if runtime_source and "provider_bloc" in allowed_scopes:
         new_bloc_target = {
             "scope": "provider_bloc",
