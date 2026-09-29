@@ -54,6 +54,7 @@ Rules:
 - unit_id must come from editable_units. Brain owns the exact current-byte find text; never copy or invent find bytes.
 - Existing-file replace <=640 chars, or <=1800 only for a supplied function_unit; provider_bloc replace <=1800 chars.
 - Preserve syntax/function boundaries; do not emit partial function declarations.
+- When the chosen editable unit has kind=function_unit, replace is the NEW FUNCTION BODY ONLY. Never emit or rename the function declaration/name/signature; Brain preserves that exact envelope deterministically.
 - FULL OK references are optional inspiration only: adapt/combine/ignore them or invent a new provider-local mechanism. Never copy provider-specific network facts.
 - For provider_bloc, an editable unit does NOT need to already implement the missing mechanism. Prefer the nearest complete function_unit and rewrite it with a new bounded provider-local mechanism using only observed current facts.
 - Do not abstain merely because existing code lacks the desired helper/strategy. Abstain only when current evidence lacks a required network fact/value or no complete syntax-safe unit can carry a provider-local repair.
