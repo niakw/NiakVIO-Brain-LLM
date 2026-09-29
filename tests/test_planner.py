@@ -671,6 +671,38 @@ class PlannerTests(unittest.TestCase):
         self.assertIn("const finalUrl=page.finalUrl||page.url;return finalUrl;", updated)
         self.assertTrue(updated.rstrip().endswith("}"))
 
+    def test_compact_force_provider_bloc_rejects_explicit_helper_rename_before_minimization(self):
+        source = "function _routeKind(route){return route;} function _extractUrls(text){return [text];}"
+        request = RepairRequest(
+            provider_id="demo",
+            failure_class="route_proven_gap",
+            status="ROUTE PROVEN",
+            allowed_mutations=["provider_bloc"],
+            provider_context={
+                "runtimeMutationSource": source,
+                "runtimeMutationFilename": "providers/demo.js",
+            },
+        )
+        payload = build_force_prompt_payload(
+            request,
+            {"target_layer": "provider", "confidence": 0.96, "strategy_prior": "route"},
+            {"allow_mutations": True, "allowed_scopes": ["provider_bloc"]},
+        )
+        unit = next(
+            row for row in payload["new_bloc_target"]["editable_units"]
+            if row.get("kind") == "function_unit" and "_routeKind" in row.get("source", "")
+        )
+        with self.assertRaisesRegex(ValueError, "may not silently remove a helper function declaration"):
+            _compact_edit_to_mutation(
+                request,
+                {
+                    "scope": "provider_bloc",
+                    "family": "route_proven_gap",
+                    "unit_id": unit["id"],
+                    "replace": "function _extractUrls(text){return [text,text];}",
+                },
+            )
+
     def test_compact_force_provider_bloc_allows_long_exact_function_anchor(self):
         old_body = "a" * 900
         new_body = "b" * 900
