@@ -529,3 +529,13 @@
 - `request_from_checkout()` correctly discards that stale targeted snapshot. The recent clean FORCE abstentions therefore had current census/residential replay causality but not the bounded current response-shape/network observations added for structural synthesis.
 - This is not evidence that the dedicated runtimes are unrepairable. A full 13-provider targeted refresh has been triggered on NiakVIO before the next authoritative FORCE cycle.
 - Freshness remains census-epoch based: the persisted targeted artifact is accepted when its `sourceCensusRunId` equals the current census `runId`; it does not need to share the exact later evidence-persistence commit SHA.
+
+
+## 2026-09-29 — NiakVIO causal queue split reduced provider FORCE cohort to 8
+
+- NiakVIO same-census targeted transport projection reduced the automated provider repair queue from 13 to **8** without promoting any provider status.
+- Current provider-mutation cohort: `4khdhub, allanime, anime-ultime, animesultra, animevost-fr, moviebox, vidfast, yflix`.
+- Current explicit targeted WAF/transport-owned cohort: `allwish, animesalt, flemmix, mallumv, moviesmod`.
+- The five transport-owned providers retain their semantic proof but must not consume provider FORCE budget while `transportRepairEligible=false`; they remain candidates for browser/native/residential transport requalification.
+- Plain HTTP 403 is not sufficient to remove provider mutation authority. Anime-Ultime and VidFast remain in the provider cohort because their targeted classification is `provider_network_http_error`, not explicit `provider_waf_challenge`.
+- Future FORCE guidance must use the 8-provider census repairQueue rather than replaying the stale 13-provider cohort.
