@@ -634,6 +634,43 @@ class PlannerTests(unittest.TestCase):
         self.assertIn("function resolve(page)", mutation["diff"])
         self.assertNotIn('WRAPPER = """var rows=', mutation["diff"])
 
+    def test_provider_bloc_validation_uses_preferred_runtime_source(self):
+        generic = "function _routeKind(route){return 'ignore';}"
+        dedicated = "async function detail(page){return page.cards&&page.cards[0]||null;}"
+        request = RepairRequest(
+            provider_id="demo",
+            failure_class="route_proven_gap",
+            status="ROUTE PROVEN",
+            allowed_mutations=["provider_bloc"],
+            provider_context={
+                "runtimeMutationFilename": "providers/demo.js",
+                "runtimeMutationSource": generic,
+                "preferredRuntimeMutationBlockId": "PROVIDER.DEMO.RUNTIME.V1",
+                "preferredRuntimeMutationSource": dedicated,
+            },
+        )
+        payload = build_force_prompt_payload(
+            request,
+            {"target_layer": "provider", "confidence": 0.96, "strategy_prior": "route"},
+            {"allow_mutations": True, "allowed_scopes": ["provider_bloc"]},
+        )
+        unit = next(
+            row for row in payload["new_bloc_target"]["editable_units"]
+            if row.get("kind") == "function_unit" and "function detail(" in row.get("source", "")
+        )
+        mutation = _compact_edit_to_mutation(
+            request,
+            {
+                "scope": "provider_bloc",
+                "family": "search_result_selection",
+                "unit_id": unit["id"],
+                "replace": "const cards=page.cards||[];return cards.find(Boolean)||null;",
+            },
+        )
+        self.assertIn("detail", mutation["find"])
+        self.assertIn("cards.find(Boolean)", mutation["replace"])
+        self.assertNotIn("_routeKind", mutation["find"])
+
     def test_compact_force_provider_bloc_allows_bounded_full_function_invention(self):
         source = "function resolve(page){return page.url;}"
         request = RepairRequest(
