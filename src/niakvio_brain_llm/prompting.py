@@ -350,7 +350,7 @@ def _force_structural_focus_keywords(request: RepairRequest) -> tuple[str, ...]:
         value = row.get("value") if isinstance(row.get("value"), dict) else {}
         for hint in (value.get("structureHints") or [])[:8]:
             text = str(hint or "")
-            match = re.search(r"(?:^|;)classes=([^;]+)", text)
+            match = re.search(r"(?:^|[;:])classes=([^;]+)", text)
             if not match:
                 continue
             for raw in match.group(1).split(","):
