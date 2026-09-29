@@ -622,3 +622,15 @@
 - The causal call graph now follows both direct calls and named callbacks such as `.then(parser)`, `.map(normalize)`, etc., so second-hop parser/player/terminal helpers remain visible under the normal four-unit prompt budget.
 - Guidance workflow contracts are synchronized with current execution: page size 9, structural provider budget 600 s, and four-file guidance publication including FORCE diagnostics.
 - Brain CI run `36582057653` / job `109452493685` is **green** at commit `e5bbe01b5725acc70dc9602c02cd97074f805ec1` (189 tests). This validates the repair mechanism only; no provider is marked repaired until a fresh Brain mutation survives NiakVIO isolated playable/identity/non-regression proof.
+
+## 2026-09-29 — Witness strategy: first executable mutation exposed wrong fallback surface
+
+- Fleet-wide 13-provider FORCE is no longer the progress metric. The current milestone is one Brain-authored provider repair surviving NiakVIO sandbox/playback/identity proof; witness provider: `4khdhub`.
+- Isolated Brain run `36589827785` produced the first executable FORCE mutation after compiler recovery. This proves the pipeline crossed the prior `providerCount=0` barrier.
+- The candidate was intentionally rejected as non-causal: its provider_bloc anchor was generic ProviderBase `_routeKind`, while its replacement body behaved like URL extraction. It did not target 4KHDHub's dedicated runtime.
+- Root architecture defect: `runtimeMutationSource` spanned the generic provider base plus provider-local Blocs, so generic helpers could outrank a registered `PROVIDER.<ID>.RUNTIME.*` Bloc even when a provider-specific repair script already owned the runtime.
+- Brain now retains exact published provider Bloc bytes internally, maps registered patch-script `MANAGED_FIX_ID` values to their matching materialized Bloc, prioritizes `.RUNTIME.` ownership, and exposes `preferredRuntimeMutationSource` / `preferredRuntimeMutationBlockId`.
+- Both FORCE prompting and mutation compilation use that preferred runtime source before generic `runtimeMutationSource`. Tests prove the prompt and minimized mutation anchor cannot fall back to generic `_routeKind` when a dedicated runtime Bloc is available.
+- NiakVIO targeted evidence now supplies bounded/sanitized HTML class/id tokens. 4KHDHub current search HTML still exposes `movie-card`, `movie-card-title`, `movie-card-format`, and `movie-card-meta`, while the runtime still ends after the search response with `provider_network_zero_result`. Therefore a blanket “markup classes changed” hypothesis is not supported.
+- Targeted DOM structure is additionally surfaced as shallow `structureHints` in the Brain observation so compact FORCE cannot hide it inside deeply clipped network rows.
+- Brain CI is green through `1b12a27eb4e28e119e43351b65d64dfd7da94d83`. No provider is repaired yet; the next authoritative run must be a frozen one-provider 4KHDHub cycle followed by NiakVIO isolated proof if a causal mutation is produced.
