@@ -401,3 +401,15 @@ A standalone WAF/browser/replay file without a source census/SHA pin is never us
 The `niakvio-guidance` branch is a current-state transport, not an eventually-consistent log. Publication must be monotonic in Brain history. A run whose Brain SHA is an ancestor of the Brain SHA already published is stale and must not overwrite the branch or dispatch another page. Divergent Brain histories fail closed. `force-with-lease` remains a byte-level race guard but is not sufficient by itself because a stale run can legally refetch a newer branch immediately before pushing.
 
 Continuation is permitted only after the current page reports `published=true`. Detailed routing decisions are retained as workflow artifacts so a deterministic/probe/LLM decision can be audited without relying on incomplete live job logs.
+
+## Dedicated runtime precedence inside FORCE
+
+Structural failure does not imply that the generic generated runtime is the best first mutation surface. When a provider already has a registered patch whose source contains the provider-runtime resolver contract (`NIAKVIO_PROVIDER_RUNTIME_RESOLVER_V1` or `__niakvioProviderRuntimeResolverV1`), that authored provider-local runtime is causally narrower than the generic runtime Bloc.
+
+FORCE scope precedence for ROUTE PROVEN, CHAIN REACHED and media-extraction gaps is therefore:
+
+1. registered provider-specific runtime resolver, when present;
+2. generated `provider_bloc` invention surface;
+3. remaining authored JS/data fallback according to mutation policy.
+
+The generic Bloc remains first for structural providers that do not have a dedicated runtime resolver. A mere registered patch is not sufficient to gain first priority: the runtime-resolver contract must be present. This preserves the purpose of Bloc-first recovery while preventing generic helper edits from masking a more specific provider runtime that already owns search/detail/player/terminal traversal.
