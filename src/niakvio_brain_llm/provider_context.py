@@ -226,9 +226,11 @@ def _published_provider_context(root: Path, provider_id: str) -> dict[str, Any] 
         re.IGNORECASE | re.DOTALL,
     )
     blocks: list[dict[str, str]] = []
+    block_sources: dict[str, str] = {}
     for match in pattern.finditer(source):
         block_id = str(match.group(1) or "").upper()
         body = match.group(0)
+        block_sources[block_id] = sanitize_exact_source(body)
         # Preserve both the beginning and the terminal resolver/export tail of
         # large runtime Blocs; either side can contain the actual failure cause.
         cleaned = sanitize_source(body, limit=9000)
@@ -245,6 +247,7 @@ def _published_provider_context(root: Path, provider_id: str) -> dict[str, Any] 
         "supportedTypes": list(row.get("supportedTypes") or []),
         "formats": list(row.get("formats") or []),
         "providerBlocks": blocks,
+        "providerBlockSources": block_sources,
         "runtimeMutationFilename": filename,
         "runtimeMutationSource": runtime_mutation_source,
     }
@@ -263,7 +266,7 @@ def build_provider_context(root: str | Path, provider_id: str) -> dict[str, Any]
         context["published_bundle"] = {
             key: value
             for key, value in published.items()
-            if key not in {"runtimeMutationFilename", "runtimeMutationSource"}
+            if key not in {"runtimeMutationFilename", "runtimeMutationSource", "providerBlockSources"}
         }
         if published.get("runtimeMutationSource"):
             context["runtimeMutationFilename"] = published.get("runtimeMutationFilename")
@@ -317,5 +320,31 @@ def build_provider_context(root: str | Path, provider_id: str) -> dict[str, Any]
                     )
             if sources:
                 context["registered_patch_sources"] = sources
+                managed_ids: list[str] = []
+                for source_text in sources.values():
+                    managed_ids.extend(
+                        str(match.group(1) or "").upper()
+                        for match in re.finditer(
+                            r"MANAGED_FIX_ID\s*=\s*[\"'](PROVIDER\.[A-Za-z0-9_.-]+)[\"']",
+                            source_text,
+                        )
+                    )
+                exact_blocks = (
+                    published.get("providerBlockSources")
+                    if isinstance(published, dict)
+                    and isinstance(published.get("providerBlockSources"), dict)
+                    else {}
+                )
+                preferred_ids = sorted(
+                    set(managed_ids),
+                    key=lambda value: (0 if ".RUNTIME." in value else 1, value),
+                )
+                preferred_id = next(
+                    (value for value in preferred_ids if value in exact_blocks),
+                    "",
+                )
+                if preferred_id:
+                    context["preferredRuntimeMutationBlockId"] = preferred_id
+                    context["preferredRuntimeMutationSource"] = exact_blocks[preferred_id]
 
     return context
