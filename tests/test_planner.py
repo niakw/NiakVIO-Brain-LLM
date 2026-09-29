@@ -603,6 +603,39 @@ class PlannerTests(unittest.TestCase):
         self.assertEqual(mutation["scope"], "provider_patch")
         self.assertIn("unified_diff", mutation["operation"])
 
+    def test_compact_force_provider_patch_preserves_function_envelope_for_body_only_rewrite(self):
+        path = "scripts/provider_patches/demo_runtime_v1.py"
+        old_body = "var x=page.url;" + ("x=x;" * 90) + "return x;"
+        source = 'WRAPPER = """function resolve(page){' + old_body + '}"""\n'
+        request = RepairRequest(
+            provider_id="demo",
+            failure_class="route_proven_gap",
+            status="ROUTE PROVEN",
+            provider_context={"registered_patch_sources": {path: source}},
+        )
+        payload = build_force_prompt_payload(
+            request,
+            {"target_layer": "provider", "confidence": 0.96, "strategy_prior": "route"},
+            {"allow_mutations": True, "allowed_scopes": ["provider_patch"]},
+        )
+        unit = next(
+            row for row in payload["mutation_target"]["editable_units"]
+            if row.get("kind") == "function_unit" and "function resolve(" in row.get("source", "")
+        )
+        self.assertGreater(len(unit["source"]), 320)
+        mutation = _compact_edit_to_mutation(
+            request,
+            {
+                "scope": "provider_patch",
+                "path": path,
+                "unit_id": unit["id"],
+                "replace": "var rows=page.rows||[];return rows.length?rows[0]:page.url;",
+            },
+        )
+        self.assertEqual(mutation["scope"], "provider_patch")
+        self.assertIn("function resolve(page)", mutation["diff"])
+        self.assertNotIn('WRAPPER = """var rows=', mutation["diff"])
+
     def test_compact_force_provider_bloc_allows_bounded_full_function_invention(self):
         source = "function resolve(page){return page.url;}"
         request = RepairRequest(
