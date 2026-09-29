@@ -1000,6 +1000,7 @@ def build_force_prompt_payload(
         None,
     )
     force_window_kwargs = _force_window_kwargs_for_request(request)
+    structural_focus_keywords = _force_structural_focus_keywords(request)
     # Editable units are derived from the full bounded causal windows, but the
     # model does not need those same bytes duplicated verbatim as context.
     # Keep a smaller context view to reduce CPU prompt ingestion at fleet scale.
@@ -1020,15 +1021,15 @@ def build_force_prompt_payload(
         target = {
             "scope": "provider_patch",
             "path": str(path)[:240],
-            "source_windows": _force_source_windows(source, request.failure_class, **context_window_kwargs),
-            "editable_units": _force_edit_units(source, request.failure_class, **force_window_kwargs),
+            "source_windows": _force_source_windows(source, request.failure_class, focus_keywords=structural_focus_keywords, **context_window_kwargs),
+            "editable_units": _force_edit_units(source, request.failure_class, focus_keywords=structural_focus_keywords, **force_window_kwargs),
         }
     elif "provider_js" in allowed_scopes and context.get("authored_module"):
         target = {
             "scope": "provider_js",
             "path": f"engine_v2/providers/{request.provider_id}.mjs",
-            "source_windows": _force_source_windows(context.get("authored_module"), request.failure_class, **context_window_kwargs),
-            "editable_units": _force_edit_units(context.get("authored_module"), request.failure_class, **force_window_kwargs),
+            "source_windows": _force_source_windows(context.get("authored_module"), request.failure_class, focus_keywords=structural_focus_keywords, **context_window_kwargs),
+            "editable_units": _force_edit_units(context.get("authored_module"), request.failure_class, focus_keywords=structural_focus_keywords, **force_window_kwargs),
         }
     elif "provider_data" in allowed_scopes and context.get("override"):
         target = {
@@ -1046,8 +1047,8 @@ def build_force_prompt_payload(
         new_bloc_target = {
             "scope": "provider_bloc",
             "filename": _clip(context.get("runtimeMutationFilename"), 180),
-            "source_windows": _force_source_windows(runtime_source, request.failure_class, **context_window_kwargs),
-            "editable_units": _force_edit_units(runtime_source, request.failure_class, **force_window_kwargs),
+            "source_windows": _force_source_windows(runtime_source, request.failure_class, focus_keywords=structural_focus_keywords, **context_window_kwargs),
+            "editable_units": _force_edit_units(runtime_source, request.failure_class, focus_keywords=structural_focus_keywords, **force_window_kwargs),
         }
 
     observation_source = (
@@ -1117,6 +1118,7 @@ def build_force_prompt_payload(
             "force_abstain": bool(policy.get("force_abstain")),
             "reason": _clip(policy.get("reason"), 260),
         },
+        "structural_focus": list(structural_focus_keywords)[:6],
         "current_observations": observations,
         "prior_force_sandbox_failures": force_failures,
         "census_prior": census,
