@@ -1,12 +1,8 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "4ec565efb22645ba1536014a682a7bcc336c16bf",
-  "reason": "Authoritative 13-provider FORCE with timeout-safe 4-provider pages. Brain includes reserved second-hop structural slot, immutable function signature/asyncness, 600s provider fallback budget and pinned continuation publication. Keep Brain and NiakVIO main frozen until all 4+4+4+1 pages publish.",
+  "niakvio_sha": "5e981a76decca83e293c6099c5f8dd40f9651ac7",
+  "reason": "Resume authoritative FORCE after stalled self-continuation: first four are already adjudicated (4khdhub/allanime/anime-ultime abstained; AllWish candidate rejected for network-helper semantic collapse). Process only the nine unprocessed providers on current Brain guards and current provider-neutral NiakVIO receiver.",
   "requested_repair_queue": [
-    "4khdhub",
-    "allanime",
-    "allwish",
-    "anime-ultime",
     "animesalt",
     "animesultra",
     "animevost-fr",
