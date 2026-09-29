@@ -667,9 +667,10 @@ class PlannerTests(unittest.TestCase):
                 "replace": "const cards=page.cards||[];return cards.find(Boolean)||null;",
             },
         )
-        self.assertIn("detail", mutation["find"])
+        self.assertIn("page.cards", mutation["find"])
         self.assertIn("cards.find(Boolean)", mutation["replace"])
         self.assertNotIn("_routeKind", mutation["find"])
+        self.assertNotIn("return 'ignore'", mutation["find"])
 
     def test_compact_force_provider_bloc_allows_bounded_full_function_invention(self):
         source = "function resolve(page){return page.url;}"
