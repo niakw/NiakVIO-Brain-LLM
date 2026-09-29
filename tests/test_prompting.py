@@ -235,6 +235,47 @@ class PromptingTests(unittest.TestCase):
         self.assertTrue(any("function a(" in row.get("source", "") for row in functions))
         self.assertTrue(any("function b(" in row.get("source", "") for row in functions))
 
+    def test_force_edit_units_follow_direct_runtime_callees(self):
+        source = (
+            "function request(a){return a;} "
+            "function candidateDownloadLinks(page){return [page.url];} "
+            "function modLinks(url){return fetch(url).then(r=>r.text());} "
+            "function resolve(args){var q=request(args);var rows=candidateDownloadLinks(q);"
+            "return rows.length?modLinks(rows[0]):[];} "
+            "function unrelated(){return 1;}"
+        )
+        request = RepairRequest(
+            provider_id="demo",
+            failure_class="route_proven_gap",
+            status="ROUTE PROVEN",
+            provider_context={
+                "registered_patch_sources": {
+                    "scripts/provider_patches/demo_runtime_v1.py": source,
+                },
+            },
+        )
+        payload = build_force_prompt_payload(
+            request,
+            {"target_layer": "provider", "confidence": 0.96, "strategy_prior": "route"},
+            {"allow_mutations": True, "allowed_scopes": ["provider_patch"]},
+        )
+        functions = [
+            row
+            for row in payload["mutation_target"]["editable_units"]
+            if row.get("kind") == "function_unit"
+        ]
+        joined = "\n".join(row.get("source", "") for row in functions)
+        self.assertIn("function resolve(", joined)
+        self.assertIn("function candidateDownloadLinks(", joined)
+        self.assertIn("function modLinks(", joined)
+        self.assertTrue(
+            any(
+                row.get("reason") == "causal_call_neighbor"
+                and "function modLinks(" in row.get("source", "")
+                for row in functions
+            )
+        )
+
     def test_force_validation_retry_uses_focused_context(self):
         source = (
             "H" * 5000
