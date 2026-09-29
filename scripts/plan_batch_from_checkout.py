@@ -460,6 +460,7 @@ def main() -> int:
             scopes = _force_scope_order(request)
             last_error: Exception | None = None
             last_row: dict | None = None
+            scope_trace: list[dict[str, object]] = []
             budget_cap = max(60, min(int(args.force_provider_budget_seconds), 900))
             failure_key = str(request.failure_class or "").strip().casefold().replace("-", "_")
             status_key = str(request.status or "").strip().upper()
@@ -482,6 +483,11 @@ def main() -> int:
             for scope in scopes:
                 if time.monotonic() >= force_deadline:
                     last_error = TimeoutError("force provider budget exhausted")
+                    scope_trace.append({
+                        "scope": scope,
+                        "outcome": "budget_exhausted",
+                        "reason": "provider_budget_exhausted",
+                    })
                     print(
                         "FIELD_BRAIN_FORCE_PROVIDER_BUDGET_EXHAUSTED "
                         f"provider={provider} budget_seconds={budget_seconds}",
@@ -497,11 +503,18 @@ def main() -> int:
                 )
                 if error is not None:
                     last_error = error
+                    rejection_reason = _force_rejection_reason(error)
+                    scope_trace.append({
+                        "scope": scope,
+                        "outcome": "rejected",
+                        "reason": rejection_reason,
+                        "errorType": type(error).__name__,
+                    })
                     error_detail = re.sub(r"[^a-zA-Z0-9._:/ -]+", "_", str(error).strip())[:240] or "unspecified"
                     print(
                         "FIELD_BRAIN_FORCE_SCOPE_REJECTED "
                         f"provider={provider} scope={scope} error={type(error).__name__} "
-                        f"reason={_force_rejection_reason(error)} detail={error_detail}",
+                        f"reason={rejection_reason} detail={error_detail}",
                         flush=True,
                     )
                     continue
@@ -511,6 +524,12 @@ def main() -> int:
                 proposal = row.get("proposal") if isinstance(row, dict) else None
                 mutations = proposal.get("mutations") if isinstance(proposal, dict) else None
                 if isinstance(mutations, list) and mutations:
+                    scope_trace.append({
+                        "scope": scope,
+                        "outcome": "selected",
+                        "reason": "executable_mutation",
+                    })
+                    row["force_scope_trace"] = copy.deepcopy(scope_trace)
                     print(
                         "FIELD_BRAIN_FORCE_SCOPE_SELECTED "
                         f"provider={provider} scope={scope}",
@@ -521,12 +540,18 @@ def main() -> int:
                 if isinstance(proposal, dict):
                     abstain_reason = str(proposal.get("abstain_reason") or "")
                 safe_reason = re.sub(r"[^a-zA-Z0-9._:-]+", "_", abstain_reason.strip())[:160] or "unspecified"
+                scope_trace.append({
+                    "scope": scope,
+                    "outcome": "abstain",
+                    "reason": safe_reason,
+                })
                 print(
                     "FIELD_BRAIN_FORCE_SCOPE_ABSTAIN "
                     f"provider={provider} scope={scope} reason={safe_reason}",
                     flush=True,
                 )
             if last_row is not None:
+                last_row["force_scope_trace"] = copy.deepcopy(scope_trace)
                 return [last_row]
             exc = last_error or RuntimeError("no bounded Force mutation scope is available")
             return [{
@@ -537,6 +562,7 @@ def main() -> int:
                 "failure_class": request.failure_class,
                 "ok": False,
                 "error": type(exc).__name__ + ": " + str(exc),
+                "force_scope_trace": copy.deepcopy(scope_trace),
             }]
 
         try:
