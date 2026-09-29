@@ -1,21 +1,10 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "a7c1ad0013394fb010bcc176447554bc53a8f454",
-  "reason": "Authoritative current 14-provider executable FORCE after Bloc-first structural policy, deterministic selected-function envelope preservation and deletion-guard ordering fixes; Brain CI 918 green.",
+  "niakvio_sha": "2d7c74e1402c7601e5277168703052ea9bc89955",
+  "reason": "Regenerate only the 3 FORCE #147 candidates invalidated by the pre-minimization helper-identity bug; current Brain guards complete helper identity before minimization. Reuse the other #147 abstentions as negative evidence.",
   "requested_repair_queue": [
-    "4khdhub",
-    "allanime",
-    "allwish",
     "anime-ultime",
-    "animesalt",
-    "animesultra",
-    "animevost-fr",
     "flemmix",
-    "mallumv",
-    "moviebox",
-    "moviesmod",
-    "vidfast",
-    "vostfree",
-    "yflix"
+    "moviesmod"
   ]
 }
