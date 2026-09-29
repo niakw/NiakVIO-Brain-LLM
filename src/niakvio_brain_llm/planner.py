@@ -707,6 +707,107 @@ def _compact_edit_to_mutation(
         "diff": diff,
     }
 
+
+def _deterministic_structural_force_mutation(
+    request: RepairRequest,
+    mutation_policy: dict[str, Any],
+) -> dict[str, Any] | None:
+    """Synthesize one exact class-token boundary repair from current evidence.
+
+    This is deliberately narrow. It activates only when current targeted
+    structural evidence proves an exact class token also has token-child
+    siblings, and only when the focused editable surface contains exactly one
+    complete function using the known escaped-class boundary form. Network
+    facts, routes and provider-specific literals are never invented.
+    """
+    focus_keywords = _force_structural_focus_keywords(request)
+    if not focus_keywords:
+        return None
+    allowed = [
+        str(scope)
+        for scope in mutation_policy.get("allowed_scopes") or request.allowed_mutations or []
+        if str(scope) in {"provider_patch", "provider_bloc"}
+    ]
+    if not allowed:
+        return None
+
+    context = request.provider_context or {}
+    candidates: list[tuple[str, str, str, dict[str, Any]]] = []
+    edit_kwargs = _force_window_kwargs_for_request(request)
+    for scope in allowed:
+        if scope == "provider_patch":
+            sources = context.get("registered_patch_sources")
+            if not isinstance(sources, dict):
+                continue
+            source_rows = [
+                (str(path), str(source or ""))
+                for path, source in sources.items()
+                if str(path) and str(source or "")
+            ]
+        else:
+            source = str(
+                context.get("preferredRuntimeMutationSource")
+                or context.get("runtimeMutationSource")
+                or ""
+            )
+            source_rows = [("", source)] if source else []
+
+        for path, source in source_rows:
+            units = _force_edit_units(
+                source,
+                request.failure_class,
+                focus_keywords=focus_keywords,
+                **edit_kwargs,
+            )
+            for unit in units:
+                if str(unit.get("kind") or "") != "function_unit":
+                    continue
+                unit_source = str(unit.get("source") or "")
+                old_boundary = '\\\\b"+esc+"\\\\b'
+                if unit_source.count(old_boundary) != 1:
+                    continue
+                match = re.match(
+                    r"(?s)^\s*(?:async\s+)?function\s+[A-Za-z_$][A-Za-z0-9_$]*"
+                    r"\s*\([^)]*\)\s*\{(?P<body>.*)\}\s*$",
+                    unit_source,
+                )
+                if not match:
+                    continue
+                candidates.append((scope, path, source, unit))
+
+    if len(candidates) != 1:
+        return None
+
+    scope, path, _source, unit = candidates[0]
+    unit_source = str(unit.get("source") or "")
+    match = re.match(
+        r"(?s)^\s*(?:async\s+)?function\s+[A-Za-z_$][A-Za-z0-9_$]*"
+        r"\s*\([^)]*\)\s*\{(?P<body>.*)\}\s*$",
+        unit_source,
+    )
+    if not match:
+        return None
+    body = str(match.group("body") or "")
+    old_boundary = '\\\\b"+esc+"\\\\b'
+    new_boundary = '\\\\b"+esc+"(?![-_])\\\\b'
+    if body.count(old_boundary) != 1:
+        return None
+    replacement_body = body.replace(old_boundary, new_boundary, 1)
+    edit: dict[str, Any] = {
+        "scope": scope,
+        "unit_id": str(unit.get("id") or ""),
+        "replace": replacement_body,
+    }
+    if scope == "provider_patch":
+        edit["path"] = path
+    else:
+        edit["family"] = "exact_class_token_boundary"
+    mutation = _compact_edit_to_mutation(request, edit)
+    if not isinstance(mutation, dict):
+        return None
+    return mutation
+
+
 def _compact_wire_schema_for(
     request: RepairRequest,
     mutation_policy: dict[str, Any],
@@ -849,6 +950,31 @@ class BrainPlanner:
     ) -> tuple[RepairProposal, dict[str, Any], dict[str, Any]]:
         _, _, causal_prior, mutation_policy, user = self._prepare(request)
         if compact_force:
+            deterministic_mutation = _deterministic_structural_force_mutation(
+                request,
+                mutation_policy,
+            )
+            if deterministic_mutation is not None:
+                print(
+                    "FIELD_BRAIN_FORCE_DETERMINISTIC "
+                    f"provider={request.provider_id} mechanism=exact_class_token_boundary "
+                    f"scope={deterministic_mutation.get('scope')}",
+                    flush=True,
+                )
+                proposal = RepairProposal(
+                    provider_id=request.provider_id,
+                    diagnosis="structural class-token prefix collision",
+                    strategy=str(causal_prior.get("strategy_prior") or "provider_local_repair"),
+                    confidence=max(0.0, min(1.0, float(causal_prior.get("confidence") or 0.0))),
+                    target_layer=str(causal_prior.get("target_layer") or "provider"),
+                    evidence=["current structural evidence proves class-token prefix collision"],
+                    mutations=[deterministic_mutation],
+                    experiment={},
+                    tests=[],
+                    abstain=False,
+                    abstain_reason="",
+                )
+                return proposal, causal_prior, mutation_policy
             user = json.dumps(
                 build_force_prompt_payload(
                     request,
