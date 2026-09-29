@@ -22,7 +22,7 @@ on:
       page_size:
         description: "Bounded providers per guidance page (1..12)"
         required: false
-        default: "8"
+        default: "6"
 
 permissions:
   contents: write
@@ -131,7 +131,7 @@ jobs:
         id: page
         shell: bash
         env:
-          PAGE_SIZE: ${{ inputs.page_size || '8' }}
+          PAGE_SIZE: ${{ inputs.page_size || '6' }}
         run: |
           set -euo pipefail
           git -C brain fetch origin "+refs/heads/niakvio-guidance:refs/remotes/origin/niakvio-guidance" || true
@@ -311,7 +311,7 @@ jobs:
             --workers 1 \
             --max-tokens 768 \
             --timeout-seconds 180 \
-            --force-provider-budget-seconds 360 \
+            --force-provider-budget-seconds 480 \
             --output private-force-batch.jsonl
           python brain/scripts/plan_batch_from_checkout.py \
             --niakvio-root niakvio \
@@ -496,7 +496,7 @@ jobs:
             -f niakvio_sha="${{ steps.source.outputs.sha }}" \
             -f brain_sha="${{ steps.page.outputs.brain_sha }}" \
             -f target_providers="${{ steps.cohort.outputs.csv }}" \
-            -f page_size="${{ inputs.page_size || '8' }}"
+            -f page_size="${{ inputs.page_size || '6' }}"
           echo "FIELD_NIAKVIO_GUIDANCE_CONTINUE remaining=${{ steps.page.outputs.remaining }} source=${{ steps.source.outputs.sha }}"
       - uses: actions/upload-artifact@v4
         if: always()
