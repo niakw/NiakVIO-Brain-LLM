@@ -116,6 +116,8 @@ class CompactForceRetryTest(unittest.TestCase):
         self.assertIn("structural_gap =", scope_order)
         self.assertIn("runtime_patch_ready =", scope_order)
         self.assertIn("NIAKVIO_PROVIDER_RUNTIME_RESOLVER_V1", scope_order)
+        self.assertIn("MANAGED_FIX_ID", scope_order)
+        self.assertIn('".RUNTIME."', scope_order)
         self.assertLess(scope_order.index('scopes.append("provider_patch")'), scope_order.index('scopes.append("provider_bloc")'))
         self.assertIn('if patch_ready and "provider_patch" not in scopes:', scope_order)
         self.assertIn("scoped_request.allowed_mutations = [scope]", script)
