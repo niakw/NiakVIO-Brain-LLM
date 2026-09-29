@@ -59,12 +59,14 @@ assert "requested_repair_queue" in wf
 assert "niakvio-guidance-targets.txt" in wf
 assert "FIELD_NIAKVIO_FORCE_MUTATIONS_READY ready=false" in wf
 
-assert "-c 32768" in wf
+assert "-c 16384" in wf
+assert "Qwen/Qwen2.5-Coder-7B-Instruct-GGUF:Q4_K_M" in wf
+assert "--model qwen2.5-coder-7b" in wf
 assert "-np 1" in wf
 assert "--workers 1" in wf
 assert "--advisor-only" in wf
-assert "--max-tokens 768" in wf
-assert "--timeout-seconds 180" in wf
+assert "--max-tokens 512" in wf
+assert "--timeout-seconds 240" in wf
 assert "--force-provider-budget-seconds 600" in wf
 assert wf.index("-np 1") < wf.index("--workers 1")
 
