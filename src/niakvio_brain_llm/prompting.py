@@ -437,10 +437,14 @@ def _force_window_kwargs_for_request(request: RepairRequest) -> dict[str, int]:
         and str(row.get("stage") or "") == "force_validation_feedback"
         for row in (request.observations or [])
     )
+    failure = str(request.failure_class or "").strip().casefold()
+    structural = failure in {"route_proven_gap", "chain_terminal_gap", "media_extraction_gap"}
     # GitHub CPU spends most Force wall time ingesting repeated editable-source
-    # bytes, not generating the compact edit JSON. Keep enough alternatives for
-    # causal choice while bounding prefill cost. Unit ids stay deterministic and
-    # exact current bytes remain available to Brain validation outside the prompt.
+    # bytes. Structural gaps already have an exact local call graph: expose the
+    # strongest root plus the strongest causal callee instead of four competing
+    # functions. Exact bytes remain available to deterministic validation.
+    if structural:
+        return {"max_chars": 1300 if feedback else 1500, "max_windows": 1, "max_units": 2}
     return (
         {"max_chars": 1600, "max_windows": 2, "max_units": 3}
         if feedback
@@ -900,10 +904,17 @@ def build_force_prompt_payload(
     # Editable units are derived from the full bounded causal windows, but the
     # model does not need those same bytes duplicated verbatim as context.
     # Keep a smaller context view to reduce CPU prompt ingestion at fleet scale.
+    structural_gap = str(request.failure_class or "").strip().casefold() in {
+        "route_proven_gap", "chain_terminal_gap", "media_extraction_gap"
+    }
     context_window_kwargs = (
-        {"max_chars": 650, "max_windows": 1}
-        if validation_feedback is not None
-        else {"max_chars": 1000, "max_windows": 2}
+        {"max_chars": 550, "max_windows": 1}
+        if structural_gap
+        else (
+            {"max_chars": 650, "max_windows": 1}
+            if validation_feedback is not None
+            else {"max_chars": 1000, "max_windows": 2}
+        )
     )
     registered = context.get("registered_patch_sources")
     target: dict[str, Any] = {}
