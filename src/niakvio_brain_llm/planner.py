@@ -82,30 +82,59 @@ def _function_names(value: str) -> set[str]:
     ))
 
 
-def _preserve_selected_function_envelope(find: str, replace: str) -> str:
-    """Keep the exact selected function declaration when Qwen returns only a body.
-
-    function_unit gives Brain the exact current signature. The generative part is
-    the replacement body/logic, not permission to silently delete or rename the
-    selected helper. Wrong explicit function declarations still fail closed.
-    """
-    find_names = _function_names(find)
-    if len(find_names) != 1:
-        return replace
-    original_name = next(iter(find_names))
-    replace_names = _function_names(replace)
-    if original_name in replace_names:
-        return replace
-    stripped = str(replace or "").lstrip()
-    if stripped.startswith("function ") or stripped.startswith("async function "):
-        return replace
+def _named_function_parts(value: str) -> tuple[str, str, str, str] | None:
+    """Return exact envelope parts for one complete named function declaration."""
     match = re.match(
-        r"(?s)^(\s*(?:async\s+)?function\s+[A-Za-z_$][A-Za-z0-9_$]*\s*\([^)]*\)\s*\{)(.*)(\}\s*)$",
-        find,
+        r"(?s)^(\s*)((?:async\s+)?function\s+)([A-Za-z_$][A-Za-z0-9_$]*)"
+        r"(\s*\(([^)]*)\)\s*\{)(.*)(\}\s*)$",
+        str(value or ""),
     )
     if not match:
+        return None
+    opening = match.group(1) + match.group(2) + match.group(3) + match.group(4)
+    signature = (
+        ("async " if match.group(2).lstrip().startswith("async ") else "")
+        + match.group(3)
+        + "("
+        + re.sub(r"\s+", "", match.group(5))
+        + ")"
+    )
+    return opening, signature, match.group(6), match.group(7)
+
+
+def _preserve_selected_function_envelope(find: str, replace: str) -> str:
+    """Keep the exact selected function declaration and signature.
+
+    function_unit gives Brain the exact current signature. The generative part is
+    the replacement body/logic, not permission to silently delete, rename or
+    change the parameters/async contract of the selected helper.
+    """
+    selected = _named_function_parts(find)
+    if selected is None:
         return replace
-    return match.group(1) + str(replace or "").strip() + match.group(3)
+    opening, signature, _, closing = selected
+
+    replacement = str(replace or "")
+    explicit = _named_function_parts(replacement)
+    if explicit is not None:
+        _, replacement_signature, replacement_body, _ = explicit
+        selected_name = signature.split("(", 1)[0].removeprefix("async ")
+        replacement_name = replacement_signature.split("(", 1)[0].removeprefix("async ")
+        if replacement_name != selected_name:
+            raise ValueError(
+                "compact Force function replacement renamed selected helper: "
+                f"{selected_name}->{replacement_name}"
+            )
+        if replacement_signature != signature:
+            raise ValueError(
+                "compact Force function replacement changed selected helper signature"
+            )
+        return opening + replacement_body + closing
+
+    stripped = replacement.lstrip()
+    if stripped.startswith("function ") or stripped.startswith("async function "):
+        raise ValueError("compact Force function replacement has an invalid explicit declaration")
+    return opening + replacement.strip() + closing
 
 
 def _compact_without_space(value: str) -> str:
