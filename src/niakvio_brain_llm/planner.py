@@ -84,52 +84,47 @@ def _function_names(value: str) -> set[str]:
 
 
 def _preserve_selected_function_envelope(find: str, replace: str) -> str:
-    """Keep the exact selected function declaration when Qwen returns only a body.
+    """Keep the exact selected function declaration for function-unit edits.
 
-    function_unit gives Brain the exact current signature. The generative part is
-    the replacement body/logic, not permission to silently delete or rename the
-    selected helper. Wrong explicit function declarations still fail closed.
+    ``unit_id`` already binds the mutation to one exact current function. Qwen is
+    asked for a body-only replacement, but small local models sometimes wrap that
+    body in a complete function declaration (occasionally reusing a nearby helper
+    name). When the model output is exactly one complete syntax-valid function,
+    treat that declaration as transport noise and keep only its body under the
+    exact selected declaration/signature. Ambiguous/multi-function output still
+    fails closed in the normal structural guards.
     """
     find_names = _function_names(find)
     if len(find_names) != 1:
         return replace
-    original_name = next(iter(find_names))
-    replace_names = _function_names(replace)
-    if original_name in replace_names:
-        declaration = re.compile(
-            r"^\s*(?P<async>async\s+)?function\s+"
-            r"(?P<name>[A-Za-z_$][A-Za-z0-9_$]*)\s*"
-            r"\((?P<params>[^)]*)\)\s*\{",
-            re.S,
-        )
-        find_decl = declaration.match(find)
-        replace_decl = declaration.match(replace)
-        if not find_decl or not replace_decl:
-            raise ValueError("selected function declaration/signature could not be verified")
-        find_identity = (
-            bool(find_decl.group("async")),
-            find_decl.group("name"),
-            re.sub(r"\s+", "", find_decl.group("params")),
-        )
-        replace_identity = (
-            bool(replace_decl.group("async")),
-            replace_decl.group("name"),
-            re.sub(r"\s+", "", replace_decl.group("params")),
-        )
-        if replace_identity != find_identity:
-            raise ValueError("selected function declaration/signature changed")
-        return replace
-    stripped = str(replace or "").lstrip()
-    if stripped.startswith("function ") or stripped.startswith("async function "):
-        return replace
     match = re.match(
-        r"(?s)^(\s*(?:async\s+)?function\s+[A-Za-z_$][A-Za-z0-9_$]*\s*\([^)]*\)\s*\{)(.*)(\}\s*)$",
+        r"(?s)^(\\s*(?:async\\s+)?function\\s+[A-Za-z_$][A-Za-z0-9_$]*\\s*\\([^)]*\\)\\s*\\{)(.*)(\\}\\s*)$",
         find,
     )
     if not match:
         return replace
-    return match.group(1) + str(replace or "").strip() + match.group(3)
 
+    stripped = str(replace or "").strip()
+    declaration = re.compile(
+        r"^\\s*(?P<async>async\\s+)?function\\s+"
+        r"(?P<name>[A-Za-z_$][A-Za-z0-9_$]*)\\s*"
+        r"\\((?P<params>[^)]*)\\)\\s*\\{",
+        re.S,
+    )
+    replace_decl = declaration.match(stripped)
+    if replace_decl:
+        replace_names = _function_names(stripped)
+        if len(replace_names) != 1 or not stripped.endswith("}"):
+            return replace
+        # Validate that the wrapper itself is complete JavaScript before
+        # discarding its model-chosen declaration identity.
+        _node_check_javascript(stripped)
+        body_start = replace_decl.end()
+        body = stripped[body_start:-1]
+        return match.group(1) + body.strip() + match.group(3)
+
+    # Body-only output is the preferred compact-wire contract.
+    return match.group(1) + stripped + match.group(3)
 
 def _compact_without_space(value: str) -> str:
     return re.sub(r"\s+", "", str(value or ""))
