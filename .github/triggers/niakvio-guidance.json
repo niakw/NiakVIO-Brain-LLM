@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "eb580001b28130df4745b35291b1c0fd8c2e689c",
-  "reason": "Authoritative Brain-owned provider repair restart after reverting orchestrator-authored provider edits. Generate provider-local mutations only through Brain; NiakVIO remains verifier/publisher. Use current 13-provider census cohort and current evidence, with no manual provider patch substitution.",
+  "niakvio_sha": "65d7bee92760bb37879093f2643b6277c02b8581",
+  "reason": "Fresh authoritative 13-provider Brain-owned FORCE after CI-green compact compiler recovery: exact selected function identity for generated provider_bloc wrappers, hard four-unit budget, and callback-aware second-hop causal graph. No manual provider mutation substitution; NiakVIO remains isolated verifier/publisher.",
   "requested_repair_queue": [
     "4khdhub",
     "allanime",
