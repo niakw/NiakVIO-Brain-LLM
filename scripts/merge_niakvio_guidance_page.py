@@ -46,6 +46,8 @@ def _identity(row:dict[str,Any],kind:str)->tuple[str,...]:
             str(row.get("profile") or "").casefold(),
             str(row.get("experimentFingerprint") or "").casefold(),
         )
+    if kind=="diagnostics":
+        return (provider,)
     return (
         provider,
         str(row.get("mutationFingerprint") or "").casefold(),
@@ -60,8 +62,8 @@ def merge(
     *,
     kind:str,
 )->dict[str,Any]:
-    if kind not in {"advisor","force"}:
-        raise ValueError("kind must be advisor|force")
+    if kind not in {"advisor","force","diagnostics"}:
+        raise ValueError("kind must be advisor|force|diagnostics")
     out=copy.deepcopy(candidate)
     prior_rows=previous.get("rows") if isinstance(previous.get("rows"),list) else []
     candidate_rows=candidate.get("rows") if isinstance(candidate.get("rows"),list) else []
@@ -102,11 +104,14 @@ def main()->int:
     p=argparse.ArgumentParser()
     p.add_argument("--previous-advisor",type=Path)
     p.add_argument("--previous-force",type=Path)
+    p.add_argument("--previous-diagnostics",type=Path)
     p.add_argument("--candidate-advisor",type=Path,required=True)
     p.add_argument("--candidate-force",type=Path,required=True)
+    p.add_argument("--candidate-diagnostics",type=Path,required=True)
     p.add_argument("--refreshed-providers",type=Path,required=True)
     p.add_argument("--advisor-output",type=Path,required=True)
     p.add_argument("--force-output",type=Path,required=True)
+    p.add_argument("--diagnostics-output",type=Path,required=True)
     a=p.parse_args()
     page=refreshed(a.refreshed_providers)
     advisor=merge(
@@ -115,14 +120,19 @@ def main()->int:
     force=merge(
         load(a.previous_force),load(a.candidate_force),page,kind="force"
     )
+    diagnostics=merge(
+        load(a.previous_diagnostics),load(a.candidate_diagnostics),page,kind="diagnostics"
+    )
     a.advisor_output.parent.mkdir(parents=True,exist_ok=True)
     a.force_output.parent.mkdir(parents=True,exist_ok=True)
+    a.diagnostics_output.parent.mkdir(parents=True,exist_ok=True)
     a.advisor_output.write_text(json.dumps(advisor,indent=2,sort_keys=True)+"\n",encoding="utf-8")
     a.force_output.write_text(json.dumps(force,indent=2,sort_keys=True)+"\n",encoding="utf-8")
+    a.diagnostics_output.write_text(json.dumps(diagnostics,indent=2,sort_keys=True)+"\n",encoding="utf-8")
     print(
         "FIELD_NIAKVIO_GUIDANCE_PAGE_MERGE "
         f"refreshed={len(page)} advisor_providers={advisor.get('providerCount',0)} "
-        f"force_providers={force.get('providerCount',0)}"
+        f"force_providers={force.get('providerCount',0)} diagnostics_providers={diagnostics.get('providerCount',0)}"
     )
     return 0
 
