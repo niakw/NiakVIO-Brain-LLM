@@ -836,6 +836,43 @@ def _force_edit_units(
         if match and match.group(1) not in function_by_name:
             function_by_name[match.group(1)] = row
 
+    # When current evidence identifies a concrete structural selector/parser
+    # collision, keep the editable surface on the named structural helpers.
+    # Otherwise the generic route ranking may still offer resolve/detail and a
+    # small model can paste parser logic into the dispatcher. This narrows choice,
+    # not authority: exact bytes and downstream sandbox proof remain unchanged.
+    structural_focus_name_tokens = [
+        re.sub(r"[^a-z0-9_$]+", "", str(token or "").casefold())
+        for token in focus_keywords
+        if re.sub(r"[^a-z0-9_$]+", "", str(token or "").casefold())
+        not in {"selector", "class"}
+    ][:4]
+    if structural_focus_name_tokens:
+        focused_rows = []
+        for row in function_rows:
+            match = re.match(
+                r"\s*(?:async\s+)?function\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*\(",
+                str(row.get("source") or ""),
+            )
+            if not match:
+                continue
+            normalized_name = re.sub(r"[^a-z0-9_$]+", "", match.group(1).casefold())
+            if any(token in normalized_name for token in structural_focus_name_tokens):
+                focused_rows.append(row)
+        if focused_rows:
+            function_rows = focused_rows
+            function_by_name = {}
+            function_rank = {}
+            for row in function_rows:
+                key = (int(row.get("offset") or 0), int(row.get("end_offset") or 0))
+                function_rank[key] = len(function_rank)
+                match = re.match(
+                    r"\s*(?:async\s+)?function\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*\(",
+                    str(row.get("source") or ""),
+                )
+                if match and match.group(1) not in function_by_name:
+                    function_by_name[match.group(1)] = row
+
     structural_gap = family_key in {"route_proven_gap", "chain_terminal_gap", "media_extraction_gap"}
     # On structural gaps, reserve one strongest causal root and spend the remaining
     # budget following its local call graph. Reserving an unrelated generic helper
