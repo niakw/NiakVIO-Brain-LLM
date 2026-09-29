@@ -320,6 +320,47 @@ class PromptingTests(unittest.TestCase):
             )
         )
 
+    def test_force_edit_units_reserve_second_hop_when_depth1_is_crowded(self):
+        source = (
+            "function terminalParser(value){return value&&value.streams||[];} "
+            "function current(q){return fetch(q.url).then(r=>r.json()).then(terminalParser);} "
+            "function legacy(q){return [];} "
+            "function decorate(rows){return rows;} "
+            "function metrics(rows){return rows;} "
+            "function resolve(args){var q={url:String(args&&args[0]||'')};"
+            "return current(q).then(rows=>decorate(metrics(rows.length?rows:legacy(q))));} "
+            "function unrelated(){return 1;}"
+        )
+        request = RepairRequest(
+            provider_id="demo",
+            failure_class="chain_terminal_gap",
+            status="CHAIN REACHED",
+            provider_context={
+                "registered_patch_sources": {
+                    "scripts/provider_patches/demo_runtime_v1.py": source,
+                },
+            },
+        )
+        payload = build_force_prompt_payload(
+            request,
+            {"target_layer": "provider", "confidence": 0.96, "strategy_prior": "terminal"},
+            {"allow_mutations": True, "allowed_scopes": ["provider_patch"]},
+        )
+        functions = [
+            row
+            for row in payload["mutation_target"]["editable_units"]
+            if row.get("kind") == "function_unit"
+        ]
+        self.assertEqual(len(functions), 4)
+        self.assertTrue(
+            any(
+                row.get("reason") == "causal_call_neighbor_depth2"
+                and "function terminalParser(" in row.get("source", "")
+                for row in functions
+            ),
+            functions,
+        )
+
     def test_force_validation_retry_uses_focused_context(self):
         source = (
             "H" * 5000
