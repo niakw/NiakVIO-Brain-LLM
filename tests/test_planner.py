@@ -771,6 +771,7 @@ class PlannerTests(unittest.TestCase):
                 request,
                 {
                     "scope": "provider_patch",
+                    "path": "scripts/provider_patches/demo_runtime_v1.py",
                     "unit_id": unit["id"],
                     "replace": "async function req(a){return {tmdbId:String(a&&a[0]||'')}}",
                 },
@@ -806,9 +807,9 @@ class PlannerTests(unittest.TestCase):
                 "replace": "function _extractUrls(text){return [text,text];}",
             },
         )
-        self.assertIn("function _routeKind(route){", mutation["replace"])
-        self.assertNotIn("function _extractUrls", mutation["replace"])
-        self.assertIn("return [text,text];", mutation["replace"])
+        updated = source.replace(mutation["find"], mutation["replace"], 1)
+        self.assertIn("function _routeKind(route){return [text,text];}", updated)
+        self.assertIn("function _extractUrls(text){return [text];}", updated)
 
     def test_compact_force_provider_bloc_allows_long_exact_function_anchor(self):
         old_body = "a" * 900
