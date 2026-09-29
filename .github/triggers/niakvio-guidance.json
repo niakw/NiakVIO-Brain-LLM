@@ -1,8 +1,12 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "164159ae8386691a30f9d1b705ba83caba2d495e",
-  "reason": "Frozen authoritative single-page FORCE for the nine unprocessed providers. Brain main must remain unchanged until this page publishes. Prior four are adjudicated separately; current guards reject signature drift and network-helper semantic collapse.",
+  "niakvio_sha": "eb580001b28130df4745b35291b1c0fd8c2e689c",
+  "reason": "Authoritative Brain-owned provider repair restart after reverting orchestrator-authored provider edits. Generate provider-local mutations only through Brain; NiakVIO remains verifier/publisher. Use current 13-provider census cohort and current evidence, with no manual provider patch substitution.",
   "requested_repair_queue": [
+    "4khdhub",
+    "allanime",
+    "allwish",
+    "anime-ultime",
     "animesalt",
     "animesultra",
     "animevost-fr",
