@@ -1,19 +1,14 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "9cbc671ab8afbab5e486efe8a19340281a4b6596",
-  "reason": "Authoritative 13-provider FORCE rerun after same-census targeted response-shape refresh and causal direct-callee context fixes. Consume fresh provider-targeted-regression evidence for census 36531469863-retest; preserve WAF/client-transport non-provider routing and prior FORCE negative memory.",
+  "niakvio_sha": "f7dc95d662bbf752a17e8b47f7aa1aa19b3a78c6",
+  "reason": "Authoritative FORCE rerun on the current 8-provider mutation cohort after same-census targeted transport gating removed five explicit WAF-owned providers from repairQueue. Consume fresh targeted response-shape evidence and prior FORCE negative memory; no provider mutation for transportRepairEligible=false rows.",
   "requested_repair_queue": [
     "4khdhub",
     "allanime",
-    "allwish",
     "anime-ultime",
-    "animesalt",
     "animesultra",
     "animevost-fr",
-    "flemmix",
-    "mallumv",
     "moviebox",
-    "moviesmod",
     "vidfast",
     "yflix"
   ]
