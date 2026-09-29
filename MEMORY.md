@@ -645,3 +645,14 @@
 - `route_proven_gap` compact FORCE now exposes exactly two causal function units (one structural root plus its strongest causal callee); chain/media failures retain their wider/deeper call graph budget.
 - Targeted current evidence is compacted for FORCE to debug/status/playable/verified/sampleTitles/structureHints plus a small network summary instead of the full network payload.
 - CI is green at Brain `31f71531a4ab8954c80bde2d02c959a1a0d53077` after updating all historical 3B/32k/768-token workflow contract tests. The next witness run must use a Brain SHA at or after this green revision.
+
+
+## 2026-09-29 — 4KHDHub witness now has evidence-aware DOM repair focus
+
+- Fresh NiakVIO targeted evidence run `36605262984` proved current TMDB + provider HTTP 200 with zero streams and exposed privacy-safe structural facts for the live 4KHDHub search document.
+- The page contains the exact class `movie-card` together with a dense prefix family (`movie-card-format`, `movie-card-content`, `movie-card-formats`, `movie-card-image`, `movie-card-meta`, `movie-card-overlay`, `movie-card-title`). NiakVIO's current runtime uses word-boundary class regex helpers, so hyphenated siblings can be overmatched as full cards.
+- FORCE previously selected units only from the generic `route_proven_gap` taxonomy. It did not use current structural hints to choose the two route-gap edit units, which allowed the 7B witness to spend its budget on irrelevant/no-op code.
+- Brain now derives bounded `structural_focus` from targeted HTML class-prefix collisions and prepends generic DOM helper focus (`classblocks`, `classtext`, selector/class token) plus the observed colliding class token. Source windows and editable-unit ranking consume this focus.
+- Lane-prefixed hints such as `movie:classes=...` are explicitly parsed; the initial implementation missed the colon separator and the regression test caught it.
+- CI is green at `95e6f01d41c89997bc3bf6e6243a9fadae1e2624`. Regression coverage requires a `movie-card` / `movie-card-*` collision to expose `classBlocks` and `classText` within the two-unit route-gap budget.
+- This remains **repair guidance only**. No 4KHDHub provider mutation is validated yet; the next authoritative step is a single-provider 7B FORCE run against the current NiakVIO evidence, followed by NiakVIO sandbox playback/identity/non-regression proof.
