@@ -158,6 +158,16 @@ def _provider_waf_observation(payload: Any, provider_id: str) -> dict[str, Any]:
                 "lane": str(row.get("lane") or "")[:40],
                 "status": str(row.get("status") or "")[:80],
                 "debugStage": str(row.get("debugStage") or "")[:120],
+                "sampleDebugStages": [
+                    str(value or "")[:120]
+                    for value in (row.get("sampleDebugStages") or [])[:16]
+                    if str(value or "")
+                ],
+                "sampleStatuses": [
+                    str(value or "")[:80]
+                    for value in (row.get("sampleStatuses") or [])[:16]
+                    if str(value or "")
+                ],
                 "raw": int(row.get("raw") or 0),
                 "playable": int(row.get("playable") or 0),
                 "verified": int(row.get("verified") or 0),
@@ -411,9 +421,23 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
     replay_provider_signal = bool(replay_rows) and all(
         row.get("identitySafe") is True
         and int(row.get("contradictions") or 0) == 0
-        and str(row.get("debugStage") or "").strip().casefold()
-        not in {"provider_waf_challenge", "provider_network_timeout", "timeout"}
+        and not (
+            {
+                str(row.get("debugStage") or "").strip().casefold(),
+                *{
+                    str(value or "").strip().casefold()
+                    for value in row.get("sampleDebugStages") or []
+                    if str(value or "").strip()
+                },
+            }
+            & {"provider_waf_challenge", "provider_network_timeout", "timeout"}
+        )
         and str(row.get("status") or "").strip().casefold() != "timeout"
+        and "timeout" not in {
+            str(value or "").strip().casefold()
+            for value in row.get("sampleStatuses") or []
+            if str(value or "").strip()
+        }
         for row in replay_rows
     )
     persistent_waf = bool(browser_outcomes) and bool(residential_outcomes) and all(
