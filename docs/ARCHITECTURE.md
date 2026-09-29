@@ -413,3 +413,9 @@ FORCE scope precedence for ROUTE PROVEN, CHAIN REACHED and media-extraction gaps
 3. remaining authored JS/data fallback according to mutation policy.
 
 The generic Bloc remains first for structural providers that do not have a dedicated runtime resolver. A mere registered patch is not sufficient to gain first priority: the runtime-resolver contract must be present. This preserves the purpose of Bloc-first recovery while preventing generic helper edits from masking a more specific provider runtime that already owns search/detail/player/terminal traversal.
+
+### Function-unit compilation is surface-invariant
+
+A `function_unit` has one deterministic contract on every executable provider surface: the model generates replacement body/logic, while Brain owns and preserves the exact current function declaration/name/signature. This applies to `provider_patch`, `provider_js` and `provider_bloc`.
+
+The exact selected function may remain an anchor up to the bounded 1800-character function-unit limit. Statement-level edits keep their smaller limits. Brain validates helper identity before minimization, then syntax/ownership/no-op/live-binding constraints after anchor resolution. An authored runtime must therefore never be forced to reproduce or rename a declaration merely to express a structural repair.
