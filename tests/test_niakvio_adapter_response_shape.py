@@ -1,6 +1,6 @@
 import unittest
 
-from niakvio_brain_llm.niakvio_adapter import _safe_response_shape
+from niakvio_brain_llm.niakvio_adapter import _provider_targeted_observation, _safe_response_shape
 
 
 class ResponseShapeAdapterTests(unittest.TestCase):
@@ -18,6 +18,40 @@ class ResponseShapeAdapterTests(unittest.TestCase):
         self.assertEqual(shape["markers"], ["download", "episode"])
         self.assertNotIn("bad token", repr(shape))
         self.assertNotIn("forbidden", repr(shape))
+
+
+    def test_targeted_observation_surfaces_shallow_html_structure_hint(self):
+        payload = {
+            "providers": {
+                "demo": {
+                    "debugStages": {"movie": "provider_network_zero_result"},
+                    "statuses": {"movie": "no_streams"},
+                    "network": {
+                        "movie": [
+                            {
+                                "method": "GET",
+                                "host": "provider.invalid",
+                                "path": "/",
+                                "status": 200,
+                                "shape": {
+                                    "kind": "html",
+                                    "classTokens": ["movie-card", "movie-card-title", "movie-card-meta"],
+                                    "idTokens": ["search", "results"],
+                                    "markers": ["download", "episode"],
+                                },
+                            }
+                        ]
+                    },
+                }
+            }
+        }
+        observation = _provider_targeted_observation(payload, "demo")
+        self.assertEqual(len(observation["structureHints"]), 1)
+        hint = observation["structureHints"][0]
+        self.assertIn("movie:classes=movie-card,movie-card-title,movie-card-meta", hint)
+        self.assertIn("ids=search,results", hint)
+        self.assertIn("markers=download,episode", hint)
+
 
 
 if __name__ == "__main__":
