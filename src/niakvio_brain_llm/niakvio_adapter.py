@@ -42,6 +42,19 @@ def _safe_response_shape(value: Any) -> dict[str, Any]:
         raw = value.get(key)
         if isinstance(raw, int):
             out[key] = max(0, min(raw, 65536 if key == "sampleBytes" else 99))
+    for key, limit in (("classTokens", 16), ("idTokens", 12)):
+        rows = value.get(key)
+        if isinstance(rows, list):
+            safe = [
+                str(item)[:48]
+                for item in rows[:limit]
+                if str(item)
+                and str(item)[0].isalpha()
+                and all(ch.isalnum() or ch in "_-" for ch in str(item))
+                and 2 <= len(str(item)) <= 48
+            ]
+            if safe:
+                out[key] = safe
     markers = value.get("markers")
     allowed = {"next-data", "json-ld", "player", "download", "episode", "hls-literal", "mp4-literal", "turnstile", "embed"}
     if isinstance(markers, list):
