@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "niakvio_sha": "2fd4cfd674e6253b71b19a1c44ede5c019e243e7",
-  "reason": "Retry only anime-ultime, flemmix and moviesmod after enforcing body-only generation for function_unit edits and pre-minimization helper identity. Previous FORCE #147 renames are invalid negative evidence.",
+  "reason": "Retry anime-ultime, flemmix and moviesmod with causal FORCE scope precedence: dedicated registered provider runtime first, generic Bloc fallback second; function-unit generation is body-only and helper identity is guarded before minimization.",
   "requested_repair_queue": [
     "anime-ultime",
     "flemmix",
