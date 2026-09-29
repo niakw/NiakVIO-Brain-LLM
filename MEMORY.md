@@ -605,3 +605,11 @@
 - FORCE candidate AllWish was also rejected: it replaced the complete network helper body (fetch/status/return) with a side-effect-only referer assignment referencing unrelated locals. Brain now rejects network helper rewrites that discard request return semantics.
 - The timeout-safe 13-provider cycle published only page 1 and its automatic continuation did not persist a second page. That continuation path is therefore not trusted for the current repair attempt.
 - Current workflow default is a single **9-provider page** with a 180-minute job timeout for the remaining cohort. The first four prior-cycle providers are already adjudicated (4khdhub/allanime/anime-ultime abstained; AllWish candidate invalid), so the active FORCE target is: animesalt, animesultra, animevost-fr, flemmix, mallumv, moviebox, moviesmod, vidfast, yflix.
+
+
+## 2026-09-29 — Provider fixes must be Brain-authored
+
+- NiakVIO briefly hand-edited six provider runtime Lego files while investigating the 13-provider cohort. Those edits were reverted byte-for-byte and are not repair evidence.
+- Architectural boundary is explicit: Brain/LLM authors provider-local mutations; NiakVIO owns evidence, isolated application, Deep/Retest, playable/identity proof, non-regression, census and publication.
+- Plausible provider-local edits discovered by orchestration are input evidence only. They must be synthesized through the Brain mutation path before they can become a candidate.
+- Infrastructure/receiver/harness/Core changes remain allowed when they repair the repair mechanism rather than a specific provider.
