@@ -514,3 +514,11 @@
 - `plan_batch_from_checkout.py` now records a bounded `force_scope_trace` per provider with only scope, outcome, deterministic rejection reason and exception type; no prompt, source bytes, private memory, URLs or credentials are retained.
 - The guidance workflow sanitizes that trace into `guidance/niakvio-force-diagnostics.json`, validates that private content/URLs/tokens/cookies are absent, merges it page-by-page alongside advisor/Force artifacts and publishes it with no proof or publication authority.
 - This diagnostic file is operational evidence only. NiakVIO sandbox/playback/identity gates remain the sole candidate acceptance authority.
+
+## 2026-09-29 — Clean abstentions proved context-selection debt
+
+- Diagnostic trio run on Brain `e7abe3799cd7922212304b5254bbab82ef70d932` completed 3/3 with 0 mutations.
+- Durable diagnostics proved all six scope outcomes were clean abstentions: Anime-Ultime, Flemmix and MoviesMod each abstained on `provider_patch` and then `provider_bloc`; there were no compiler/syntax/anchor rejection codes.
+- Deterministic unit audit showed the provider_patch surface was real but too local: Anime-Ultime exposed `resolve + request`, Flemmix `resolveTabs + resolve`, MoviesMod `resolve + request`. Important direct helpers such as Anime-Ultime `search/player` and MoviesMod `candidateDownloadLinks/modLinks` were omitted from the four-unit budget.
+- `_force_edit_units` now reserves its strongest whole functions and then follows one level of the exact local JS call graph before filling remaining micro-units. Direct callees are ranked by causal role tokens while keeping the same bounded unit count and exact-byte authority.
+- This is context diversity, not a proof shortcut. The model still edits one exact unit; Brain still compiles/validates it; NiakVIO still owns isolated playback/identity/non-regression proof.
