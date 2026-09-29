@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "9558566eaa5bae468bb917f7e6b52710541ff4c1",
-  "reason": "4KHDHub witness retry after structural-unit confinement. Live evidence proves class-token prefix collision: movie-card must not match movie-card-format/content/formats/image/meta/overlay/title. FORCE editable surface is restricted to DOM helper functions (classBlocks/classText); produce one exact provider-owned class-token-boundary mutation or abstain. No resolve/detail edits.",
+  "niakvio_sha": "33e125e72c61a10ff051930500b2308788f3c46e",
+  "reason": "4KHDHub end-to-end witness after fixing structural-focus unit-id reconstruction. Deterministic regression now reproduces zero streams with nested movie-card-content. Live evidence proves movie-card prefix collision. Editable surface is DOM helpers only; selected unit_id must resolve to the same exact helper through compilation. Produce one class-token-boundary mutation or abstain.",
   "requested_repair_queue": [
     "4khdhub"
   ]
