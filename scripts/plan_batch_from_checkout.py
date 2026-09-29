@@ -182,29 +182,42 @@ def main() -> int:
             "provider_bloc" in allowed
             and bool(context.get("runtimeMutationSource"))
         )
+        registered_patch_sources = (
+            context.get("registered_patch_sources")
+            if isinstance(context.get("registered_patch_sources"), dict)
+            else {}
+        )
+        patch_ready = "provider_patch" in allowed and bool(registered_patch_sources)
+        runtime_patch_ready = patch_ready and any(
+            "NIAKVIO_PROVIDER_RUNTIME_RESOLVER_V1" in str(source)
+            or "__niakvioProviderRuntimeResolverV1" in str(source)
+            for source in registered_patch_sources.values()
+        )
 
         structural_gap = (
             failure_key in {"route_proven_gap", "chain_terminal_gap", "media_extraction_gap"}
             or str(request.status or "").strip().upper() in {"ROUTE PROVEN", "CHAIN REACHED"}
         )
 
-        # Structural traversal/extraction gaps have repeatedly spent 80-155s on
-        # an authored patch that then abstains, starving the generated Bloc of
-        # its deterministic correction budget. Let the explicit invention
-        # surface go first for those classes; authored patch/JS/data remain
-        # fallbacks when Bloc cannot express a safe repair.
+        # A registered provider-local runtime resolver is more causally specific
+        # than the generic generated runtime. Repair that authored surface first.
+        # Bloc-first remains the fallback for structural gaps without a dedicated
+        # runtime resolver, or after the dedicated surface abstains/rejects.
+        if runtime_patch_ready and structural_gap:
+            scopes.append("provider_patch")
         if bloc_ready and structural_gap:
             scopes.append("provider_bloc")
 
-        if (
-            "provider_patch" in allowed
-            and isinstance(context.get("registered_patch_sources"), dict)
-            and context.get("registered_patch_sources")
-        ):
+        if patch_ready and "provider_patch" not in scopes:
             scopes.append("provider_patch")
-        elif "provider_js" in allowed and context.get("authored_module"):
+        elif not patch_ready and "provider_js" in allowed and context.get("authored_module"):
             scopes.append("provider_js")
-        elif "provider_data" in allowed and (context.get("override") or context.get("hub")):
+        elif (
+            not patch_ready
+            and not ("provider_js" in allowed and context.get("authored_module"))
+            and "provider_data" in allowed
+            and (context.get("override") or context.get("hub"))
+        ):
             scopes.append("provider_data")
 
         if bloc_ready and "provider_bloc" not in scopes:
