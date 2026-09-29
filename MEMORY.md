@@ -507,3 +507,10 @@
 - Authored function units may now retain a bounded exact anchor up to 1800 chars, matching the existing function-unit replacement bound. This matters for real provider `resolve`/search/terminal functions whose changed body exceeds the old 320-char anchor ceiling.
 - Regression coverage includes a provider_patch function unit larger than 320 chars rewritten from a body-only model response while preserving `function resolve(...)`.
 - Runtime-surface detection now also recognizes shared runtime patch wrappers via `MANAGED_FIX_ID = "PROVIDER.*.RUNTIME.*"`; this covers AnimeVOST-FR, whose provider patch delegates construction to a shared runtime helper and does not contain the direct resolver marker in the patch file itself.
+
+## 2026-09-29 — FORCE scope diagnostics made durable
+
+- Repeated 0-mutation trio runs showed that final `providerCount=0` is insufficient observability: a provider_patch rejection followed by a provider_bloc abstention collapses to the same external result as two clean abstentions.
+- `plan_batch_from_checkout.py` now records a bounded `force_scope_trace` per provider with only scope, outcome, deterministic rejection reason and exception type; no prompt, source bytes, private memory, URLs or credentials are retained.
+- The guidance workflow sanitizes that trace into `guidance/niakvio-force-diagnostics.json`, validates that private content/URLs/tokens/cookies are absent, merges it page-by-page alongside advisor/Force artifacts and publishes it with no proof or publication authority.
+- This diagnostic file is operational evidence only. NiakVIO sandbox/playback/identity gates remain the sole candidate acceptance authority.
