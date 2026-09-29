@@ -585,3 +585,14 @@
 - Current Brain main reserves one remaining slot for the strongest `causal_call_neighbor_depth2` on `route_proven_gap` / `chain_terminal_gap` when the normal 4-unit budget is available, then fills the rest by the existing ranking.
 - Regression coverage reproduces a crowded `resolve -> current/legacy/decorate/metrics` surface where only `current -> terminalParser` owns the terminal parse and requires that depth-2 helper to survive selection.
 - This change does not alter mutation authority, exact-byte anchoring, syntax guards or NiakVIO sandbox proof. The already-running authoritative 13-provider FORCE remains pinned to its earlier Brain SHA; this fix is fallback architecture for a subsequent rerun only if needed.
+
+## 2026-09-29 — FORCE page-1 exposed async drift, scope timeouts and continuation deadlock
+
+- Fast Repair run `36545761845` visited the current 12 deterministic provider-owned Fast cohort and produced **0 candidates / 0 validated repairs**. Stop reason is `experiment_variants_exhausted`, not timeout; all 12 were handed to Learning.
+- FORCE cycle pinned to Brain `e2aef03ef3c587b0a0e04f888515a30d96f4e0e5` published page 1/2 for 8 of 13 providers. It emitted one raw mutation for AnimeSalt: changing synchronous `req(a)` into `async function req(a)`.
+- That mutation is invalid: AnimeSalt `resolve()` calls `var q=req(a)` synchronously and immediately reads `q.tmdbId`; changing `req` async turns `q` into a Promise. No repair authority was granted.
+- Brain now rejects any explicit existing function declaration whose asyncness/name/parameter signature differs from the selected exact function unit. NiakVIO's Force receiver independently compares named function signatures before/after authored file mutations and rejects signature drift, restoring the original file on failure.
+- Page-1 diagnostics also showed `provider_bloc` TimeoutError fallbacks on 4KHDHub, AllAnime, AllWish, AnimeSultra and Flemmix. Root cause was budget geometry: workflow/provider cap 360s for route failures and only 120s for provider_transport_gap, while sequential provider_patch/provider_bloc scopes can each need a full model call/retry.
+- Current Brain raises the workflow provider budget to 600s, ROUTE/CHAIN provider budget to 600s, provider_transport_gap to 300s and transport_environment_gap to 180s. Page size 8 with 2 workers remains within the 60-minute workflow bound.
+- A separate pagination defect was confirmed: continuation pages are pinned to the cycle's Brain SHA, but publication rejected that pinned SHA once Brain main advanced after page 1. The publication guard now allows only **same Brain SHA + same NiakVIO SHA + existing incomplete guidance state** to continue across main advances; unrelated stale cycles remain rejected.
+- New authoritative 13-provider FORCE cycle is triggered at Brain `cc710af13cd07943db98b00aafb66975261af9e3` against NiakVIO `7fca1b606f6edc9b31a40bacd6f16e97d2dbf0d2`.
