@@ -83,16 +83,19 @@ def _function_names(value: str) -> set[str]:
     ))
 
 
-def _preserve_selected_function_envelope(find: str, replace: str) -> str:
+def _preserve_selected_function_envelope(
+    find: str,
+    replace: str,
+    *,
+    normalize_explicit_wrapper: bool = False,
+) -> str:
     """Keep the exact selected function declaration for function-unit edits.
 
-    ``unit_id`` already binds the mutation to one exact current function. Qwen is
-    asked for a body-only replacement, but small local models sometimes wrap that
-    body in a complete function declaration (occasionally reusing a nearby helper
-    name). When the model output is exactly one complete syntax-valid function,
-    treat that declaration as transport noise and keep only its body under the
-    exact selected declaration/signature. Ambiguous/multi-function output still
-    fails closed in the normal structural guards.
+    ``unit_id`` binds the mutation to exact current bytes. Body-only output is
+    always wrapped in the selected declaration. For generated provider_bloc
+    synthesis only, a complete single-function wrapper may also be normalized
+    to the selected identity; authored provider_patch/provider_js surfaces keep
+    explicit signature drift fail-closed.
     """
     find_names = _function_names(find)
     if len(find_names) != 1:
@@ -111,19 +114,30 @@ def _preserve_selected_function_envelope(find: str, replace: str) -> str:
         r"\((?P<params>[^)]*)\)\s*\{",
         re.S,
     )
+    find_decl = declaration.match(find)
     replace_decl = declaration.match(stripped)
     if replace_decl:
         replace_names = _function_names(stripped)
-        if len(replace_names) != 1 or not stripped.endswith("}"):
+        if len(replace_names) != 1 or not stripped.endswith("}") or not find_decl:
             return replace
-        # Validate that the wrapper itself is complete JavaScript before
-        # discarding its model-chosen declaration identity.
+        find_identity = (
+            bool(find_decl.group("async")),
+            find_decl.group("name"),
+            re.sub(r"\s+", "", find_decl.group("params")),
+        )
+        replace_identity = (
+            bool(replace_decl.group("async")),
+            replace_decl.group("name"),
+            re.sub(r"\s+", "", replace_decl.group("params")),
+        )
+        if replace_identity == find_identity:
+            return stripped
+        if not normalize_explicit_wrapper:
+            raise ValueError("selected function declaration/signature changed")
         _node_check_javascript(stripped)
-        body_start = replace_decl.end()
-        body = stripped[body_start:-1]
+        body = stripped[replace_decl.end():-1]
         return match.group(1) + body.strip() + match.group(3)
 
-    # Body-only output is the preferred compact-wire contract.
     return match.group(1) + stripped + match.group(3)
 
 def _compact_without_space(value: str) -> str:
@@ -555,7 +569,7 @@ def _compact_edit_to_mutation(
                 # Keep deletion/live-behavior guards meaningful on the raw model
                 # body before adding the deterministic declaration envelope.
                 _reject_causally_empty_deletion(request.failure_class, find, replace)
-                replace = _preserve_selected_function_envelope(find, replace)
+                replace = _preserve_selected_function_envelope(find, replace, normalize_explicit_wrapper=True)
         elif not find or len(find) > 320:
             raise ValueError("compact Force provider_bloc exact edit target is missing or oversized")
         # A provider_bloc selected through a complete function_unit may need
