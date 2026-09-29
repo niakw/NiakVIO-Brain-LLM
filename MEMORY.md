@@ -490,3 +490,11 @@
 - Brain now runs `_reject_partial_function_anchor(find, replace, ...)` on the complete selected edit before minimization, while retaining the existing post-minimization guard. A regression test asserts that explicit helper renames fail closed before they can become minimized anchors.
 - The 3 mutations from `fdda761b...` have no sandbox/publication authority and must not be applied. Regenerate only those affected providers first on current Brain main; the 11 abstentions remain historical negative evidence rather than being discarded.
 - NiakVIO drift after the source SHA was provider-neutral (workflow/evidence/census only). Vostfree subsequently left the repairQueue, which is now 13 providers.
+
+## 2026-09-29 — Dedicated provider runtime outranks generic Bloc
+
+- FORCE #147 and its guarded 3-provider reruns exposed a scope-selection error after the earlier global Bloc-first change.
+- Anime-Ultime, Flemmix and MoviesMod already own dedicated registered runtime resolvers, but structural failures were sent to generic `provider_bloc` first. Qwen therefore tried to mutate generic route helpers instead of the provider-specific traversal logic.
+- Current repairQueue audit shows 12/13 providers have a registered patch containing `NIAKVIO_PROVIDER_RUNTIME_RESOLVER_V1` / `__niakvioProviderRuntimeResolverV1`.
+- Scope precedence is now causal: for structural ROUTE/CHAIN/media gaps, a registered provider-local runtime resolver is attempted first; generic provider_bloc remains the invention fallback after that surface abstains/rejects or when no dedicated runtime exists.
+- This does not restore unrestricted patch-first behavior. Ordinary non-runtime patch surfaces do not outrank Bloc merely because a patch file exists.
