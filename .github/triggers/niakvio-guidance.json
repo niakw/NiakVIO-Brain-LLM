@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "1ae265c1cbbeb3a79b9524fa49f1d94c423c0648",
-  "reason": "Authoritative FORCE rerun on the final sample-aware 13-provider Repair cohort. All five prior seed-WAF providers are provider-owned after adaptive residential replay; consume current targeted response shapes, sampleDebugStages/sampleStatuses, second-hop runtime callees, validated provider references and FORCE negative memory. Sandbox/publication authority remains NiakVIO-only.",
+  "niakvio_sha": "520ce7a750475d847e8501c4b2934de5db8fa8fd",
+  "reason": "Authoritative FORCE on all 13 provider-owned failures after sample-aware residential replay proved WAF seeds non-causal. Use current Brain second-hop runtime-call context, current census/replay evidence, and prior FORCE negative memory. MalluMV is provider-owned again (CHAIN REACHED / provider_zero_before_provider_network), not transport-owned.",
   "requested_repair_queue": [
     "4khdhub",
     "allanime",
