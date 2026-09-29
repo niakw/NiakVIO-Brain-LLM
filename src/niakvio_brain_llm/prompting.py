@@ -336,6 +336,44 @@ def build_prompt_payload(
     return payload
 
 
+def _force_structural_focus_keywords(request: RepairRequest) -> tuple[str, ...]:
+    """Derive bounded source-focus tokens from current structural evidence.
+
+    If an exact HTML class token is also the prefix of sibling class tokens,
+    word-boundary based selectors can accidentally match the whole prefix
+    family. Surface that collision to Force without retaining HTML or URLs.
+    """
+    class_tokens: list[str] = []
+    for row in request.observations or []:
+        if not isinstance(row, dict) or str(row.get("source") or "") != "targeted-regression-current":
+            continue
+        value = row.get("value") if isinstance(row.get("value"), dict) else {}
+        for hint in (value.get("structureHints") or [])[:8]:
+            text = str(hint or "")
+            match = re.search(r"(?:^|;)classes=([^;]+)", text)
+            if not match:
+                continue
+            for raw in match.group(1).split(","):
+                token = raw.strip().casefold()
+                if (
+                    2 <= len(token) <= 48
+                    and token[0].isalpha()
+                    and all(ch.isalnum() or ch in "_-" for ch in token)
+                    and token not in class_tokens
+                ):
+                    class_tokens.append(token)
+    collisions = [
+        token for token in class_tokens
+        if any(
+            other != token
+            and (other.startswith(token + "-") or other.startswith(token + "_"))
+            for other in class_tokens
+        )
+    ]
+    if not collisions:
+        return ()
+    return ("classblocks", "classtext", "selector", "class=", *collisions[:2])
+
 _FORCE_SOURCE_KEYWORDS: dict[str, tuple[str, ...]] = {
     "provider_transport_gap": (
         "fetch(", "headers", "user-agent", "referer", "cookie", "origin", "request", "timeout",
