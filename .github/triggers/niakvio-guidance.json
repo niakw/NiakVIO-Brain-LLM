@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "niakvio_sha": "d067027893b1f19b7e7c511d21b2dfaed74f3cf7",
-  "reason": "Frozen single-provider 4KHDHub witness after CI-green compiler + exact dedicated runtime Bloc binding + current live DOM structure evidence. Current proof: TMDB 200; 4khdhub.one search 200; movie HTML still exposes movie-card/movie-card-title/movie-card-format/movie-card-meta; runtime stops before detail request. Brain may mutate only provider-owned current bytes; dedicated PROVIDER.4KHDHUB.RUNTIME.V1 must outrank generic ProviderBase. NiakVIO remains isolated sandbox/playback/identity authority. Do not broaden cohort until this provider either validates or yields a precise bounded blocker.",
+  "reason": "Single-provider witness cycle. Do not batch again until 4KHDHub produces an executable provider-owned mutation that survives NiakVIO sandbox playback/identity/non-regression. Current causal evidence: TMDB 200, 4khdhub.one search page 200, zero streams after live search result page; target detail()/search result selection and downstream route transition only.",
   "requested_repair_queue": [
     "4khdhub"
   ]
