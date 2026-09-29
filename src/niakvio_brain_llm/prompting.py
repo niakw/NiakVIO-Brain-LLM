@@ -764,10 +764,32 @@ def _force_edit_units(value: Any, failure_class: str, *, max_chars: int = 2600, 
                 continue
             seen_frontier.add(root_key)
             root_source = str(root.get("source") or "")
-            for call_index, call in enumerate(
-                re.finditer(r"\b([A-Za-z_$][A-Za-z0-9_$]*)\s*\(", root_source)
+            referenced_names: list[tuple[int, str]] = [
+                (match.start(), match.group(1))
+                for match in re.finditer(
+                    r"\b([A-Za-z_$][A-Za-z0-9_$]*)\s*\(",
+                    root_source,
+                )
+            ]
+            # Parser/terminal helpers are often passed as callbacks rather than
+            # invoked directly: promise.then(parseSources), rows.map(normalize),
+            # etc. Treat those named function references as causal edges too.
+            referenced_names.extend(
+                (match.start(), match.group(1))
+                for match in re.finditer(
+                    r"\.(?:then|catch|finally|map|flatMap|filter|find|some|every|forEach|reduce)"
+                    r"\s*\(\s*([A-Za-z_$][A-Za-z0-9_$]*)\b",
+                    root_source,
+                )
+            )
+            seen_names: set[tuple[int, str]] = set()
+            for call_index, (call_offset, name) in enumerate(
+                sorted(referenced_names, key=lambda item: (item[0], item[1]))
             ):
-                name = call.group(1)
+                name_key = (call_offset, name)
+                if name_key in seen_names:
+                    continue
+                seen_names.add(name_key)
                 callee = function_by_name.get(name)
                 if callee is None:
                     continue
