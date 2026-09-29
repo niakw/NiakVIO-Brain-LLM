@@ -522,3 +522,10 @@
 - Deterministic unit audit showed the provider_patch surface was real but too local: Anime-Ultime exposed `resolve + request`, Flemmix `resolveTabs + resolve`, MoviesMod `resolve + request`. Important direct helpers such as Anime-Ultime `search/player` and MoviesMod `candidateDownloadLinks/modLinks` were omitted from the four-unit budget.
 - `_force_edit_units` now reserves its strongest whole functions and then follows one level of the exact local JS call graph before filling remaining micro-units. Direct callees are ranked by causal role tokens while keeping the same bounded unit count and exact-byte authority.
 - This is context diversity, not a proof shortcut. The model still edits one exact unit; Brain still compiles/validates it; NiakVIO still owns isolated playback/identity/non-regression proof.
+
+## 2026-09-29 — Current FORCE abstentions were generated without current targeted shape evidence
+
+- Current NiakVIO census authority is `36531469863-retest`, while the tracked targeted-recovery snapshot was still pinned to `sourceCensusRunId=36320455627`.
+- `request_from_checkout()` correctly discards that stale targeted snapshot. The recent clean FORCE abstentions therefore had current census/residential replay causality but not the bounded current response-shape/network observations added for structural synthesis.
+- This is not evidence that the dedicated runtimes are unrepairable. A full 13-provider targeted refresh has been triggered on NiakVIO before the next authoritative FORCE cycle.
+- Freshness remains census-epoch based: the persisted targeted artifact is accepted when its `sourceCensusRunId` equals the current census `runId`; it does not need to share the exact later evidence-persistence commit SHA.
