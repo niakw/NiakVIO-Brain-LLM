@@ -467,9 +467,11 @@ def main() -> int:
             if failure_key in {"chain_terminal_gap", "media_extraction_gap"} or status_key == "CHAIN REACHED":
                 budget_seconds = budget_cap
             elif failure_key == "route_proven_gap" or status_key == "ROUTE PROVEN":
-                budget_seconds = min(budget_cap, 360)
-            elif failure_key in {"provider_transport_gap", "transport_environment_gap"}:
-                budget_seconds = min(budget_cap, 120)
+                budget_seconds = min(budget_cap, 600)
+            elif failure_key == "provider_transport_gap":
+                budget_seconds = min(budget_cap, 300)
+            elif failure_key == "transport_environment_gap":
+                budget_seconds = min(budget_cap, 180)
             else:
                 budget_seconds = min(budget_cap, 150)
             budget_seconds = max(60, budget_seconds)
