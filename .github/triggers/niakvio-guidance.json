@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "niakvio_sha": "33e125e72c61a10ff051930500b2308788f3c46e",
-  "reason": "4KHDHub end-to-end witness after fixing structural-focus unit-id reconstruction. Deterministic regression now reproduces zero streams with nested movie-card-content. Live evidence proves movie-card prefix collision. Editable surface is DOM helpers only; selected unit_id must resolve to the same exact helper through compilation. Produce one class-token-boundary mutation or abstain.",
+  "reason": "4KHDHub end-to-end witness using deterministic exact class-token boundary synthesis. Current regression reproduces zero streams with nested movie-card-content; targeted live evidence proves movie-card plus movie-card-* prefix siblings. Brain must synthesize the exact structural helper mutation before any LLM fallback, then NiakVIO sandbox is the proof authority.",
   "requested_repair_queue": [
     "4khdhub"
   ]
