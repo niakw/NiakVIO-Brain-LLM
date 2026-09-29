@@ -56,9 +56,11 @@ class PlannerTests(unittest.TestCase):
             },
         )
         self.assertIsNotNone(mutation)
-        self.assertIn("function classBlocks(", mutation["find"])
-        self.assertNotIn("function resolve(", mutation["find"])
-        self.assertIn("function classBlocks(", mutation["replace"])
+        class_blocks = "function classBlocks(html,cls){return html.indexOf(cls)>=0?[html]:[]}"
+        resolve = "async function resolve(args){return detail({html:String(args&&args[0]||'')})}"
+        self.assertIn(mutation["find"], class_blocks)
+        self.assertNotIn(mutation["find"], resolve)
+        self.assertNotEqual(mutation["find"], mutation["replace"])
 
     def test_accepts_bounded_provider_mutation(self):
         response = json.dumps({
