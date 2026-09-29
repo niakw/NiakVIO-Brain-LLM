@@ -479,3 +479,14 @@
 - Routing observability is retained in artifacts (`routing.jsonl`, `routing-force.jsonl`) and emits bounded `FIELD_BRAIN_ROUTE` lines with mode/layer/failure/scopes/reason.
 - The current NiakVIO census `36484610716` has **14** repairQueue providers, not 13: the prior cohort plus `vostfree`. Any final convergence claim must therefore cover 14/14.
 - `vostfree` is currently ROUTE PROVEN but `testedThisRun=false`, reconciled from carried green with a contradictory latest WAF lane verdict. It must receive fresh current evidence before provider mutation authority is granted.
+
+
+## 2026-09-29 — FORCE #147 completed; helper-identity minimization defect closed
+
+- Authoritative Brain FORCE cycle on `fdda761b006305d3d89ad448ce34a0f385802522` completed all 14 requested providers against NiakVIO `a7c1ad0013394fb010bcc176447554bc53a8f454`.
+- It produced 3 executable provider_bloc mutations: `anime-ultime`, `flemmix`, and `moviesmod`. The other 11 providers produced no executable mutation in this cycle.
+- All three emitted the same structural rewrite: the selected complete helper `function _routeKind(...){...}` was replaced by `function _extractUrls(...){...}`. This exposed a generic compiler defect, not three independently validated repairs.
+- Root cause: `_resolve_structured_anchor()` minimized common function prefix/suffix bytes before running the helper-declaration guard. The full-function rename therefore collapsed to an anchor resembling `routeKind(...) -> extractUrls(...)`, after which declaration identity was no longer visible to the guard.
+- Brain now runs `_reject_partial_function_anchor(find, replace, ...)` on the complete selected edit before minimization, while retaining the existing post-minimization guard. A regression test asserts that explicit helper renames fail closed before they can become minimized anchors.
+- The 3 mutations from `fdda761b...` have no sandbox/publication authority and must not be applied. Regenerate only those affected providers first on current Brain main; the 11 abstentions remain historical negative evidence rather than being discarded.
+- NiakVIO drift after the source SHA was provider-neutral (workflow/evidence/census only). Vostfree subsequently left the repairQueue, which is now 13 providers.
