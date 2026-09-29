@@ -566,3 +566,13 @@
 - Depth-1 callees remain preferred; depth-2 callees are tagged `causal_call_neighbor_depth2` and are still selected only from provider-owned complete functions already present in the authored runtime.
 - Regression coverage reproduces `resolve -> current -> currentRows/jsonGet` and requires at least one second-hop helper to be exposed.
 - This is context exposure only. It does not authorize a mutation or provider promotion; NiakVIO isolated playback/identity/non-regression gates remain mandatory.
+
+
+## 2026-09-29 — Final sample-aware WAF replay restores 13-provider FORCE authority
+
+- NiakVIO follow-up residential replay now contains sample-aware adaptive evidence for the explicit five prior seed-WAF providers.
+- AllWish, AnimeSalt, Flemmix and MoviesMod have four adaptive fixtures per active lane, with `sampleDebugStages` containing only `provider_zero_before_provider_network`; MalluMV has one available fixture with the same stage. No persisted adaptive sample shows WAF or timeout.
+- The earlier browser/direct/OkHttp challenge seeds remain factual but are not the causal blocker for the current full provider runtime.
+- Current authoritative provider-mutation cohort is therefore 13: `4khdhub, allanime, allwish, anime-ultime, animesalt, animesultra, animevost-fr, flemmix, mallumv, moviebox, moviesmod, vidfast, yflix`.
+- The older `213ebeb...` 12-provider cycle predates both sample-aware causality and second-hop FORCE context and has no final authority for this cohort.
+- Next authoritative FORCE must use current Brain main with second-hop runtime callees and NiakVIO source at or after the sample-aware WAF persistence.
