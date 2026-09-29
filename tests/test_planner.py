@@ -13,6 +13,53 @@ class PlannerTests(unittest.TestCase):
         self.assertIn("NEW FUNCTION BODY ONLY", COMPACT_FORCE_SYSTEM_PROMPT)
         self.assertIn("Never emit or rename the function declaration/name/signature", COMPACT_FORCE_SYSTEM_PROMPT)
 
+    def test_structural_focus_unit_id_resolves_to_same_dom_helper(self):
+        source = (
+            "function classBlocks(html,cls){return html.indexOf(cls)>=0?[html]:[]} "
+            "function classText(html,cls){return classBlocks(html,cls).join(' ')} "
+            "async function detail(q){var cards=classBlocks(q.html,'movie-card');"
+            "return cards.find(x=>classText(x,'movie-card-title'))||null} "
+            "async function resolve(args){return detail({html:String(args&&args[0]||'')})}"
+        )
+        request = RepairRequest(
+            provider_id="demo",
+            failure_class="route_proven_gap",
+            status="ROUTE PROVEN",
+            observations=[{
+                "source":"targeted-regression-current",
+                "value":{"structureHints":[
+                    "movie:classes=movie-card,movie-card-format,movie-card-content,movie-card-title"
+                ]},
+            }],
+            allowed_mutations=["provider_bloc"],
+            provider_context={
+                "runtimeMutationFilename":"providers/demo.js",
+                "runtimeMutationSource":source,
+            },
+        )
+        payload = build_force_prompt_payload(
+            request,
+            {"target_layer":"provider","confidence":0.96,"strategy_prior":"route"},
+            {"allow_mutations":True,"allowed_scopes":["provider_bloc"]},
+        )
+        unit = next(
+            row for row in payload["new_bloc_target"]["editable_units"]
+            if "function classBlocks(" in str(row.get("source") or "")
+        )
+        mutation = _compact_edit_to_mutation(
+            request,
+            {
+                "scope":"provider_bloc",
+                "family":"exact_class_token_boundary",
+                "unit_id":unit["id"],
+                "replace":"return html===cls?[html]:[];",
+            },
+        )
+        self.assertIsNotNone(mutation)
+        self.assertIn("function classBlocks(", mutation["find"])
+        self.assertNotIn("function resolve(", mutation["find"])
+        self.assertIn("function classBlocks(", mutation["replace"])
+
     def test_accepts_bounded_provider_mutation(self):
         response = json.dumps({
             "provider_id": "demo",
