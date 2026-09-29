@@ -4,7 +4,7 @@ import unittest
 from niakvio_brain_llm.backend import StaticBackend
 from niakvio_brain_llm.contracts import RepairRequest
 from niakvio_brain_llm.document_memory import DocumentStore
-from niakvio_brain_llm.planner import BrainPlanner, COMPACT_FORCE_SYSTEM_PROMPT, _compact_edit_to_mutation, _resolve_structured_anchor
+from niakvio_brain_llm.planner import BrainPlanner, COMPACT_FORCE_SYSTEM_PROMPT, _compact_edit_to_mutation, _deterministic_structural_force_mutation, _resolve_structured_anchor
 from niakvio_brain_llm.prompting import _force_source_windows, build_force_prompt_payload
 
 class PlannerTests(unittest.TestCase):
@@ -12,6 +12,42 @@ class PlannerTests(unittest.TestCase):
         self.assertIn("kind=function_unit", COMPACT_FORCE_SYSTEM_PROMPT)
         self.assertIn("NEW FUNCTION BODY ONLY", COMPACT_FORCE_SYSTEM_PROMPT)
         self.assertIn("Never emit or rename the function declaration/name/signature", COMPACT_FORCE_SYSTEM_PROMPT)
+
+    def test_deterministic_class_prefix_collision_synthesizes_exact_boundary(self):
+        source = (
+            'function classBlocks(html,cls){var esc=cls.replace(/[-/\\\\^$*+?.()|[\\]{}]/g,"\\\\    def test_structural_focus_unit_id_resolves_to_same_dom_helper(self):
+"),'
+            're=new RegExp("<(?:div|article|li|a)\\\\b[^>]*class=[\\\"\'][^\\\"\']*\\\\b"+esc+"\\\\b[^\\\"\']*[\\\"\'][^>]*>","gi"),'
+            'starts=[],m;while((m=re.exec(html||""))!==null)starts.push({at:m.index,tag:m[0]});'
+            'var out=[];for(var i=0;i<starts.length;i++)out.push(starts[i]);return out} '
+            'async function resolve(args){return []}'
+        )
+        request = RepairRequest(
+            provider_id="demo",
+            failure_class="route_proven_gap",
+            status="ROUTE PROVEN",
+            observations=[{
+                "source":"targeted-regression-current",
+                "value":{"structureHints":[
+                    "movie:classes=movie-card,movie-card-format,movie-card-content"
+                ]},
+            }],
+            allowed_mutations=["provider_bloc"],
+            provider_context={
+                "runtimeMutationFilename":"providers/demo.js",
+                "runtimeMutationSource":source,
+            },
+        )
+        mutation = _deterministic_structural_force_mutation(
+            request,
+            {"allow_mutations":True,"allowed_scopes":["provider_bloc"]},
+        )
+        self.assertIsNotNone(mutation)
+        self.assertEqual(mutation["scope"], "provider_bloc")
+        self.assertEqual(mutation["family"], "exact_class_token_boundary")
+        updated = source.replace(mutation["find"], mutation["replace"], 1)
+        self.assertIn('(?![-_])', updated)
+        self.assertNotEqual(updated, source)
 
     def test_structural_focus_unit_id_resolves_to_same_dom_helper(self):
         source = (
