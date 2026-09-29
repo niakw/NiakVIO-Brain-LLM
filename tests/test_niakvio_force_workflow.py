@@ -9,7 +9,9 @@ assert "routing-force-summary.json" in workflow
 assert "routing-force.jsonl" in workflow
 assert "routing.jsonl" in workflow
 assert "force_llm_needed=" in workflow
-assert "-c 32768" in workflow
+assert "-c 16384" in workflow
+assert "Qwen/Qwen2.5-Coder-7B-Instruct-GGUF:Q4_K_M" in workflow
+assert "--model qwen2.5-coder-7b" in workflow
 assert "-np 1" in workflow
 assert "private-force-batch.jsonl" in workflow
 assert "publish_niakvio_force_mutations.py" in workflow
@@ -20,8 +22,8 @@ assert "provider_patch" in workflow
 
 print("NiakVIO private guidance Force-mutation workflow contract passed")
 assert "--workers 1" in workflow
-assert "--max-tokens 768" in workflow
-assert "--timeout-seconds 180" in workflow
+assert "--max-tokens 512" in workflow
+assert "--timeout-seconds 240" in workflow
 assert "--timeout-seconds 45" in workflow
 assert "--limit 4" not in workflow
 assert "requested_repair_queue" in workflow
