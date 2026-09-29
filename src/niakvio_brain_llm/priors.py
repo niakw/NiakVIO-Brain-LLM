@@ -132,9 +132,23 @@ def _residential_provider_replay_signal(request: RepairRequest) -> bool:
         if replay and all(
             item.get("identitySafe") is True
             and int(item.get("contradictions") or 0) == 0
-            and _canon(item.get("debugStage"))
-            not in {"provider-waf-challenge", "provider-network-timeout", "timeout"}
+            and not (
+                {
+                    _canon(item.get("debugStage")),
+                    *{
+                        _canon(value)
+                        for value in item.get("sampleDebugStages") or []
+                        if _canon(value)
+                    },
+                }
+                & {"provider-waf-challenge", "provider-network-timeout", "timeout"}
+            )
             and _canon(item.get("status")) != "timeout"
+            and "timeout" not in {
+                _canon(value)
+                for value in item.get("sampleStatuses") or []
+                if _canon(value)
+            }
             for item in replay
         ):
             return True
