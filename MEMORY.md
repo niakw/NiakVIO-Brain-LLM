@@ -557,3 +557,12 @@
 - Brain now retains privacy-safe `sampleDebugStages` / `sampleStatuses` from the NiakVIO replay artifact and requires the **entire adaptive sample set** to be free of WAF/timeout before full replay may outrank a targeted WAF seed.
 - `build_causal_prior()` and `request_from_checkout()` both enforce this rule. A regression test proves an earlier WAF sample keeps the causal layer on harness even when the final lane stage is pre-network zero.
 - Guidance generated from the older summary contract (including the already-triggered `213ebeb...` cycle) has no application authority for providers whose WAF ownership depends on that lost sample history. Re-run after fresh sample-aware residential evidence.
+
+
+## 2026-09-29 — FORCE context follows second-hop runtime callees
+
+- The earlier call-neighbor fix followed only one local function hop. That is still insufficient for common provider runtimes such as MovieBox, where `resolve()` calls `current()`, and `current()` owns parser/network helpers such as `currentRows()` / `jsonGet()`.
+- FORCE editable-unit selection now performs a bounded breadth-first traversal to depth 2 over exact local function calls, while retaining the existing maximum editable-unit budget and exact-byte mutation authority.
+- Depth-1 callees remain preferred; depth-2 callees are tagged `causal_call_neighbor_depth2` and are still selected only from provider-owned complete functions already present in the authored runtime.
+- Regression coverage reproduces `resolve -> current -> currentRows/jsonGet` and requires at least one second-hop helper to be exposed.
+- This is context exposure only. It does not authorize a mutation or provider promotion; NiakVIO isolated playback/identity/non-regression gates remain mandatory.
