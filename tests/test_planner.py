@@ -4,7 +4,7 @@ import unittest
 from niakvio_brain_llm.backend import StaticBackend
 from niakvio_brain_llm.contracts import RepairRequest
 from niakvio_brain_llm.document_memory import DocumentStore
-from niakvio_brain_llm.planner import BrainPlanner, _compact_edit_to_mutation, _resolve_structured_anchor
+from niakvio_brain_llm.planner import BrainPlanner, _compact_edit_to_mutation, _preserve_selected_function_envelope, _resolve_structured_anchor
 from niakvio_brain_llm.prompting import _force_source_windows, build_force_prompt_payload
 
 class PlannerTests(unittest.TestCase):
@@ -670,6 +670,30 @@ class PlannerTests(unittest.TestCase):
         self.assertTrue(updated.startswith("async function resolve(page){"))
         self.assertIn("const finalUrl=page.finalUrl||page.url;return finalUrl;", updated)
         self.assertTrue(updated.rstrip().endswith("}"))
+
+    def test_compact_force_provider_bloc_rejects_explicit_selected_function_rename(self):
+        with self.assertRaisesRegex(ValueError, "renamed selected helper"):
+            _preserve_selected_function_envelope(
+                'function _routeKind(route){return "detail";}',
+                'function _extractUrls(text, base){return [];}',
+            )
+
+    def test_compact_force_provider_bloc_rejects_selected_function_signature_change(self):
+        with self.assertRaisesRegex(ValueError, "changed selected helper signature"):
+            _preserve_selected_function_envelope(
+                "async function resolve(page){return page.url;}",
+                "async function resolve(page, context){return page.url;}",
+            )
+
+    def test_compact_force_provider_bloc_keeps_exact_envelope_for_explicit_same_signature(self):
+        updated = _preserve_selected_function_envelope(
+            "async function resolve(page){return page.url;}",
+            "async   function resolve( page ){return page.finalUrl||page.url;}",
+        )
+        self.assertEqual(
+            updated,
+            "async function resolve(page){return page.finalUrl||page.url;}",
+        )
 
     def test_compact_force_provider_bloc_allows_long_exact_function_anchor(self):
         old_body = "a" * 900
