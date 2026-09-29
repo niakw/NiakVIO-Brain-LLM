@@ -392,6 +392,15 @@ def _resolve_structured_anchor(
         absolute_start = source.index(find)
 
     _reject_semantic_identity_edit(find, replace)
+    # Preserve declaration identity before minimization can strip common
+    # "function _" prefixes or closing braces. Otherwise a full-function edit
+    # such as _routeKind -> _extractUrls can collapse to routeKind -> extractUrls
+    # and bypass the helper-removal guard below.
+    _reject_partial_function_anchor(
+        find,
+        replace,
+        allow_new_helpers=allow_new_helpers,
+    )
     must_minimize = source.count(find) != 1 or bool(_function_names(find))
     if must_minimize:
         minimized_find, minimized_replace, prefix = _minimize_local_edit(find, replace)
