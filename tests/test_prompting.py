@@ -531,6 +531,45 @@ class PromptingTests(unittest.TestCase):
         self.assertTrue(payload["reference_policy"]["novel_provider_local_mechanisms_allowed"])
         self.assertTrue(payload["reference_policy"]["reference_is_not_proof"])
 
+    def test_provider_bloc_prefers_registered_runtime_block_over_generic_base(self):
+        generic = (
+            "function _routeKind(route){return 'ignore';} "
+            "function genericExtract(text){return [];}"
+        )
+        dedicated = (
+            "function classBlocks(html){return html?['card']:[];} "
+            "async function detail(q,m){var cards=classBlocks(m.html);return cards[0]||null;} "
+            "async function resolve(args){return detail(args,{html:'x'});}"
+        )
+        request = RepairRequest(
+            provider_id="demo",
+            failure_class="route_proven_gap",
+            status="ROUTE PROVEN",
+            provider_context={
+                "runtimeMutationFilename": "providers/demo.js",
+                "runtimeMutationSource": generic,
+                "preferredRuntimeMutationBlockId": "PROVIDER.DEMO.RUNTIME.V1",
+                "preferredRuntimeMutationSource": dedicated,
+            },
+        )
+        payload = build_force_prompt_payload(
+            request,
+            {"target_layer": "provider", "confidence": 0.96, "strategy_prior": "route"},
+            {"allow_mutations": True, "allowed_scopes": ["provider_bloc"]},
+        )
+        target = payload["new_bloc_target"]
+        joined = "\n".join(
+            str(row.get("source") or "")
+            for row in target.get("editable_units") or []
+        )
+        windows = "\n".join(
+            str(row.get("source") or "")
+            for row in target.get("source_windows") or []
+        )
+        self.assertIn("function detail(", joined + windows)
+        self.assertIn("function resolve(", joined + windows)
+        self.assertNotIn("_routeKind", joined + windows)
+
     def test_force_prompt_preserves_all_allowed_mutation_scopes(self):
         request = RepairRequest(
             provider_id="demo",
