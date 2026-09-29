@@ -425,3 +425,7 @@ The exact selected function may remain an anchor up to the bounded 1800-characte
 For structural provider runtime failures, function proximity alone is insufficient. A selected `resolve` function often delegates the failing work to provider-local helpers such as search/find, player/server selection, link extraction, or terminal traversal.
 
 Within the existing bounded editable-unit budget, FORCE therefore reserves the strongest whole functions and follows one level of exact local function calls. Direct callees are preferred over unrelated nearby statements when their function name/body carries causal route/search/link/player/server/terminal signals. This does not expand mutation authority: every callee is an exact bounded function from the same provider-owned source, and the model still selects only one unit to replace.
+
+## Provider repair ownership rule
+
+NiakVIO-Brain-LLM owns repair synthesis. Provider-specific manual edits are never the terminal solution. They may expose a causal mechanism, but that mechanism must be generalized into a Brain-owned, provider-agnostic capability and replayed through the normal repair pipeline. The assistant may repair only the Brain/infrastructure that prevents this process from executing; it must not substitute for the Brain by shipping hand-written provider code. Acceptance still requires current-byte sandbox, playable proof, identity safety and non-regression.
