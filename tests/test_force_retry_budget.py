@@ -40,8 +40,8 @@ assert "--force-provider-budget-seconds" in source
 assert "prefill_prompt=False" in source
 assert 'prefill_prompt=(args.mode == "repair" and not args.advisor_only)' in source
 
-assert "--max-tokens 768" in workflow
-assert "--timeout-seconds 180" in workflow
+assert "--max-tokens 512" in workflow
+assert "--timeout-seconds 240" in workflow
 assert "--force-provider-budget-seconds 600" in workflow
 assert "FIELD_NIAKVIO_FORCE_MUTATIONS_READY ready=false" in workflow
 assert "raise SystemExit(f\"Force routing requested" not in workflow
