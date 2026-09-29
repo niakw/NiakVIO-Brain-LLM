@@ -796,7 +796,26 @@ def _force_edit_units(value: Any, failure_class: str, *, max_chars: int = 2600, 
                         )
                         neighbors[key] = (score, row_copy)
                 frontier.append((root_index, callee, depth + 1))
-        for _, row in sorted(neighbors.values(), key=lambda item: item[0]):
+        ordered_neighbors = [
+            row for _, row in sorted(neighbors.values(), key=lambda item: item[0])
+        ]
+        # Structural provider failures often hide the real parser/terminal step
+        # behind a dispatcher and one intermediate request helper. With the
+        # normal four-unit budget, depth-1 callees alone can consume every
+        # remaining slot even though a useful depth-2 function was discovered.
+        # Reserve one slot for the strongest second-hop causal neighbor when
+        # possible; exact-byte and sandbox authority are unchanged.
+        if failure_class in {"route_proven_gap", "chain_terminal_gap"} and max_units >= 4:
+            for row in ordered_neighbors:
+                if row.get("reason") != "causal_call_neighbor_depth2":
+                    continue
+                key = (int(row.get("offset") or 0), int(row.get("end_offset") or 0))
+                if key in selected_keys:
+                    continue
+                selected.append(row)
+                selected_keys.add(key)
+                break
+        for row in ordered_neighbors:
             key = (int(row.get("offset") or 0), int(row.get("end_offset") or 0))
             if key in selected_keys:
                 continue
