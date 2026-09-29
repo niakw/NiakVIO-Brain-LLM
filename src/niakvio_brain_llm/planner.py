@@ -586,6 +586,7 @@ def _compact_edit_to_mutation(
         if key in {"max_chars", "max_windows"}
     }
     absolute_start_hint = None
+    max_find = 320
     max_replace = 640
     if unit_id:
         unit, window_kwargs = _force_unit_for_edit(request, source, unit_id)
@@ -593,6 +594,15 @@ def _compact_edit_to_mutation(
         find = str(unit.get("source") or "")
         absolute_start_hint = int(unit.get("offset") or 0)
         if str(unit.get("kind") or "") == "function_unit":
+            # function_unit has the same deterministic contract for authored
+            # provider_patch/provider_js surfaces as for generated Bloc: the
+            # model may return the new body only, while Brain preserves the
+            # exact selected declaration. Keep the full bounded function
+            # available as an anchor when a structural rewrite changes most of
+            # its body instead of forcing every edit back under 320 bytes.
+            _reject_causally_empty_deletion(request.failure_class, find, replace)
+            replace = _preserve_selected_function_envelope(find, replace)
+            max_find = 1800
             max_replace = 1800
     elif not find or len(find) > 320:
         raise ValueError("compact Force exact edit target is missing or oversized")
@@ -615,7 +625,7 @@ def _compact_edit_to_mutation(
         window_id,
         find,
         replace,
-        max_find=320,
+        max_find=max_find,
         max_replace=max_replace,
         window_kwargs=window_kwargs,
         absolute_start_hint=absolute_start_hint,
