@@ -634,3 +634,14 @@
 - NiakVIO targeted evidence now supplies bounded/sanitized HTML class/id tokens. 4KHDHub current search HTML still exposes `movie-card`, `movie-card-title`, `movie-card-format`, and `movie-card-meta`, while the runtime still ends after the search response with `provider_network_zero_result`. Therefore a blanket “markup classes changed” hypothesis is not supported.
 - Targeted DOM structure is additionally surfaced as shallow `structureHints` in the Brain observation so compact FORCE cannot hide it inside deeply clipped network rows.
 - Brain CI is green through `1b12a27eb4e28e119e43351b65d64dfd7da94d83`. No provider is repaired yet; the next authoritative run must be a frozen one-provider 4KHDHub cycle followed by NiakVIO isolated proof if a causal mutation is produced.
+
+
+## 2026-09-29 — 4KHDHub witness: 3B conclusively no-op; FORCE escalated to CI-green 7B
+
+- Single-provider witness policy is active: do not expand back to the 13-provider cohort until one Brain-authored provider mutation survives NiakVIO isolated sandbox playback/identity/non-regression.
+- Witness evidence for `4khdhub`: TMDB movie/tv metadata returns HTTP 200; `4khdhub.one` search returns HTTP 200 with 42 movie / 31 tv anchors and current structural tokens including `movie-card`, `movie-card-title`, `movie-card-format`, `movie-card-meta`; provider still returns zero streams and no detail-provider request is observed.
+- Qwen2.5-Coder-3B Q4 witness runs are now conclusive negative evidence. After compiler/signature/call-graph fixes and prompt contraction, the model completed all attempts without transport timeout but returned only no-op edits across provider_patch/provider_bloc. Do not add more 3B retries for this witness.
+- FORCE inference is escalated to `Qwen/Qwen2.5-Coder-7B-Instruct-GGUF:Q4_K_M` in the Private-Guided Advisor only. Runtime context is 16k, one llama slot, Force max output 512 tokens, timeout 240s.
+- `route_proven_gap` compact FORCE now exposes exactly two causal function units (one structural root plus its strongest causal callee); chain/media failures retain their wider/deeper call graph budget.
+- Targeted current evidence is compacted for FORCE to debug/status/playable/verified/sampleTitles/structureHints plus a small network summary instead of the full network payload.
+- CI is green at Brain `31f71531a4ab8954c80bde2d02c959a1a0d53077` after updating all historical 3B/32k/768-token workflow contract tests. The next witness run must use a Brain SHA at or after this green revision.
