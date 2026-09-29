@@ -1,14 +1,18 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "f7dc95d662bbf752a17e8b47f7aa1aa19b3a78c6",
-  "reason": "Authoritative FORCE rerun on the current 8-provider mutation cohort after same-census targeted transport gating removed five explicit WAF-owned providers from repairQueue. Consume fresh targeted response-shape evidence and prior FORCE negative memory; no provider mutation for transportRepairEligible=false rows.",
+  "niakvio_sha": "dd3d85acecc957dc6786701923f287ff460c99a4",
+  "reason": "Authoritative FORCE rerun on the current 12-provider Repair cohort after fresh browser/direct/OkHttp/residential qualification. Full residential provider replay overrides narrow targeted WAF seeds for allwish, animesalt, flemmix and moviesmod (provider_zero_before_provider_network); MalluMV remains environment/WAF-owned and is excluded. Consume current targeted shapes, WAF differential/replay, validated reference patterns and prior FORCE negative memory.",
   "requested_repair_queue": [
     "4khdhub",
     "allanime",
+    "allwish",
     "anime-ultime",
+    "animesalt",
     "animesultra",
     "animevost-fr",
+    "flemmix",
     "moviebox",
+    "moviesmod",
     "vidfast",
     "yflix"
   ]
