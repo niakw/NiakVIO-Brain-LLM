@@ -3,6 +3,7 @@ import unittest
 
 from niakvio_brain_llm.contracts import RepairRequest
 from niakvio_brain_llm.planner import _compact_wire_schema_for
+from niakvio_brain_llm.planner import _preserve_selected_function_envelope
 from niakvio_brain_llm.prompting import build_force_prompt_payload
 from niakvio_brain_llm.prompting import _force_window_kwargs_for_request
 from niakvio_brain_llm.schema import compact_force_schema_for
@@ -233,6 +234,22 @@ class CompactForceRetryTest(unittest.TestCase):
         self.assertNotIn("find", bloc_variant["properties"])
         self.assertNotIn("window_id", bloc_variant["properties"])
 
+
+
+    def test_complete_wrong_function_wrapper_keeps_selected_identity(self):
+        find = "async function resolveCandidate(url, ref){return await crawl(url, ref);}"
+        wrapped = "async function extractUrls(url, ref){const rows=await crawl(url, ref);return rows.filter(Boolean);}"
+        rebuilt = _preserve_selected_function_envelope(find, wrapped)
+        self.assertTrue(rebuilt.startswith("async function resolveCandidate(url, ref){"))
+        self.assertNotIn("function extractUrls", rebuilt)
+        self.assertIn("const rows=await crawl(url, ref);", rebuilt)
+        self.assertIn("return rows.filter(Boolean);", rebuilt)
+
+    def test_multiple_function_wrapper_is_not_silently_normalized(self):
+        find = "function resolve(url){return crawl(url);}"
+        wrapped = "function a(url){return crawl(url);} function b(url){return url;}"
+        rebuilt = _preserve_selected_function_envelope(find, wrapped)
+        self.assertEqual(rebuilt, wrapped)
 
 
 if __name__ == "__main__":
