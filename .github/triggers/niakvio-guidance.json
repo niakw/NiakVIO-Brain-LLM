@@ -1,20 +1,8 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "65d7bee92760bb37879093f2643b6277c02b8581",
-  "reason": "Fresh authoritative 13-provider Brain-owned FORCE after CI-green compact compiler recovery: exact selected function identity for generated provider_bloc wrappers, hard four-unit budget, and callback-aware second-hop causal graph. No manual provider mutation substitution; NiakVIO remains isolated verifier/publisher.",
+  "niakvio_sha": "77985e9d316fbc600399d039dbc805ebc0b07cf8",
+  "reason": "Single-provider proof milestone after one week of zero fleet repairs. Validate recovered Brain compiler end-to-end on 4KHDHub only: current TMDB succeeds, current provider search returns HTTP 200 with many anchors, but runtime yields provider_network_zero_result before selecting a detail. Brain must own any provider mutation; NiakVIO remains isolated sandbox/playback/identity authority. Do not broaden cohort until one provider exits repairQueue.",
   "requested_repair_queue": [
-    "4khdhub",
-    "allanime",
-    "allwish",
-    "anime-ultime",
-    "animesalt",
-    "animesultra",
-    "animevost-fr",
-    "flemmix",
-    "mallumv",
-    "moviebox",
-    "moviesmod",
-    "vidfast",
-    "yflix"
+    "4khdhub"
   ]
 }
