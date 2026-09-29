@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "niakvio_sha": "7365ed90a95d8fdf9aafe2da9c83a0fbd6d89903",
-  "reason": "Diagnostic proof rerun for anime-ultime, flemmix and moviesmod after authored function-unit compiler repair. Publish sanitized per-scope FORCE trace to distinguish provider_patch rejection from clean abstention without private/source content.",
+  "reason": "Proof rerun for anime-ultime, flemmix and moviesmod after clean-abstention diagnosis: provider-specific runtime first, authored function envelopes fixed, and editable-unit selection now follows one level of direct causal runtime callees.",
   "requested_repair_queue": [
     "anime-ultime",
     "flemmix",
