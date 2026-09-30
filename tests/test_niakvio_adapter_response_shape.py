@@ -1,6 +1,6 @@
 import unittest
 
-from niakvio_brain_llm.niakvio_adapter import _provider_targeted_observation, _safe_response_shape
+from niakvio_brain_llm.niakvio_adapter import _provider_sharded_observation, _provider_targeted_observation, _safe_response_shape
 
 
 class ResponseShapeAdapterTests(unittest.TestCase):
@@ -68,6 +68,47 @@ class ResponseShapeAdapterTests(unittest.TestCase):
         self.assertIn("markers=download,episode", hint)
         self.assertIn("classFacts=[movie-card;count=5;selfHref=0;nestedAnchors=5;tags=div;signals=movie,year]", hint)
 
+
+
+    def test_sharded_observation_surfaces_current_html_structure_hint(self):
+        payload = {
+            "rows": [{
+                "provider_id": "demo",
+                "semantic_type": "movie",
+                "status": "no_streams",
+                "debug_stage": "provider_network_zero_result",
+                "playable": 0,
+                "verified": 0,
+                "contradictions": 0,
+                "sample_titles": ["Demo Movie"],
+                "debug_fetches": [{
+                    "url": "https://provider.invalid/?s=demo&secret=redacted",
+                    "response_url": "https://provider.invalid/?s=demo&secret=redacted",
+                    "method": "GET",
+                    "status": 200,
+                    "response_shape": {
+                        "kind": "html",
+                        "classTokens": ["movie-card", "movie-card-title"],
+                        "idTokens": ["search"],
+                        "classFacts": [{
+                            "token": "movie-card",
+                            "count": 5,
+                            "tags": ["a", "div"],
+                            "selfHref": 1,
+                            "nestedAnchors": 5,
+                            "signals": ["movie", "year"],
+                        }],
+                        "markers": ["download"],
+                    },
+                }],
+            }]
+        }
+        observation = _provider_sharded_observation(payload, "demo")
+        self.assertEqual(observation["debugStages"]["movie"], "provider_network_zero_result")
+        self.assertEqual(observation["network"]["movie"][0]["host"], "provider.invalid")
+        self.assertEqual(observation["network"]["movie"][0]["path"], "/")
+        self.assertNotIn("secret", repr(observation))
+        self.assertIn("classFacts=[movie-card;count=5;selfHref=1;nestedAnchors=5;tags=a,div;signals=movie,year]", observation["structureHints"][0])
 
 
 if __name__ == "__main__":
