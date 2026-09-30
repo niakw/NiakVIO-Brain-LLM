@@ -51,10 +51,18 @@ class RepairFamilyTests(unittest.TestCase):
         )
 
     def test_materially_different_structure_changes_family(self):
-        nested = repair_family_descriptor(self._request("alpha", nested=24))
-        flat = repair_family_descriptor(self._request("alpha", nested=0))
+        nested_request = self._request("alpha", nested=24)
+        flat_request = self._request("alpha", nested=0).to_dict()
+        flat_request["observations"][0]["value"]["structureHints"] = [
+            "movie:classes=card,format;"
+            "classFacts=[card;count=12;selfHref=12;nestedAnchors=0;"
+            "tags=div;signals=movie,year]"
+        ]
+        nested = repair_family_descriptor(nested_request)
+        flat = repair_family_descriptor(flat_request)
         self.assertNotEqual(nested["key"], flat["key"])
-        self.assertNotEqual(nested["archetype"], flat["archetype"])
+        self.assertEqual(nested["archetype"], "route-proven-gap:dom-selector-container")
+        self.assertEqual(flat["archetype"], "route-proven-gap:route-parser")
 
 
     def test_response_format_does_not_split_same_route_parser_family(self):
@@ -66,7 +74,7 @@ class RepairFamilyTests(unittest.TestCase):
         left_family = repair_family_descriptor(left)
         right_family = repair_family_descriptor(right)
         self.assertEqual(left_family["key"], right_family["key"])
-        self.assertEqual(left_family["archetype"], "route-proven-gap:route-parser")
+        self.assertEqual(left_family["archetype"], "route-proven-gap:dom-selector-container")
 
     def test_family_wave_selects_one_unvalidated_representative_and_rotates(self):
         family = {"key": "a" * 64}
