@@ -829,6 +829,18 @@ def _deterministic_structural_force_mutation(
                     continue
                 candidates.append((scope, path, source, unit))
 
+    if mixed_nested_class_container and len(candidates) != 1:
+        structural_candidates = [
+            candidate
+            for candidate in candidates
+            if (
+                "starts=[]" in str(candidate[3].get("source") or "")
+                and "starts[i+1].at" in str(candidate[3].get("source") or "")
+            )
+        ]
+        if len(structural_candidates) == 1:
+            candidates = structural_candidates
+
     if len(candidates) != 1:
         return None
 
