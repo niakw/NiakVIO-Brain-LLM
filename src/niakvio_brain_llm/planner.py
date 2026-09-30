@@ -826,18 +826,23 @@ def _deterministic_class_text_boundary_mutation(
     if not isinstance(sources, dict):
         return None
 
-    edit_kwargs = _force_window_kwargs_for_request(request)
     candidates: list[tuple[str, dict[str, Any], str]] = []
     for path, source_raw in sources.items():
         path = str(path)
         source = str(source_raw or "")
         if not path or not source:
             continue
+        # This is a deterministic local scan, not model prompt context. The
+        # compact route-gap prompt intentionally exposes only two causal units,
+        # but negative-memory progression must still be able to inspect the
+        # next exact provider-owned helper after the first candidate failed.
         units = _force_edit_units(
             source,
             request.failure_class,
+            max_chars=5000,
+            max_windows=4,
+            max_units=32,
             focus_keywords=focus_keywords,
-            **edit_kwargs,
         )
         for unit in units:
             if str(unit.get("kind") or "") != "function_unit":
