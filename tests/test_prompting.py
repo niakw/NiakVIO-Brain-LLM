@@ -530,6 +530,51 @@ class PromptingTests(unittest.TestCase):
         self.assertIn("internalLink", unit_source)
         self.assertTrue(all("...<middle-clipped>..." not in row["source"] for row in windows))
 
+    def test_force_initial_prompt_keeps_one_same_provider_field_evidence_excerpt(self):
+        request = RepairRequest(
+            provider_id="moviebox",
+            failure_class="chain_terminal_gap",
+            status="CHAIN REACHED",
+            supported_types=["movie", "tv"],
+            allowed_mutations=["provider_patch"],
+            provider_context={
+                "registered_patch_sources":{
+                    "scripts/provider_patches/moviebox_runtime_v1.py":"function resolveCandidate(u){return u}"
+                },
+            },
+            observations=[{"source":"census_current","value":{"debugStages":{"movie":"provider_network_zero_result"}}}],
+        )
+        documents = [
+            {
+                "kind":"document",
+                "path":"automation/USER-PROVIDER-EVIDENCE-LEDGER.md",
+                "heading":"Exact provider route captures relevant to unresolved providers",
+                "role":"field_evidence",
+                "authority":92,
+                "text":"MovieBox manual positive: moviebox.yachts -> provider-local API -> terminal master.m3u8 HTTP 200.",
+            },
+            {
+                "kind":"document",
+                "path":"automation/USER-PROVIDER-EVIDENCE-LEDGER.md",
+                "heading":"Other",
+                "role":"field_evidence",
+                "authority":92,
+                "text":"AllWish manual positive: unrelated provider route.",
+            },
+        ]
+        payload = build_force_prompt_payload(
+            request,
+            {"target_layer":"provider","confidence":0.9,"strategy_prior":"terminal"},
+            {"allow_mutations":True,"allowed_scopes":["provider_patch"]},
+            documents,
+        )
+        self.assertEqual(len(payload["provider_field_evidence"]), 1)
+        row = payload["provider_field_evidence"][0]
+        self.assertIn("MovieBox manual positive", row["text"])
+        self.assertFalse(row["proof_authority"])
+        self.assertTrue(row["must_revalidate_current_network"])
+        self.assertTrue(payload["field_evidence_policy"]["same_provider_only"])
+
     def test_force_initial_prompt_is_compact_and_keeps_one_optional_reference(self):
         source = (
             "H" * 5000
