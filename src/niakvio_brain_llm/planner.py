@@ -742,7 +742,7 @@ def _deterministic_structural_force_mutation(
         value = observation.get("value") if isinstance(observation.get("value"), dict) else {}
         for hint in (value.get("structureHints") or [])[:8]:
             text = str(hint or "")
-            for raw_fact in re.findall(r"\\[([^\\]]+)\\]", text):
+            for raw_fact in re.findall(r"\\[([^]]+)\\]", text):
                 fields: dict[str, str] = {}
                 for raw_field in raw_fact.split(";"):
                     key, sep, raw_value = raw_field.partition("=")
