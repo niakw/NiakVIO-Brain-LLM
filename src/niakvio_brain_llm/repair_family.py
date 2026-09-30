@@ -199,3 +199,72 @@ def family_histogram(values: list[Any]) -> dict[str, int]:
         key = str(family.get("archetype") or family.get("key") or "unknown")
         counts[key] += 1
     return dict(sorted(counts.items(), key=lambda item: (-item[1], item[0])))
+
+
+def select_family_wave(
+    rows: list[dict[str, Any]],
+    *,
+    validated_family_keys: set[str] | None = None,
+    provider_failure_burden: dict[str, int] | None = None,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Select one rotating representative per unresolved repair family.
+
+    Validated families may fan out because their mechanism can take the
+    deterministic replay path. Unvalidated families spend novel synthesis
+    budget on one representative at a time. Negative-memory burden rotates the
+    representative across siblings instead of hammering one provider forever.
+    """
+    validated = {
+        str(value).strip().casefold()
+        for value in (validated_family_keys or set())
+        if str(value).strip()
+    }
+    burden = {
+        str(key).strip().casefold(): max(0, int(value or 0))
+        for key, value in (provider_failure_burden or {}).items()
+    }
+    groups: dict[str, list[tuple[int, dict[str, Any]]]] = {}
+    order: list[str] = []
+    for index, row in enumerate(rows):
+        if not isinstance(row, dict):
+            continue
+        provider = str(row.get("provider") or row.get("providerId") or "").strip().casefold()
+        family = row.get("repair_family") or row.get("repairFamily")
+        family_key = (
+            str(family.get("key") or "").strip().casefold()
+            if isinstance(family, dict)
+            else ""
+        )
+        group_key = family_key or f"provider:{provider or index}"
+        if group_key not in groups:
+            groups[group_key] = []
+            order.append(group_key)
+        groups[group_key].append((index, row))
+
+    selected_indexes: set[int] = set()
+    for group_key in order:
+        members = groups[group_key]
+        if group_key in validated:
+            selected_indexes.update(index for index, _ in members)
+            continue
+        representative = min(
+            members,
+            key=lambda item: (
+                burden.get(
+                    str(item[1].get("provider") or item[1].get("providerId") or "").strip().casefold(),
+                    0,
+                ),
+                item[0],
+            ),
+        )
+        selected_indexes.add(representative[0])
+
+    selected = [
+        row for index, row in enumerate(rows)
+        if index in selected_indexes
+    ]
+    deferred = [
+        row for index, row in enumerate(rows)
+        if index not in selected_indexes
+    ]
+    return selected, deferred
