@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "23e85730670a513eda2b9a5bf5993434d0a75c04",
-  "reason": "Authoritative family-first FORCE wave on current NiakVIO after route-recognition and runtime-family/template handoff. NO PROOF providers must return probe/Recognition with zero LLM mutation until current traversal persists route authority. ROUTE PROVEN / CHAIN REACHED providers must reuse current route authority and prefer runtime_template_prior shared/current skeletons before any novel provider_bloc. Preserve family-first witness selection, timeout-aware rotation, exact-current-byte synthesis, negative sandbox memory, playback/identity/non-regression gates, and no hand-written provider fixes.",
+  "niakvio_sha": "900aec6d60d0242ee9a4badcf15ef0e54881b0df",
+  "reason": "Authoritative family-first FORCE replay after exact-runtime-first correction. Preserve route-first guard: NO PROOF -> Recognition/probe with zero LLM mutation. For ROUTE PROVEN / CHAIN REACHED with runtime_template_prior, target the exact materialized provider runtime Bloc first, compact to one window/two causal units, keep generator-level provider_patch as fallback only, stop after first executable mutation, and publish only sandboxable provider-local output.",
   "requested_repair_queue": [
     "4khdhub",
     "allanime",
