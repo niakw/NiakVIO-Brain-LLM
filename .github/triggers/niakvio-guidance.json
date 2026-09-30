@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "niakvio_sha": "09e713980234cd22660570e9678bbf6b3654313d",
-  "reason": "Replay the single 4KHDHub witness on current NiakVIO after CI-green generic balanced_class_container synthesis. Current structural evidence proves a mixed-tag nested exact-class container pattern. Brain must synthesize provider-local bytes; NiakVIO remains sole playback/identity/non-regression proof authority.",
+  "reason": "Replay the single 4KHDHub witness after fixing structural focus extraction to consume current privacy-safe classFacts evidence. The deterministic balanced_class_container synthesis must be attempted before LLM fallback; publish only a sandbox mutation artifact, never provider bytes.",
   "requested_repair_queue": [
     "4khdhub"
   ]
