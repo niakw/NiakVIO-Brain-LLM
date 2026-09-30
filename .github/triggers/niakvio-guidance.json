@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "9edce2e637d264ce4b6f78b31dd4de316635394b",
-  "reason": "Replay single 4KHDHub after fixing deterministic exact-function compilation. Previously executed fingerprints remain negative. When balanced_class_container provider_patch is blocked, compile the already-resolved classText helper directly from exact registered patch bytes without compact prompt reselection. Publish only a fresh sandbox mutation authority.",
+  "niakvio_sha": "1cc6de9d7331c812817b31779d3a7663371a90d2",
+  "reason": "Advance the single 4KHDHub witness after NiakVIO independently rejected all previously executed fingerprints, including 0e510acd00e164425464415cc1f032f15ea04753acb5df5f2b4a82b605178837 (classText exact token boundary), c58fcb7a9610234bd647002fc01de4f73657de2028c166b270814f638c9a3989 (balanced class container), 896636b7617d2ed66ea2ed01858d91af2bb06be426383e78943d2e7133a41e1e (resolve_urls) and older patch candidates. Ingest current brain-llm-force-memory, forbid replay of executed fingerprints, and synthesize the next causally distinct provider-local mutation from current evidence. Prefer advancing to the next parser/detail/terminal hypothesis rather than another class-boundary variant.",
   "requested_repair_queue": [
     "4khdhub"
   ]
