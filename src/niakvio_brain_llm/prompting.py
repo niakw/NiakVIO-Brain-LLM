@@ -1056,6 +1056,24 @@ def build_force_prompt_payload(
         None,
     )
     force_window_kwargs = _force_window_kwargs_for_request(request)
+    runtime_template_prior = (
+        context.get("runtime_template_prior")
+        if isinstance(context.get("runtime_template_prior"), dict)
+        else {}
+    )
+    exact_runtime_template = bool(
+        runtime_template_prior.get("reuseBeforeNovelBloc")
+        and context.get("preferredRuntimeMutationSource")
+    )
+    if exact_runtime_template:
+        # The materialized provider runtime is already the chosen template.
+        # Give the model only the smallest causal pair instead of asking it to
+        # ingest/reconstruct the larger generator/runtime graph.
+        force_window_kwargs = {
+            "max_chars": 900 if validation_feedback is not None else 1100,
+            "max_windows": 1,
+            "max_units": 2,
+        }
     structural_focus_keywords = _force_structural_focus_keywords(request)
     # Editable units are derived from the full bounded causal windows, but the
     # model does not need those same bytes duplicated verbatim as context.
@@ -1065,9 +1083,13 @@ def build_force_prompt_payload(
         {"max_chars": 500, "max_windows": 1}
         if route_gap
         else (
-            {"max_chars": 650, "max_windows": 1}
-            if validation_feedback is not None
-            else {"max_chars": 1000, "max_windows": 2}
+            {"max_chars": 550, "max_windows": 1}
+            if exact_runtime_template
+            else (
+                {"max_chars": 650, "max_windows": 1}
+                if validation_feedback is not None
+                else {"max_chars": 1000, "max_windows": 2}
+            )
         )
     )
     registered = context.get("registered_patch_sources")
@@ -1216,7 +1238,8 @@ def build_force_prompt_payload(
         ),
         "runtime_template_policy": {
             "reuse_shared_or_current_template_before_novel_bloc": True,
-            "provider_bloc_is_last_resort": True,
+            "exact_materialized_runtime_bloc_first": bool(exact_runtime_template),
+            "provider_bloc_is_last_resort": not bool(exact_runtime_template),
             "extract_repeated_protocol_into_family_renderer": True,
         },
         "prior_force_sandbox_failures": force_failures,
