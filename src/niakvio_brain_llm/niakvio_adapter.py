@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 from .contracts import RepairRequest
 from .provider_context import build_provider_context, build_validated_reference_patterns
@@ -209,6 +210,86 @@ def _provider_targeted_observation(payload: Any, provider_id: str) -> dict[str, 
         "structureHints": structure_hints[:8],
     }
 
+def _provider_sharded_observation(payload: Any, provider_id: str) -> dict[str, Any]:
+    """Project exact current sharded-census rows into the bounded targeted shape."""
+    rows = payload.get("rows") if isinstance(payload, dict) else None
+    if not isinstance(rows, list):
+        return {}
+    wanted = _canon(provider_id)
+    debug_stages: dict[str, str] = {}
+    statuses: dict[str, str] = {}
+    network: dict[str, list[dict[str, Any]]] = {}
+    sample_titles: dict[str, list[str]] = {}
+    verified_lanes: list[str] = []
+    playable_lanes: list[str] = []
+    contradictions = 0
+
+    for row in rows:
+        if not isinstance(row, dict) or _canon(row.get("provider_id")) != wanted:
+            continue
+        lane = str(row.get("semantic_type") or "")[:40]
+        if not lane:
+            continue
+        stage = str(row.get("debug_stage") or "")[:80]
+        status = str(row.get("status") or "")[:80]
+        if stage:
+            debug_stages[lane] = stage
+        if status:
+            statuses[lane] = status
+        contradictions += max(0, int(row.get("contradictions") or 0))
+        if row.get("verified") is True and lane not in verified_lanes:
+            verified_lanes.append(lane)
+        if row.get("playable") is True and lane not in playable_lanes:
+            playable_lanes.append(lane)
+        titles = [
+            str(value)[:120]
+            for value in (row.get("sample_titles") or [])
+            if str(value).strip()
+        ][:8]
+        if titles:
+            sample_titles[lane] = titles
+
+        safe_fetches: list[dict[str, Any]] = []
+        for fetch in (row.get("debug_fetches") or [])[:16]:
+            if not isinstance(fetch, dict):
+                continue
+            raw_url = str(fetch.get("response_url") or fetch.get("url") or "")
+            try:
+                parsed = urlsplit(raw_url)
+            except ValueError:
+                continue
+            host = str(parsed.hostname or "")[:120]
+            path = str(parsed.path or "/")[:180]
+            shape = _safe_response_shape(fetch.get("response_shape") or fetch.get("shape"))
+            safe_fetches.append({
+                "method": str(fetch.get("method") or "")[:12],
+                "host": host,
+                "path": path,
+                "status": fetch.get("status"),
+                **({"shape": shape} if shape else {}),
+            })
+        if safe_fetches:
+            network[lane] = safe_fetches
+
+    if not debug_stages and not statuses and not network:
+        return {}
+    return _provider_targeted_observation(
+        {
+            "providers": {
+                provider_id: {
+                    "debugStages": debug_stages,
+                    "statuses": statuses,
+                    "verifiedLanes": verified_lanes,
+                    "playableLanes": playable_lanes,
+                    "contradictions": contradictions,
+                    "sampleTitles": sample_titles,
+                    "network": network,
+                }
+            }
+        },
+        provider_id,
+    )
+
 def _provider_waf_observation(payload: Any, provider_id: str) -> dict[str, Any]:
     if not isinstance(payload, dict):
         return {}
@@ -404,6 +485,12 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
     wanted = _canon(provider_id)
 
     census = _load(root / "automation" / "provider-census-status.json", {})
+    census_run = str(census.get("runId") or "") if isinstance(census, dict) else ""
+    census_sharded = (
+        _load(root / "automation" / f"provider-census-sharded-{census_run}.json", {})
+        if census_run.isdigit()
+        else {}
+    )
     experience = _load(root / "automation" / "brain-repair-experience.json", {})
     memory = _load(root / "automation" / "brain-repair-memory.json", {})
     force_memory = _load(root / "automation" / "brain-llm-force-memory.json", {})
@@ -444,7 +531,6 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
         supported = []
 
     targeted_source_run = str(targeted.get("sourceCensusRunId") or "") if isinstance(targeted, dict) else ""
-    census_run = str(census.get("runId") or "") if isinstance(census, dict) else ""
     targeted_current = (
         not targeted_source_run
         or not census_run
@@ -455,6 +541,7 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
         if targeted_current
         else {}
     )
+    census_sharded_observation = _provider_sharded_observation(census_sharded, provider_id)
     waf_observation = _provider_waf_observation(waf, provider_id)
     targeted_stages = {
         str(value or "").strip().casefold()
@@ -606,6 +693,10 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
             *(
                 [{"source": "targeted-regression-current", "value": targeted_observation}]
                 if targeted_observation else []
+            ),
+            *(
+                [{"source": "census-sharded-current", "value": census_sharded_observation}]
+                if census_sharded_observation else []
             ),
             *(
                 [{"source": "waf-client-differential-current", "value": waf_observation}]
