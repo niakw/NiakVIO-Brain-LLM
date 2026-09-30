@@ -321,6 +321,7 @@ jobs:
             --documents public-documents.jsonl \
             --extra-documents private-documents.jsonl \
             --mode repair \
+            --stop-after-first-mutation \
             "${provider_args[@]}" \
             --endpoint http://127.0.0.1:8080 \
             --model qwen2.5-coder-7b \
