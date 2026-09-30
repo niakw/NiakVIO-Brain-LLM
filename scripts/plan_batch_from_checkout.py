@@ -85,9 +85,37 @@ def main() -> int:
         max_tokens=max(128, min(int(args.max_tokens), 2048)),
         prefill_prompt=(args.mode == "repair" and not args.advisor_only),
     )
-    store = ExperienceStore.from_jsonl_many(
+    base_store = ExperienceStore.from_jsonl_many(
         [args.experience, *args.extra_experience]
     )
+    family_memory_path = Path(args.niakvio_root) / "automation" / "brain-llm-force-memory.json"
+    family_experiences: list[dict] = []
+    try:
+        family_memory = json.loads(family_memory_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        family_memory = {}
+    if isinstance(family_memory, dict):
+        for raw in family_memory.get("validatedFamilies") or []:
+            if not isinstance(raw, dict) or int(raw.get("successCount") or 0) <= 0:
+                continue
+            repair_family = raw.get("repairFamily") if isinstance(raw.get("repairFamily"), dict) else {}
+            family_key = str(repair_family.get("key") or "").strip().casefold()
+            mechanism = str(raw.get("mechanismFamily") or "").strip().casefold()
+            if not re.fullmatch(r"[0-9a-f]{64}", family_key) or not mechanism:
+                continue
+            family_experiences.append({
+                "experience_id": f"validated-family:{family_key}:{mechanism}",
+                "failure_class": str(repair_family.get("failure") or ""),
+                "strategy": mechanism,
+                "mechanismFamily": mechanism,
+                "repair_family": repair_family,
+                "result": "validated",
+                "providers": [str(x) for x in (raw.get("providers") or [])[:96]],
+                "successCount": int(raw.get("successCount") or 0),
+                "failureCount": int(raw.get("failureCount") or 0),
+                "memoryRole": "sandbox-validated-repair-family",
+            })
+    store = ExperienceStore([*base_store.rows, *family_experiences])
     documents = DocumentStore.from_jsonl_many([args.documents, *args.extra_documents])
     planner = BrainPlanner(backend, store, documents)
     orchestrator = BrainOrchestrator(planner, store)
@@ -675,6 +703,7 @@ def main() -> int:
         "routing_modes": dict(sorted(routing_modes.items())),
         "ordered_by": "evidence_depth",
         "experience_sources": 1 + len(args.extra_experience),
+        "validatedFamilyExperiences": len(family_experiences),
         "document_sources": 1 + len(args.extra_documents),
     }
     print(json.dumps(summary, sort_keys=True))
