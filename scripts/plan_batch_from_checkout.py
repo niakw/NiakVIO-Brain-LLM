@@ -288,13 +288,23 @@ def main() -> int:
             or str(request.status or "").strip().upper() in {"ROUTE PROVEN", "CHAIN REACHED"}
         )
 
-        # A registered provider-local runtime resolver is more causally specific
-        # than the generic generated runtime. Repair that authored surface first.
-        # Bloc-first remains the fallback for structural gaps without a dedicated
-        # runtime resolver, or after the dedicated surface abstains/rejects.
+        runtime_template_prior = (
+            context.get("runtime_template_prior")
+            if isinstance(context.get("runtime_template_prior"), dict)
+            else {}
+        )
+        template_first = bool(runtime_template_prior.get("reuseBeforeNovelBloc"))
+
+        # Structural route/terminal failures should mutate the exact materialized
+        # provider runtime Bloc first when one exists. The Python generator is a
+        # larger authoring surface and proved much slower/noisier under 7B FORCE.
+        # A template prior means "reuse this runtime skeleton", not "rewrite the
+        # generator from scratch". Keep provider_patch only as a bounded fallback.
+        if bloc_ready and structural_gap and template_first:
+            scopes.append("provider_bloc")
         if runtime_patch_ready and structural_gap:
             scopes.append("provider_patch")
-        if bloc_ready and structural_gap:
+        if bloc_ready and structural_gap and "provider_bloc" not in scopes:
             scopes.append("provider_bloc")
 
         if patch_ready and "provider_patch" not in scopes:
