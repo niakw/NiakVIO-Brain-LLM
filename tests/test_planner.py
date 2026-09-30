@@ -1,3 +1,4 @@
+import hashlib
 import json
 import unittest
 
@@ -166,6 +167,72 @@ class PlannerTests(unittest.TestCase):
         self.assertEqual(mutation["scope"], "provider_patch")
         self.assertEqual(mutation["path"], "scripts/provider_patches/demo_runtime_v1.py")
         self.assertIn("closeRe", mutation["diff"])
+
+    def test_deterministic_negative_memory_advances_to_class_text_boundary(self):
+        runtime = r'''function classText(html,cls){var re=new RegExp("<span\\b[^>]*class=[\\\"'][^\\\"']*\\b"+cls.replace(/[-/\\\\^$*+?.()|[\\]{}]/g,"\\\\    def test_structural_focus_unit_id_resolves_to_same_dom_helper(self):
+")+"\\b[^\\\"']*[\\\"'][^>]*>","i");return re.test(html)?"x":""} function classBlocks(html,cls){var esc=cls,re=new RegExp("<div\\b[^>]*class=[\\\"'][^\\\"']*\\b"+esc+"\\b[^\\\"']*[\\\"'][^>]*>","gi"),starts=[],m;while((m=re.exec(html||""))!==null)starts.push({at:m.index,tag:m[0]});var out=[];for(var i=0;i<starts.length;i++){var end=i+1<starts.length?starts[i+1].at:Math.min(String(html||"").length,starts[i].at+12000);out.push({html:String(html||"").slice(starts[i].at,end),tag:starts[i].tag})}return out} async function resolve(args){return []}'''
+        patch = (
+            'MANAGED_FIX_ID="PROVIDER.DEMO.RUNTIME.V1"\n'
+            'RUNTIME = r"""' + runtime + '"""\n'
+        )
+        patch_path = "scripts/provider_patches/demo_runtime_v1.py"
+        digest = hashlib.sha256(patch.encode("utf-8")).hexdigest()
+        base_observations = [{
+            "source":"census-sharded-current",
+            "value":{"structureHints":[
+                "movie:classes=movie-card,movie-card-format,movie-card-formats;"
+                "classFacts=[movie-card;count=12;selfHref=1;nestedAnchors=24;"
+                "tags=a,div,span;signals=movie,series,year]"
+            ]},
+        }]
+        context = {
+            "registered_patch_sources":{patch_path:patch},
+            "registered_patch_sha256":{patch_path:digest},
+            "preferredRuntimeMutationSource":runtime,
+            "runtimeMutationFilename":"providers/demo.js",
+            "runtimeMutationSource":runtime,
+        }
+        first_request = RepairRequest(
+            provider_id="demo",
+            failure_class="route_proven_gap",
+            status="ROUTE PROVEN",
+            observations=base_observations,
+            allowed_mutations=["provider_patch","provider_bloc"],
+            provider_context=context,
+        )
+        first = _deterministic_structural_force_mutation(
+            first_request,
+            {"allow_mutations":True,"allowed_scopes":["provider_patch","provider_bloc"]},
+        )
+        self.assertIsNotNone(first)
+        self.assertIn("closeRe", first["diff"])
+        fp = hashlib.sha256(json.dumps([first], ensure_ascii=True, sort_keys=True, separators=(",", ":")).encode("ascii")).hexdigest()
+        ctx_fp = hashlib.sha256(json.dumps([
+            {"scope":"provider_patch","path":patch_path,"sha256":digest}
+        ], ensure_ascii=True, sort_keys=True, separators=(",", ":")).encode("ascii")).hexdigest()
+        second_request = RepairRequest(
+            provider_id="demo",
+            failure_class="route_proven_gap",
+            status="ROUTE PROVEN",
+            observations=[
+                *base_observations,
+                {"source":"brain-force-sandbox-memory","value":[{
+                    "mutationFingerprint":fp,
+                    "mutationContextFingerprint":ctx_fp,
+                    "consecutiveFailures":2,
+                }]},
+            ],
+            allowed_mutations=["provider_patch","provider_bloc"],
+            provider_context=context,
+        )
+        second = _deterministic_structural_force_mutation(
+            second_request,
+            {"allow_mutations":True,"allowed_scopes":["provider_patch","provider_bloc"]},
+        )
+        self.assertIsNotNone(second)
+        self.assertIn("function classText", second["diff"])
+        self.assertIn("(?![-_])", second["diff"])
+        self.assertNotIn("closeRe", second["diff"])
 
     def test_structural_focus_unit_id_resolves_to_same_dom_helper(self):
         source = (
