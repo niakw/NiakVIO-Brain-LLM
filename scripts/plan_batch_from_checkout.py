@@ -19,6 +19,7 @@ from niakvio_brain_llm.niakvio_adapter import request_from_checkout
 from niakvio_brain_llm.orchestrator import BrainOrchestrator
 from niakvio_brain_llm.planner import BrainPlanner
 from niakvio_brain_llm.retrieval import ExperienceStore
+from niakvio_brain_llm.repair_family import repair_family_descriptor
 
 def main() -> int:
     parser = argparse.ArgumentParser()
@@ -92,12 +93,14 @@ def main() -> int:
     orchestrator = BrainOrchestrator(planner, store)
 
     def _row(position: int, hypothesis_index: int, provider: str, request, outcome) -> dict:
+        family = repair_family_descriptor(request)
         return {
             "position": position,
             "hypothesis_index": hypothesis_index,
             "provider": provider,
             "status": request.status,
             "failure_class": request.failure_class,
+            "repair_family": family,
             "ok": True,
             "routing": outcome.routing.to_dict(),
             "proposal": outcome.proposal.to_dict() if outcome.proposal else None,
@@ -562,6 +565,7 @@ def main() -> int:
                 "provider": provider,
                 "status": request.status,
                 "failure_class": request.failure_class,
+                "repair_family": repair_family_descriptor(request),
                 "ok": False,
                 "error": type(exc).__name__ + ": " + str(exc),
                 "force_scope_trace": copy.deepcopy(scope_trace),
@@ -583,6 +587,7 @@ def main() -> int:
                 "provider": provider,
                 "status": request.status,
                 "failure_class": request.failure_class,
+                "repair_family": repair_family_descriptor(request),
                 "ok": False,
                 "error": type(exc).__name__ + ": " + str(exc),
             })
@@ -640,6 +645,18 @@ def main() -> int:
     if safe_errors:
         print("FIELD_BRAIN_FORCE_PLAN_ERRORS " + json.dumps(safe_errors, ensure_ascii=True))
 
+    repair_family_counts: Counter[str] = Counter()
+    repair_family_keys: set[str] = set()
+    for row in rows:
+        family = row.get("repair_family")
+        if not isinstance(family, dict):
+            continue
+        key = str(family.get("key") or "")
+        archetype = str(family.get("archetype") or key or "unknown")
+        if key:
+            repair_family_keys.add(key)
+        repair_family_counts[archetype] += 1
+
     summary = {
         "mode": args.mode,
         **batch_summary(selected),
@@ -652,6 +669,9 @@ def main() -> int:
         "parallel_workers": workers,
         "llm_calls": llm_calls,
         "llm_call_rate": (llm_calls / len(selected)) if selected else 0.0,
+        "repairFamilyCount": len(repair_family_keys),
+        "repairFamilies": dict(sorted(repair_family_counts.items(), key=lambda item: (-item[1], item[0]))),
+        "providersPerRepairFamily": (len(selected) / len(repair_family_keys)) if repair_family_keys else 0.0,
         "routing_modes": dict(sorted(routing_modes.items())),
         "ordered_by": "evidence_depth",
         "experience_sources": 1 + len(args.extra_experience),
