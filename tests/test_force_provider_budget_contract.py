@@ -6,6 +6,9 @@ batch=(ROOT/"scripts/plan_batch_from_checkout.py").read_text(encoding="utf-8")
 workflow=(ROOT/".github/workflows/niakvio-private-guidance.yml").read_text(encoding="utf-8")
 
 assert 'budget_seconds = min(budget_cap, 600)' in batch
+assert 'exact_runtime_template = bool(' in batch
+assert '300 if status_key == "CHAIN REACHED"' in batch
+assert 'else 240' in batch
 assert 'failure_key == "provider_transport_gap"' in batch
 assert 'budget_seconds = min(budget_cap, 300)' in batch
 assert 'failure_key == "transport_environment_gap"' in batch
