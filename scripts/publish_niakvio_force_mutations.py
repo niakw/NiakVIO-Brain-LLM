@@ -10,6 +10,7 @@ from typing import Any
 
 from niakvio_brain_llm.mutation_guard import validate_mutations
 from niakvio_brain_llm.niakvio_adapter import request_from_checkout
+from niakvio_brain_llm.repair_family import repair_family_descriptor
 
 PROVIDER_ID = re.compile(r"^[a-z0-9][a-z0-9._-]{0,159}$")
 SHA40 = re.compile(r"^[0-9a-f]{40}$")
@@ -206,6 +207,19 @@ def sanitize(
 
         mutation_fp = fingerprint(mutations)
         context_fp = mutation_context_fingerprint(niakvio_root, provider, mutations)
+        repair_family = repair_family_descriptor(request)
+        mutation_families = sorted({
+            canon(value.get("family"))
+            for value in mutations
+            if isinstance(value, dict) and canon(value.get("family"))
+        })
+        mechanism_family = (
+            mutation_families[0]
+            if len(mutation_families) == 1
+            else "+".join(mutation_families[:4])
+            if mutation_families
+            else canon(proposal.get("strategy")) + ":" + "+".join(sorted(scopes))
+        )[:160]
         if (provider, mutation_fp, context_fp) in blocked_force:
             continue
         if provider in seen_providers:
@@ -223,6 +237,8 @@ def sanitize(
                 "failureClass": canon(row.get("failure_class")),
                 "targetLayer": "provider",
                 "strategy": canon(proposal.get("strategy")),
+                "repairFamily": repair_family,
+                "mechanismFamily": mechanism_family,
                 "confidence": round(confidence, 6),
                 "mutations": mutations,
                 "tests": [str(x)[:500] for x in (proposal.get("tests") or [])[:12]],
