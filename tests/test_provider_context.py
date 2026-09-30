@@ -119,10 +119,44 @@ class ProviderContextTests(unittest.TestCase):
                 "publishedRuntime",
                 context["preferredRuntimeMutationSource"],
             )
+            self.assertEqual(
+                context["runtime_template_prior"]["mode"],
+                "reuse_current_provider_runtime_skeleton",
+            )
+            self.assertTrue(context["runtime_template_prior"]["reuseBeforeNovelBloc"])
             self.assertNotIn(
                 "publishedConfig",
                 context["preferredRuntimeMutationSource"],
             )
+
+    def test_stremio_route_shape_prefers_shared_json_renderer(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "provider-overrides.json").write_text(json.dumps({
+                "provider_patches": {
+                    "demo": {
+                        "learned_routes": [
+                            "/stream/movie/{imdbId}.json",
+                            "/stream/series/{imdbId}:{season}:{episode}.json",
+                        ],
+                    }
+                }
+            }), encoding="utf-8")
+            (root / "provider-hubs.json").write_text("{}", encoding="utf-8")
+            (root / "manifest.json").write_text(json.dumps({"scrapers": []}), encoding="utf-8")
+            (root / "automation").mkdir()
+            (root / "automation" / "provider-v3-static-knowledge.json").write_text(
+                json.dumps({"providers": {"demo": {"model": {"sourceRuntimeFamily": "unknown"}}}}),
+                encoding="utf-8",
+            )
+            context = build_provider_context(root, "demo")
+            prior = context["runtime_template_prior"]
+            self.assertEqual(prior["mode"], "reuse_recognized_family_renderer")
+            self.assertEqual(
+                prior["template"],
+                "scripts/provider_patches/stremio_json_runtime_common.py",
+            )
+            self.assertTrue(prior["reuseBeforeNovelBloc"])
 
     def test_full_ok_reference_patterns_are_sanitized_and_optional(self):
         from niakvio_brain_llm.provider_context import build_validated_reference_patterns
