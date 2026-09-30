@@ -57,6 +57,17 @@ class RepairFamilyTests(unittest.TestCase):
         self.assertNotEqual(nested["archetype"], flat["archetype"])
 
 
+    def test_response_format_does_not_split_same_route_parser_family(self):
+        base = self._request("alpha", nested=0)
+        left = base.to_dict()
+        right = base.to_dict()
+        left["observations"][0]["value"]["network"] = {"movie":[{"status":200,"shape":{"kind":"html"}}]}
+        right["observations"][0]["value"]["network"] = {"movie":[{"status":200,"shape":{"kind":"json"}}]}
+        left_family = repair_family_descriptor(left)
+        right_family = repair_family_descriptor(right)
+        self.assertEqual(left_family["key"], right_family["key"])
+        self.assertEqual(left_family["archetype"], "route-proven-gap:route-parser")
+
     def test_family_wave_selects_one_unvalidated_representative_and_rotates(self):
         family = {"key": "a" * 64}
         rows = [
