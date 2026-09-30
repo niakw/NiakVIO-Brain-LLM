@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "3f714e3853c7b53d22e7ea74f618bc65cb4dff54",
-  "reason": "Single 4KHDHub witness on current census 36695858715 after fixing current sharded evidence ingestion, classFacts structural focus, provider-row preservation, and ambiguous DOM-helper selection. Deterministic balanced_class_container synthesis must run before 7B fallback. Publish only sandbox mutation authority.",
+  "niakvio_sha": "50a9c8bbd22c1fea26c6b389c39ebd1ea0b414b0",
+  "reason": "Replay single 4KHDHub witness after deterministic structural FORCE now deduplicates equivalent provider_patch/provider_bloc helper exposure and prefers the durable registered provider_patch. Expect balanced_class_container synthesis before any LLM fallback, then publish sandbox mutation authority only.",
   "requested_repair_queue": [
     "4khdhub"
   ]
