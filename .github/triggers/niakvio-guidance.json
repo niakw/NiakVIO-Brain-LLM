@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "niakvio_sha": "50a9c8bbd22c1fea26c6b389c39ebd1ea0b414b0",
-  "reason": "Replay single 4KHDHub witness after deterministic structural FORCE now deduplicates equivalent provider_patch/provider_bloc helper exposure and prefers the durable registered provider_patch. Expect balanced_class_container synthesis before any LLM fallback, then publish sandbox mutation authority only.",
+  "reason": "Replay single 4KHDHub witness with exact sandbox negative-memory progression enabled. The previously rejected balanced_class_container mutation on the same durable provider_patch context must be blocked before publication, then Brain must advance to a distinct exact classText token-boundary mutation. Publish sandbox mutation authority only; no provider bytes are written by Brain.",
   "requested_repair_queue": [
     "4khdhub"
   ]
