@@ -48,8 +48,8 @@ assert "files=4" in workflow
 
 assert "brain_sha:" in workflow
 assert 'ref: ${{ inputs.brain_sha || github.sha }}' in workflow
-assert "niakvio-private-guidance-v3-${{ inputs.brain_sha || github.sha }}" in workflow
-assert "cancel-in-progress: false" in workflow
+assert "niakvio-private-guidance-v4-${{ (github.event_name == 'workflow_dispatch' && inputs.brain_sha) || 'current' }}" in workflow
+assert "cancel-in-progress: ${{ github.event_name == 'push' }}" in workflow
 
 assert 'echo "brain_sha=$brain_sha" >> "$GITHUB_OUTPUT"' in workflow
 assert '-f brain_sha="${{ steps.page.outputs.brain_sha }}"' in workflow
