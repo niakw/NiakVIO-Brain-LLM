@@ -302,12 +302,16 @@ def main() -> int:
         # generator from scratch". Keep provider_patch only as a bounded fallback.
         if bloc_ready and structural_gap and template_first:
             scopes.append("provider_bloc")
-        if runtime_patch_ready and structural_gap:
+        if runtime_patch_ready and structural_gap and not template_first:
             scopes.append("provider_patch")
         if bloc_ready and structural_gap and "provider_bloc" not in scopes:
             scopes.append("provider_bloc")
 
-        if patch_ready and "provider_patch" not in scopes:
+        if (
+            patch_ready
+            and "provider_patch" not in scopes
+            and not (structural_gap and template_first)
+        ):
             scopes.append("provider_patch")
         elif not patch_ready and "provider_js" in allowed and context.get("authored_module"):
             scopes.append("provider_js")
@@ -558,7 +562,30 @@ def main() -> int:
             budget_cap = max(60, min(int(args.force_provider_budget_seconds), 900))
             failure_key = str(request.failure_class or "").strip().casefold().replace("-", "_")
             status_key = str(request.status or "").strip().upper()
-            if failure_key in {"chain_terminal_gap", "media_extraction_gap"} or status_key == "CHAIN REACHED":
+            context = request.provider_context or {}
+            template_prior = (
+                context.get("runtime_template_prior")
+                if isinstance(context.get("runtime_template_prior"), dict)
+                else {}
+            )
+            exact_runtime_template = bool(
+                template_prior.get("reuseBeforeNovelBloc")
+                and context.get("preferredRuntimeMutationSource")
+            )
+            if (
+                exact_runtime_template
+                and (
+                    failure_key in {"chain_terminal_gap", "media_extraction_gap", "route_proven_gap"}
+                    or status_key in {"CHAIN REACHED", "ROUTE PROVEN"}
+                )
+            ):
+                # Fleet waves should rotate after one bounded exact-runtime attempt
+                # instead of letting one witness monopolize ten minutes.
+                budget_seconds = min(
+                    budget_cap,
+                    300 if status_key == "CHAIN REACHED" or failure_key in {"chain_terminal_gap", "media_extraction_gap"} else 240,
+                )
+            elif failure_key in {"chain_terminal_gap", "media_extraction_gap"} or status_key == "CHAIN REACHED":
                 budget_seconds = budget_cap
             elif failure_key == "route_proven_gap" or status_key == "ROUTE PROVEN":
                 budget_seconds = min(budget_cap, 600)
