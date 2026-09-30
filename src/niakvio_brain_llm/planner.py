@@ -732,6 +732,50 @@ def _deterministic_structural_force_mutation(
         return None
 
     context = request.provider_context or {}
+    mixed_nested_class_container = False
+    for observation in request.observations or []:
+        if (
+            not isinstance(observation, dict)
+            or str(observation.get("source") or "") != "targeted-regression-current"
+        ):
+            continue
+        value = observation.get("value") if isinstance(observation.get("value"), dict) else {}
+        for hint in (value.get("structureHints") or [])[:8]:
+            text = str(hint or "")
+            for raw_fact in re.findall(r"\\[([^\\]]+)\\]", text):
+                fields: dict[str, str] = {}
+                for raw_field in raw_fact.split(";"):
+                    key, sep, raw_value = raw_field.partition("=")
+                    if sep:
+                        fields[key.strip()] = raw_value.strip()
+                    elif raw_field.strip() and "token" not in fields:
+                        fields["token"] = raw_field.strip()
+                token = str(fields.get("token") or "").casefold()
+                try:
+                    count = int(fields.get("count") or 0)
+                    self_href = int(fields.get("selfHref") or 0)
+                    nested_anchors = int(fields.get("nestedAnchors") or 0)
+                except ValueError:
+                    continue
+                tags = {
+                    value.strip().casefold()
+                    for value in str(fields.get("tags") or "").split(",")
+                    if value.strip()
+                }
+                if (
+                    token in focus_keywords
+                    and count >= 2
+                    and nested_anchors > 0
+                    and len(tags) >= 2
+                    and self_href < count
+                ):
+                    mixed_nested_class_container = True
+                    break
+            if mixed_nested_class_container:
+                break
+        if mixed_nested_class_container:
+            break
+
     candidates: list[tuple[str, str, str, dict[str, Any]]] = []
     edit_kwargs = _force_window_kwargs_for_request(request)
     for scope in allowed:
@@ -792,6 +836,34 @@ def _deterministic_structural_force_mutation(
     new_boundary = '\\\\b"+esc+"(?![-_])\\\\b'
     if body.count(old_boundary) != 1:
         return None
+
+    mechanism = "exact_class_token_boundary"
+    replacement_body = body.replace(old_boundary, new_boundary, 1)
+    if mixed_nested_class_container:
+        signature = re.match(
+            r"(?s)^\\s*(?:async\\s+)?function\\s+[A-Za-z_$][A-Za-z0-9_$]*"
+            r"\\s*\\((?P<params>[^)]*)\\)\\s*\\{.*\\}\\s*$",
+            unit_source,
+        )
+        params = [
+            value.strip()
+            for value in str(signature.group("params") if signature else "").split(",")
+            if value.strip()
+        ]
+        if (
+            len(params) == 2
+            and all(re.fullmatch(r"[A-Za-z_$][A-Za-z0-9_$]*", value) for value in params)
+            and "starts=[]" in body
+            and "starts[i+1].at" in body
+        ):
+            html_param, class_param = params
+            replacement_body = (
+                "var src=String(" + html_param + '||""),esc=String(' + class_param
+                + r'''||"").replace(/[-/\\^$*+?.()|[\]{}]/g,"\\    body = str(match.group("body") or "")
+    old_boundary = '\\\\b"+esc+"\\\\b'
+    new_boundary = '\\\\b"+esc+"(?![-_])\\\\b'
+    if body.count(old_boundary) != 1:
+        return None
     replacement_body = body.replace(old_boundary, new_boundary, 1)
     edit: dict[str, Any] = {
         "scope": scope,
@@ -802,6 +874,21 @@ def _deterministic_structural_force_mutation(
         edit["path"] = path
     else:
         edit["family"] = "exact_class_token_boundary"
+"),'''
+                + r'''re=new RegExp("<(div|article|li|a)\\b[^>]*class=[\"'][^\"']*\\b"+esc+"(?![-_])\\b[^\"']*[\"'][^>]*>","gi"),out=[],m;'''
+                + r'''while((m=re.exec(src))!==null){var name=String(m[1]||"").toLowerCase(),start=m.index,end=Math.min(src.length,re.lastIndex+12000),depth=1,closeRe=new RegExp("<\\/?"+name+"\\b[^>]*>","gi"),cm;closeRe.lastIndex=re.lastIndex;while(depth&&(cm=closeRe.exec(src))!==null){if(/^<\\//.test(cm[0]))depth--;else if(!/\\/\\s*>$/.test(cm[0]))depth++;if(!depth){end=closeRe.lastIndex;break}}out.push({html:src.slice(start,end),tag:m[0]});re.lastIndex=Math.max(re.lastIndex,end)}return out'''
+            )
+            mechanism = "balanced_class_container"
+
+    edit: dict[str, Any] = {
+        "scope": scope,
+        "unit_id": str(unit.get("id") or ""),
+        "replace": replacement_body,
+    }
+    if scope == "provider_patch":
+        edit["path"] = path
+    else:
+        edit["family"] = mechanism
     mutation = _compact_edit_to_mutation(request, edit)
     if not isinstance(mutation, dict):
         return None
@@ -957,7 +1044,8 @@ class BrainPlanner:
             if deterministic_mutation is not None:
                 print(
                     "FIELD_BRAIN_FORCE_DETERMINISTIC "
-                    f"provider={request.provider_id} mechanism=exact_class_token_boundary "
+                    f"provider={request.provider_id} "
+                    f"mechanism={deterministic_mutation.get('family') or ('balanced_class_container' if 'closeRe' in str(deterministic_mutation.get('diff') or '') else 'exact_class_token_boundary')} "
                     f"scope={deterministic_mutation.get('scope')}",
                     flush=True,
                 )
