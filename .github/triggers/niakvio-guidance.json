@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "niakvio_sha": "650351512b2572094c04b927114c3dae6d33f69e",
-  "reason": "Fleet-scale validation on the exact current 13-provider repair queue. Use repair-family identity and family-wave scheduling: spend novel FORCE synthesis on one rotating representative per unresolved family, consume any sandbox-validated family mechanisms through deterministic family_replay first, and defer sibling providers without losing them. Measure repairFamilyCount, selected representatives, deferred siblings and LLM-call rate. Preserve all existing sandbox/current-byte/identity/non-regression proof gates.",
+  "reason": "Fleet-scale validation after pre-pagination family-wave CI is green. Exact current 13-provider repair queue on NiakVIO 650351512b2572094c04b927114c3dae6d33f69e. Select one rotating representative per unresolved repair family before pagination, fan out only sandbox-validated deterministically replayable families, then retain ordinary current-byte sandbox/playback/identity/non-regression proof. Measure input providers, repair families, selected representatives, deferred siblings and LLM-call rate.",
   "requested_repair_queue": [
     "4khdhub",
     "allanime",
