@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "niakvio_sha": "9edce2e637d264ce4b6f78b31dd4de316635394b",
-  "reason": "Advance the single 4KHDHub witness after NiakVIO independently rejected mutation c58fcb7a9610234bd647002fc01de4f73657de2028c166b270814f638c9a3989 with required_category_playable_proof:movie,tv. Ingest current brain-llm-force-memory, suppress all executed/rejected fingerprints, and synthesize the next bounded provider-local structural mutation from current evidence. Do not replay balanced_class_container or prior resolve_urls candidates.",
+  "reason": "Re-evaluate single 4KHDHub after precise deterministic progression diagnostics. All previously executed 4KHDHub mutation fingerprints in current brain-llm-force-memory remain negative. Prefer the next bounded deterministic classText boundary mutation when valid; otherwise emit FIELD_BRAIN_FORCE_DETERMINISTIC_NEXT_ERROR with safe validation detail and do not replay exhausted mutations.",
   "requested_repair_queue": [
     "4khdhub"
   ]
