@@ -727,3 +727,14 @@
 - Regression tests cover context extraction, sensitive-header omission, normal prompt retention, Force prompt retention and retention under the 7.6k-character budget. Brain CI run `36764118314` completed **SUCCESS** on `14d424162e44b2cfcf0a07200fcec6a694e87c9f`.
 - This is an infrastructure/Brain fix only. It does not claim any provider repaired until an emitted mutation survives NiakVIO current-byte sandbox, playback, identity and non-regression validation.
 
+## 2026-09-30 — Exact runtime Bloc now precedes generator-level FORCE
+
+- Authoritative family wave `36770882785` on Brain `179833dc1a6d49ffff8ff0c4b1865e09b498e4fe` against NiakVIO `23e85730670a513eda2b9a5bf5993434d0a75c04` selected four family witnesses: `allwish`, `flemmix`, `mallumv`, `moviesmod`.
+- The route-first guard worked: `allwish` routed to `probe` / Recognition with zero LLM mutation because current status was `NO PROOF`.
+- The remaining three providers had sufficient route authority, but the 7B FORCE phase produced **0 executable mutations**. MalluMV consumed its 600 s provider budget across generator/runtime attempts; Flemmix and MoviesMod each returned an initially invalid edit then timed out on validation correction. Published Force diagnostics recorded only abstention/timeouts.
+- Root execution defect: structural route/terminal repairs still tried the Python provider generator (`provider_patch`) before the exact materialized provider runtime Bloc, even though `preferredRuntimeMutationSource` already identifies that Bloc as the most causal current-byte runtime surface.
+- `scripts/plan_batch_from_checkout.py` now makes exact provider `provider_bloc` the first FORCE scope for structural gaps when `runtime_template_prior.reuseBeforeNovelBloc=true`; generator-level `provider_patch` remains bounded fallback only.
+- `prompting.py` now recognizes an exact materialized runtime template and contracts chain/media FORCE to one source window and at most two causal editable units. This preserves the current runtime skeleton and asks Qwen only for the smallest missing hook/logic instead of reconstructing a larger generator/runtime graph.
+- Brain CI run `36773724337` completed **SUCCESS** on `32eb8322191cc7019cbc0a63c502dbc499839abc`.
+- No provider is claimed repaired from this change. Next proof is a fresh family-wave against current NiakVIO followed by isolated current-byte NiakVIO sandbox if an executable mutation is emitted.
+
