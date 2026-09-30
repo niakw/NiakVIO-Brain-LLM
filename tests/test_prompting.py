@@ -48,6 +48,60 @@ class PromptingTests(unittest.TestCase):
         self.assertEqual(len(payload["retrieved_experiences"]), 1)
         self.assertEqual(len(payload["retrieved_documents"]), 0)
 
+    def test_route_contract_survives_compaction_and_force_prompt(self):
+        route_contract = {
+            "capability": "html_scraper",
+            "learnedRoutes": ["/?s={query}"],
+            "candidateRoutes": ["/detail/{slug}", "/player/{id}"],
+            "plans": [{
+                "kind": "search_request_plan",
+                "route": "/?s={query}",
+                "method": "GET",
+                "role": "catalog-search",
+                "lanes": ["movie", "tv"],
+            }],
+            "canonicalPreference": [{
+                "owner": "route",
+                "route": "/?s={query}",
+                "lanes": ["movie", "tv"],
+            }],
+        }
+        request = RepairRequest(
+            provider_id="demo",
+            failure_class="route_proven_gap",
+            status="ROUTE PROVEN",
+            provider_context={
+                "route_contract": route_contract,
+                "registered_patch_sources": {
+                    "scripts/provider_patches/demo_runtime_v1.py": (
+                        "async function detail(q){return await fetch('/detail/'+q.slug);} "
+                        "async function resolve(q){return await detail(q);}"
+                    ),
+                },
+            },
+        )
+        advisor = build_prompt_payload(
+            request,
+            [],
+            [],
+            {"target_layer": "provider", "confidence": 0.96, "strategy_prior": "route"},
+            {"allow_mutations": True, "allowed_scopes": ["provider_patch"]},
+        )
+        self.assertEqual(
+            advisor["request"]["provider_context"]["route_contract"]["learnedRoutes"],
+            ["/?s={query}"],
+        )
+        force = build_force_prompt_payload(
+            request,
+            {"target_layer": "provider", "confidence": 0.96, "strategy_prior": "route"},
+            {"allow_mutations": True, "allowed_scopes": ["provider_patch"]},
+        )
+        self.assertEqual(force["current_route_contract"]["plans"][0]["method"], "GET")
+        self.assertEqual(
+            force["current_route_contract"]["canonicalPreference"][0]["route"],
+            "/?s={query}",
+        )
+
     def test_force_mutation_context_prefers_registered_bloc_sources(self):
         request = RepairRequest(
             provider_id="demo",
