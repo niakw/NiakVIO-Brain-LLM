@@ -73,6 +73,51 @@ class RoutingTests(unittest.TestCase):
         self.assertEqual(decision.mode, "probe")
         self.assertFalse(decision.requires_llm)
 
+    def test_no_proof_provider_transport_requires_recognition_before_llm(self):
+        decision = route_request(
+            RepairRequest(
+                provider_id="demo",
+                failure_class="provider_transport_gap",
+                status="NO PROOF",
+                allowed_mutations=["provider_patch", "provider_bloc"],
+                provider_context={
+                    "route_contract": {
+                        "synthesisPolicy": {
+                            "mode": "rediscover_by_traversal",
+                            "runtimeSynthesisAllowed": False,
+                        }
+                    },
+                    "runtimeMutationSource": "function resolve(){return [];}",
+                },
+            )
+        )
+        self.assertEqual(decision.mode, "probe")
+        self.assertFalse(decision.requires_llm)
+        self.assertEqual(decision.allowed_mutations, [])
+        self.assertEqual(decision.strategy, "rediscover_current_provider_route_by_traversal")
+        self.assertIn("persist newly proven route DATA", decision.next_actions)
+
+    def test_rediscovery_policy_blocks_llm_even_if_status_is_not_no_proof(self):
+        decision = route_request(
+            RepairRequest(
+                provider_id="demo",
+                failure_class="provider_transport_gap",
+                status="ROUTE PROVEN",
+                allowed_mutations=["provider_bloc"],
+                provider_context={
+                    "route_contract": {
+                        "synthesisPolicy": {
+                            "mode": "rediscover_by_traversal",
+                            "runtimeSynthesisAllowed": False,
+                        }
+                    },
+                    "runtimeMutationSource": "function resolve(){return [];}",
+                },
+            )
+        )
+        self.assertEqual(decision.mode, "probe")
+        self.assertFalse(decision.requires_llm)
+
     def test_provider_patch_with_fresh_evidence_uses_llm(self):
         store = ExperienceStore([{
             "experience_id": "movix",
