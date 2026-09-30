@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "650351512b2572094c04b927114c3dae6d33f69e",
-  "reason": "Fleet-scale validation v2 after causal repair-family identity stopped hashing catalogue/status metadata. Exact current 13-provider repair queue. Apply family-wave before pagination, one rotating representative per unresolved causal family, fan out only sandbox-validated deterministic family mechanisms, preserve all NiakVIO proof gates, and report input/selected/deferred/family counts plus LLM-call rate.",
+  "niakvio_sha": "a2be5abfb32cc3a5bdc3f82031f9611a0e851ce5",
+  "reason": "Fleet-scale causal-family validation after repair families were coarsened to reusable mechanisms rather than response format/status/catalogue metadata. Use the exact current 13-provider repair queue. Apply family-wave before pagination, select one rotating representative per unresolved family, fan out only sandbox-validated deterministic family mechanisms, preserve all NiakVIO proof gates, and report family reduction plus LLM-call rate.",
   "requested_repair_queue": [
     "4khdhub",
     "allanime",
