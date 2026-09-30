@@ -8,6 +8,7 @@ from .advisor_experiments import next_advisor_experiment
 from .policy import NO_MUTATION_STRATEGIES, build_mutation_policy
 from .priors import build_causal_prior
 from .retrieval import ExperienceStore
+from .repair_family import repair_family_descriptor
 
 
 @dataclass(slots=True)
@@ -28,6 +29,37 @@ class RoutingDecision:
 def _canon(value: object) -> str:
     return "-".join(str(value or "").strip().casefold().replace("_", "-").split())
 
+
+REPLAYABLE_FAMILY_MECHANISMS = {
+    "balanced-class-container",
+    "exact-class-text-token-boundary",
+    "exact-class-token-boundary",
+}
+
+
+def _validated_family_mechanism(request: RepairRequest, experiences: list[dict[str, Any]]) -> str:
+    family_key = str(repair_family_descriptor(request).get("key") or "")
+    if not family_key:
+        return ""
+    candidates: list[tuple[int, int, str]] = []
+    for row in experiences:
+        if str(row.get("result") or "").strip().casefold() != "validated":
+            continue
+        repair_family = row.get("repair_family") or row.get("repairFamily")
+        if not isinstance(repair_family, dict) or str(repair_family.get("key") or "") != family_key:
+            continue
+        mechanism = _canon(row.get("mechanismFamily") or row.get("mechanism_family") or row.get("strategy"))
+        if mechanism not in REPLAYABLE_FAMILY_MECHANISMS:
+            continue
+        candidates.append((
+            int(row.get("successCount") or 0),
+            -int(row.get("failureCount") or 0),
+            mechanism,
+        ))
+    if not candidates:
+        return ""
+    candidates.sort(reverse=True)
+    return candidates[0][2]
 
 
 
@@ -171,6 +203,22 @@ def route_request(
             next_actions=[
                 "gather fresh provider-local evidence",
                 strategy or "rebuild current repair context",
+            ],
+        )
+
+    family_mechanism = _validated_family_mechanism(request, experiences)
+    if policy.get("allow_mutations") and family_mechanism:
+        return RoutingDecision(
+            mode="family_replay",
+            reason="validated repair-family mechanism can be recompiled on current provider bytes before any LLM call",
+            target_layer=layer,
+            strategy=family_mechanism,
+            prior_confidence=confidence,
+            requires_llm=False,
+            allowed_mutations=list(policy.get("allowed_scopes") or []),
+            next_actions=[
+                "recompile validated family mechanism on exact current bytes",
+                "sandbox current provider independently",
             ],
         )
 
