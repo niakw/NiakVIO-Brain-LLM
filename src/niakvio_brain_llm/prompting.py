@@ -160,6 +160,9 @@ def compact_request(
         bounded_context["override"] = _clip(context.get("override"), 600)
     if context.get("hub"):
         bounded_context["hub"] = _clip(context.get("hub"), 420)
+    route_contract = context.get("route_contract")
+    if isinstance(route_contract, dict) and route_contract:
+        bounded_context["route_contract"] = _compact(route_contract, string_limit=260)
     history = context.get("advisor_experiment_history")
     if isinstance(history, list):
         bounded_context["advisor_experiment_history"] = [
@@ -319,7 +322,7 @@ def build_prompt_payload(
                 for key, value in ctx.items()
                 if key in {
                     "source_repo", "read_only", "provider_id",
-                    "registered_patch_scripts", "advisor_experiment_history",
+                    "registered_patch_scripts", "route_contract", "advisor_experiment_history",
                 }
             }
             history = request_payload["provider_context"].get("advisor_experiment_history")
@@ -1198,6 +1201,11 @@ def build_force_prompt_payload(
         },
         "structural_focus": list(structural_focus_keywords)[:6],
         "current_observations": observations,
+        "current_route_contract": (
+            _compact(context.get("route_contract"), string_limit=260)
+            if isinstance(context.get("route_contract"), dict)
+            else {}
+        ),
         "prior_force_sandbox_failures": force_failures,
         "census_prior": census,
         "validated_reference_patterns": references,
