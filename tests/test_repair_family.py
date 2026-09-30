@@ -90,6 +90,34 @@ class RepairFamilyTests(unittest.TestCase):
         self.assertEqual([row["provider"] for row in selected], ["beta", "gamma"])
         self.assertEqual([row["provider"] for row in deferred], ["alpha"])
 
+    def test_family_wave_prefers_stronger_causal_evidence_before_rotation(self):
+        family_key = "d" * 64
+        weak = {
+            "key": family_key,
+            "signals": ["nested-anchor-html", "provider-http-2xx"],
+            "stages": ["provider-network-zero-result"],
+        }
+        strong = {
+            "key": family_key,
+            "signals": [
+                "class-prefix-family",
+                "mixed-tag-nested-container",
+                "nested-anchor-html",
+                "provider-http-2xx",
+            ],
+            "stages": ["provider-network-zero-result"],
+        }
+        rows = [
+            {"provider": "weak", "repair_family": weak},
+            {"provider": "strong", "repair_family": strong},
+        ]
+        selected, deferred = select_family_wave(
+            rows,
+            provider_failure_burden={"weak": 0, "strong": 4},
+        )
+        self.assertEqual([row["provider"] for row in selected], ["strong"])
+        self.assertEqual([row["provider"] for row in deferred], ["weak"])
+
     def test_validated_family_fans_out_all_members(self):
         family = {"key": "c" * 64}
         rows = [
