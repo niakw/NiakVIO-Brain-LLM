@@ -44,6 +44,9 @@ assert "actions: write" in workflow
 assert "mutationContextFingerprint" in workflow
 assert "guidance/niakvio-guidance-state.json" in workflow
 assert "guidance/niakvio-force-diagnostics.json" in workflow
+assert "--previous-diagnostics" in workflow
+assert "niakvio-guidance-family-wave.json" in workflow
+assert "execution_blocked=" in (ROOT / "scripts/select_niakvio_repair_family_wave.py").read_text(encoding="utf-8")
 assert "files=4" in workflow
 
 assert "brain_sha:" in workflow
