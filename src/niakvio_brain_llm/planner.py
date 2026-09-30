@@ -1346,7 +1346,7 @@ class BrainPlanner:
         constrained: bool,
         compact_force: bool = False,
     ) -> tuple[RepairProposal, dict[str, Any], dict[str, Any]]:
-        _, _, causal_prior, mutation_policy, user = self._prepare(request)
+        _, documents, causal_prior, mutation_policy, user = self._prepare(request)
         if compact_force:
             deterministic_mutation = _deterministic_structural_force_mutation(
                 request,
@@ -1379,6 +1379,7 @@ class BrainPlanner:
                     request,
                     causal_prior,
                     mutation_policy,
+                    documents,
                 ),
                 ensure_ascii=True,
                 allow_nan=False,
