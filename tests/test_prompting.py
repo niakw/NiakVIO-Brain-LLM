@@ -72,6 +72,11 @@ class PromptingTests(unittest.TestCase):
             status="ROUTE PROVEN",
             provider_context={
                 "route_contract": route_contract,
+                "runtime_template_prior": {
+                    "mode": "reuse_recognized_family_renderer",
+                    "template": "scripts/provider_patches/stremio_json_runtime_common.py",
+                    "reuseBeforeNovelBloc": True,
+                },
                 "registered_patch_sources": {
                     "scripts/provider_patches/demo_runtime_v1.py": (
                         "async function detail(q){return await fetch('/detail/'+q.slug);} "
@@ -91,12 +96,22 @@ class PromptingTests(unittest.TestCase):
             advisor["request"]["provider_context"]["route_contract"]["learnedRoutes"],
             ["/?s={query}"],
         )
+        self.assertTrue(
+            advisor["request"]["provider_context"]["runtime_template_prior"]["reuseBeforeNovelBloc"]
+        )
         force = build_force_prompt_payload(
             request,
             {"target_layer": "provider", "confidence": 0.96, "strategy_prior": "route"},
             {"allow_mutations": True, "allowed_scopes": ["provider_patch"]},
         )
         self.assertEqual(force["current_route_contract"]["plans"][0]["method"], "GET")
+        self.assertEqual(
+            force["runtime_template_prior"]["template"],
+            "scripts/provider_patches/stremio_json_runtime_common.py",
+        )
+        self.assertTrue(
+            force["runtime_template_policy"]["reuse_shared_or_current_template_before_novel_bloc"]
+        )
         self.assertEqual(
             force["current_route_contract"]["canonicalPreference"][0]["route"],
             "/?s={query}",
