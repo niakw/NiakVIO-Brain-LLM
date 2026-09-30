@@ -39,6 +39,17 @@ class RepairFamilyTests(unittest.TestCase):
         self.assertIn("class-prefix-family", left["signals"])
         self.assertIn("mixed-tag-nested-container", left["signals"])
 
+    def test_catalogue_metadata_does_not_fragment_same_causal_family(self):
+        left = self._request("alpha")
+        right = self._request("beta")
+        right.status = "CHAIN REACHED"
+        right.supported_types = ["anime"]
+        right.allowed_mutations = ["provider_bloc"]
+        self.assertEqual(
+            repair_family_descriptor(left)["key"],
+            repair_family_descriptor(right)["key"],
+        )
+
     def test_materially_different_structure_changes_family(self):
         nested = repair_family_descriptor(self._request("alpha", nested=24))
         flat = repair_family_descriptor(self._request("alpha", nested=0))
