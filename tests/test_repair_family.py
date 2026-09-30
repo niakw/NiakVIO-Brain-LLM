@@ -1,7 +1,7 @@
 import unittest
 
 from niakvio_brain_llm.contracts import RepairRequest
-from niakvio_brain_llm.repair_family import repair_family_descriptor
+from niakvio_brain_llm.repair_family import repair_family_descriptor, select_family_wave
 
 
 class RepairFamilyTests(unittest.TestCase):
@@ -44,6 +44,35 @@ class RepairFamilyTests(unittest.TestCase):
         flat = repair_family_descriptor(self._request("alpha", nested=0))
         self.assertNotEqual(nested["key"], flat["key"])
         self.assertNotEqual(nested["archetype"], flat["archetype"])
+
+
+    def test_family_wave_selects_one_unvalidated_representative_and_rotates(self):
+        family = {"key": "a" * 64}
+        rows = [
+            {"provider": "alpha", "repair_family": family},
+            {"provider": "beta", "repair_family": family},
+            {"provider": "gamma", "repair_family": {"key": "b" * 64}},
+        ]
+        selected, deferred = select_family_wave(
+            rows,
+            provider_failure_burden={"alpha": 3, "beta": 0, "gamma": 2},
+        )
+        self.assertEqual([row["provider"] for row in selected], ["beta", "gamma"])
+        self.assertEqual([row["provider"] for row in deferred], ["alpha"])
+
+    def test_validated_family_fans_out_all_members(self):
+        family = {"key": "c" * 64}
+        rows = [
+            {"provider": "alpha", "repair_family": family},
+            {"provider": "beta", "repair_family": family},
+        ]
+        selected, deferred = select_family_wave(
+            rows,
+            validated_family_keys={family["key"]},
+            provider_failure_burden={"alpha": 9, "beta": 0},
+        )
+        self.assertEqual([row["provider"] for row in selected], ["alpha", "beta"])
+        self.assertEqual(deferred, [])
 
 
 if __name__ == "__main__":
