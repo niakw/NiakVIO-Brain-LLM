@@ -99,8 +99,11 @@ class OrchestratorTests(unittest.TestCase):
         self.assertTrue(outcome.proposal.experiment["session_bootstrap"])
 
     def test_family_replay_recompiles_without_llm(self):
-        source = r'''function classBlocks(html,cls){var esc=cls.replace(/[-/\\^$*+?.()|[\]{}]/g,"\\    def test_llm_repair_calls_model_only_with_routed_scope(self):
-"),re=new RegExp("<(?:div|article|li|a)\\b[^>]*class=[\"'][^\"']*\\b"+esc+"\\b[^\"']*[\"'][^>]*>","gi"),starts=[],m;while((m=re.exec(html||""))!==null)starts.push({at:m.index,tag:m[0]});var out=[];for(var i=0;i<starts.length;i++){var end=i+1<starts.length?starts[i+1].at:Math.min(String(html||"").length,starts[i].at+12000);out.push({html:String(html||"").slice(starts[i].at,end),tag:starts[i].tag})}return out}'''
+        runtime = r'''function classBlocks(html,cls){var esc=cls,re=new RegExp("<div\\b[^>]*class=[\"'][^\"']*\\b"+esc+"\\b[^\"']*[\"'][^>]*>","gi"),starts=[],m;while((m=re.exec(html||""))!==null)starts.push({at:m.index,tag:m[0]});var out=[];for(var i=0;i<starts.length;i++){var end=i+1<starts.length?starts[i+1].at:Math.min(String(html||"").length,starts[i].at+12000);out.push({html:String(html||"").slice(starts[i].at,end),tag:starts[i].tag})}return out}'''
+        source = (
+            'MANAGED_FIX_ID="PROVIDER.DEMO.RUNTIME.V1"\n'
+            'RUNTIME = r"""' + runtime + '"""\n'
+        )
         request = RepairRequest(
             provider_id="demo",
             failure_class="route_proven_gap",
