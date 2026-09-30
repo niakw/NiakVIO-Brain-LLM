@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ast
 import difflib
+import hashlib
 import json
 import re
 import shutil
@@ -758,6 +759,138 @@ def _mixed_nested_class_container_evidence(
     return False
 
 
+def _force_stable_fingerprint(value: object) -> str:
+    raw = json.dumps(
+        value,
+        ensure_ascii=True,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("ascii")
+    return hashlib.sha256(raw).hexdigest()
+
+
+def _force_memory_blocks_mutation(
+    request: RepairRequest,
+    mutation: dict[str, Any],
+) -> bool:
+    """Reject an exact already-executed mutation on the same provider surface."""
+    if str(mutation.get("scope") or "") != "provider_patch":
+        return False
+    path = str(mutation.get("path") or "")
+    context = request.provider_context or {}
+    digests = context.get("registered_patch_sha256")
+    if not path or not isinstance(digests, dict):
+        return False
+    digest = str(digests.get(path) or "").strip().casefold()
+    if not re.fullmatch(r"[0-9a-f]{64}", digest):
+        return False
+
+    mutation_fp = _force_stable_fingerprint([mutation])
+    context_fp = _force_stable_fingerprint([
+        {"scope": "provider_patch", "path": path, "sha256": digest}
+    ])
+    for observation in request.observations or []:
+        if not isinstance(observation, dict) or str(observation.get("source") or "") != "brain-force-sandbox-memory":
+            continue
+        rows = observation.get("value")
+        if not isinstance(rows, list):
+            continue
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            if (
+                str(row.get("mutationFingerprint") or "").strip().casefold() == mutation_fp
+                and str(row.get("mutationContextFingerprint") or "").strip().casefold() == context_fp
+                and int(row.get("consecutiveFailures") or 0) > 0
+            ):
+                return True
+    return False
+
+
+def _deterministic_class_text_boundary_mutation(
+    request: RepairRequest,
+    mutation_policy: dict[str, Any],
+) -> dict[str, Any] | None:
+    """Return the next exact class-selector repair after a failed container fix."""
+    focus_keywords = _force_structural_focus_keywords(request)
+    if not focus_keywords:
+        return None
+    allowed = {
+        str(scope)
+        for scope in mutation_policy.get("allowed_scopes") or request.allowed_mutations or []
+    }
+    if "provider_patch" not in allowed:
+        return None
+    context = request.provider_context or {}
+    sources = context.get("registered_patch_sources")
+    if not isinstance(sources, dict):
+        return None
+
+    edit_kwargs = _force_window_kwargs_for_request(request)
+    candidates: list[tuple[str, dict[str, Any], str]] = []
+    for path, source_raw in sources.items():
+        path = str(path)
+        source = str(source_raw or "")
+        if not path or not source:
+            continue
+        units = _force_edit_units(
+            source,
+            request.failure_class,
+            focus_keywords=focus_keywords,
+            **edit_kwargs,
+        )
+        for unit in units:
+            if str(unit.get("kind") or "") != "function_unit":
+                continue
+            unit_source = str(unit.get("source") or "")
+            signature = re.match(
+                r"(?s)^\s*(?:async\s+)?function\s+[A-Za-z_$][A-Za-z0-9_$]*"
+                r"\s*\((?P<params>[^)]*)\)\s*\{(?P<body>.*)\}\s*$",
+                unit_source,
+            )
+            if not signature:
+                continue
+            params = [
+                value.strip()
+                for value in str(signature.group("params") or "").split(",")
+                if value.strip()
+            ]
+            if len(params) < 2:
+                continue
+            class_param = params[1]
+            if not re.fullmatch(r"[A-Za-z_$][A-Za-z0-9_$]*", class_param):
+                continue
+            body = str(signature.group("body") or "")
+            marker = class_param + ".replace("
+            marker_at = body.find(marker)
+            if marker_at < 0 or "class=" not in body:
+                continue
+            boundary = ')+"\\\\b'
+            boundary_at = body.find(boundary, marker_at)
+            if boundary_at < 0:
+                continue
+            replacement_body = (
+                body[:boundary_at]
+                + ')+"(?![-_])\\\\b'
+                + body[boundary_at + len(boundary):]
+            )
+            candidates.append((path, unit, replacement_body))
+
+    if len(candidates) != 1:
+        return None
+    path, unit, replacement_body = candidates[0]
+    mutation = _compact_edit_to_mutation(
+        request,
+        {
+            "scope": "provider_patch",
+            "path": path,
+            "unit_id": str(unit.get("id") or ""),
+            "replace": replacement_body,
+        },
+    )
+    return mutation if isinstance(mutation, dict) else None
+
+
 def _deterministic_structural_force_mutation(
     request: RepairRequest,
     mutation_policy: dict[str, Any],
@@ -924,6 +1057,19 @@ def _deterministic_structural_force_mutation(
     mutation = _compact_edit_to_mutation(request, edit)
     if not isinstance(mutation, dict):
         return None
+    if _force_memory_blocks_mutation(request, mutation):
+        print(
+            "FIELD_BRAIN_FORCE_DETERMINISTIC_BLOCKED "
+            f"provider={request.provider_id} scope={mutation.get('scope')} reason=executed-negative-memory",
+            flush=True,
+        )
+        next_mutation = _deterministic_class_text_boundary_mutation(
+            request,
+            mutation_policy,
+        )
+        if isinstance(next_mutation, dict) and not _force_memory_blocks_mutation(request, next_mutation):
+            return next_mutation
+        return None
     return mutation
 
 
@@ -1077,7 +1223,7 @@ class BrainPlanner:
                 print(
                     "FIELD_BRAIN_FORCE_DETERMINISTIC "
                     f"provider={request.provider_id} "
-                    f"mechanism={deterministic_mutation.get('family') or ('balanced_class_container' if 'closeRe=' in str(deterministic_mutation.get('diff') or '') else 'exact_class_token_boundary')} "
+                    f"mechanism={deterministic_mutation.get('family') or ('balanced_class_container' if 'closeRe=' in str(deterministic_mutation.get('diff') or '') else ('exact_class_text_token_boundary' if 'function classText' in str(deterministic_mutation.get('diff') or '') else 'exact_class_token_boundary'))} "
                     f"scope={deterministic_mutation.get('scope')}",
                     flush=True,
                 )
