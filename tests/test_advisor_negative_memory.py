@@ -64,10 +64,11 @@ assert force_rows[0]["executionObserved"] is True
 assert force_rows[0]["lastReason"] == "required_category_playable_proof:anime"
 assert force_rows[0]["lastMutationSummary"][0]["family"] == "url_extractor"
 encoded_force = json.dumps(force_rows)
-assert "mutationFingerprint" not in encoded_force
-assert "mutationContextFingerprint" not in encoded_force
+assert force_rows[0]["mutationFingerprint"] == "c" * 64
+assert force_rows[0]["mutationContextFingerprint"] == "d" * 64
 assert "secret-current-bytes" not in encoded_force
 assert "secret-replacement" not in encoded_force
+assert '"mutations"' not in encoded_force
 
 with tempfile.TemporaryDirectory() as td:
     root = Path(td)
