@@ -127,6 +127,21 @@ jobs:
           echo "count=$count" >> "$GITHUB_OUTPUT"
           echo "csv=$csv" >> "$GITHUB_OUTPUT"
 
+      - name: Select repair-family wave
+        id: family_wave
+        shell: bash
+        run: |
+          set -euo pipefail
+          python brain/scripts/select_niakvio_repair_family_wave.py \
+            --targets "$RUNNER_TEMP/niakvio-guidance-targets.txt" \
+            --niakvio-root niakvio \
+            --output "$RUNNER_TEMP/niakvio-guidance-family-wave.txt" \
+            --report "$RUNNER_TEMP/niakvio-guidance-family-wave.json"
+          count="$(wc -l < "$RUNNER_TEMP/niakvio-guidance-family-wave.txt" | tr -d ' ')"
+          csv="$(paste -sd, "$RUNNER_TEMP/niakvio-guidance-family-wave.txt")"
+          echo "count=$count" >> "$GITHUB_OUTPUT"
+          echo "csv=$csv" >> "$GITHUB_OUTPUT"
+
       - name: Select fair bounded guidance page
         id: page
         shell: bash
@@ -143,7 +158,7 @@ jobs:
           brain_sha="$(git -C brain rev-parse HEAD)"
           echo "brain_sha=$brain_sha" >> "$GITHUB_OUTPUT"
           python brain/scripts/select_niakvio_guidance_page.py \
-            --targets "$RUNNER_TEMP/niakvio-guidance-targets.txt" \
+            --targets "$RUNNER_TEMP/niakvio-guidance-family-wave.txt" \
             "${previous_args[@]}" \
             --source-sha "${{ steps.source.outputs.sha }}" \
             --brain-sha "$brain_sha" \
