@@ -166,17 +166,17 @@ def _provider_targeted_observation(payload: Any, provider_id: str) -> dict[str, 
             ids = [str(x) for x in (shape.get("idTokens") or [])[:8]]
             markers = [str(x) for x in (shape.get("markers") or [])[:8]]
             facts = []
-            for row in (shape.get("classFacts") or [])[:6]:
-                if not isinstance(row, dict):
+            for fact in (shape.get("classFacts") or [])[:6]:
+                if not isinstance(fact, dict):
                     continue
                 bits = [
-                    str(row.get("token") or ""),
-                    "count=" + str(int(row.get("count") or 0)),
-                    "selfHref=" + str(int(row.get("selfHref") or 0)),
-                    "nestedAnchors=" + str(int(row.get("nestedAnchors") or 0)),
+                    str(fact.get("token") or ""),
+                    "count=" + str(int(fact.get("count") or 0)),
+                    "selfHref=" + str(int(fact.get("selfHref") or 0)),
+                    "nestedAnchors=" + str(int(fact.get("nestedAnchors") or 0)),
                 ]
-                tags = [str(x) for x in (row.get("tags") or [])[:4]]
-                signals = [str(x) for x in (row.get("signals") or [])[:9]]
+                tags = [str(x) for x in (fact.get("tags") or [])[:4]]
+                signals = [str(x) for x in (fact.get("signals") or [])[:9]]
                 if tags:
                     bits.append("tags=" + ",".join(tags))
                 if signals:
