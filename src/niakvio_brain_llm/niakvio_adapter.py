@@ -442,7 +442,26 @@ def _provider_force_negative_memory(payload: Any, provider_id: str) -> list[dict
             "sourceBrainLlmSha": str(value.get("sourceBrainLlmSha") or "")[:40],
             "executionObserved": True,
         })
-    return out[:8]
+
+    # Force memory is append-oriented. Current repair decisions must see the
+    # newest executed negatives first: request_from_checkout deliberately puts
+    # only a bounded prefix into observations. De-duplicate identical execution
+    # keys while walking backwards so a repeated stale entry cannot crowd out
+    # the latest provider_bloc verdict.
+    recent: list[dict[str, Any]] = []
+    seen: set[tuple[str, str]] = set()
+    for row in reversed(out):
+        key = (
+            str(row.get("mutationFingerprint") or "").casefold(),
+            str(row.get("mutationContextFingerprint") or "").casefold(),
+        )
+        if key in seen:
+            continue
+        seen.add(key)
+        recent.append(row)
+        if len(recent) >= 8:
+            break
+    return recent
 
 def classify_census_failure(row: dict[str, Any]) -> str:
     explicit = str(row.get("failureClass") or "").strip()
