@@ -717,7 +717,7 @@ def _mixed_nested_class_container_evidence(
     for observation in request.observations or []:
         if (
             not isinstance(observation, dict)
-            or str(observation.get("source") or "") != "targeted-regression-current"
+            or str(observation.get("source") or "") not in {"targeted-regression-current", "census-sharded-current"}
         ):
             continue
         value = observation.get("value") if isinstance(observation.get("value"), dict) else {}
