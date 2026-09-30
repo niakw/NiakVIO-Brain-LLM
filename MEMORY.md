@@ -708,3 +708,12 @@
 - Regression coverage proves both rotation to a fresh sibling and the all-blocked least-burden fallback. Brain CI run `36761626368` completed **SUCCESS** on `aa8ee4f2a855b2540e9d4c1f7be2615ecff72934`.
 - Authoritative timeout-aware family cycle: Private-Guided Advisor run `36761626391`, Brain `aa8ee4f2a855b2540e9d4c1f7be2615ecff72934`, exact NiakVIO source `eec281c0d5d0032bb9c3916546ae14e2e96f05fb` (5.21.86). At checkpoint time the exact cohort, family-wave, paging, private-memory build and routing steps had succeeded; 7B inference had not yet completed. No provider repair is claimed from this architecture change.
 
+## 2026-09-30 — Provider family composition architecture is now explicit and RAG-indexed
+
+- NiakVIO now owns `PROVIDER_FAMILY_ARCHITECTURE.md`, a canonical diagram of Provider v3 composition: ProviderBase + provider DATA + reusable provider-family Blocs + provider-personal runtime + ordered CORE Blocs + minimizer + sandbox/proof.
+- The document explicitly separates three ownership scopes: **GLOBAL Core**, **FAMILY reusable provider mechanisms**, and **PERSONAL provider DATA/runtime**. A provider repair must not move Core responsibilities (security, identity, HLS integrity, sanitizer, presentation, StreamScore, telemetry) into a provider-local runtime.
+- It also separates **runtime/protocol families** from **causal repair families**. Providers may share a repair mechanism without sharing a runtime, and providers sharing a runtime family may have different causal failures.
+- Brain public document retrieval now indexes `ARCHITECTURE.md`, `BRAIN_REPAIR_ARCHITECTURE.md` and `PROVIDER_FAMILY_ARCHITECTURE.md` with high authority so future synthesis sees this ownership model directly.
+- Family cardinality is **dynamic evidence**, not an architectural constant. Historical/coarsened classification produced a 5-family snapshot, while live Advisor run `36738108323` logged `input=13 selected=4 families=4` on its exact source. Do not hardcode 4 or 5; derive families from the current request/evidence and persist the exact run-local report.
+- The scaling invariant remains: expensive synthesis should trend with **novel causal mechanisms + exceptional providers**, not raw provider count. A validated family mechanism is recompiled against each sibling's exact current bytes and still requires that sibling's own playback/identity/non-regression proof.
+
