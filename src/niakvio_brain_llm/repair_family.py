@@ -223,6 +223,38 @@ def family_histogram(values: list[Any]) -> dict[str, int]:
     return dict(sorted(counts.items(), key=lambda item: (-item[1], item[0])))
 
 
+def _family_evidence_score(row: dict[str, Any]) -> int:
+    """Rank same-family witnesses by reusable causal evidence, not provider identity."""
+    family = row.get("repair_family") or row.get("repairFamily")
+    if not isinstance(family, dict):
+        return 0
+    signals = {
+        _canon(value)
+        for value in family.get("signals") or []
+        if _canon(value)
+    }
+    score = 0
+    weights = {
+        "class-prefix-family": 8,
+        "mixed-tag-nested-container": 6,
+        "nested-anchor-html": 4,
+        "provider-http-2xx": 3,
+        "provider-http-auth-or-challenge": 1,
+        "provider-http-5xx": 1,
+    }
+    for signal, weight in weights.items():
+        if signal in signals:
+            score += weight
+    stages = {
+        _canon(value)
+        for value in family.get("stages") or []
+        if _canon(value)
+    }
+    if stages:
+        score += min(3, len(stages))
+    return score
+
+
 def select_family_wave(
     rows: list[dict[str, Any]],
     *,
@@ -272,6 +304,7 @@ def select_family_wave(
         representative = min(
             members,
             key=lambda item: (
+                -_family_evidence_score(item[1]),
                 burden.get(
                     str(item[1].get("provider") or item[1].get("providerId") or "").strip().casefold(),
                     0,
