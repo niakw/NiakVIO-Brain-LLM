@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "900aec6d60d0242ee9a4badcf15ef0e54881b0df",
-  "reason": "Authoritative family-first FORCE replay after negative-memory fix. Preserve route-first and exact-runtime-first behavior. Identical provider_bloc mutations already executed/rejected in brain-force sandbox memory must be blocked before publication even when outer repository/release SHA changed; rotate to the next causal mechanism or family witness. Stop after first genuinely new executable mutation.",
+  "niakvio_sha": "a9eee1bda5b95e1c0bf10e9194e31e9808a48b7c",
+  "reason": "Authoritative family-first FORCE replay against published NiakVIO 5.21.90 after recent sandbox-negative-memory and exact-runtime-first corrections. Consume newest rejected provider_bloc fingerprints, do not repeat the rejected 4KHDHub mutation, rotate family witnesses/mechanisms under bounded budgets, preserve route-first behavior, and stop after producing genuinely new executable mutation candidates for isolated NiakVIO proof.",
   "requested_repair_queue": [
     "4khdhub",
     "allanime",
