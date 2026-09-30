@@ -42,7 +42,54 @@ def load_memory(root: Path) -> dict[str, Any]:
     return value if isinstance(value, dict) else {}
 
 
-def select_wave(providers: list[str], niakvio_root: Path) -> tuple[list[str], dict[str, Any]]:
+def load_json(path: Path | None) -> dict[str, Any]:
+    if path is None or not path.is_file():
+        return {}
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return value if isinstance(value, dict) else {}
+
+
+def execution_burden_from_diagnostics(payload: dict[str, Any]) -> dict[str, int]:
+    """Count model/runtime execution blocks without treating them as provider failures."""
+    burden: dict[str, int] = {}
+    blocked_reasons = {
+        "timeouterror",
+        "provider_budget_exhausted",
+        "force_provider_budget_exhausted",
+    }
+    for row in payload.get("rows") or []:
+        if not isinstance(row, dict):
+            continue
+        provider = canon(row.get("providerId") or row.get("provider"))
+        if not provider:
+            continue
+        count = 0
+        for trace in row.get("scopeTrace") or []:
+            if not isinstance(trace, dict):
+                continue
+            reason = canon(trace.get("reason"))
+            outcome = canon(trace.get("outcome"))
+            error_type = canon(trace.get("errorType"))
+            if (
+                reason in blocked_reasons
+                or error_type == "timeouterror"
+                or outcome == "budget-exhausted"
+            ):
+                count += 1
+        if count:
+            burden[provider] = count
+    return burden
+
+
+def select_wave(
+    providers: list[str],
+    niakvio_root: Path,
+    *,
+    previous_diagnostics: dict[str, Any] | None = None,
+) -> tuple[list[str], dict[str, Any]]:
     memory = load_memory(niakvio_root)
     validated_keys: set[str] = set()
     for raw in memory.get("validatedFamilies") or []:
@@ -72,10 +119,12 @@ def select_wave(providers: list[str], niakvio_root: Path) -> tuple[list[str], di
             "repair_family": repair_family_descriptor(request),
         })
 
+    execution_burden = execution_burden_from_diagnostics(previous_diagnostics or {})
     selected, deferred = select_family_wave(
         rows,
         validated_family_keys=validated_keys,
         provider_failure_burden=burden,
+        provider_execution_burden=execution_burden,
     )
     selected_ids = [str(row["provider"]) for row in selected]
     deferred_ids = [str(row["provider"]) for row in deferred]
@@ -95,7 +144,9 @@ def select_wave(providers: list[str], niakvio_root: Path) -> tuple[list[str], di
         "deferredProviderCount": len(deferred_ids),
         "repairFamilyCount": len(families),
         "validatedReplayableFamilyCount": len(validated_keys),
-        "policy": "one rotating representative per unresolved family; validated replayable families may fan out",
+        "executionBlockedProviders": sorted(execution_burden),
+        "providerExecutionBurden": dict(sorted(execution_burden.items())),
+        "policy": "one representative per unresolved family; generation-blocked witnesses rotate to unblocked siblings; validated replayable families may fan out",
         "publicationAuthority": False,
         "proofAuthority": False,
     }
@@ -108,9 +159,14 @@ def main() -> int:
     parser.add_argument("--niakvio-root", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--report", type=Path, required=True)
+    parser.add_argument("--previous-diagnostics", type=Path)
     args = parser.parse_args()
 
-    selected, report = select_wave(read_targets(args.targets), args.niakvio_root)
+    selected, report = select_wave(
+        read_targets(args.targets),
+        args.niakvio_root,
+        previous_diagnostics=load_json(args.previous_diagnostics),
+    )
     if not selected:
         raise SystemExit("repair family wave unexpectedly empty")
     args.output.parent.mkdir(parents=True, exist_ok=True)
@@ -122,6 +178,7 @@ def main() -> int:
         f"input={report['inputProviderCount']} selected={report['selectedProviderCount']} "
         f"deferred={report['deferredProviderCount']} families={report['repairFamilyCount']} "
         f"validated={report['validatedReplayableFamilyCount']} "
+        f"execution_blocked={len(report['executionBlockedProviders'])} "
         f"ids={','.join(selected)}"
     )
     return 0
