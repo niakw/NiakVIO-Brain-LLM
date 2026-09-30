@@ -5,6 +5,7 @@ from niakvio_brain_llm.backend import StaticBackend
 from niakvio_brain_llm.contracts import RepairRequest
 from niakvio_brain_llm.orchestrator import BrainOrchestrator
 from niakvio_brain_llm.planner import BrainPlanner
+from niakvio_brain_llm.repair_family import repair_family_descriptor
 from niakvio_brain_llm.retrieval import ExperienceStore
 
 
@@ -96,6 +97,51 @@ class OrchestratorTests(unittest.TestCase):
         self.assertEqual(outcome.routing.mode, "deterministic_advisor")
         self.assertNotEqual(experiment_fingerprint(outcome.proposal.experiment), first_fp)
         self.assertTrue(outcome.proposal.experiment["session_bootstrap"])
+
+    def test_family_replay_recompiles_without_llm(self):
+        source = r'''function classBlocks(html,cls){var esc=cls.replace(/[-/\\^$*+?.()|[\]{}]/g,"\\    def test_llm_repair_calls_model_only_with_routed_scope(self):
+"),re=new RegExp("<(?:div|article|li|a)\\b[^>]*class=[\"'][^\"']*\\b"+esc+"\\b[^\"']*[\"'][^>]*>","gi"),starts=[],m;while((m=re.exec(html||""))!==null)starts.push({at:m.index,tag:m[0]});var out=[];for(var i=0;i<starts.length;i++){var end=i+1<starts.length?starts[i+1].at:Math.min(String(html||"").length,starts[i].at+12000);out.push({html:String(html||"").slice(starts[i].at,end),tag:starts[i].tag})}return out}'''
+        request = RepairRequest(
+            provider_id="demo",
+            failure_class="route_proven_gap",
+            status="ROUTE PROVEN",
+            supported_types=["movie", "tv"],
+            allowed_mutations=["provider_patch"],
+            provider_context={
+                "registered_patch_scripts":["scripts/provider_patches/demo_runtime_v1.py"],
+                "registered_patch_sources":{"scripts/provider_patches/demo_runtime_v1.py":source},
+            },
+            observations=[{
+                "source":"targeted-regression-current",
+                "value":{
+                    "debugStages":{"movie":"provider_network_zero_result"},
+                    "network":{"movie":[{"status":200}]},
+                    "structureHints":[
+                        "movie:classes=movie-card,movie-card-format,movie-card-content;"
+                        "classFacts=[movie-card;count=12;selfHref=1;nestedAnchors=24;"
+                        "tags=a,div,span;signals=movie,series,year]"
+                    ],
+                },
+            }],
+        )
+        family = repair_family_descriptor(request)
+        store = ExperienceStore([{
+            "experience_id":"family-validated",
+            "failure_class":"route_proven_gap",
+            "result":"validated",
+            "repair_family":family,
+            "mechanismFamily":"balanced-class-container",
+            "strategy":"balanced-class-container",
+            "successCount":2,
+            "failureCount":0,
+        }])
+        planner = BrainPlanner(ExplodingBackend(), store)
+        outcome = BrainOrchestrator(planner, store).run(request, compact_force=True)
+        self.assertEqual(outcome.routing.mode, "family_replay")
+        self.assertFalse(outcome.routing.requires_llm)
+        self.assertIsNotNone(outcome.proposal)
+        self.assertEqual(len(outcome.proposal.mutations), 1)
+        self.assertIn("closeRe", outcome.proposal.mutations[0]["diff"])
 
     def test_llm_repair_calls_model_only_with_routed_scope(self):
         store = ExperienceStore([{
