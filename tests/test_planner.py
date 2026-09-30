@@ -42,6 +42,40 @@ class PlannerTests(unittest.TestCase):
         self.assertIn('(?![-_])', updated)
         self.assertNotEqual(updated, source)
 
+    def test_deterministic_mixed_nested_class_container_uses_balanced_extraction(self):
+        source = r'''function classBlocks(html,cls){var esc=cls.replace(/[-/\\^$*+?.()|[\]{}]/g,"\\    def test_structural_focus_unit_id_resolves_to_same_dom_helper(self):
+"),re=new RegExp("<(?:div|article|li|a)\\b[^>]*class=[\"'][^\"']*\\b"+esc+"\\b[^\"']*[\"'][^>]*>","gi"),starts=[],m;while((m=re.exec(html||""))!==null)starts.push({at:m.index,tag:m[0]});var out=[];for(var i=0;i<starts.length;i++){var end=i+1<starts.length?starts[i+1].at:Math.min(String(html||"").length,starts[i].at+12000);out.push({html:String(html||"").slice(starts[i].at,end),tag:starts[i].tag})}return out} async function resolve(args){return []}'''
+        request = RepairRequest(
+            provider_id="demo",
+            failure_class="route_proven_gap",
+            status="ROUTE PROVEN",
+            observations=[{
+                "source":"targeted-regression-current",
+                "value":{"structureHints":[
+                    "movie:classes=movie-card,movie-card-format,movie-card-content;"
+                    "classFacts=[movie-card;count=12;selfHref=1;nestedAnchors=24;"
+                    "tags=a,div,span;signals=movie,series,year]"
+                ]},
+            }],
+            allowed_mutations=["provider_bloc"],
+            provider_context={
+                "runtimeMutationFilename":"providers/demo.js",
+                "runtimeMutationSource":source,
+            },
+        )
+        mutation = _deterministic_structural_force_mutation(
+            request,
+            {"allow_mutations":True,"allowed_scopes":["provider_bloc"]},
+        )
+        self.assertIsNotNone(mutation)
+        self.assertEqual(mutation["scope"], "provider_bloc")
+        self.assertEqual(mutation["family"], "balanced_class_container")
+        updated = source.replace(mutation["find"], mutation["replace"], 1)
+        self.assertIn("closeRe", updated)
+        self.assertIn('(?![-_])', updated)
+        self.assertNotIn("starts[i+1].at", updated)
+        self.assertNotEqual(updated, source)
+
     def test_structural_focus_unit_id_resolves_to_same_dom_helper(self):
         source = (
             "function classBlocks(html,cls){return html.indexOf(cls)>=0?[html]:[]} "
