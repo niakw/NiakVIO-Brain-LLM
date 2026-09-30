@@ -507,8 +507,6 @@ def _force_unit_for_edit(
     request: RepairRequest,
     source: str,
     unit_id: str,
-    *,
-    allow_deterministic_wide_scan: bool = False,
 ) -> tuple[dict[str, Any], dict[str, int]]:
     if not unit_id:
         raise ValueError("compact Force unit_id is missing")
@@ -529,29 +527,6 @@ def _force_unit_for_edit(
         (row for row in units if str(row.get("id") or "") == unit_id),
         None,
     )
-    if unit is None and allow_deterministic_wide_scan:
-        # Deterministic progression may intentionally inspect the next exact
-        # provider-owned helper outside the compact LLM prompt budget after a
-        # prior mutation was executed and rejected. Re-resolve only the exact
-        # internally generated unit id with the same bounded wide-scan
-        # parameters used by that progression. Model-provided edits never set
-        # this flag, so this does not expand model mutation authority.
-        edit_kwargs = {"max_chars": 5000, "max_windows": 4, "max_units": 32}
-        units = _force_edit_units(
-            source,
-            request.failure_class,
-            focus_keywords=focus_keywords,
-            **edit_kwargs,
-        )
-        window_kwargs = {
-            key: value
-            for key, value in edit_kwargs.items()
-            if key in {"max_chars", "max_windows"}
-        }
-        unit = next(
-            (row for row in units if str(row.get("id") or "") == unit_id),
-            None,
-        )
     if unit is None:
         raise ValueError("compact Force unit_id is not valid for current source")
     find = str(unit.get("source") or "")
@@ -594,12 +569,7 @@ def _compact_edit_to_mutation(
         }
         absolute_start_hint = None
         if unit_id:
-            unit, window_kwargs = _force_unit_for_edit(
-            request,
-            source,
-            unit_id,
-            allow_deterministic_wide_scan=bool(edit.get("_deterministic_wide_unit")),
-        )
+            unit, window_kwargs = _force_unit_for_edit(request, source, unit_id)
             window_id = str(unit.get("window_id") or "")
             find = str(unit.get("source") or "")
             absolute_start_hint = int(unit.get("offset") or 0)
@@ -676,12 +646,7 @@ def _compact_edit_to_mutation(
     max_find = 320
     max_replace = 640
     if unit_id:
-        unit, window_kwargs = _force_unit_for_edit(
-            request,
-            source,
-            unit_id,
-            allow_deterministic_wide_scan=bool(edit.get("_deterministic_wide_unit")),
-        )
+        unit, window_kwargs = _force_unit_for_edit(request, source, unit_id)
         window_id = str(unit.get("window_id") or "")
         find = str(unit.get("source") or "")
         absolute_start_hint = int(unit.get("offset") or 0)
@@ -926,7 +891,6 @@ def _deterministic_class_text_boundary_mutation(
             "path": path,
             "unit_id": str(unit.get("id") or ""),
             "replace": replacement_body,
-            "_deterministic_wide_unit": True,
         },
     )
     return mutation if isinstance(mutation, dict) else None
@@ -1104,12 +1068,35 @@ def _deterministic_structural_force_mutation(
             f"provider={request.provider_id} scope={mutation.get('scope')} reason=executed-negative-memory",
             flush=True,
         )
-        next_mutation = _deterministic_class_text_boundary_mutation(
-            request,
-            mutation_policy,
-        )
-        if isinstance(next_mutation, dict) and not _force_memory_blocks_mutation(request, next_mutation):
+        try:
+            next_mutation = _deterministic_class_text_boundary_mutation(
+                request,
+                mutation_policy,
+            )
+        except ValueError as exc:
+            detail = re.sub(r"\s+", " ", str(exc or "ValueError")).strip()[:280]
+            print(
+                "FIELD_BRAIN_FORCE_DETERMINISTIC_NEXT_ERROR "
+                f"provider={request.provider_id} mechanism=class_text_boundary "
+                f"error=ValueError detail={detail}",
+                flush=True,
+            )
+            raise
+        if isinstance(next_mutation, dict):
+            if _force_memory_blocks_mutation(request, next_mutation):
+                print(
+                    "FIELD_BRAIN_FORCE_DETERMINISTIC_BLOCKED "
+                    f"provider={request.provider_id} scope={next_mutation.get('scope')} "
+                    "reason=executed-negative-memory mechanism=class_text_boundary",
+                    flush=True,
+                )
+                return None
             return next_mutation
+        print(
+            "FIELD_BRAIN_FORCE_DETERMINISTIC_NEXT_MISSING "
+            f"provider={request.provider_id} mechanism=class_text_boundary",
+            flush=True,
+        )
         return None
     return mutation
 
