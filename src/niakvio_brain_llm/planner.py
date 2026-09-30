@@ -869,22 +869,7 @@ def _deterministic_structural_force_mutation(
             html_param, class_param = params
             replacement_body = (
                 "var src=String(" + html_param + '||""),esc=String(' + class_param
-                + r'||"").replace(/[-/\\^$*+?.()|[\]{}]/g,"\\    body = str(match.group("body") or "")
-    old_boundary = '\\\\b"+esc+"\\\\b'
-    new_boundary = '\\\\b"+esc+"(?![-_])\\\\b'
-    if body.count(old_boundary) != 1:
-        return None
-    replacement_body = body.replace(old_boundary, new_boundary, 1)
-    edit: dict[str, Any] = {
-        "scope": scope,
-        "unit_id": str(unit.get("id") or ""),
-        "replace": replacement_body,
-    }
-    if scope == "provider_patch":
-        edit["path"] = path
-    else:
-        edit["family"] = "exact_class_token_boundary"
-"),'
+                + r'||"").replace(/[-/\\^$*+?.()|[\]{}]/g,"\\$&"),'
                 + r're=new RegExp("<(div|article|li|a)\\b[^>]*class=[\\x22\\x27][^\\x22\\x27]*\\b"+esc+"(?![-_])\\b[^\\x22\\x27]*[\\x22\\x27][^>]*>","gi"),out=[],m;'
                 + r'while((m=re.exec(src))!==null){var name=String(m[1]||"").toLowerCase(),start=m.index,end=Math.min(src.length,re.lastIndex+12000),depth=1,closeRe=new RegExp("<\\/?"+name+"\\b[^>]*>","gi"),cm;closeRe.lastIndex=re.lastIndex;while(depth&&(cm=closeRe.exec(src))!==null){if(/^<\\//.test(cm[0]))depth--;else if(!/\\/\\s*>$/.test(cm[0]))depth++;if(!depth){end=closeRe.lastIndex;break}}out.push({html:src.slice(start,end),tag:m[0]});re.lastIndex=Math.max(re.lastIndex,end)}return out'
             )
