@@ -429,3 +429,39 @@ Within the existing bounded editable-unit budget, FORCE therefore reserves the s
 ## Provider repair ownership rule
 
 NiakVIO-Brain-LLM owns repair synthesis. Provider-specific manual edits are never the terminal solution. They may expose a causal mechanism, but that mechanism must be generalized into a Brain-owned, provider-agnostic capability and replayed through the normal repair pipeline. The assistant may repair only the Brain/infrastructure that prevents this process from executing; it must not substitute for the Brain by shipping hand-written provider code. Acceptance still requires current-byte sandbox, playable proof, identity safety and non-regression.
+
+
+## Fleet-scale repair-family architecture
+
+NiakVIO must not scale repair cost linearly with provider count. A provider is an
+instance of a causal repair family; the expensive unit of reasoning is the family.
+
+Brain computes a provider-independent `repair_family` from current authoritative
+failure state plus privacy-safe structural/network evidence. Provider ids, domains,
+literal routes, tokens and source bytes are deliberately excluded from family
+identity. The same causal shape on two providers should therefore resolve to the
+same family even when their implementation bytes differ.
+
+The operating loop is:
+
+1. classify current providers into repair families;
+2. spend novel LLM reasoning on a representative only when no validated family
+   mechanism is available;
+3. persist a successful NiakVIO sandbox result as
+   `repairFamily + mechanismFamily`, never as reusable provider bytes;
+4. on another provider in the same family, try `family_replay` first;
+5. recompile the mechanism against that provider's exact current bytes;
+6. run the normal independent NiakVIO sandbox, playable-media, identity and
+   non-regression gates;
+7. escalate only providers whose current bytes cannot express the validated
+   family mechanism.
+
+`validatedFamilies` is deliberately fail-closed. A mechanism enters it only from
+an accepted NiakVIO Force sandbox result. It has `autoApply=false`,
+`publicationAuthority=false` and `proofAuthority=false`; family memory is a
+replay prior, never a substitute for current provider proof.
+
+Fleet health must therefore expose both raw provider count and repair-family count.
+The scaling objective for hundreds of providers is that LLM calls track the number
+of novel causal families plus exceptional providers, not the total number of
+providers.
