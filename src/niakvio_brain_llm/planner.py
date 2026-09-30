@@ -708,6 +708,56 @@ def _compact_edit_to_mutation(
     }
 
 
+def _mixed_nested_class_container_evidence(
+    request: RepairRequest,
+    focus_keywords: tuple[str, ...],
+) -> bool:
+    """Return true only for bounded current evidence of nested mixed-tag class containers."""
+    focused = {str(value or "").casefold() for value in focus_keywords if str(value or "")}
+    for observation in request.observations or []:
+        if (
+            not isinstance(observation, dict)
+            or str(observation.get("source") or "") != "targeted-regression-current"
+        ):
+            continue
+        value = observation.get("value") if isinstance(observation.get("value"), dict) else {}
+        for hint in (value.get("structureHints") or [])[:8]:
+            text = str(hint or "")
+            if "classFacts=" not in text:
+                continue
+            facts_text = text.split("classFacts=", 1)[1]
+            for fragment in facts_text.split("[")[1:]:
+                raw_fact = fragment.split("]", 1)[0]
+                fields: dict[str, str] = {}
+                for raw_field in raw_fact.split(";"):
+                    key, sep, raw_value = raw_field.partition("=")
+                    if sep:
+                        fields[key.strip()] = raw_value.strip()
+                    elif raw_field.strip() and "token" not in fields:
+                        fields["token"] = raw_field.strip()
+                token = str(fields.get("token") or "").casefold()
+                try:
+                    count = int(fields.get("count") or 0)
+                    self_href = int(fields.get("selfHref") or 0)
+                    nested_anchors = int(fields.get("nestedAnchors") or 0)
+                except ValueError:
+                    continue
+                tags = {
+                    item.strip().casefold()
+                    for item in str(fields.get("tags") or "").split(",")
+                    if item.strip()
+                }
+                if (
+                    token in focused
+                    and count >= 2
+                    and nested_anchors > 0
+                    and len(tags) >= 2
+                    and self_href < count
+                ):
+                    return True
+    return False
+
+
 def _deterministic_structural_force_mutation(
     request: RepairRequest,
     mutation_policy: dict[str, Any],
@@ -732,46 +782,74 @@ def _deterministic_structural_force_mutation(
         return None
 
     context = request.provider_context or {}
-    mixed_nested_class_container = False
-    for observation in request.observations or []:
-        if (
-            not isinstance(observation, dict)
-            or str(observation.get("source") or "") != "targeted-regression-current"
-        ):
-            continue
-        value = observation.get("value") if isinstance(observation.get("value"), dict) else {}
-        for hint in (value.get("structureHints") or [])[:8]:
-            text = str(hint or "")
-            for raw_fact in re.findall(r"\[([^]]+)\]", text):
-                fields: dict[str, str] = {}
-                for raw_field in raw_fact.split(";"):
-                    key, sep, raw_value = raw_field.partition("=")
-                    if sep:
-                        fields[key.strip()] = raw_value.strip()
-                    elif raw_field.strip() and "token" not in fields:
-                        fields["token"] = raw_field.strip()
-                token = str(fields.get("token") or "").casefold()
-                try:
-                    count = int(fields.get("count") or 0)
-                    self_href = int(fields.get("selfHref") or 0)
-                    nested_anchors = int(fields.get("nestedAnchors") or 0)
-                except ValueError:
+    mixed_nested_class_container = _mixed_nested_class_container_evidence(
+        request,
+        focus_keywords,
+    )
+    candidates: list[tuple[str, str, str, dict[str, Any]]] = []
+    edit_kwargs = _force_window_kwargs_for_request(request)
+    for scope in allowed:
+        if scope == "provider_patch":
+            sources = context.get("registered_patch_sources")
+            if not isinstance(sources, dict):
+                continue
+            source_rows = [
+                (str(path), str(source or ""))
+                for path, source in sources.items()
+                if str(path) and str(source or "")
+            ]
+        else:
+            source = str(
+                context.get("preferredRuntimeMutationSource")
+                or context.get("runtimeMutationSource")
+                or ""
+            )
+            source_rows = [("", source)] if source else []
+
+        for path, source in source_rows:
+            units = _force_edit_units(
+                source,
+                request.failure_class,
+                focus_keywords=focus_keywords,
+                **edit_kwargs,
+            )
+            for unit in units:
+                if str(unit.get("kind") or "") != "function_unit":
                     continue
-                tags = {
-                    value.strip().casefold()
-                    for value in str(fields.get("tags") or "").split(",")
-                    if value.strip()
-                }
-                if (
-                    token in focus_keywords
-                    and count >= 2
-                    and nested_anchors > 0
-                    and len(tags) >= 2
-                    and self_href < count
-                ):
-                    mixed_nested_class_container = True
-                    break
-            if mixed_nested_class_container:
+                unit_source = str(unit.get("source") or "")
+                old_boundary = '\\\\b"+esc+"\\\\b'
+                if unit_source.count(old_boundary) != 1:
+                    continue
+                match = re.match(
+                    r"(?s)^\s*(?:async\s+)?function\s+[A-Za-z_$][A-Za-z0-9_$]*"
+                    r"\s*\([^)]*\)\s*\{(?P<body>.*)\}\s*$",
+                    unit_source,
+                )
+                if not match:
+                    continue
+                candidates.append((scope, path, source, unit))
+
+    if len(candidates) != 1:
+        return None
+
+    scope, path, _source, unit = candidates[0]
+    unit_source = str(unit.get("source") or "")
+    match = re.match(
+        r"(?s)^\s*(?:async\s+)?function\s+[A-Za-z_$][A-Za-z0-9_$]*"
+        r"\s*\([^)]*\)\s*\{(?P<body>.*)\}\s*$",
+        unit_source,
+    )
+    if not match:
+        return None
+    body = str(match.group("body") or "")
+    old_boundary = '\\\\b"+esc+"\\\\b'
+    new_boundary = '\\\\b"+esc+"(?![-_])\\\\b'
+    if body.count(old_boundary) != 1:
+        return None
+
+    mechanism = "exact_class_token_boundary"
+    replacement_body = body.replace(old_boundary, new_boundary, 1)
+    if mixed_nested_class_container:
         signature = re.match(
             r"(?s)^\s*(?:async\s+)?function\s+[A-Za-z_$][A-Za-z0-9_$]*"
             r"\s*\((?P<params>[^)]*)\)\s*\{.*\}\s*$",
@@ -791,7 +869,22 @@ def _deterministic_structural_force_mutation(
             html_param, class_param = params
             replacement_body = (
                 "var src=String(" + html_param + '||""),esc=String(' + class_param
-                + r'||"").replace(/[-/\\^$*+?.()|[\]{}]/g,"\\$&"),'
+                + r'||"").replace(/[-/\\^$*+?.()|[\]{}]/g,"\\    body = str(match.group("body") or "")
+    old_boundary = '\\\\b"+esc+"\\\\b'
+    new_boundary = '\\\\b"+esc+"(?![-_])\\\\b'
+    if body.count(old_boundary) != 1:
+        return None
+    replacement_body = body.replace(old_boundary, new_boundary, 1)
+    edit: dict[str, Any] = {
+        "scope": scope,
+        "unit_id": str(unit.get("id") or ""),
+        "replace": replacement_body,
+    }
+    if scope == "provider_patch":
+        edit["path"] = path
+    else:
+        edit["family"] = "exact_class_token_boundary"
+"),'
                 + r're=new RegExp("<(div|article|li|a)\\b[^>]*class=[\\x22\\x27][^\\x22\\x27]*\\b"+esc+"(?![-_])\\b[^\\x22\\x27]*[\\x22\\x27][^>]*>","gi"),out=[],m;'
                 + r'while((m=re.exec(src))!==null){var name=String(m[1]||"").toLowerCase(),start=m.index,end=Math.min(src.length,re.lastIndex+12000),depth=1,closeRe=new RegExp("<\\/?"+name+"\\b[^>]*>","gi"),cm;closeRe.lastIndex=re.lastIndex;while(depth&&(cm=closeRe.exec(src))!==null){if(/^<\\//.test(cm[0]))depth--;else if(!/\\/\\s*>$/.test(cm[0]))depth++;if(!depth){end=closeRe.lastIndex;break}}out.push({html:src.slice(start,end),tag:m[0]});re.lastIndex=Math.max(re.lastIndex,end)}return out'
             )
@@ -962,7 +1055,7 @@ class BrainPlanner:
                 print(
                     "FIELD_BRAIN_FORCE_DETERMINISTIC "
                     f"provider={request.provider_id} "
-                    f"mechanism={deterministic_mutation.get('family') or ('balanced_class_container' if 'closeRe' in str(deterministic_mutation.get('diff') or '') else 'exact_class_token_boundary')} "
+                    f"mechanism={deterministic_mutation.get('family') or ('balanced_class_container' if 'closeRe=' in str(deterministic_mutation.get('diff') or '') else 'exact_class_token_boundary')} "
                     f"scope={deterministic_mutation.get('scope')}",
                     flush=True,
                 )
