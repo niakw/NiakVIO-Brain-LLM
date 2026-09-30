@@ -5,6 +5,7 @@ import json
 import re
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 OPAQUE = re.compile(r"[A-Za-z0-9+/]{160,}={0,2}")
 FIXDATA_COMMENT = re.compile(r"/\*\s*FIXDATA:.*?\*/", re.IGNORECASE | re.DOTALL)
@@ -163,6 +164,161 @@ def _load_json(path: Path) -> Any:
     except (OSError, json.JSONDecodeError):
         return None
 
+def _safe_route(value: Any) -> str:
+    raw = str(value or "").strip()
+    if not raw:
+        return ""
+    if raw.startswith(("http://", "https://")):
+        try:
+            parts = urlsplit(raw)
+            raw = parts.path or "/"
+            if parts.query:
+                # Keep query keys/placeholders but never full URL authority or fragments.
+                raw += "?" + parts.query
+        except ValueError:
+            return ""
+    if not raw.startswith("/"):
+        return ""
+    raw = re.sub(r"(?i)(authorization|cookie|token|secret|password|api[_-]?key)=([^&]+)", r"\1=<redacted>", raw)
+    return raw[:260]
+
+
+def _compact_route_contract(value: Any) -> dict[str, Any]:
+    """Extract a small, structured route contract for runtime synthesis.
+
+    The full provider override remains authoritative in NiakVIO. This projection
+    exists only so the local Brain does not need to rediscover already-proven
+    route structure from clipped JSON or large runtime source windows.
+    """
+    if not isinstance(value, dict):
+        return {}
+
+    out: dict[str, Any] = {}
+    capability = str(value.get("capability") or "").strip()
+    if capability:
+        out["capability"] = capability[:80]
+    route_state = str(value.get("route_data_state") or "").strip()
+    if route_state:
+        out["routeDataState"] = route_state[:40]
+
+    def collect_routes(key: str, limit: int) -> list[str]:
+        rows = value.get(key)
+        if not isinstance(rows, list):
+            return []
+        result: list[str] = []
+        for item in rows:
+            route = _safe_route(item)
+            if route and route not in result:
+                result.append(route)
+            if len(result) >= limit:
+                break
+        return result
+
+    learned = collect_routes("learned_routes", 6)
+    candidates = collect_routes("candidate_learned_routes", 8)
+    if learned:
+        out["learnedRoutes"] = learned
+    if candidates:
+        out["candidateRoutes"] = candidates
+
+    plans: list[dict[str, Any]] = []
+    for plan_key in ("search_request_plan", "provider_value_plan", "external_identity_plan"):
+        rows = value.get(plan_key)
+        if isinstance(rows, dict):
+            rows = [rows]
+        if not isinstance(rows, list):
+            continue
+        for raw in rows[:4]:
+            if not isinstance(raw, dict):
+                continue
+            route = _safe_route(raw.get("route") or raw.get("path") or raw.get("endpoint"))
+            spec = raw.get("requestSpec") if isinstance(raw.get("requestSpec"), dict) else {}
+            method = str(raw.get("method") or spec.get("method") or "").strip().upper()
+            role = str(raw.get("sourceRole") or raw.get("role") or "").strip()
+            lanes = raw.get("semanticTypes") or raw.get("lanes") or []
+            headers = spec.get("headers") if isinstance(spec.get("headers"), dict) else {}
+            row: dict[str, Any] = {"kind": plan_key}
+            if route:
+                row["route"] = route
+            if method:
+                row["method"] = method[:12]
+            if role:
+                row["role"] = role[:80]
+            if isinstance(lanes, list):
+                safe_lanes = [str(x)[:20] for x in lanes[:4] if str(x).strip()]
+                if safe_lanes:
+                    row["lanes"] = safe_lanes
+            if headers:
+                safe_header_names = [
+                    str(name)[:40]
+                    for name in headers
+                    if str(name).strip().casefold() not in {"authorization", "cookie", "set-cookie"}
+                ][:8]
+                if safe_header_names:
+                    row["headerNames"] = safe_header_names
+            if len(row) > 1:
+                plans.append(row)
+            if len(plans) >= 6:
+                break
+        if len(plans) >= 6:
+            break
+    if plans:
+        out["plans"] = plans
+
+    proof = value.get("route_proof")
+    if isinstance(proof, dict):
+        prefs = proof.get("canonicalExecutionPreference")
+        compact_prefs: list[dict[str, Any]] = []
+        if isinstance(prefs, list):
+            for raw in prefs[:4]:
+                if not isinstance(raw, dict):
+                    continue
+                row: dict[str, Any] = {}
+                owner = str(raw.get("owner") or "").strip()
+                route = _safe_route(raw.get("route"))
+                lanes = raw.get("lanes") or []
+                if owner:
+                    row["owner"] = owner[:40]
+                if route:
+                    row["route"] = route
+                if isinstance(lanes, list):
+                    safe_lanes = [str(x)[:20] for x in lanes[:4] if str(x).strip()]
+                    if safe_lanes:
+                        row["lanes"] = safe_lanes
+                if row:
+                    compact_prefs.append(row)
+        if compact_prefs:
+            out["canonicalPreference"] = compact_prefs
+        for source_key, target_key in (
+            ("provenRouteCount", "provenRouteCount"),
+            ("runtimePlanRouteCount", "runtimePlanRouteCount"),
+        ):
+            try:
+                out[target_key] = max(0, int(proof.get(source_key) or 0))
+            except (TypeError, ValueError):
+                pass
+
+    gate = value.get("live_route_gate")
+    if isinstance(gate, dict):
+        live: dict[str, Any] = {}
+        for source_key, target_key in (
+            ("provider_request_count", "providerRequests"),
+            ("live_validated_route_count", "validatedRoutes"),
+            ("runtime_derived_route_count", "runtimeDerivedRoutes"),
+        ):
+            try:
+                live[target_key] = max(0, int(gate.get(source_key) or 0))
+            except (TypeError, ValueError):
+                pass
+        state = str(gate.get("completion_state") or "").strip()
+        if state:
+            live["state"] = state[:60]
+        if live:
+            out["liveEvidence"] = live
+
+    return out
+
+
 def _provider_entry(data: Any, provider_id: str) -> Any:
     wanted = provider_id.strip().casefold()
     if isinstance(data, dict):
@@ -291,6 +447,10 @@ def build_provider_context(root: str | Path, provider_id: str) -> dict[str, Any]
                 override_value = value
             encoded = json.dumps(value, ensure_ascii=True, sort_keys=True)
             context[name] = sanitize_source(encoded, limit=2200)
+            if name == "override":
+                route_contract = _compact_route_contract(value)
+                if route_contract:
+                    context["route_contract"] = route_contract
 
     # Provider-local Blocs are the real authored mutation surface for current
     # NiakVIO providers. Existing scripts remain exact edit targets. A separate
