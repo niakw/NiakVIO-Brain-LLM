@@ -163,6 +163,9 @@ def compact_request(
     route_contract = context.get("route_contract")
     if isinstance(route_contract, dict) and route_contract:
         bounded_context["route_contract"] = _compact(route_contract, string_limit=260)
+    runtime_template_prior = context.get("runtime_template_prior")
+    if isinstance(runtime_template_prior, dict) and runtime_template_prior:
+        bounded_context["runtime_template_prior"] = _compact(runtime_template_prior, string_limit=260)
     history = context.get("advisor_experiment_history")
     if isinstance(history, list):
         bounded_context["advisor_experiment_history"] = [
@@ -322,7 +325,7 @@ def build_prompt_payload(
                 for key, value in ctx.items()
                 if key in {
                     "source_repo", "read_only", "provider_id",
-                    "registered_patch_scripts", "route_contract", "advisor_experiment_history",
+                    "registered_patch_scripts", "route_contract", "runtime_template_prior", "advisor_experiment_history",
                 }
             }
             history = request_payload["provider_context"].get("advisor_experiment_history")
@@ -1206,6 +1209,16 @@ def build_force_prompt_payload(
             if isinstance(context.get("route_contract"), dict)
             else {}
         ),
+        "runtime_template_prior": (
+            _compact(context.get("runtime_template_prior"), string_limit=260)
+            if isinstance(context.get("runtime_template_prior"), dict)
+            else {}
+        ),
+        "runtime_template_policy": {
+            "reuse_shared_or_current_template_before_novel_bloc": True,
+            "provider_bloc_is_last_resort": True,
+            "extract_repeated_protocol_into_family_renderer": True,
+        },
         "prior_force_sandbox_failures": force_failures,
         "census_prior": census,
         "validated_reference_patterns": references,
