@@ -182,10 +182,23 @@ def repair_family_descriptor(value: Any) -> dict[str, Any]:
         "mutationSurfaces": allowed,
         "archetype": archetype,
     }
+    # Family identity must describe causal repair shape, not product/catalogue
+    # metadata. Status, media types, the complete stage list and available
+    # mutation surfaces remain compatibility metadata, but must not fragment
+    # one reusable mechanism into provider-specific families.
+    identity = {
+        "version": 2,
+        "failure": payload["failure"],
+        "archetype": payload["archetype"],
+    }
     encoded = json.dumps(
-        payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True
+        identity, sort_keys=True, separators=(",", ":"), ensure_ascii=True
     ).encode("ascii")
-    return {**payload, "key": hashlib.sha256(encoded).hexdigest()}
+    return {
+        **payload,
+        "version": 2,
+        "key": hashlib.sha256(encoded).hexdigest(),
+    }
 
 
 def repair_family_key(value: Any) -> str:
