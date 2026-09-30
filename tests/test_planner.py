@@ -133,9 +133,11 @@ class PlannerTests(unittest.TestCase):
         self.assertIn("starts=[]", mutation["find"])
 
     def test_deterministic_duplicate_patch_and_bloc_prefers_durable_patch(self):
-        runtime = r'''function classBlocks(html,cls){var esc=cls.replace(/[-/\\^$*+?.()|[\]{}]/g,"\\    def test_structural_focus_unit_id_resolves_to_same_dom_helper(self):
-"),re=new RegExp("<(?:div|article|li|a)\\b[^>]*class=[\"'][^\"']*\\b"+esc+"\\b[^\"']*[\"'][^>]*>","gi"),starts=[],m;while((m=re.exec(html||""))!==null)starts.push({at:m.index,tag:m[0]});var out=[];for(var i=0;i<starts.length;i++){var end=i+1<starts.length?starts[i+1].at:Math.min(String(html||"").length,starts[i].at+12000);out.push({html:String(html||"").slice(starts[i].at,end),tag:starts[i].tag})}return out} async function resolve(args){return []}'''
-        patch = 'MANAGED_FIX_ID="PROVIDER.DEMO.RUNTIME.V1"\\nRUNTIME = r"""' + runtime + '"""\\n'
+        runtime = r'''function classBlocks(html,cls){var esc=cls,re=new RegExp("<div\\b[^>]*class=[\"'][^\"']*\\b"+esc+"\\b[^\"']*[\"'][^>]*>","gi"),starts=[],m;while((m=re.exec(html||""))!==null)starts.push({at:m.index,tag:m[0]});var out=[];for(var i=0;i<starts.length;i++){var end=i+1<starts.length?starts[i+1].at:Math.min(String(html||"").length,starts[i].at+12000);out.push({html:String(html||"").slice(starts[i].at,end),tag:starts[i].tag})}return out} async function resolve(args){return []}'''
+        patch = (
+            'MANAGED_FIX_ID="PROVIDER.DEMO.RUNTIME.V1"\n'
+            'RUNTIME = r"""' + runtime + '"""\n'
+        )
         request = RepairRequest(
             provider_id="demo",
             failure_class="route_proven_gap",
