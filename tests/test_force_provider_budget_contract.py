@@ -11,6 +11,8 @@ assert 'budget_seconds = min(budget_cap, 300)' in batch
 assert 'failure_key == "transport_environment_gap"' in batch
 assert 'budget_seconds = min(budget_cap, 180)' in batch
 assert '--force-provider-budget-seconds 600' in workflow
+assert '--stop-after-first-mutation' in workflow
+assert 'FIELD_BRAIN_FORCE_EARLY_PUBLISH' in batch
 assert '--force-provider-budget-seconds 360' not in workflow
 assert 'timeout-minutes: 180' in workflow
 assert 'default: "9"' in workflow
