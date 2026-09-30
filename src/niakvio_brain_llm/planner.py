@@ -840,6 +840,31 @@ def _deterministic_structural_force_mutation(
         ]
         if len(structural_candidates) == 1:
             candidates = structural_candidates
+        elif structural_candidates:
+            # The same authored runtime helper can be visible twice: once in
+            # its durable registered provider_patch source and once in the
+            # materialized provider_bloc bytes. This is not semantic
+            # ambiguity. Prefer the durable registered patch authority; keep
+            # provider_bloc only as a fallback when no patch-owned match exists.
+            patch_candidates = [
+                candidate
+                for candidate in structural_candidates
+                if candidate[0] == "provider_patch"
+            ]
+            if len(patch_candidates) == 1:
+                candidates = patch_candidates
+            else:
+                # Collapse byte-identical duplicates before failing closed.
+                deduped: list[tuple[str, str, str, dict[str, Any]]] = []
+                seen_units: set[str] = set()
+                for candidate in structural_candidates:
+                    unit_source = str(candidate[3].get("source") or "")
+                    if unit_source in seen_units:
+                        continue
+                    seen_units.add(unit_source)
+                    deduped.append(candidate)
+                if len(deduped) == 1:
+                    candidates = deduped
 
     if len(candidates) != 1:
         return None
