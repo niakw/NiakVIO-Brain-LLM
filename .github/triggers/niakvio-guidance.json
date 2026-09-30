@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "a2be5abfb32cc3a5bdc3f82031f9611a0e851ce5",
-  "reason": "Fleet-scale causal-family validation after repair families were coarsened to reusable mechanisms rather than response format/status/catalogue metadata. Use the exact current 13-provider repair queue. Apply family-wave before pagination, select one rotating representative per unresolved family, fan out only sandbox-validated deterministic family mechanisms, preserve all NiakVIO proof gates, and report family reduction plus LLM-call rate.",
+  "niakvio_sha": "83fa2f956d8a9a12272603257520ba4687fee6e4",
+  "reason": "Supersede the older 5-family cycle with the CI-green causal-family Brain that now supplies one bounded same-provider high-authority field-evidence excerpt to initial FORCE synthesis. Exact current 13-provider queue -> 5 rotating family representatives. Preserve negative memory, validated-family replay, exact-current-byte compilation and all NiakVIO sandbox/playback/identity/non-regression gates. Manual field evidence is historical implementation guidance only and must be revalidated.",
   "requested_repair_queue": [
     "4khdhub",
     "allanime",
