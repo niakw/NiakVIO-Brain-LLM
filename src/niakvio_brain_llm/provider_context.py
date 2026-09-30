@@ -410,6 +410,97 @@ def _published_provider_context(root: Path, provider_id: str) -> dict[str, Any] 
     }
 
 
+def _runtime_template_prior(root: Path, provider_id: str, context: dict[str, Any]) -> dict[str, Any]:
+    """Prefer existing shared runtime renderers before novel provider Bloc synthesis."""
+    registered = context.get("registered_patch_sources")
+    source_text = "\n".join(
+        str(value)
+        for value in (registered.values() if isinstance(registered, dict) else [])
+    )
+    exact_templates = (
+        ("stremio_json_runtime_common", "scripts/provider_patches/stremio_json_runtime_common.py"),
+        ("anime_catalogue_runtime_common", "scripts/provider_patches/anime_catalogue_runtime_common.py"),
+        ("provider_wings_runtime_common", "scripts/provider_wings_runtime_common.py"),
+    )
+    for token, path in exact_templates:
+        if token in source_text:
+            return {
+                "mode": "reuse_existing_shared_renderer",
+                "template": path,
+                "confidence": 1.0,
+                "reuseBeforeNovelBloc": True,
+                "adaptation": "provider_config_and_small_hooks_only",
+            }
+
+    static_row = _provider_entry(
+        _load_json(root / "automation" / "provider-v3-static-knowledge.json"),
+        provider_id,
+    )
+    model = static_row.get("model") if isinstance(static_row, dict) and isinstance(static_row.get("model"), dict) else {}
+    knowledge = static_row.get("knowledge") if isinstance(static_row, dict) and isinstance(static_row.get("knowledge"), dict) else {}
+    runtime_family = str(
+        model.get("sourceRuntimeFamily")
+        or knowledge.get("runtimeFamily")
+        or ""
+    ).strip().casefold()
+
+    contract = context.get("route_contract") if isinstance(context.get("route_contract"), dict) else {}
+    routes: list[str] = []
+    for key in ("learnedRoutes", "candidateRoutes"):
+        for value in contract.get(key) or []:
+            route = str(value or "")
+            if route and route not in routes:
+                routes.append(route)
+    for plan in contract.get("plans") or []:
+        if isinstance(plan, dict):
+            route = str(plan.get("route") or "")
+            if route and route not in routes:
+                routes.append(route)
+    route_blob = "\n".join(routes).casefold()
+
+    if runtime_family == "stremio-json" or (
+        "/stream/movie/" in route_blob and "/stream/series/" in route_blob
+    ):
+        return {
+            "mode": "reuse_recognized_family_renderer",
+            "template": "scripts/provider_patches/stremio_json_runtime_common.py",
+            "runtimeFamily": runtime_family or "stremio-json",
+            "confidence": 0.96,
+            "reuseBeforeNovelBloc": True,
+            "adaptation": "provider_config_and_small_hooks_only",
+        }
+
+    if runtime_family in {"catalogue-episodes-js"}:
+        return {
+            "mode": "reuse_recognized_family_renderer",
+            "template": "scripts/provider_patches/anime_catalogue_runtime_common.py",
+            "runtimeFamily": runtime_family,
+            "confidence": 0.90,
+            "reuseBeforeNovelBloc": True,
+            "adaptation": "select_existing_mode_or_add_family_mode_before_provider_specific_wrapper",
+        }
+
+    registered_paths = list((registered or {}).keys()) if isinstance(registered, dict) else []
+    if registered_paths:
+        return {
+            "mode": "reuse_current_provider_runtime_skeleton",
+            "template": str(registered_paths[0])[:240],
+            "runtimeFamily": runtime_family or "unknown",
+            "confidence": 0.82,
+            "reuseBeforeNovelBloc": True,
+            "adaptation": "edit_smallest_causal_unit; extract_shared_family_renderer_after_repeated_pattern",
+        }
+
+    return {
+        "mode": "providerbase_runtime_dispatch_skeleton",
+        "template": "ProviderBase v3 + CORE.PROVIDER_RUNTIME_DISPATCH.V1",
+        "runtimeFamily": runtime_family or "unknown",
+        "confidence": 0.70,
+        "reuseBeforeNovelBloc": True,
+        "adaptation": "create_family_renderer_if_protocol_repeats; provider_bloc_is_last_resort",
+    }
+
+
 def build_provider_context(root: str | Path, provider_id: str) -> dict[str, Any]:
     root = Path(root)
     context: dict[str, Any] = {
@@ -511,4 +602,5 @@ def build_provider_context(root: str | Path, provider_id: str) -> dict[str, Any]
                     context["preferredRuntimeMutationBlockId"] = preferred_id
                     context["preferredRuntimeMutationSource"] = exact_blocks[preferred_id]
 
+    context["runtime_template_prior"] = _runtime_template_prior(root, provider_id, context)
     return context
