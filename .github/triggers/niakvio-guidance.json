@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "niakvio_sha": "eec281c0d5d0032bb9c3916546ae14e2e96f05fb",
-  "reason": "Authoritative 5-family FORCE wave on current NiakVIO 5.21.86 bytes. Use current Brain main with strongest-causal-evidence witness selection before rotation burden, one representative per unresolved causal family, exact-current-byte provider-local synthesis, and immediate publish on the first executable mutation so NiakVIO can sandbox it before later-family compute. Preserve all playback, identity, non-regression and publication gates; no hand-written provider fixes.",
+  "reason": "Authoritative timeout-aware 5-family FORCE wave on current NiakVIO 5.21.86 bytes. Consume the previous sanitized FORCE diagnostics as execution burden: a witness that timed out must rotate to an unblocked sibling in the same causal family without changing family identity or learning a false provider failure. Prefer strongest causal evidence among executable witnesses, preserve one representative per unresolved family, exact-current-byte provider-local synthesis, immediate first-mutation publication, and all NiakVIO playback/identity/non-regression/publication gates. No hand-written provider fixes.",
   "requested_repair_queue": [
     "4khdhub",
     "allanime",
