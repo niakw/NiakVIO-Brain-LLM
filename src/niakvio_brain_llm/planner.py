@@ -1247,6 +1247,22 @@ def _compact_wire_schema_for(
     }
 
 
+def _force_mutation_mechanism(mutation: dict[str, Any] | None) -> str:
+    if not isinstance(mutation, dict):
+        return ""
+    family = str(mutation.get("family") or "").strip().casefold().replace("_", "-")
+    if family:
+        return family
+    diff = str(mutation.get("diff") or "")
+    if "closeRe=" in diff:
+        return "balanced-class-container"
+    if "function classText" in diff and "(?![-_])" in diff:
+        return "exact-class-text-token-boundary"
+    if "(?![-_])" in diff:
+        return "exact-class-token-boundary"
+    return ""
+
+
 class BrainPlanner:
     def __init__(
         self,
@@ -1257,6 +1273,42 @@ class BrainPlanner:
         self.backend = backend
         self.store = store or ExperienceStore([])
         self.documents = documents or DocumentStore([])
+
+    def plan_deterministic_force(
+        self,
+        request: RepairRequest,
+        *,
+        expected_mechanism: str = "",
+    ) -> RepairProposal | None:
+        experiences = self.store.search(request.to_dict(), limit=6)
+        causal_prior = build_causal_prior(request, experiences)
+        mutation_policy = dict(build_mutation_policy(request, causal_prior))
+        mutation = _deterministic_structural_force_mutation(request, mutation_policy)
+        if not isinstance(mutation, dict):
+            return None
+        mechanism = _force_mutation_mechanism(mutation)
+        expected = str(expected_mechanism or "").strip().casefold().replace("_", "-")
+        if expected and mechanism != expected:
+            return None
+        print(
+            "FIELD_BRAIN_FORCE_FAMILY_REPLAY "
+            f"provider={request.provider_id} mechanism={mechanism or 'unknown'} "
+            f"scope={mutation.get('scope')}",
+            flush=True,
+        )
+        return RepairProposal(
+            provider_id=request.provider_id,
+            diagnosis="validated repair-family mechanism recompiled on exact current provider bytes",
+            strategy=mechanism or str(causal_prior.get("strategy_prior") or "provider_local_repair"),
+            confidence=max(0.0, min(1.0, float(causal_prior.get("confidence") or 0.0))),
+            target_layer=str(causal_prior.get("target_layer") or "provider"),
+            evidence=["sandbox-validated repair-family mechanism; current bytes recompiled independently"],
+            mutations=[mutation],
+            experiment={},
+            tests=[],
+            abstain=False,
+            abstain_reason="",
+        )
 
     def _prepare(
         self,
