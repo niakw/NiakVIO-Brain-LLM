@@ -137,6 +137,38 @@ def route_request(
             next_actions=[strategy or f"run {layer} diagnostic/retest"],
         )
 
+    route_contract = (
+        request.provider_context.get("route_contract")
+        if isinstance(request.provider_context, dict)
+        and isinstance(request.provider_context.get("route_contract"), dict)
+        else {}
+    )
+    route_policy = (
+        route_contract.get("synthesisPolicy")
+        if isinstance(route_contract.get("synthesisPolicy"), dict)
+        else {}
+    )
+    route_mode = _canon(route_policy.get("mode"))
+
+    # NO PROOF means route authority is missing. Runtime synthesis cannot create
+    # the missing network facts: NiakVIO Recognition must traverse the current
+    # provider first and feed the observed route contract back into Brain.
+    if status == "no-proof" or route_mode == "rediscover-by-traversal":
+        return RoutingDecision(
+            mode="probe",
+            reason="current provider route is not proven; recognition traversal must precede runtime synthesis",
+            target_layer=layer,
+            strategy="rediscover_current_provider_route_by_traversal",
+            prior_confidence=max(confidence, 0.96),
+            requires_llm=False,
+            allowed_mutations=[],
+            next_actions=[
+                "run current provider authority/hub -> search/lookup -> detail -> player/embed -> terminal traversal",
+                "persist newly proven route DATA",
+                "rebuild Brain request on the refreshed current bytes",
+            ],
+        )
+
     # External/private guidance is deterministic while the causal strategy is
     # already known. Rotate through bounded experiment knobs from current
     # provider-local negative memory; invoke Qwen only after that bounded
