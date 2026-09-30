@@ -23,6 +23,37 @@ class ProviderContextTests(unittest.TestCase):
                 "provider_patches": {
                     "demo": {
                         "strategy": "search",
+                        "capability": "html_scraper",
+                        "learned_routes": ["/?s={query}"],
+                        "candidate_learned_routes": ["/detail/{slug}", "https://provider.example/player?id={id}"],
+                        "search_request_plan": [{
+                            "base": "https://provider.example",
+                            "route": "/?s={query}",
+                            "requestSpec": {
+                                "method": "GET",
+                                "headers": {
+                                    "Accept": "text/html",
+                                    "Authorization": "secret",
+                                },
+                            },
+                            "sourceRole": "catalog-search",
+                            "semanticTypes": ["movie", "tv"],
+                        }],
+                        "route_proof": {
+                            "provenRouteCount": 1,
+                            "runtimePlanRouteCount": 2,
+                            "canonicalExecutionPreference": [{
+                                "owner": "route",
+                                "route": "/?s={query}",
+                                "lanes": ["movie", "tv"],
+                            }],
+                        },
+                        "live_route_gate": {
+                            "completion_state": "declared-types-qualified",
+                            "provider_request_count": 7,
+                            "live_validated_route_count": 2,
+                            "runtime_derived_route_count": 3,
+                        },
                         "provider_lego_scripts": ["scripts/provider_patches/demo_runtime_v1.py"],
                     },
                     "other": {"strategy": "ignore"},
@@ -56,6 +87,15 @@ class ProviderContextTests(unittest.TestCase):
             self.assertNotIn("A" * 100, context["authored_module"])
             self.assertIn("search", context["override"])
             self.assertNotIn("ignore", context["override"])
+            route_contract = context["route_contract"]
+            self.assertEqual(route_contract["capability"], "html_scraper")
+            self.assertEqual(route_contract["learnedRoutes"], ["/?s={query}"])
+            self.assertIn("/detail/{slug}", route_contract["candidateRoutes"])
+            self.assertIn("/player?id={id}", route_contract["candidateRoutes"])
+            self.assertEqual(route_contract["plans"][0]["method"], "GET")
+            self.assertEqual(route_contract["plans"][0]["headerNames"], ["Accept"])
+            self.assertEqual(route_contract["canonicalPreference"][0]["owner"], "route")
+            self.assertEqual(route_contract["liveEvidence"]["validatedRoutes"], 2)
             self.assertEqual(
                 context["registered_patch_scripts"],
                 ["scripts/provider_patches/demo_runtime_v1.py"],
