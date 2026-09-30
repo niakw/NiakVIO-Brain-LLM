@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "43a31dbcce92da502443b677702f68ed011d0864",
-  "reason": "Authoritative route-contract-aware family-first FORCE wave on current NiakVIO. Use dynamic causal family cardinality, strongest executable witness per unresolved family, timeout-aware witness rotation, explicit compact current route_contract from NiakVIO proof/data, exact-current-byte provider-local runtime synthesis, and stop/publish immediately on the first executable mutation. Runtime/protocol families and causal repair families remain distinct. Preserve playback, identity, non-regression and publication gates; no hand-written provider fixes.",
+  "niakvio_sha": "23e85730670a513eda2b9a5bf5993434d0a75c04",
+  "reason": "Authoritative family-first FORCE wave on current NiakVIO after route-recognition and runtime-family/template handoff. NO PROOF providers must return probe/Recognition with zero LLM mutation until current traversal persists route authority. ROUTE PROVEN / CHAIN REACHED providers must reuse current route authority and prefer runtime_template_prior shared/current skeletons before any novel provider_bloc. Preserve family-first witness selection, timeout-aware rotation, exact-current-byte synthesis, negative sandbox memory, playback/identity/non-regression gates, and no hand-written provider fixes.",
   "requested_repair_queue": [
     "4khdhub",
     "allanime",
