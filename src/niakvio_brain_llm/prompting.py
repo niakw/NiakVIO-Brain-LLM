@@ -356,7 +356,7 @@ def _force_structural_focus_keywords(request: RepairRequest) -> tuple[str, ...]:
             class_tokens.append(token)
 
     for row in request.observations or []:
-        if not isinstance(row, dict) or str(row.get("source") or "") != "targeted-regression-current":
+        if not isinstance(row, dict) or str(row.get("source") or "") not in {"targeted-regression-current", "census-sharded-current"}:
             continue
         value = row.get("value") if isinstance(row.get("value"), dict) else {}
         for hint in (value.get("structureHints") or [])[:8]:
