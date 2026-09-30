@@ -42,6 +42,40 @@ class GuidanceFamilyWaveTests(unittest.TestCase):
         self.assertEqual(report["repairFamilyCount"], 2)
         self.assertEqual(report["deferredProviders"], ["alpha"])
 
+    def test_previous_generation_timeout_rotates_family_witness(self):
+        mod.load_memory = lambda _root: {
+            "schemaVersion": 2,
+            "entries": [],
+            "validatedFamilies": [],
+        }
+        diagnostics = {
+            "schemaVersion": 1,
+            "rows": [{
+                "providerId": "alpha",
+                "scopeTrace": [
+                    {
+                        "scope": "provider_patch",
+                        "outcome": "rejected",
+                        "reason": "timeouterror",
+                        "errorType": "TimeoutError",
+                    },
+                    {
+                        "scope": "provider_bloc",
+                        "outcome": "budget_exhausted",
+                        "reason": "provider_budget_exhausted",
+                    },
+                ],
+            }],
+        }
+        selected, report = mod.select_wave(
+            ["alpha", "beta", "gamma"],
+            ROOT,
+            previous_diagnostics=diagnostics,
+        )
+        self.assertEqual(selected, ["beta", "gamma"])
+        self.assertEqual(report["executionBlockedProviders"], ["alpha"])
+        self.assertEqual(report["providerExecutionBurden"]["alpha"], 2)
+
     def test_validated_replayable_family_fans_out(self):
         mod.load_memory = lambda _root: {
             "schemaVersion": 2,
