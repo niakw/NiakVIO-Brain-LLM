@@ -42,6 +42,11 @@ class FakeRequest:
                 "authored_module": "a" * 12000,
                 "override": "v" * 6000,
                 "hub": "h" * 6000,
+                "route_contract": {
+                    "capability": "html_scraper",
+                    "learnedRoutes": ["/?s={query}"],
+                    "candidateRoutes": ["/detail/{slug}", "/player/{id}"],
+                },
                 "advisor_experiment_history": [
                     {"lastReason": "r" * 1000, "observed": "x" * 1000}
                     for _ in range(40)
@@ -79,6 +84,7 @@ assert payload["context_budget"]["serialized_user_chars"] <= 7600
 ctx = payload["request"]["provider_context"]
 assert "unbounded_private_or_irrelevant_context" not in ctx
 assert len(ctx.get("advisor_experiment_history") or []) <= 6
+assert ctx.get("route_contract", {}).get("learnedRoutes") == ["/?s={query}"]
 if "published_bundle" in ctx:
     assert len(ctx["published_bundle"].get("providerBlocks") or []) <= 1
 
