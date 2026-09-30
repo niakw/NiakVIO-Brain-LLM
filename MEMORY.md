@@ -673,3 +673,14 @@
 - The simpler `exact_class_token_boundary` remains the deterministic fallback when evidence proves only a prefix-family collision.
 - Brain CI run `36689581429` is green at `dbddadd5fc17c1a7fb3a3141306b9da194083cf0`: **199 tests passed** plus public-repository privacy audit. Regression coverage includes the mixed-tag/nested-container structural case.
 - This is still repair capability, not provider proof. 4KHDHub must be replayed through external guidance and then NiakVIO explicit FORCE current-byte sandbox/playback/identity/non-regression before any census promotion.
+
+
+## 2026-09-30 — Fleet-scale repair pivots from provider loops to repair families
+
+- The unchanged **27 FULL OK · 2 PARTIAL OK · 13 Repair** census after repeated 7B cycles proved that provider-by-provider synthesis cannot be the scaling model for the planned 700–800-provider fleet.
+- Added provider-independent `repair_family` identity derived from failure class, status, media types, allowed mutation surfaces and privacy-safe current structural/network signals. Provider id/domain/route literals are excluded from the family identity.
+- Repair batch output now persists `repair_family` and reports `repairFamilyCount`, family histogram and providers-per-family so compute cost can be measured against causal families rather than raw provider count.
+- Experience retrieval now strongly prefers sandbox-validated same-family experience across providers. NiakVIO Force artifacts carry `repairFamily` + `mechanismFamily`; accepted sandbox outcomes are persisted into `validatedFamilies` with `autoApply=false` and no proof/publication authority.
+- Brain imports those validated family mechanisms as cross-provider experience. For supported deterministic mechanisms, routing now enters `family_replay` before any LLM call, recompiles the mechanism against exact current provider bytes, and still requires the ordinary NiakVIO isolated sandbox/playback/identity/non-regression gates. If deterministic recompilation cannot express the mechanism on the new bytes, only that provider escalates to the LLM.
+- This creates the required fleet asymmetry: the expensive work should converge toward **repair families + exceptional providers**, not one full reasoning cycle per provider.
+- Current Force memory still has zero accepted mutations, so `validatedFamilies` is initially empty. The new replay path becomes active only after real NiakVIO sandbox acceptance; no historical failure or merely-functional provider is promoted into replay authority.
