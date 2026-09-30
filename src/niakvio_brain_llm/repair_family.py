@@ -260,6 +260,7 @@ def select_family_wave(
     *,
     validated_family_keys: set[str] | None = None,
     provider_failure_burden: dict[str, int] | None = None,
+    provider_execution_burden: dict[str, int] | None = None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """Select one rotating representative per unresolved repair family.
 
@@ -267,6 +268,13 @@ def select_family_wave(
     deterministic replay path. Unvalidated families spend novel synthesis
     budget on one representative at a time. Negative-memory burden rotates the
     representative across siblings instead of hammering one provider forever.
+
+    Model/runtime execution failures are a separate concern from provider
+    repair failure. A witness that only timed out is temporarily skipped when
+    the same family still has an unblocked sibling; this prevents family-scale
+    synthesis from repeatedly spending its budget on a witness that cannot
+    produce a verdict. If every sibling is execution-blocked, the least-blocked
+    witness is retried instead of suppressing the family.
     """
     validated = {
         str(value).strip().casefold()
@@ -276,6 +284,10 @@ def select_family_wave(
     burden = {
         str(key).strip().casefold(): max(0, int(value or 0))
         for key, value in (provider_failure_burden or {}).items()
+    }
+    execution_burden = {
+        str(key).strip().casefold(): max(0, int(value or 0))
+        for key, value in (provider_execution_burden or {}).items()
     }
     groups: dict[str, list[tuple[int, dict[str, Any]]]] = {}
     order: list[str] = []
@@ -301,17 +313,28 @@ def select_family_wave(
         if group_key in validated:
             selected_indexes.update(index for index, _ in members)
             continue
-        representative = min(
-            members,
-            key=lambda item: (
+        unblocked_members = [
+            item for item in members
+            if execution_burden.get(
+                str(item[1].get("provider") or item[1].get("providerId") or "").strip().casefold(),
+                0,
+            ) == 0
+        ]
+        candidate_members = unblocked_members or members
+
+        def witness_key(item: tuple[int, dict[str, Any]]) -> tuple[int, int, int, int]:
+            provider = str(
+                item[1].get("provider") or item[1].get("providerId") or ""
+            ).strip().casefold()
+            execution = execution_burden.get(provider, 0)
+            return (
+                execution if not unblocked_members else 0,
                 -_family_evidence_score(item[1]),
-                burden.get(
-                    str(item[1].get("provider") or item[1].get("providerId") or "").strip().casefold(),
-                    0,
-                ),
+                burden.get(provider, 0),
                 item[0],
-            ),
-        )
+            )
+
+        representative = min(candidate_members, key=witness_key)
         selected_indexes.add(representative[0])
 
     selected = [
