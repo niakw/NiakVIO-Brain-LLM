@@ -709,6 +709,60 @@ def _compact_edit_to_mutation(
     }
 
 
+def _deterministic_exact_function_mutation(
+    request: RepairRequest,
+    *,
+    path: str,
+    source: str,
+    unit: dict[str, Any],
+    replacement_body: str,
+) -> dict[str, Any]:
+    """Compile one Brain-owned exact function unit without re-running prompt selection.
+
+    Deterministic progression already resolved this unit from exact current bytes.
+    Re-selecting it through the compact LLM prompt budget can hide the next helper
+    and turn a valid internal progression into a false unit_id drift. This helper
+    accepts no model-controlled path/unit lookup: callers must provide the exact
+    registered source, unit offset and current function bytes.
+    """
+    if str(unit.get("kind") or "") != "function_unit":
+        raise ValueError("deterministic Force exact unit is not a function")
+    find = str(unit.get("source") or "")
+    offset = int(unit.get("offset") or -1)
+    if not path or not find or offset < 0:
+        raise ValueError("deterministic Force exact unit metadata is incomplete")
+    if len(find) > 1800 or len(str(replacement_body or "")) > 1800:
+        raise ValueError("deterministic Force exact function is oversized")
+    if source[offset:offset + len(find)] != find:
+        raise ValueError("deterministic Force exact unit drifted from current bytes")
+    if source.count(find) != 1:
+        raise ValueError("deterministic Force exact function anchor is not unique")
+
+    _reject_causally_empty_deletion(request.failure_class, find, replacement_body)
+    replace = _preserve_selected_function_envelope(find, replacement_body)
+    _reject_removed_live_binding(source, offset, find, replace)
+
+    updated = source[:offset] + replace + source[offset + len(find):]
+    _validate_compact_updated_source("provider_patch", updated)
+    diff = "".join(
+        difflib.unified_diff(
+            source.splitlines(keepends=True),
+            updated.splitlines(keepends=True),
+            fromfile=path,
+            tofile=path,
+            n=3,
+        )
+    )
+    if not diff:
+        raise ValueError("deterministic Force exact function produced no diff")
+    return {
+        "scope": "provider_patch",
+        "operation": "unified_diff",
+        "path": path,
+        "diff": diff,
+    }
+
+
 def _mixed_nested_class_container_evidence(
     request: RepairRequest,
     focus_keywords: tuple[str, ...],
@@ -884,14 +938,13 @@ def _deterministic_class_text_boundary_mutation(
     if len(candidates) != 1:
         return None
     path, unit, replacement_body = candidates[0]
-    mutation = _compact_edit_to_mutation(
+    source = str(sources.get(path) or "")
+    mutation = _deterministic_exact_function_mutation(
         request,
-        {
-            "scope": "provider_patch",
-            "path": path,
-            "unit_id": str(unit.get("id") or ""),
-            "replace": replacement_body,
-        },
+        path=path,
+        source=source,
+        unit=unit,
+        replacement_body=replacement_body,
     )
     return mutation if isinstance(mutation, dict) else None
 
