@@ -1026,13 +1026,14 @@ def build_force_prompt_payload(
     request: RepairRequest,
     causal_prior: dict[str, Any] | None = None,
     mutation_policy: dict[str, Any] | None = None,
+    documents: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Minimal provider-local context for CPU-bound Force synthesis.
 
-    The Force model does not need RAG documents, historical prose, verification
-    tests or the complete provider context. Deterministic NiakVIO already owns
-    those. Give the model only current causal state plus the exact authored
-    mutation surface it is allowed to edit.
+    Keep the prompt bounded around current causal state and exact editable
+    bytes. One high-authority field-evidence excerpt for this same provider may
+    be included on the initial attempt as an implementation hint. It never
+    becomes current proof and must be revalidated by NiakVIO.
     """
     prior = causal_prior or {}
     policy = mutation_policy or {}
@@ -1129,6 +1130,34 @@ def build_force_prompt_payload(
             "copy_policy": "pattern_reference_only",
             "novelty_allowed": True,
         })
+    field_evidence = []
+    if validation_feedback is None:
+        provider_token = str(request.provider_id or "").strip().casefold()
+        for raw in documents or []:
+            if not isinstance(raw, dict):
+                continue
+            if str(raw.get("role") or "").strip().casefold() != "field_evidence":
+                continue
+            try:
+                authority = int(raw.get("authority") or 0)
+            except (TypeError, ValueError):
+                authority = 0
+            text = str(raw.get("text") or "")
+            heading = str(raw.get("heading") or "")
+            haystack = (heading + "\n" + text).casefold()
+            if authority < 90 or not provider_token or provider_token not in haystack:
+                continue
+            field_evidence.append({
+                "path": _clip(raw.get("path"), 180),
+                "heading": _clip(heading, 180),
+                "authority": authority,
+                "text": _clip(text, 750),
+                "same_provider_only": True,
+                "proof_authority": False,
+                "must_revalidate_current_network": True,
+            })
+            break
+
     force_failures = [
         {
             "lastReason": _clip(row.get("lastReason"), 180),
@@ -1172,6 +1201,13 @@ def build_force_prompt_payload(
         "prior_force_sandbox_failures": force_failures,
         "census_prior": census,
         "validated_reference_patterns": references,
+        "provider_field_evidence": field_evidence,
+        "field_evidence_policy": {
+            "same_provider_only": True,
+            "historical_hint_not_current_proof": True,
+            "must_revalidate_current_network": True,
+            "max_excerpts": 1,
+        },
         "reference_policy": {
             "role": "optional_implementation_inspiration",
             "may_adapt_combine_or_ignore": True,
