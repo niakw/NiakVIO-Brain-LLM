@@ -55,6 +55,24 @@ class BrainOrchestrator:
             )
             return BrainOutcome(routing=routing, proposal=proposal)
 
+        if routing.mode == "family_replay":
+            proposal = self.planner.plan_deterministic_force(
+                request,
+                expected_mechanism=routing.strategy,
+            )
+            if proposal is not None:
+                return BrainOutcome(routing=routing, proposal=proposal)
+            routing = RoutingDecision(
+                mode="llm_repair",
+                reason="validated family mechanism did not compile on current bytes; escalate this provider only",
+                target_layer=routing.target_layer,
+                strategy=routing.strategy,
+                prior_confidence=routing.prior_confidence,
+                requires_llm=True,
+                allowed_mutations=list(routing.allowed_mutations),
+                next_actions=["synthesize provider-specific fallback without invalidating the family"],
+            )
+
         if not routing.requires_llm:
             return BrainOutcome(routing=routing)
 
