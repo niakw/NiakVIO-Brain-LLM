@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "299526d5c53f487302fdbf15f6d66521a6240a72",
-  "reason": "Fresh single-provider 4KHDHub witness after NiakVIO FORCE architecture evolution added explicit terminal_media recognition. Generate a Brain-authored provider-local mutation from current evidence/runtime only; preserve exact function signatures and dedicated PROVIDER.4KHDHUB.RUNTIME ownership. Candidate must be handed back to NiakVIO for current-byte playable, identity-safe and non-regression proof before any promotion.",
+  "niakvio_sha": "09e713980234cd22660570e9678bbf6b3654313d",
+  "reason": "Replay the single 4KHDHub witness on current NiakVIO after CI-green generic balanced_class_container synthesis. Current structural evidence proves a mixed-tag nested exact-class container pattern. Brain must synthesize provider-local bytes; NiakVIO remains sole playback/identity/non-regression proof authority.",
   "requested_repair_queue": [
     "4khdhub"
   ]
