@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "415454e4bdee16b46b012a7366102df07271b290",
-  "reason": "Authoritative family-first FORCE wave on current NiakVIO after provider-family architecture documentation. Use current Brain main with architecture RAG, dynamic family cardinality, strongest-causal-evidence witness selection, timeout-aware witness rotation, one representative per unresolved family, exact-current-byte provider-local synthesis, immediate first executable mutation publication, and all NiakVIO playback/identity/non-regression/publication gates. Runtime/protocol families and causal repair families remain distinct; no hand-written provider fixes.",
+  "niakvio_sha": "43a31dbcce92da502443b677702f68ed011d0864",
+  "reason": "Authoritative route-contract-aware family-first FORCE wave on current NiakVIO. Use dynamic causal family cardinality, strongest executable witness per unresolved family, timeout-aware witness rotation, explicit compact current route_contract from NiakVIO proof/data, exact-current-byte provider-local runtime synthesis, and stop/publish immediately on the first executable mutation. Runtime/protocol families and causal repair families remain distinct. Preserve playback, identity, non-regression and publication gates; no hand-written provider fixes.",
   "requested_repair_queue": [
     "4khdhub",
     "allanime",
