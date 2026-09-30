@@ -52,9 +52,10 @@ class PlannerTests(unittest.TestCase):
             observations=[{
                 "source":"targeted-regression-current",
                 "value":{"structureHints":[
-                    "movie:classes=movie-card,movie-card-format,movie-card-content;"
-                    "classFacts=[movie-card;count=12;selfHref=1;nestedAnchors=24;"
+                    "movie:classFacts=[movie-card;count=12;selfHref=1;nestedAnchors=24;"
                     "tags=a,div,span;signals=movie,series,year]"
+                    "[movie-card-format;count=12;selfHref=0;nestedAnchors=0;"
+                    "tags=span;signals=movie,series]"
                 ]},
             }],
             allowed_mutations=["provider_bloc"],
