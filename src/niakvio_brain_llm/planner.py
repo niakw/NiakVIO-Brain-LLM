@@ -827,22 +827,33 @@ def _force_memory_blocks_mutation(
     request: RepairRequest,
     mutation: dict[str, Any],
 ) -> bool:
-    """Reject an exact already-executed mutation on the same provider surface."""
-    if str(mutation.get("scope") or "") != "provider_patch":
-        return False
-    path = str(mutation.get("path") or "")
-    context = request.provider_context or {}
-    digests = context.get("registered_patch_sha256")
-    if not path or not isinstance(digests, dict):
-        return False
-    digest = str(digests.get(path) or "").strip().casefold()
-    if not re.fullmatch(r"[0-9a-f]{64}", digest):
+    """Reject an exact already-executed negative mutation on this provider.
+
+    provider_patch remains byte-context-sensitive because the mutation targets an
+    authored generator file directly. provider_bloc mutations already carry the
+    exact current-byte find/replace payload in their mutation fingerprint; if
+    that identical Bloc edit was executed and rejected, a Core/release/version
+    drift must not make Brain publish it again unchanged.
+    """
+    scope = str(mutation.get("scope") or "")
+    if scope not in {"provider_patch", "provider_bloc"}:
         return False
 
     mutation_fp = _force_stable_fingerprint([mutation])
-    context_fp = _force_stable_fingerprint([
-        {"scope": "provider_patch", "path": path, "sha256": digest}
-    ])
+    context_fp = ""
+    if scope == "provider_patch":
+        path = str(mutation.get("path") or "")
+        context = request.provider_context or {}
+        digests = context.get("registered_patch_sha256")
+        if not path or not isinstance(digests, dict):
+            return False
+        digest = str(digests.get(path) or "").strip().casefold()
+        if not re.fullmatch(r"[0-9a-f]{64}", digest):
+            return False
+        context_fp = _force_stable_fingerprint([
+            {"scope": "provider_patch", "path": path, "sha256": digest}
+        ])
+
     for observation in request.observations or []:
         if not isinstance(observation, dict) or str(observation.get("source") or "") != "brain-force-sandbox-memory":
             continue
@@ -853,10 +864,13 @@ def _force_memory_blocks_mutation(
             if not isinstance(row, dict):
                 continue
             if (
-                str(row.get("mutationFingerprint") or "").strip().casefold() == mutation_fp
-                and str(row.get("mutationContextFingerprint") or "").strip().casefold() == context_fp
-                and int(row.get("consecutiveFailures") or 0) > 0
+                str(row.get("mutationFingerprint") or "").strip().casefold() != mutation_fp
+                or int(row.get("consecutiveFailures") or 0) <= 0
             ):
+                continue
+            if scope == "provider_bloc":
+                return True
+            if str(row.get("mutationContextFingerprint") or "").strip().casefold() == context_fp:
                 return True
     return False
 
