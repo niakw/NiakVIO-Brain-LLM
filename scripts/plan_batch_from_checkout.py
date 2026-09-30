@@ -19,7 +19,7 @@ from niakvio_brain_llm.niakvio_adapter import request_from_checkout
 from niakvio_brain_llm.orchestrator import BrainOrchestrator
 from niakvio_brain_llm.planner import BrainPlanner
 from niakvio_brain_llm.retrieval import ExperienceStore
-from niakvio_brain_llm.repair_family import repair_family_descriptor
+from niakvio_brain_llm.repair_family import repair_family_descriptor, select_family_wave
 
 def main() -> int:
     parser = argparse.ArgumentParser()
@@ -116,6 +116,49 @@ def main() -> int:
                 "memoryRole": "sandbox-validated-repair-family",
             })
     store = ExperienceStore([*base_store.rows, *family_experiences])
+
+    selected_before_family_wave = list(selected)
+    family_wave_deferred: list[dict] = []
+    request_cache: dict[str, object] = {}
+    family_wave_enabled = args.mode == "repair" and not args.advisor_only and len(selected) > 1
+    if family_wave_enabled:
+        wave_rows: list[dict] = []
+        validated_family_keys = {
+            str((row.get("repair_family") or {}).get("key") or "").strip().casefold()
+            for row in family_experiences
+            if isinstance(row.get("repair_family"), dict)
+        }
+        provider_failure_burden: dict[str, int] = {}
+        if isinstance(family_memory, dict):
+            for raw in family_memory.get("entries") or []:
+                if not isinstance(raw, dict):
+                    continue
+                provider_id = str(raw.get("providerId") or "").strip().casefold()
+                if not provider_id:
+                    continue
+                provider_failure_burden[provider_id] = (
+                    provider_failure_burden.get(provider_id, 0)
+                    + max(0, int(raw.get("consecutiveFailures") or 0))
+                )
+        for census_row in selected:
+            provider_id = str(census_row.get("provider") or "").strip()
+            request = request_from_checkout(args.niakvio_root, provider_id)
+            request_cache[provider_id] = request
+            wave_rows.append({
+                **dict(census_row),
+                "repair_family": repair_family_descriptor(request),
+            })
+        selected, family_wave_deferred = select_family_wave(
+            wave_rows,
+            validated_family_keys=validated_family_keys,
+            provider_failure_burden=provider_failure_burden,
+        )
+        print(
+            "FIELD_BRAIN_REPAIR_FAMILY_WAVE "
+            f"input={len(selected_before_family_wave)} selected={len(selected)} "
+            f"deferred={len(family_wave_deferred)} validated_families={len(validated_family_keys)}",
+            flush=True,
+        )
     documents = DocumentStore.from_jsonl_many([args.documents, *args.extra_documents])
     planner = BrainPlanner(backend, store, documents)
     orchestrator = BrainOrchestrator(planner, store)
@@ -478,7 +521,7 @@ def main() -> int:
 
     def plan_one(position: int, census_row: dict) -> list[dict]:
         provider = str(census_row["provider"])
-        request = request_from_checkout(args.niakvio_root, provider)
+        request = request_cache.get(provider) or request_from_checkout(args.niakvio_root, provider)
         request.advisor_only = bool(args.advisor_only)
         max_hypotheses = (
             max(1, min(int(args.max_hypotheses or request.max_hypotheses or 1), 3))
@@ -704,6 +747,15 @@ def main() -> int:
         "ordered_by": "evidence_depth",
         "experience_sources": 1 + len(args.extra_experience),
         "validatedFamilyExperiences": len(family_experiences),
+        "familyWaveEnabled": family_wave_enabled,
+        "familyWaveInputProviders": len(selected_before_family_wave),
+        "familyWaveSelectedProviders": len(selected),
+        "familyWaveDeferredProviders": len(family_wave_deferred),
+        "familyWaveDeferredProviderIds": [
+            str(row.get("provider") or "")
+            for row in family_wave_deferred[:128]
+            if str(row.get("provider") or "")
+        ],
         "document_sources": 1 + len(args.extra_documents),
     }
     print(json.dumps(summary, sort_keys=True))
