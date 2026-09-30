@@ -155,22 +155,31 @@ def repair_family_descriptor(value: Any) -> dict[str, Any]:
     failure = _canon(raw.get("failure_class") or raw.get("failureClass"))
     status = _status_bucket(raw.get("status") or raw.get("status_before") or raw.get("statusBefore"))
 
-    structural = [
+    structural = {
         signal for signal in signals
         if signal in {
             "class-prefix-family",
             "nested-anchor-html",
             "mixed-tag-nested-container",
-            "response-html",
-            "response-json",
         }
-    ]
-    archetype_parts = [failure or "unknown"]
+    }
+    # Repair-family identity is intentionally coarser than evidence shape.
+    # HTML/JSON response format and catalogue/status metadata help compile a
+    # candidate but must not split one reusable causal mechanism into a family
+    # per provider.
     if structural:
-        archetype_parts.extend(structural[:3])
+        mechanism_archetype = "dom-selector-container"
+    elif failure in {"chain-terminal-gap", "media-extraction-gap"}:
+        mechanism_archetype = "terminal-extraction"
+    elif failure in {"route-proven-gap", "candidate-replay-gap"}:
+        mechanism_archetype = "route-parser"
+    elif failure in {"provider-transport-gap", "transport-environment-gap"}:
+        mechanism_archetype = "provider-transport"
     elif stages:
-        archetype_parts.append(stages[0])
-    archetype = ":".join(archetype_parts)
+        mechanism_archetype = stages[0]
+    else:
+        mechanism_archetype = failure or "unknown"
+    archetype = f"{failure or 'unknown'}:{mechanism_archetype}"
 
     payload = {
         "version": 1,
