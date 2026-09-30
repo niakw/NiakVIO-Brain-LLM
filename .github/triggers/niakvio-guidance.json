@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "niakvio_sha": "09e713980234cd22660570e9678bbf6b3654313d",
-  "reason": "Replay the single 4KHDHub witness after fixing structural focus extraction to consume current privacy-safe classFacts evidence. The deterministic balanced_class_container synthesis must be attempted before LLM fallback; publish only a sandbox mutation artifact, never provider bytes.",
+  "reason": "Replay single 4KHDHub witness after structural FORCE fixes: consume classFacts evidence and disambiguate multiple DOM helpers by selecting the unique nested-container classBlocks unit. Deterministic balanced_class_container synthesis must run before any LLM fallback. Publish only sandbox mutation authority.",
   "requested_repair_queue": [
     "4khdhub"
   ]
