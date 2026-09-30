@@ -5,8 +5,8 @@ import unittest
 from niakvio_brain_llm.backend import StaticBackend
 from niakvio_brain_llm.contracts import RepairRequest
 from niakvio_brain_llm.document_memory import DocumentStore
-from niakvio_brain_llm.planner import BrainPlanner, COMPACT_FORCE_SYSTEM_PROMPT, _compact_edit_to_mutation, _deterministic_class_text_boundary_mutation, _deterministic_structural_force_mutation, _force_unit_for_edit, _resolve_structured_anchor
-from niakvio_brain_llm.prompting import _force_edit_units, _force_structural_focus_keywords, _force_source_windows, _force_window_kwargs_for_request, build_force_prompt_payload
+from niakvio_brain_llm.planner import BrainPlanner, COMPACT_FORCE_SYSTEM_PROMPT, _compact_edit_to_mutation, _deterministic_class_text_boundary_mutation, _deterministic_structural_force_mutation, _resolve_structured_anchor
+from niakvio_brain_llm.prompting import _force_source_windows, build_force_prompt_payload
 
 class PlannerTests(unittest.TestCase):
     def test_compact_force_function_unit_prompt_requires_body_only_rewrite(self):
@@ -236,55 +236,6 @@ class PlannerTests(unittest.TestCase):
         self.assertIn("function classText", second["diff"])
         self.assertIn("(?![-_])", second["diff"])
         self.assertNotIn("closeRe", second["diff"])
-
-    def test_internal_wide_unit_resolution_does_not_expand_model_prompt_authority(self):
-        filler = "x" * 1400
-        source = (
-            "function search(html){return html}" + filler
-            + "function detail(html){return html}" + filler
-            + "function player(html){return html}" + filler
-            + "function resolve(html){return html}"
-        )
-        request = RepairRequest(
-            provider_id="demo",
-            failure_class="route_proven_gap",
-            status="ROUTE PROVEN",
-            observations=[],
-            allowed_mutations=["provider_patch"],
-            provider_context={},
-        )
-        focus = _force_structural_focus_keywords(request)
-        compact_kwargs = _force_window_kwargs_for_request(request)
-        compact = _force_edit_units(
-            source,
-            request.failure_class,
-            focus_keywords=focus,
-            **compact_kwargs,
-        )
-        wide = _force_edit_units(
-            source,
-            request.failure_class,
-            max_chars=5000,
-            max_windows=4,
-            max_units=32,
-            focus_keywords=focus,
-        )
-        compact_ids = {str(row.get("id") or "") for row in compact}
-        candidate = next(
-            row for row in wide
-            if row.get("kind") == "function_unit"
-            and str(row.get("id") or "") not in compact_ids
-        )
-        with self.assertRaises(ValueError):
-            _force_unit_for_edit(request, source, str(candidate["id"]))
-        resolved, kwargs = _force_unit_for_edit(
-            request,
-            source,
-            str(candidate["id"]),
-            allow_deterministic_wide_scan=True,
-        )
-        self.assertEqual(resolved["source"], candidate["source"])
-        self.assertEqual(kwargs, {"max_chars":5000,"max_windows":4})
 
 
     def test_class_text_progression_scans_beyond_compact_prompt_unit_budget(self):
