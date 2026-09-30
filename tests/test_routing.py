@@ -1,6 +1,7 @@
 import unittest
 
 from niakvio_brain_llm.contracts import RepairRequest
+from niakvio_brain_llm.repair_family import repair_family_descriptor
 from niakvio_brain_llm.retrieval import ExperienceStore
 from niakvio_brain_llm.routing import route_request
 
@@ -144,6 +145,49 @@ class RoutingTests(unittest.TestCase):
         self.assertEqual(decision.mode, "deterministic_advisor")
         self.assertFalse(decision.requires_llm)
         self.assertEqual(decision.strategy, "same_provider_candidate_program_replay")
+
+    def test_validated_same_family_routes_before_llm(self):
+        request = RepairRequest(
+            provider_id="demo",
+            failure_class="route_proven_gap",
+            status="ROUTE PROVEN",
+            supported_types=["movie", "tv"],
+            allowed_mutations=["provider_patch"],
+            provider_context={
+                "registered_patch_scripts":["scripts/provider_patches/demo_runtime_v1.py"],
+                "registered_patch_sources":{
+                    "scripts/provider_patches/demo_runtime_v1.py":"function classBlocks(html,cls){return []}"
+                },
+            },
+            observations=[{
+                "source":"targeted-regression-current",
+                "value":{
+                    "debugStages":{"movie":"provider_network_zero_result"},
+                    "network":{"movie":[{"status":200}]},
+                    "structureHints":[
+                        "movie:classes=movie-card,movie-card-format;"
+                        "classFacts=[movie-card;count=12;selfHref=1;nestedAnchors=24;"
+                        "tags=a,div,span;signals=movie,series,year]"
+                    ],
+                },
+            }],
+        )
+        family = repair_family_descriptor(request)
+        store = ExperienceStore([{
+            "experience_id":"family-1",
+            "failure_class":"route_proven_gap",
+            "result":"validated",
+            "repair_family":family,
+            "mechanismFamily":"balanced-class-container",
+            "strategy":"balanced-class-container",
+            "successCount":3,
+            "failureCount":0,
+        }])
+        decision = route_request(request, store)
+        self.assertEqual(decision.mode, "family_replay")
+        self.assertFalse(decision.requires_llm)
+        self.assertEqual(decision.strategy, "balanced-class-container")
+        self.assertEqual(decision.allowed_mutations, ["provider_patch"])
 
     def test_clean_residential_replay_routes_provider_gap_to_llm_repair(self):
         decision = route_request(
