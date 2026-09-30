@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "niakvio_sha": "900aec6d60d0242ee9a4badcf15ef0e54881b0df",
-  "reason": "Authoritative family-first FORCE replay after exact-runtime-first correction. Preserve route-first guard: NO PROOF -> Recognition/probe with zero LLM mutation. For ROUTE PROVEN / CHAIN REACHED with runtime_template_prior, target the exact materialized provider runtime Bloc first, compact to one window/two causal units, keep generator-level provider_patch as fallback only, stop after first executable mutation, and publish only sandboxable provider-local output.",
+  "reason": "Authoritative family-first FORCE replay after negative-memory fix. Preserve route-first and exact-runtime-first behavior. Identical provider_bloc mutations already executed/rejected in brain-force sandbox memory must be blocked before publication even when outer repository/release SHA changed; rotate to the next causal mechanism or family witness. Stop after first genuinely new executable mutation.",
   "requested_repair_queue": [
     "4khdhub",
     "allanime",
