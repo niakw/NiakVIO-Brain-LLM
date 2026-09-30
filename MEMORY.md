@@ -663,3 +663,13 @@
 - Assistant/manual work may modify Brain infrastructure, orchestration, guards, profiles, tests and generic capability code when the Brain cannot execute; it must not retain a hand-written provider patch as the production repair.
 - Publication authority remains current-byte sandbox + playable media + identity + non-regression proof. A hand patch that passes locally is still non-authoritative until reproduced through the Brain pipeline.
 - This rule exists to keep NiakVIO scalable to hundreds of providers and to prevent repeated assistant-side repairs that bypass learning.
+
+
+## 2026-09-30 — Balanced HTML class-container synthesis closes the 4KHDHub structural evidence gap
+
+- Historical deterministic FORCE mutation `exact_class_token_boundary` was real and executable, but NiakVIO current-byte FORCE validation rejected it because it still produced zero playable movie/tv streams. It corrected only CSS token-prefix overmatch (`movie-card` vs `movie-card-*`).
+- Fresh current evidence exposes a second, generic DOM-parser failure mode: the exact container class itself can occur on multiple nested tag types. 4KHDHub's current `movie-card` facts show count=12, tags spanning `a/div/span`, nested anchors, and only one self href, so slicing a class block at the next same-class start can truncate the parent card before its title/link even after prefix matching is exact.
+- Brain deterministic structural FORCE now recognizes that bounded evidence pattern generically and can synthesize `balanced_class_container`: preserve exact class-token matching, then extract the selected element through its balanced matching closing tag instead of ending at the next same-class start. No provider id, route, domain or media fixture is encoded in the mechanism.
+- The simpler `exact_class_token_boundary` remains the deterministic fallback when evidence proves only a prefix-family collision.
+- Brain CI run `36689581429` is green at `dbddadd5fc17c1a7fb3a3141306b9da194083cf0`: **199 tests passed** plus public-repository privacy audit. Regression coverage includes the mixed-tag/nested-container structural case.
+- This is still repair capability, not provider proof. 4KHDHub must be replayed through external guidance and then NiakVIO explicit FORCE current-byte sandbox/playback/identity/non-regression before any census promotion.
