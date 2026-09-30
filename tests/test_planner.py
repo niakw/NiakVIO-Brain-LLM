@@ -237,6 +237,46 @@ class PlannerTests(unittest.TestCase):
         self.assertIn("(?![-_])", second["diff"])
         self.assertNotIn("closeRe", second["diff"])
 
+    def test_class_text_progression_scans_beyond_compact_prompt_unit_budget(self):
+        helpers = " ".join(
+            f"function helper{i}(html,cls){{return html.indexOf(cls)>=0?html:''}}"
+            for i in range(10)
+        )
+        runtime = (
+            'function classBlocks(html,cls){var esc=cls,re=new RegExp("<div\\\\b[^>]*class=[\\"\\'][^\\"\\']*\\\\b"+esc+"\\\\b[^\\"\\']*[\\"\\'][^>]*>","gi"),starts=[],m;'
+            'while((m=re.exec(html||""))!==null)starts.push({at:m.index,tag:m[0]});'
+            'var out=[];for(var i=0;i<starts.length;i++){var end=i+1<starts.length?starts[i+1].at:Math.min(String(html||"").length,starts[i].at+12000);'
+            'out.push({html:String(html||"").slice(starts[i].at,end),tag:starts[i].tag})}return out} '
+            + helpers +
+            ' function detail(html,cls){return classBlocks(html,cls)} '
+            'function resolve(html,cls){return detail(html,cls)} '
+            'function classText(html,cls){var re=new RegExp("class=[\\"\\'][^\\"\\']*\\\\b"+cls.replace(/x/g,"x")+"\\\\b[^\\"\\']*[\\"\\']","i");return re.test(html)?"x":""}'
+        )
+        patch_path = "scripts/provider_patches/demo_runtime_v1.py"
+        patch = 'MANAGED_FIX_ID="PROVIDER.DEMO.RUNTIME.V1"\nRUNTIME = r"""' + runtime + '"""\n'
+        request = RepairRequest(
+            provider_id="demo",
+            failure_class="route_proven_gap",
+            status="ROUTE PROVEN",
+            observations=[{
+                "source":"census-sharded-current",
+                "value":{"structureHints":[
+                    "movie:classes=movie-card,movie-card-format;"
+                    "classFacts=[movie-card;count=12;selfHref=1;nestedAnchors=24;"
+                    "tags=a,div,span;signals=movie,series,year]"
+                ]},
+            }],
+            allowed_mutations=["provider_patch"],
+            provider_context={"registered_patch_sources":{patch_path:patch}},
+        )
+        mutation = _deterministic_class_text_boundary_mutation(
+            request,
+            {"allow_mutations":True,"allowed_scopes":["provider_patch"]},
+        )
+        self.assertIsNotNone(mutation)
+        self.assertIn("function classText", mutation["diff"])
+        self.assertIn("(?![-_])", mutation["diff"])
+
     def test_structural_focus_unit_id_resolves_to_same_dom_helper(self):
         source = (
             "function classBlocks(html,cls){return html.indexOf(cls)>=0?[html]:[]} "
