@@ -20,6 +20,7 @@ from niakvio_brain_llm.orchestrator import BrainOrchestrator
 from niakvio_brain_llm.planner import BrainPlanner
 from niakvio_brain_llm.retrieval import ExperienceStore
 from niakvio_brain_llm.repair_family import repair_family_descriptor, select_family_wave
+from niakvio_brain_llm.routing import REPLAYABLE_FAMILY_MECHANISMS
 
 def main() -> int:
     parser = argparse.ArgumentParser()
@@ -126,7 +127,11 @@ def main() -> int:
         validated_family_keys = {
             str((row.get("repair_family") or {}).get("key") or "").strip().casefold()
             for row in family_experiences
-            if isinstance(row.get("repair_family"), dict)
+            if (
+                isinstance(row.get("repair_family"), dict)
+                and str(row.get("mechanismFamily") or "").strip().casefold().replace("_", "-")
+                in REPLAYABLE_FAMILY_MECHANISMS
+            )
         }
         provider_failure_burden: dict[str, int] = {}
         if isinstance(family_memory, dict):
