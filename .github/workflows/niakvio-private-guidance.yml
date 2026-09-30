@@ -29,11 +29,12 @@ permissions:
   actions: write
 
 concurrency:
-  # Pages from one pinned Brain revision serialize together. A newer Brain
-  # cycle gets a distinct group so GitHub cannot replace the older cycle's
-  # single pending continuation.
-  group: niakvio-private-guidance-v3-${{ inputs.brain_sha || github.sha }}
-  cancel-in-progress: false
+  # New trigger pushes supersede older unpinned advisor cycles instead of
+  # burning 7B compute on stale architecture. Explicit continuation pages keep
+  # their pinned Brain SHA and serialize independently until the semantic
+  # publication guard accepts or rejects them.
+  group: niakvio-private-guidance-v4-${{ (github.event_name == 'workflow_dispatch' && inputs.brain_sha) || 'current' }}
+  cancel-in-progress: ${{ github.event_name == 'push' }}
 
 jobs:
   guidance:
