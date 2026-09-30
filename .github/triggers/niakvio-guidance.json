@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "33e125e72c61a10ff051930500b2308788f3c46e",
-  "reason": "Single 4KHDHub witness after deterministic class-token prefix collision proof. Restrict editable function units to DOM selector helpers classBlocks/classText only; do not modify resolve/detail. Fix exact class membership so movie-card does not match movie-card-* siblings, then hand candidate to NiakVIO sandbox for current-byte playable/identity/non-regression proof.",
+  "niakvio_sha": "299526d5c53f487302fdbf15f6d66521a6240a72",
+  "reason": "Fresh single-provider 4KHDHub witness after NiakVIO FORCE architecture evolution added explicit terminal_media recognition. Generate a Brain-authored provider-local mutation from current evidence/runtime only; preserve exact function signatures and dedicated PROVIDER.4KHDHUB.RUNTIME ownership. Candidate must be handed back to NiakVIO for current-byte playable, identity-safe and non-regression proof before any promotion.",
   "requested_repair_queue": [
     "4khdhub"
   ]
