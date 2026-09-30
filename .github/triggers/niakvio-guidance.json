@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "niakvio_sha": "50a9c8bbd22c1fea26c6b389c39ebd1ea0b414b0",
-  "reason": "Replay single 4KHDHub witness with exact sandbox negative-memory progression enabled. The previously rejected balanced_class_container mutation on the same durable provider_patch context must be blocked before publication, then Brain must advance to a distinct exact classText token-boundary mutation. Publish sandbox mutation authority only; no provider bytes are written by Brain.",
+  "reason": "Final single-provider 4KHDHub progression replay on current NiakVIO. Exact negative memory must suppress the previously rejected balanced_class_container mutation, deterministic local scanning may inspect additional exact provider-owned helpers beyond the 2-unit LLM prompt budget, and Brain should emit the next distinct classText exact-token-boundary provider_patch mutation before any LLM fallback.",
   "requested_repair_queue": [
     "4khdhub"
   ]
