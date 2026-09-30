@@ -7,6 +7,8 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
+from .repair_family import repair_family_descriptor
+
 TOKEN = re.compile(r"[a-z0-9_./:-]+", re.I)
 
 def _tokens(value: Any) -> Counter[str]:
@@ -39,6 +41,19 @@ def _field_score(query: dict[str, Any], row: dict[str, Any]) -> float:
     r_failure = str(row.get("failure_class") or row.get("failureClass") or "").casefold()
     if q_failure and r_failure and q_failure == r_failure:
         score += 0.45
+
+    query_family = repair_family_descriptor(query)
+    row_family = repair_family_descriptor(row)
+    query_key = str(query_family.get("key") or "")
+    row_key = str(row_family.get("key") or "")
+    query_archetype = str(query_family.get("archetype") or "")
+    row_archetype = str(row_family.get("archetype") or "")
+    if query_key and row_key and query_key == row_key:
+        score += 0.60
+        if str(row.get("result") or "").strip().casefold() == "validated":
+            score += 0.25
+    elif query_archetype and row_archetype and query_archetype == row_archetype:
+        score += 0.30
 
     score += 0.20 * _jaccard(
         _set(query.get("symptom_families") or query.get("symptomFamilies")),
