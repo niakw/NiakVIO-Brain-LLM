@@ -30,7 +30,7 @@ assert "requested_repair_queue" in workflow
 assert "niakvio-guidance-targets.txt" in workflow
 assert '"${provider_args[@]}"' in workflow
 assert "FIELD_NIAKVIO_FORCE_MUTATIONS_READY ready=false" in workflow
-force_command = workflow.index("--mode repair \\\n            \"${provider_args[@]}\" \\\n            --endpoint")
+force_command = workflow.index("--mode repair \\\n            --stop-after-first-mutation \\\n            \"${provider_args[@]}\" \\\n            --endpoint")
 advisor_command = workflow.index("--mode brain \\\n            \"${provider_args[@]}\" \\\n            --endpoint")
 assert force_command < advisor_command
 
