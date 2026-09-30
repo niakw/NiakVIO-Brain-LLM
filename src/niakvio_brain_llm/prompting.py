@@ -344,6 +344,17 @@ def _force_structural_focus_keywords(request: RepairRequest) -> tuple[str, ...]:
     family. Surface that collision to Force without retaining HTML or URLs.
     """
     class_tokens: list[str] = []
+
+    def record_token(raw: object) -> None:
+        token = str(raw or "").strip().casefold()
+        if (
+            2 <= len(token) <= 48
+            and token[0].isalpha()
+            and all(ch.isalnum() or ch in "_-" for ch in token)
+            and token not in class_tokens
+        ):
+            class_tokens.append(token)
+
     for row in request.observations or []:
         if not isinstance(row, dict) or str(row.get("source") or "") != "targeted-regression-current":
             continue
@@ -351,17 +362,18 @@ def _force_structural_focus_keywords(request: RepairRequest) -> tuple[str, ...]:
         for hint in (value.get("structureHints") or [])[:8]:
             text = str(hint or "")
             match = re.search(r"(?:^|[;:])classes=([^;]+)", text)
-            if not match:
-                continue
-            for raw in match.group(1).split(","):
-                token = raw.strip().casefold()
-                if (
-                    2 <= len(token) <= 48
-                    and token[0].isalpha()
-                    and all(ch.isalnum() or ch in "_-" for ch in token)
-                    and token not in class_tokens
-                ):
-                    class_tokens.append(token)
+            if match:
+                for raw in match.group(1).split(","):
+                    record_token(raw)
+
+            # Current targeted evidence may expose the richer privacy-safe
+            # classFacts form without duplicating a legacy classes= list.
+            # The first field inside each bounded fact is the exact CSS token.
+            if "classFacts=" in text:
+                facts_text = text.split("classFacts=", 1)[1]
+                for fragment in facts_text.split("[")[1:]:
+                    raw_fact = fragment.split("]", 1)[0]
+                    record_token(raw_fact.split(";", 1)[0])
     collisions = [
         token for token in class_tokens
         if any(
