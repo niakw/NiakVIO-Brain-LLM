@@ -169,8 +169,20 @@ class PlannerTests(unittest.TestCase):
         self.assertIn("closeRe", mutation["diff"])
 
     def test_deterministic_negative_memory_advances_to_class_text_boundary(self):
-        runtime = r'''function classText(html,cls){var re=new RegExp("<span\\b[^>]*class=[\\\"'][^\\\"']*\\b"+cls.replace(/[-/\\\\^$*+?.()|[\\]{}]/g,"\\\\    def test_structural_focus_unit_id_resolves_to_same_dom_helper(self):
-")+"\\b[^\\\"']*[\\\"'][^>]*>","i");return re.test(html)?"x":""} function classBlocks(html,cls){var esc=cls,re=new RegExp("<div\\b[^>]*class=[\\\"'][^\\\"']*\\b"+esc+"\\b[^\\\"']*[\\\"'][^>]*>","gi"),starts=[],m;while((m=re.exec(html||""))!==null)starts.push({at:m.index,tag:m[0]});var out=[];for(var i=0;i<starts.length;i++){var end=i+1<starts.length?starts[i+1].at:Math.min(String(html||"").length,starts[i].at+12000);out.push({html:String(html||"").slice(starts[i].at,end),tag:starts[i].tag})}return out} async function resolve(args){return []}'''
+        runtime = (
+            'function classText(html,cls){'
+            'var re=new RegExp("class=[\\\\\\"\\'][^\\\\\\"\\']*\\\\\\\\b"+'
+            'cls.replace(/x/g,"x")+"\\\\\\\\b");'
+            'return re.test(html)?"x":""}'
+            ' function classBlocks(html,cls){'
+            'var esc=cls,re=new RegExp("<div\\\\\\\\b[^>]*class=[\\\\\\"\\'][^\\\\\\"\\']*\\\\\\\\b"+esc+"\\\\\\\\b[^\\\\\\"\\']*[\\\\\\"\\'][^>]*>","gi"),'
+            'starts=[],m;while((m=re.exec(html||""))!==null)starts.push({at:m.index,tag:m[0]});'
+            'var out=[];for(var i=0;i<starts.length;i++){'
+            'var end=i+1<starts.length?starts[i+1].at:Math.min(String(html||"").length,starts[i].at+12000);'
+            'out.push({html:String(html||"").slice(starts[i].at,end),tag:starts[i].tag})}'
+            'return out}'
+            ' async function resolve(args){return []}'
+        )
         patch = (
             'MANAGED_FIX_ID="PROVIDER.DEMO.RUNTIME.V1"\n'
             'RUNTIME = r"""' + runtime + '"""\n'
@@ -206,10 +218,17 @@ class PlannerTests(unittest.TestCase):
         )
         self.assertIsNotNone(first)
         self.assertIn("closeRe", first["diff"])
-        fp = hashlib.sha256(json.dumps([first], ensure_ascii=True, sort_keys=True, separators=(",", ":")).encode("ascii")).hexdigest()
-        ctx_fp = hashlib.sha256(json.dumps([
-            {"scope":"provider_patch","path":patch_path,"sha256":digest}
-        ], ensure_ascii=True, sort_keys=True, separators=(",", ":")).encode("ascii")).hexdigest()
+        fp = hashlib.sha256(
+            json.dumps([first], ensure_ascii=True, sort_keys=True, separators=(",", ":")).encode("ascii")
+        ).hexdigest()
+        ctx_fp = hashlib.sha256(
+            json.dumps(
+                [{"scope":"provider_patch","path":patch_path,"sha256":digest}],
+                ensure_ascii=True,
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode("ascii")
+        ).hexdigest()
         second_request = RepairRequest(
             provider_id="demo",
             failure_class="route_proven_gap",
