@@ -684,3 +684,17 @@
 - Brain imports those validated family mechanisms as cross-provider experience. For supported deterministic mechanisms, routing now enters `family_replay` before any LLM call, recompiles the mechanism against exact current provider bytes, and still requires the ordinary NiakVIO isolated sandbox/playback/identity/non-regression gates. If deterministic recompilation cannot express the mechanism on the new bytes, only that provider escalates to the LLM.
 - This creates the required fleet asymmetry: the expensive work should converge toward **repair families + exceptional providers**, not one full reasoning cycle per provider.
 - Current Force memory still has zero accepted mutations, so `validatedFamilies` is initially empty. The new replay path becomes active only after real NiakVIO sandbox acceptance; no historical failure or merely-functional provider is promoted into replay authority.
+
+
+## 2026-09-30 — Current 13-provider queue collapses to 5 causal repair families
+
+- Fleet-scale validation on the authoritative 13-provider Repair queue confirmed the repaired family taxonomy reduces the current novelty surface from **13 providers to 5 causal families** before any positive family library exists.
+- Current family distribution from authoritative census + structural evidence:
+  - 7 providers: `route-proven-gap:route-parser`
+  - 2 providers: `route-proven-gap:dom-selector-container`
+  - 2 providers: `chain-terminal-gap:dom-selector-container`
+  - 1 provider: `chain-terminal-gap:terminal-extraction`
+  - 1 provider: `provider-transport-gap:provider-transport`
+- Family-wave therefore spends novel Force/LLM work on at most one rotating representative per unresolved family and defers siblings. Negative-memory burden rotates the representative; e.g. repeatedly rejected 4KHDHub must not monopolize the DOM family.
+- This is an architecture/scaling validation only. The provider census remains **27 FULL OK · 2 PARTIAL OK · 13 Repair** until a representative mutation survives NiakVIO sandbox/playback and is persisted as a validated family mechanism.
+- Advisor run `36738108323` is the first live 13-provider run using the coarsened causal taxonomy and exact current NiakVIO source `a2be5abfb32cc3a5bdc3f82031f9611a0e851ce5`.
