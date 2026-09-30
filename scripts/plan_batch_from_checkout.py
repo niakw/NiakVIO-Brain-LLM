@@ -60,6 +60,11 @@ def main() -> int:
         help="Ask the LLM only for sanitized strategy/experiment guidance; deterministic NiakVIO owns mutations and proof.",
     )
     parser.add_argument(
+        "--stop-after-first-mutation",
+        action="store_true",
+        help="In sequential Force mode, publish the first executable mutation immediately instead of waiting for later providers.",
+    )
+    parser.add_argument(
         "--endpoint",
         default=os.environ.get("NIAKVIO_LLM_ENDPOINT", "http://127.0.0.1:8080"),
     )
@@ -671,9 +676,35 @@ def main() -> int:
 
     workers = max(1, min(int(args.workers or 1), 8, len(selected) or 1))
     rows: list[dict] = []
+    stopped_after_first_mutation = False
+    unprocessed_after_first_mutation: list[str] = []
     if workers == 1:
-        for position, census_row in enumerate(selected, start=1):
-            rows.extend(plan_one(position, census_row))
+        for index, census_row in enumerate(selected):
+            position = index + 1
+            planned_rows = plan_one(position, census_row)
+            rows.extend(planned_rows)
+            if args.stop_after_first_mutation and args.mode == "repair" and not args.advisor_only:
+                executable = any(
+                    isinstance(row.get("proposal"), dict)
+                    and isinstance(row["proposal"].get("mutations"), list)
+                    and bool(row["proposal"]["mutations"])
+                    for row in planned_rows
+                    if isinstance(row, dict)
+                )
+                if executable:
+                    stopped_after_first_mutation = True
+                    unprocessed_after_first_mutation = [
+                        str(row.get("provider") or "")
+                        for row in selected[index + 1 :]
+                        if str(row.get("provider") or "")
+                    ]
+                    print(
+                        "FIELD_BRAIN_FORCE_EARLY_PUBLISH "
+                        f"provider={census_row.get('provider')} "
+                        f"deferred={len(unprocessed_after_first_mutation)}",
+                        flush=True,
+                    )
+                    break
     else:
         with ThreadPoolExecutor(max_workers=workers, thread_name_prefix="niakvio-llm") as pool:
             futures = {
@@ -761,6 +792,9 @@ def main() -> int:
             for row in family_wave_deferred[:128]
             if str(row.get("provider") or "")
         ],
+        "stopAfterFirstMutation": bool(args.stop_after_first_mutation),
+        "stoppedAfterFirstMutation": stopped_after_first_mutation,
+        "earlyPublishDeferredProviders": unprocessed_after_first_mutation[:128],
         "document_sources": 1 + len(args.extra_documents),
     }
     print(json.dumps(summary, sort_keys=True))
