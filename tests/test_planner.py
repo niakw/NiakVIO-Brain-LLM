@@ -243,14 +243,9 @@ class PlannerTests(unittest.TestCase):
             for i in range(10)
         )
         runtime = (
-            'function classBlocks(html,cls){var esc=cls,re=new RegExp("<div\\\\b[^>]*class=[\\"\\'][^\\"\\']*\\\\b"+esc+"\\\\b[^\\"\\']*[\\"\\'][^>]*>","gi"),starts=[],m;'
-            'while((m=re.exec(html||""))!==null)starts.push({at:m.index,tag:m[0]});'
-            'var out=[];for(var i=0;i<starts.length;i++){var end=i+1<starts.length?starts[i+1].at:Math.min(String(html||"").length,starts[i].at+12000);'
-            'out.push({html:String(html||"").slice(starts[i].at,end),tag:starts[i].tag})}return out} '
-            + helpers +
-            ' function detail(html,cls){return classBlocks(html,cls)} '
-            'function resolve(html,cls){return detail(html,cls)} '
-            'function classText(html,cls){var re=new RegExp("class=[\\"\\'][^\\"\\']*\\\\b"+cls.replace(/x/g,"x")+"\\\\b[^\\"\\']*[\\"\\']","i");return re.test(html)?"x":""}'
+            r'''function classBlocks(html,cls){var esc=cls.replace(/[-/\\^$*+?.()|[\]{}]/g,"\\$&"),re=new RegExp("<(?:div|article|li|a)\\b[^>]*class=[\"'][^\"']*\\b"+esc+"\\b[^\"']*[\"'][^>]*>","gi"),starts=[],m;while((m=re.exec(html||""))!==null)starts.push({at:m.index,tag:m[0]});var out=[];for(var i=0;i<starts.length;i++){var end=i+1<starts.length?starts[i+1].at:Math.min(String(html||"").length,starts[i].at+12000);out.push({html:String(html||"").slice(starts[i].at,end),tag:starts[i].tag})}return out} '''
+            + helpers
+            + r''' function detail(html,cls){return classBlocks(html,cls)} function resolve(html,cls){return detail(html,cls)} function classText(html,cls){var re=new RegExp("<[a-z0-9]+\\b[^>]*class=[\"'][^\"']*\\b"+cls.replace(/[-/\\^$*+?.()|[\]{}]/g,"\\$&")+"\\b[^\"']*[\"'][^>]*>([\\s\\S]*?)<\\/[a-z0-9]+>","i"),m=re.exec(html||"");return m?m[1]:""}'''
         )
         patch_path = "scripts/provider_patches/demo_runtime_v1.py"
         patch = 'MANAGED_FIX_ID="PROVIDER.DEMO.RUNTIME.V1"\nRUNTIME = r"""' + runtime + '"""\n'
