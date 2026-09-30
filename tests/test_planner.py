@@ -5,8 +5,8 @@ import unittest
 from niakvio_brain_llm.backend import StaticBackend
 from niakvio_brain_llm.contracts import RepairRequest
 from niakvio_brain_llm.document_memory import DocumentStore
-from niakvio_brain_llm.planner import BrainPlanner, COMPACT_FORCE_SYSTEM_PROMPT, _compact_edit_to_mutation, _deterministic_class_text_boundary_mutation, _deterministic_structural_force_mutation, _resolve_structured_anchor
-from niakvio_brain_llm.prompting import _force_source_windows, build_force_prompt_payload
+from niakvio_brain_llm.planner import BrainPlanner, COMPACT_FORCE_SYSTEM_PROMPT, _compact_edit_to_mutation, _deterministic_class_text_boundary_mutation, _deterministic_structural_force_mutation, _force_unit_for_edit, _resolve_structured_anchor
+from niakvio_brain_llm.prompting import _force_edit_units, _force_structural_focus_keywords, _force_source_windows, _force_window_kwargs_for_request, build_force_prompt_payload
 
 class PlannerTests(unittest.TestCase):
     def test_compact_force_function_unit_prompt_requires_body_only_rewrite(self):
@@ -237,20 +237,15 @@ class PlannerTests(unittest.TestCase):
         self.assertIn("(?![-_])", second["diff"])
         self.assertNotIn("closeRe", second["diff"])
 
-    def test_deterministic_wide_unit_compiles_outside_compact_prompt_budget(self):
-        helpers = " ".join(
-            f"function helper{i}(html,cls){{return html.indexOf(cls)>=0?html:''}}"
-            for i in range(10)
+    def test_internal_wide_unit_resolution_does_not_expand_model_prompt_authority(self):
+        filler = " ".join(
+            f"function helper{i}(v){{return String(v||'')}}" for i in range(24)
         )
-        runtime = (
-            r'''function classBlocks(html,cls){var esc=cls.replace(/[-/\\^$*+?.()|[\]{}]/g,"\\    def test_class_text_progression_scans_beyond_compact_prompt_unit_budget(self):
-"),re=new RegExp("<(?:div|article|li|a)\\b[^>]*class=[\"'][^\"']*\\b"+esc+"\\b[^\"']*[\"'][^>]*>","gi"),starts=[],m;while((m=re.exec(html||""))!==null)starts.push({at:m.index,tag:m[0]});var out=[];for(var i=0;i<starts.length;i++){var end=i+1<starts.length?starts[i+1].at:Math.min(String(html||"").length,starts[i].at+12000);out.push({html:String(html||"").slice(starts[i].at,end),tag:starts[i].tag})}return out} '''
-            + helpers
-            + r''' function detail(html,cls){return classBlocks(html,cls)} function resolve(html,cls){return detail(html,cls)} function classText(html,cls){var re=new RegExp("<[a-z0-9]+\\b[^>]*class=[\"'][^\"']*\\b"+cls.replace(/[-/\\^$*+?.()|[\]{}]/g,"\\    def test_class_text_progression_scans_beyond_compact_prompt_unit_budget(self):
-")+"\\b[^\"']*[\"'][^>]*>([\\s\\S]*?)<\\/[a-z0-9]+>","i"),m=re.exec(html||"");return m?m[1]:""}'''
+        source = (
+            r'''function classBlocks(html,cls){var esc=cls;var re=new RegExp("\\b"+esc+"\\b");return re.test(html)?[html]:[]} '''
+            + filler
+            + r''' function classText(html,cls){var re=new RegExp("<span\\b[^>]*class=[\\\"'][^\\\"']*\\b"+cls.replace(/[-/\\\\^$*+?.()|[\\]{}]/g,"\\\\$&")+"\\b[^\\\"']*[\\\"'][^>]*>","i");return re.test(html)?"x":""}'''
         )
-        patch_path = "scripts/provider_patches/demo_runtime_v1.py"
-        patch = 'MANAGED_FIX_ID="PROVIDER.DEMO.RUNTIME.V1"\nWRAPPER = r"""' + runtime + '"""\n'
         request = RepairRequest(
             provider_id="demo",
             failure_class="route_proven_gap",
@@ -264,15 +259,42 @@ class PlannerTests(unittest.TestCase):
                 ]},
             }],
             allowed_mutations=["provider_patch"],
-            provider_context={"registered_patch_sources":{patch_path:patch}},
+            provider_context={},
         )
-        mutation = _deterministic_class_text_boundary_mutation(
+        focus = _force_structural_focus_keywords(request)
+        compact_kwargs = _force_window_kwargs_for_request(request)
+        compact = _force_edit_units(
+            source,
+            request.failure_class,
+            focus_keywords=focus,
+            **compact_kwargs,
+        )
+        wide = _force_edit_units(
+            source,
+            request.failure_class,
+            max_chars=5000,
+            max_windows=4,
+            max_units=32,
+            focus_keywords=focus,
+        )
+        compact_ids = {str(row.get("id") or "") for row in compact}
+        candidate = next(
+            row for row in wide
+            if row.get("kind") == "function_unit"
+            and "function classText" in str(row.get("source") or "")
+            and str(row.get("id") or "") not in compact_ids
+        )
+        with self.assertRaises(ValueError):
+            _force_unit_for_edit(request, source, str(candidate["id"]))
+        resolved, kwargs = _force_unit_for_edit(
             request,
-            {"allow_mutations":True,"allowed_scopes":["provider_patch"]},
+            source,
+            str(candidate["id"]),
+            allow_deterministic_wide_scan=True,
         )
-        self.assertIsNotNone(mutation)
-        self.assertIn("function classText", mutation["diff"])
-        self.assertIn("(?![-_])", mutation["diff"])
+        self.assertEqual(resolved["source"], candidate["source"])
+        self.assertEqual(kwargs, {"max_chars":5000,"max_windows":4})
+
 
     def test_class_text_progression_scans_beyond_compact_prompt_unit_budget(self):
         helpers = " ".join(
