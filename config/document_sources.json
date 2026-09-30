@@ -12,6 +12,21 @@
       "role": "durable_recovery_memory"
     },
     {
+      "path": "ARCHITECTURE.md",
+      "authority": 94,
+      "role": "provider_v3_architecture"
+    },
+    {
+      "path": "BRAIN_REPAIR_ARCHITECTURE.md",
+      "authority": 96,
+      "role": "brain_repair_architecture"
+    },
+    {
+      "path": "PROVIDER_FAMILY_ARCHITECTURE.md",
+      "authority": 97,
+      "role": "provider_family_architecture"
+    },
+    {
       "path": "automation/USER-PROVIDER-EVIDENCE-LEDGER.md",
       "authority": 92,
       "role": "field_evidence"
