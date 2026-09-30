@@ -871,7 +871,7 @@ def _deterministic_structural_force_mutation(
                 "var src=String(" + html_param + '||""),esc=String(' + class_param
                 + r'||"").replace(/[-/\\^$*+?.()|[\]{}]/g,"\\$&"),'
                 + r're=new RegExp("<(div|article|li|a)\\b[^>]*class=[\\x22\\x27][^\\x22\\x27]*\\b"+esc+"(?![-_])\\b[^\\x22\\x27]*[\\x22\\x27][^>]*>","gi"),out=[],m;'
-                + r'while((m=re.exec(src))!==null){var name=String(m[1]||"").toLowerCase(),start=m.index,end=Math.min(src.length,re.lastIndex+12000),depth=1,closeRe=new RegExp("<\\/?"+name+"\\b[^>]*>","gi"),cm;closeRe.lastIndex=re.lastIndex;while(depth&&(cm=closeRe.exec(src))!==null){if(/^<\\//.test(cm[0]))depth--;else if(!/\\/\\s*>$/.test(cm[0]))depth++;if(!depth){end=closeRe.lastIndex;break}}out.push({html:src.slice(start,end),tag:m[0]});re.lastIndex=Math.max(re.lastIndex,end)}return out'
+                + r'while((m=re.exec(src))!==null){var name=String(m[1]||"").toLowerCase(),start=m.index,end=Math.min(src.length,re.lastIndex+12000),depth=1,closeRe=new RegExp("<\\/?"+name+"\\b[^>]*>","gi"),cm;closeRe.lastIndex=re.lastIndex;while(depth&&(cm=closeRe.exec(src))!==null){if(cm[0].slice(0,2)==="</")depth--;else if(cm[0].trim().slice(-2)!=="/>")depth++;if(!depth){end=closeRe.lastIndex;break}}out.push({html:src.slice(start,end),tag:m[0]});re.lastIndex=Math.max(re.lastIndex,end)}return out'
             )
             mechanism = "balanced_class_container"
 
