@@ -82,7 +82,7 @@ class PlannerTests(unittest.TestCase):
             failure_class="route_proven_gap",
             status="ROUTE PROVEN",
             observations=[{
-                "source":"targeted-regression-current",
+                "source":"census-sharded-current",
                 "value":{"structureHints":[
                     "movie:classFacts=[movie-card;count=12;selfHref=1;nestedAnchors=24;"
                     "tags=a,div,span;signals=movie,series,year]"
