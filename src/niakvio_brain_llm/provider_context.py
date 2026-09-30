@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 from pathlib import Path
@@ -308,6 +309,7 @@ def build_provider_context(root: str | Path, provider_id: str) -> dict[str, Any]
         if scripts:
             context["registered_patch_scripts"] = scripts
             sources: dict[str, str] = {}
+            source_sha256: dict[str, str] = {}
             for relative in scripts[:4]:
                 path = root / relative
                 if path.is_file():
@@ -318,8 +320,10 @@ def build_provider_context(root: str | Path, provider_id: str) -> dict[str, Any]
                     sources[relative] = sanitize_exact_source(
                         path.read_text(encoding="utf-8", errors="replace")
                     )
+                    source_sha256[relative] = hashlib.sha256(path.read_bytes()).hexdigest()
             if sources:
                 context["registered_patch_sources"] = sources
+                context["registered_patch_sha256"] = source_sha256
                 managed_ids: list[str] = []
                 for source_text in sources.values():
                     managed_ids.extend(
