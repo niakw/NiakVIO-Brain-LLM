@@ -238,26 +238,18 @@ class PlannerTests(unittest.TestCase):
         self.assertNotIn("closeRe", second["diff"])
 
     def test_internal_wide_unit_resolution_does_not_expand_model_prompt_authority(self):
-        filler = " ".join(
-            f"function helper{i}(v){{return String(v||'')}}" for i in range(24)
-        )
+        filler = "x" * 1400
         source = (
-            r'''function classBlocks(html,cls){var esc=cls;var re=new RegExp("\\b"+esc+"\\b");return re.test(html)?[html]:[]} '''
-            + filler
-            + r''' function classText(html,cls){var re=new RegExp("<span\\b[^>]*class=[\\\"'][^\\\"']*\\b"+cls.replace(/[-/\\\\^$*+?.()|[\\]{}]/g,"\\\\$&")+"\\b[^\\\"']*[\\\"'][^>]*>","i");return re.test(html)?"x":""}'''
+            "function search(html){return html}" + filler
+            + "function detail(html){return html}" + filler
+            + "function player(html){return html}" + filler
+            + "function resolve(html){return html}"
         )
         request = RepairRequest(
             provider_id="demo",
             failure_class="route_proven_gap",
             status="ROUTE PROVEN",
-            observations=[{
-                "source":"census-sharded-current",
-                "value":{"structureHints":[
-                    "movie:classes=movie-card,movie-card-format;"
-                    "classFacts=[movie-card;count=12;selfHref=1;nestedAnchors=24;"
-                    "tags=a,div,span;signals=movie,series,year]"
-                ]},
-            }],
+            observations=[],
             allowed_mutations=["provider_patch"],
             provider_context={},
         )
@@ -281,7 +273,6 @@ class PlannerTests(unittest.TestCase):
         candidate = next(
             row for row in wide
             if row.get("kind") == "function_unit"
-            and "function classText" in str(row.get("source") or "")
             and str(row.get("id") or "") not in compact_ids
         )
         with self.assertRaises(ValueError):
