@@ -738,3 +738,12 @@
 - Brain CI run `36773724337` completed **SUCCESS** on `32eb8322191cc7019cbc0a63c502dbc499839abc`.
 - No provider is claimed repaired from this change. Next proof is a fresh family-wave against current NiakVIO followed by isolated current-byte NiakVIO sandbox if an executable mutation is emitted.
 
+## 2026-09-30 — Recent sandbox negatives now reach deterministic provider-Bloc synthesis
+
+- Family replay after the exact-runtime-first correction still republished the already rejected 4KHDHub `balanced_class_container` mutation. The emitted mutation fingerprint was exactly `c58fcb7a9610234bd647002fc01de4f73657de2028c166b270814f638c9a3989`, already present twice in NiakVIO `automation/brain-llm-force-memory.json` with rejected playable proof.
+- Planner-side negative-memory blocking was already extended to `provider_bloc`, but live execution proved the relevant rows never reached the planner. Root cause was adapter truncation order: Force memory is append-oriented, `_provider_force_negative_memory()` returned oldest-first, while `request_from_checkout()` injects only the first four rows into `brain-force-sandbox-memory`. The newest 4KHDHub Bloc rejections sat beyond that prefix.
+- `_provider_force_negative_memory()` now walks execution memory newest-first, de-duplicates by mutation/context fingerprint, and retains up to eight recent safe rows. The bounded Repair observation therefore receives the four most recent executed sandbox verdicts, including provider-Bloc mutation fingerprints.
+- Regression coverage proves both helper ordering and end-to-end `request_from_checkout` observation injection. Brain CI run `36777402352` completed **SUCCESS** on `547c31a21aaf55b2397a9921126cb36ffd679b74`.
+- Fleet execution was also tightened: for structural `ROUTE PROVEN` / `CHAIN REACHED` providers with an exact runtime template, the family wave now tries only the exact materialized provider Bloc in that turn; it no longer falls back to rewriting the Python generator in the same witness attempt. Budgets are capped at 240 s for route-proven gaps and 300 s for chain/media-terminal gaps before witness rotation.
+- These are Brain/pipeline corrections only. No provider is repaired until a genuinely new mutation survives NiakVIO exact-current-byte application, rematerialization, playback/identity and non-regression validation.
+
