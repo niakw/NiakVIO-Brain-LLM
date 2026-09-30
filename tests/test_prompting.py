@@ -117,6 +117,45 @@ class PromptingTests(unittest.TestCase):
             "/?s={query}",
         )
 
+    def test_exact_runtime_template_compacts_chain_force_to_causal_pair(self):
+        source = (
+            "function search(q){return q;} "
+            "function detail(q){return q.detail;} "
+            "function player(q){return q.player;} "
+            "function terminal(q){return q.media;} "
+            "function resolve(q){var d=detail(q);var p=player(d);return terminal(p);}"
+        )
+        request = RepairRequest(
+            provider_id="demo",
+            failure_class="chain_terminal_gap",
+            status="CHAIN REACHED",
+            provider_context={
+                "preferredRuntimeMutationSource": source,
+                "runtimeMutationFilename": "providers/demo.js",
+                "runtime_template_prior": {
+                    "mode": "reuse_current_provider_runtime_skeleton",
+                    "template": "scripts/provider_patches/demo_runtime_v1.py",
+                    "reuseBeforeNovelBloc": True,
+                },
+            },
+        )
+        payload = build_force_prompt_payload(
+            request,
+            {"target_layer": "provider", "confidence": 0.96, "strategy_prior": "terminal"},
+            {"allow_mutations": True, "allowed_scopes": ["provider_bloc"]},
+        )
+        target = payload["new_bloc_target"]
+        self.assertLessEqual(len(target["source_windows"]), 1)
+        self.assertLessEqual(
+            sum(len(row["source"]) for row in target["source_windows"]),
+            550,
+        )
+        self.assertLessEqual(len(target["editable_units"]), 2)
+        self.assertTrue(
+            payload["runtime_template_policy"]["exact_materialized_runtime_bloc_first"]
+        )
+        self.assertFalse(payload["runtime_template_policy"]["provider_bloc_is_last_resort"])
+
     def test_force_mutation_context_prefers_registered_bloc_sources(self):
         request = RepairRequest(
             provider_id="demo",
