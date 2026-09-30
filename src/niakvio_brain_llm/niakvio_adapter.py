@@ -481,6 +481,92 @@ def classify_census_failure(row: dict[str, Any]) -> str:
 
     return dominant or str(row.get("status") or "unknown")
 
+def _route_synthesis_policy(
+    status: object,
+    failure_class: object,
+    route_contract: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """Describe whether runtime synthesis may trust, extend or must rediscover routes.
+
+    Current census status is the authority. Structured route DATA is an input to
+    traversal/runtime synthesis, never permission to invent a route when current
+    proof is absent.
+    """
+    status_key = _canon(status).replace("_", " ")
+    failure_key = _canon(failure_class).replace("_", " ")
+    contract = dict(route_contract or {})
+    proven = 0
+    for key in ("provenRouteCount", "runtimePlanRouteCount"):
+        try:
+            proven = max(proven, int(contract.get(key) or 0))
+        except (TypeError, ValueError):
+            pass
+    live = contract.get("liveEvidence")
+    if isinstance(live, dict):
+        try:
+            proven = max(proven, int(live.get("validatedRoutes") or 0))
+        except (TypeError, ValueError):
+            pass
+
+    if status_key == "no proof":
+        return {
+            "mode": "rediscover_by_traversal",
+            "runtimeSynthesisAllowed": False,
+            "routeAuthority": "current_census_no_proof",
+            "next": [
+                "provider_authority_or_hub",
+                "search_or_lookup",
+                "detail",
+                "season_episode_if_needed",
+                "player_or_embed",
+                "terminal_media",
+            ],
+        }
+    if status_key == "route proven":
+        return {
+            "mode": "reuse_proven_route_then_advance_chain",
+            "runtimeSynthesisAllowed": True,
+            "routeAuthority": "current_route_proof",
+            "forbidBlindSearchRediscovery": True,
+            "provenRouteCount": proven,
+        }
+    if status_key == "chain reached":
+        return {
+            "mode": "continue_proven_chain_to_terminal",
+            "runtimeSynthesisAllowed": True,
+            "routeAuthority": "current_chain_proof",
+            "forbidBlindSearchRediscovery": True,
+            "provenRouteCount": proven,
+        }
+    if status_key == "candidate ok":
+        return {
+            "mode": "replay_current_candidate_before_new_route",
+            "runtimeSynthesisAllowed": True,
+            "routeAuthority": "current_candidate_proof",
+            "forbidBlindSearchRediscovery": True,
+            "provenRouteCount": proven,
+        }
+    if "transport" in failure_key and proven <= 0:
+        return {
+            "mode": "rediscover_by_traversal",
+            "runtimeSynthesisAllowed": False,
+            "routeAuthority": "no_current_route_proof",
+            "next": [
+                "provider_authority_or_hub",
+                "search_or_lookup",
+                "detail",
+                "player_or_embed",
+                "terminal_media",
+            ],
+        }
+    return {
+        "mode": "use_current_route_authority",
+        "runtimeSynthesisAllowed": True,
+        "routeAuthority": "current_provider_data",
+        "provenRouteCount": proven,
+    }
+
+
 def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
     """Build one bounded LLM request from a read-only NiakVIO checkout."""
     root = Path(root)
@@ -669,6 +755,17 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
     }
 
     provider_context = build_provider_context(root, provider_id)
+    route_contract = (
+        dict(provider_context.get("route_contract"))
+        if isinstance(provider_context.get("route_contract"), dict)
+        else {}
+    )
+    route_contract["synthesisPolicy"] = _route_synthesis_policy(
+        row.get("status"),
+        failure,
+        route_contract,
+    )
+    provider_context["route_contract"] = route_contract
     provider_context["advisor_experiment_history"] = [
         *negative_memory,
         *force_negative_memory,
