@@ -772,77 +772,9 @@ def _deterministic_structural_force_mutation(
                     mixed_nested_class_container = True
                     break
             if mixed_nested_class_container:
-                break
-        if mixed_nested_class_container:
-            break
-
-    candidates: list[tuple[str, str, str, dict[str, Any]]] = []
-    edit_kwargs = _force_window_kwargs_for_request(request)
-    for scope in allowed:
-        if scope == "provider_patch":
-            sources = context.get("registered_patch_sources")
-            if not isinstance(sources, dict):
-                continue
-            source_rows = [
-                (str(path), str(source or ""))
-                for path, source in sources.items()
-                if str(path) and str(source or "")
-            ]
-        else:
-            source = str(
-                context.get("preferredRuntimeMutationSource")
-                or context.get("runtimeMutationSource")
-                or ""
-            )
-            source_rows = [("", source)] if source else []
-
-        for path, source in source_rows:
-            units = _force_edit_units(
-                source,
-                request.failure_class,
-                focus_keywords=focus_keywords,
-                **edit_kwargs,
-            )
-            for unit in units:
-                if str(unit.get("kind") or "") != "function_unit":
-                    continue
-                unit_source = str(unit.get("source") or "")
-                old_boundary = '\\\\b"+esc+"\\\\b'
-                if unit_source.count(old_boundary) != 1:
-                    continue
-                match = re.match(
-                    r"(?s)^\s*(?:async\s+)?function\s+[A-Za-z_$][A-Za-z0-9_$]*"
-                    r"\s*\([^)]*\)\s*\{(?P<body>.*)\}\s*$",
-                    unit_source,
-                )
-                if not match:
-                    continue
-                candidates.append((scope, path, source, unit))
-
-    if len(candidates) != 1:
-        return None
-
-    scope, path, _source, unit = candidates[0]
-    unit_source = str(unit.get("source") or "")
-    match = re.match(
-        r"(?s)^\s*(?:async\s+)?function\s+[A-Za-z_$][A-Za-z0-9_$]*"
-        r"\s*\([^)]*\)\s*\{(?P<body>.*)\}\s*$",
-        unit_source,
-    )
-    if not match:
-        return None
-    body = str(match.group("body") or "")
-    old_boundary = '\\\\b"+esc+"\\\\b'
-    new_boundary = '\\\\b"+esc+"(?![-_])\\\\b'
-    if body.count(old_boundary) != 1:
-        return None
-
-    mechanism = "exact_class_token_boundary"
-    replacement_body = body.replace(old_boundary, new_boundary, 1)
-    if mixed_nested_class_container:
         signature = re.match(
-            r"(?s)^\\s*(?:async\\s+)?function\\s+[A-Za-z_$][A-Za-z0-9_$]*"
-            r"\\s*\\((?P<params>[^)]*)\\)\\s*\\{.*\\}\\s*$",
+            r"(?s)^\s*(?:async\s+)?function\s+[A-Za-z_$][A-Za-z0-9_$]*"
+            r"\s*\((?P<params>[^)]*)\)\s*\{.*\}\s*$",
             unit_source,
         )
         params = [
@@ -859,24 +791,9 @@ def _deterministic_structural_force_mutation(
             html_param, class_param = params
             replacement_body = (
                 "var src=String(" + html_param + '||""),esc=String(' + class_param
-                + r'''||"").replace(/[-/\\^$*+?.()|[\]{}]/g,"\\    body = str(match.group("body") or "")
-    old_boundary = '\\\\b"+esc+"\\\\b'
-    new_boundary = '\\\\b"+esc+"(?![-_])\\\\b'
-    if body.count(old_boundary) != 1:
-        return None
-    replacement_body = body.replace(old_boundary, new_boundary, 1)
-    edit: dict[str, Any] = {
-        "scope": scope,
-        "unit_id": str(unit.get("id") or ""),
-        "replace": replacement_body,
-    }
-    if scope == "provider_patch":
-        edit["path"] = path
-    else:
-        edit["family"] = "exact_class_token_boundary"
-"),'''
-                + r'''re=new RegExp("<(div|article|li|a)\\b[^>]*class=[\"'][^\"']*\\b"+esc+"(?![-_])\\b[^\"']*[\"'][^>]*>","gi"),out=[],m;'''
-                + r'''while((m=re.exec(src))!==null){var name=String(m[1]||"").toLowerCase(),start=m.index,end=Math.min(src.length,re.lastIndex+12000),depth=1,closeRe=new RegExp("<\\/?"+name+"\\b[^>]*>","gi"),cm;closeRe.lastIndex=re.lastIndex;while(depth&&(cm=closeRe.exec(src))!==null){if(/^<\\//.test(cm[0]))depth--;else if(!/\\/\\s*>$/.test(cm[0]))depth++;if(!depth){end=closeRe.lastIndex;break}}out.push({html:src.slice(start,end),tag:m[0]});re.lastIndex=Math.max(re.lastIndex,end)}return out'''
+                + r'||"").replace(/[-/\\^$*+?.()|[\]{}]/g,"\\$&"),'
+                + r're=new RegExp("<(div|article|li|a)\\b[^>]*class=[\\x22\\x27][^\\x22\\x27]*\\b"+esc+"(?![-_])\\b[^\\x22\\x27]*[\\x22\\x27][^>]*>","gi"),out=[],m;'
+                + r'while((m=re.exec(src))!==null){var name=String(m[1]||"").toLowerCase(),start=m.index,end=Math.min(src.length,re.lastIndex+12000),depth=1,closeRe=new RegExp("<\\/?"+name+"\\b[^>]*>","gi"),cm;closeRe.lastIndex=re.lastIndex;while(depth&&(cm=closeRe.exec(src))!==null){if(/^<\\//.test(cm[0]))depth--;else if(!/\\/\\s*>$/.test(cm[0]))depth++;if(!depth){end=closeRe.lastIndex;break}}out.push({html:src.slice(start,end),tag:m[0]});re.lastIndex=Math.max(re.lastIndex,end)}return out'
             )
             mechanism = "balanced_class_container"
 
