@@ -3,6 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from niakvio_brain_llm.repair_family import repair_family_descriptor
 from niakvio_brain_llm.retrieval import ExperienceStore
 
 class RetrievalTests(unittest.TestCase):
@@ -13,6 +14,44 @@ class RetrievalTests(unittest.TestCase):
         ])
         rows = store.search({"failure_class": "terminal_extractor"}, limit=1)
         self.assertEqual(rows[0]["provider_id"], "a")
+
+    def test_validated_same_repair_family_outranks_generic_same_failure(self):
+        query = {
+            "provider_id": "new-provider",
+            "failure_class": "route_proven_gap",
+            "status": "ROUTE PROVEN",
+            "supported_types": ["movie", "tv"],
+            "allowed_mutations": ["provider_patch", "provider_bloc"],
+            "observations": [{
+                "source": "census-sharded-current",
+                "value": {
+                    "structureHints": [
+                        "movie:classes=movie-card,movie-card-format;"
+                        "classFacts=[movie-card;count=12;selfHref=1;nestedAnchors=24;"
+                        "tags=a,div,span;signals=movie,series,year]"
+                    ]
+                },
+            }],
+        }
+        family = repair_family_descriptor(query)
+        store = ExperienceStore([
+            {
+                "provider_id": "generic",
+                "failure_class": "route_proven_gap",
+                "strategy": "generic-route-repair",
+                "result": "failed",
+            },
+            {
+                "provider_id": "peer",
+                "failure_class": "route_proven_gap",
+                "strategy": "validated-family-mechanism",
+                "result": "validated",
+                "repair_family": family,
+            },
+        ])
+        rows = store.search(query, limit=2)
+        self.assertEqual(rows[0]["provider_id"], "peer")
+        self.assertGreater(rows[0]["_structural_score"], rows[1]["_structural_score"])
 
     def test_public_and_private_jsonl_merge_deduplicates_experience_id(self):
         with tempfile.TemporaryDirectory() as tmp:
