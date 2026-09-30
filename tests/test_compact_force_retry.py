@@ -121,7 +121,10 @@ class CompactForceRetryTest(unittest.TestCase):
         self.assertIn('".RUNTIME."', scope_order)
         self.assertIn("template_first =", scope_order)
         self.assertIn('runtime_template_prior.get("reuseBeforeNovelBloc")', scope_order)
-        self.assertLess(scope_order.index('if bloc_ready and structural_gap and template_first:'), scope_order.index('if runtime_patch_ready and structural_gap:'))
+        self.assertLess(
+            scope_order.index('if bloc_ready and structural_gap and template_first:'),
+            scope_order.index('if runtime_patch_ready and structural_gap and not template_first:'),
+        )
         self.assertIn('and not (structural_gap and template_first)', scope_order)
         self.assertIn("scoped_request.allowed_mutations = [scope]", script)
         self.assertIn("FIELD_BRAIN_FORCE_SCOPE_SELECTED", script)
