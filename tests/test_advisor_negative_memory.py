@@ -70,6 +70,27 @@ assert "secret-current-bytes" not in encoded_force
 assert "secret-replacement" not in encoded_force
 assert '"mutations"' not in encoded_force
 
+recent_payload = {
+    "entries": [
+        {
+            "providerId": "AnimeSalt",
+            "mutationFingerprint": f"{index:064x}",
+            "mutationContextFingerprint": f"{index + 100:064x}",
+            "consecutiveFailures": 1,
+            "failures": 1,
+            "successes": 0,
+            "lastOutcome": "rejected",
+            "lastReason": f"reason-{index}",
+        }
+        for index in range(1, 7)
+    ]
+}
+recent_rows = _provider_force_negative_memory(recent_payload, "animesalt")
+assert [row["lastReason"] for row in recent_rows[:4]] == [
+    "reason-6", "reason-5", "reason-4", "reason-3"
+], recent_rows
+assert recent_rows[0]["mutationFingerprint"] == f"{6:064x}"
+
 with tempfile.TemporaryDirectory() as td:
     root = Path(td)
     (root / "automation").mkdir()
