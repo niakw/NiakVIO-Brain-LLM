@@ -435,6 +435,8 @@ def _provider_force_negative_memory(payload: Any, provider_id: str) -> list[dict
                 for item in (value.get("lastMutationSummary") or [])[:8]
                 if isinstance(item, dict) and str(item.get("scope") or "")
             ],
+            "mutationFingerprint": str(value.get("mutationFingerprint") or "")[:64],
+            "mutationContextFingerprint": str(value.get("mutationContextFingerprint") or "")[:64],
             "lastCurrentSha": str(value.get("lastCurrentSha") or "")[:40],
             "sourceNiakvioSha": str(value.get("sourceNiakvioSha") or "")[:40],
             "sourceBrainLlmSha": str(value.get("sourceBrainLlmSha") or "")[:40],
