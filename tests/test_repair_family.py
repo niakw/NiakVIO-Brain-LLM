@@ -118,6 +118,52 @@ class RepairFamilyTests(unittest.TestCase):
         self.assertEqual([row["provider"] for row in selected], ["strong"])
         self.assertEqual([row["provider"] for row in deferred], ["weak"])
 
+    def test_family_wave_rotates_away_from_execution_blocked_witness(self):
+        family_key = "e" * 64
+        strong = {
+            "key": family_key,
+            "signals": [
+                "class-prefix-family",
+                "mixed-tag-nested-container",
+                "nested-anchor-html",
+                "provider-http-2xx",
+            ],
+            "stages": ["provider-network-zero-result"],
+        }
+        weaker = {
+            "key": family_key,
+            "signals": ["nested-anchor-html", "provider-http-2xx"],
+            "stages": ["provider-network-zero-result"],
+        }
+        rows = [
+            {"provider": "timed-out", "repair_family": strong},
+            {"provider": "fresh", "repair_family": weaker},
+        ]
+        selected, deferred = select_family_wave(
+            rows,
+            provider_failure_burden={"timed-out": 0, "fresh": 5},
+            provider_execution_burden={"timed-out": 2},
+        )
+        self.assertEqual([row["provider"] for row in selected], ["fresh"])
+        self.assertEqual([row["provider"] for row in deferred], ["timed-out"])
+
+    def test_family_wave_retries_least_blocked_when_every_witness_is_blocked(self):
+        family_key = "f" * 64
+        strong = {
+            "key": family_key,
+            "signals": ["class-prefix-family", "mixed-tag-nested-container"],
+        }
+        rows = [
+            {"provider": "twice", "repair_family": strong},
+            {"provider": "once", "repair_family": {"key": family_key}},
+        ]
+        selected, deferred = select_family_wave(
+            rows,
+            provider_execution_burden={"twice": 2, "once": 1},
+        )
+        self.assertEqual([row["provider"] for row in selected], ["once"])
+        self.assertEqual([row["provider"] for row in deferred], ["twice"])
+
     def test_validated_family_fans_out_all_members(self):
         family = {"key": "c" * 64}
         rows = [
