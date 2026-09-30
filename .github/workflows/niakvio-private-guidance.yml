@@ -133,9 +133,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          git -C brain fetch origin "+refs/heads/niakvio-guidance:refs/remotes/origin/niakvio-guidance" || true
+          previous_diagnostics_args=()
+          if git -C brain show "refs/remotes/origin/niakvio-guidance:guidance/niakvio-force-diagnostics.json" > "$RUNNER_TEMP/niakvio-force-diagnostics.previous.json" 2>/dev/null; then
+            previous_diagnostics_args=(--previous-diagnostics "$RUNNER_TEMP/niakvio-force-diagnostics.previous.json")
+          fi
           python brain/scripts/select_niakvio_repair_family_wave.py \
             --targets "$RUNNER_TEMP/niakvio-guidance-targets.txt" \
             --niakvio-root niakvio \
+            "${previous_diagnostics_args[@]}" \
             --output "$RUNNER_TEMP/niakvio-guidance-family-wave.txt" \
             --report "$RUNNER_TEMP/niakvio-guidance-family-wave.json"
           count="$(wc -l < "$RUNNER_TEMP/niakvio-guidance-family-wave.txt" | tr -d ' ')"
@@ -572,6 +578,7 @@ jobs:
             niakvio-force-mutations.json
             niakvio-force-diagnostics.json
             $RUNNER_TEMP/niakvio-guidance-state.next.json
+            $RUNNER_TEMP/niakvio-guidance-family-wave.json
             private-memory-report.json
             routing-summary.json
             routing-force-summary.json
