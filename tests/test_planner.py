@@ -217,6 +217,64 @@ class PlannerTests(unittest.TestCase):
         second = _deterministic_structural_force_mutation(second_request, policy)
         self.assertIsNone(second)
 
+    def test_provider_bloc_negative_memory_advances_to_class_text_boundary(self):
+        runtime = r'''function classText(html,cls){var re=new RegExp("<span\\b[^>]*class=[\"'][^\"']*\\b"+cls.replace(/[-/\\^$*+?.()|[\]{}]/g,"\\    def test_class_text_progression_ignores_linewise_container_helper(self):
+")+"\\b[^\"']*[\"'][^>]*>","i");return re.test(html)?"x":""}
+function classBlocks(html,cls){var esc=cls.replace(/[-/\\^$*+?.()|[\]{}]/g,"\\    def test_class_text_progression_ignores_linewise_container_helper(self):
+"),re=new RegExp("<(?:div|article|li|a)\\b[^>]*class=[\"'][^\"']*\\b"+esc+"\\b[^\"']*[\"'][^>]*>","gi"),starts=[],m;while((m=re.exec(html||""))!==null)starts.push({at:m.index,tag:m[0]});var out=[];for(var i=0;i<starts.length;i++){var end=i+1<starts.length?starts[i+1].at:Math.min(String(html||"").length,starts[i].at+12000);out.push({html:String(html||"").slice(starts[i].at,end),tag:starts[i].tag})}return out}
+function resolve(){return []}'''
+        evidence = [{
+            "source":"census-sharded-current",
+            "value":{"structureHints":[
+                "movie:classes=movie-card,movie-card-format,movie-card-content;"
+                "classFacts=[movie-card;count=12;selfHref=1;nestedAnchors=24;"
+                "tags=a,div,span;signals=movie,series,year]"
+            ]},
+        }]
+        context = {
+            "preferredRuntimeMutationSource": runtime,
+            "runtimeMutationFilename": "providers/demo.js",
+            "runtimeMutationSource": runtime,
+        }
+        policy = {"allow_mutations": True, "allowed_scopes": ["provider_bloc"]}
+        first_request = RepairRequest(
+            provider_id="demo",
+            failure_class="route_proven_gap",
+            status="ROUTE PROVEN",
+            observations=evidence,
+            allowed_mutations=["provider_bloc"],
+            provider_context=context,
+        )
+        first = _deterministic_structural_force_mutation(first_request, policy)
+        self.assertIsNotNone(first)
+        self.assertEqual(first["scope"], "provider_bloc")
+        self.assertEqual(first["family"], "balanced_class_container")
+        fp = hashlib.sha256(
+            json.dumps([first], ensure_ascii=True, sort_keys=True, separators=(",", ":")).encode("ascii")
+        ).hexdigest()
+
+        second_request = RepairRequest(
+            provider_id="demo",
+            failure_class="route_proven_gap",
+            status="ROUTE PROVEN",
+            observations=[
+                *evidence,
+                {"source":"brain-force-sandbox-memory","value":[{
+                    "mutationFingerprint": fp,
+                    "mutationContextFingerprint": "f"*64,
+                    "consecutiveFailures": 1,
+                }]},
+            ],
+            allowed_mutations=["provider_bloc"],
+            provider_context=context,
+        )
+        second = _deterministic_structural_force_mutation(second_request, policy)
+        self.assertIsNotNone(second)
+        self.assertEqual(second["scope"], "provider_bloc")
+        self.assertEqual(second["family"], "class_text_boundary")
+        self.assertIn("(?![-_])", second["replace"])
+        self.assertNotIn("starts[i+1].at", second["replace"])
+
     def test_class_text_progression_ignores_linewise_container_helper(self):
         runtime = r'''function classText(html,cls){var re=new RegExp("class="+cls.replace(/x/g,"x")+"\\b");return re.test(html)?"x":""}
 function classBlocks(html,cls){var re=new RegExp("class="+cls.replace(/x/g,"x")+"\\b"),starts=[],m,out=[];while((m=re.exec(html||""))!==null){starts.push({at:m.index})}for(var i=0;i<starts.length;i++){var end=i+1<starts.length?starts[i+1].at:String(html||"").length;out.push({html:String(html||"").slice(starts[i].at,end)})}return out}
