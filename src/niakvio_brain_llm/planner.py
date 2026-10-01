@@ -975,6 +975,18 @@ def _deterministic_class_text_boundary_mutation(
             if not re.fullmatch(r"[A-Za-z_$][A-Za-z0-9_$]*", class_param):
                 continue
             body = str(signature.group("body") or "")
+            compact_body = re.sub(r"\\s+", "", body)
+            # class_text_boundary is the progression after a container/list
+            # extractor mutation was already executed and rejected. Do not
+            # reselect helpers whose job is clearly to enumerate/slice HTML
+            # containers; otherwise classText + classBlocks become an
+            # artificial two-candidate ambiguity on minified runtimes.
+            if (
+                "starts=[]" in compact_body
+                or "starts[i+1].at" in compact_body
+                or "out.push({html:" in compact_body
+            ):
+                continue
             marker = class_param + ".replace("
             marker_at = body.find(marker)
             if marker_at < 0 or "class=" not in body:
