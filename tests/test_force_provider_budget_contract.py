@@ -7,14 +7,17 @@ workflow=(ROOT/".github/workflows/niakvio-private-guidance.yml").read_text(encod
 
 assert 'budget_seconds = min(budget_cap, 600)' in batch
 assert 'exact_runtime_template = bool(' in batch
-assert '300 if status_key == "CHAIN REACHED"' in batch
-assert 'else 240' in batch
+assert 'portfolio={max_hypotheses}' in batch
+assert 'FIELD_BRAIN_FORCE_PORTFOLIO_READY' in batch
+assert 'FIELD_BRAIN_FORCE_PORTFOLIO_RESERVED' in batch
 assert 'failure_key == "provider_transport_gap"' in batch
 assert 'budget_seconds = min(budget_cap, 300)' in batch
 assert 'failure_key == "transport_environment_gap"' in batch
 assert 'budget_seconds = min(budget_cap, 180)' in batch
 assert '--force-provider-budget-seconds 600' in workflow
+assert 'budget_seconds = min(' in batch
 assert '--stop-after-first-mutation' in workflow
+assert '--max-hypotheses 4' in workflow
 assert 'FIELD_BRAIN_FORCE_EARLY_PUBLISH' in batch
 assert '--force-provider-budget-seconds 360' not in workflow
 assert 'timeout-minutes: 180' in workflow
