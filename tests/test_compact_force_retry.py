@@ -248,8 +248,26 @@ class CompactForceRetryTest(unittest.TestCase):
 
     def test_full_source_one_line_function_scan_survives_regex_braces(self):
         source = (
-            "WRAPPER = r'''\n"
-            "function classText(html,cls){var re=new RegExp(cls.replace(/[-/\\\\^$*+?.()|[\\]{}]/g,\"\\\\    def test_complete_wrong_function_wrapper_keeps_selected_identity(self):
+            "WRAPPER = r'''\\n"
+            "function classText(html,cls){return String(html).replace(/[{}]/g,cls)}\\n"
+            "function other(v){return v}\\n"
+            "'''\\n"
+        )
+        units = _deterministic_complete_line_function_units(source)
+        self.assertEqual(
+            [row["source"].split("(", 1)[0] for row in units],
+            ["function classText", "function other"],
+        )
+        self.assertIn("/[{}]/g", units[0]["source"])
+        for row in units:
+            offset = row["offset"]
+            self.assertEqual(
+                source[offset:offset + len(row["source"])],
+                row["source"],
+            )
+
+
+    def test_complete_wrong_function_wrapper_keeps_selected_identity(self):
 \")+\"\\\\b\");return re.test(html)}\n"
             "function other(v){return v}\n"
             "'''\n"
