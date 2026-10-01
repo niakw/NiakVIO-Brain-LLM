@@ -886,3 +886,10 @@
 - Brain main `b2b815194321ff56ea7d0b83e82f6d0aa0499a87` is green in CI #1316 and fixes deterministic parsing of bounded loop headers containing calls, the remaining compiler gap exposed by HindMoviez.
 - Replay targets NiakVIO `728030d68d0f5832cd488f07a7c3851f58802353`. HindMoviez remains FULL OK functionally but exact current runtime contains two early global `out.length>=4` caps while source metadata exposes 480p/720p/1080p/2160p variants. This is coverage debt, not route failure.
 - Success requires a Brain-generated bounded coverage-before-final-cap mutation from current bytes. Provider identity/playable validation and execution deadlines remain mandatory; no manual HindMoviez provider edit is authorized.
+
+
+## 2026-10-01 — Deterministic coverage compiler sees final resolver helpers
+
+- HindMoviez guidance #226 still timed out despite the bounded-variant compiler because the compiler never selected its outer resolve helper. The exact runtime ends with resolve followed by resolver registration/IIFE statements; the old deterministic helper extractor treated everything after the final named function as forbidden trailing text and dropped resolve entirely.
+- The extractor now uses a balanced JavaScript function-boundary scanner that ignores strings, comments and regex literals. Final helpers remain selectable even when registration statements follow them.
+- A representative regression reproduces the HindMoviez topology: an inner per-source quota remains bounded, while the outer k<8 aggregation loop global out.length>=4 break is removed. This proves the intended repair is coverage-before-final-cap, not unbounded traversal and not a hand-authored HindMoviez patch.

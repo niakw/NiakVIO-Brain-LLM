@@ -933,15 +933,105 @@ def _force_memory_blocks_mutation(
     return False
 
 
+def _deterministic_function_end(text: str, start: int) -> int:
+    """Return the exclusive end of one named JS function using balanced braces.
+
+    Compact provider runtimes frequently keep registration/IIFE statements after
+    the final named helper, so next-function-or-EOF is not a safe function
+    boundary. Scan from the declaration opening brace while ignoring strings,
+    comments and regex literals. This remains a structural locator only; the
+    resulting mutation is still uniqueness-checked and node syntax-checked.
+    """
+    open_brace = text.find("{", max(0, int(start)))
+    if open_brace < 0:
+        return -1
+    depth = 0
+    i = open_brace
+    quote = ""
+    escaped = False
+    line_comment = False
+    block_comment = False
+    regex = False
+    regex_class = False
+    prev_sig = ""
+    while i < len(text):
+        ch = text[i]
+        nxt = text[i + 1] if i + 1 < len(text) else ""
+        if line_comment:
+            if ch in "\r\n":
+                line_comment = False
+            i += 1
+            continue
+        if block_comment:
+            if ch == "*" and nxt == "/":
+                block_comment = False
+                i += 2
+            else:
+                i += 1
+            continue
+        if quote:
+            if escaped:
+                escaped = False
+            elif ch == "\\":
+                escaped = True
+            elif ch == quote:
+                quote = ""
+            i += 1
+            continue
+        if regex:
+            if escaped:
+                escaped = False
+            elif ch == "\\":
+                escaped = True
+            elif ch == "[":
+                regex_class = True
+            elif ch == "]" and regex_class:
+                regex_class = False
+            elif ch == "/" and not regex_class:
+                regex = False
+                prev_sig = "/"
+            i += 1
+            continue
+        if ch == "/" and nxt == "/":
+            line_comment = True
+            i += 2
+            continue
+        if ch == "/" and nxt == "*":
+            block_comment = True
+            i += 2
+            continue
+        if ch in {"'", '"', chr(96)}:
+            quote = ch
+            i += 1
+            continue
+        if ch == "/":
+            if not prev_sig or prev_sig in "([{:;,=!?&|+-*%^~<>":
+                regex = True
+                regex_class = False
+                escaped = False
+                i += 1
+                continue
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                return i + 1
+            if depth < 0:
+                return -1
+        if not ch.isspace():
+            prev_sig = ch
+        i += 1
+    return -1
+
+
 def _deterministic_complete_line_function_units(source: str) -> list[dict[str, Any]]:
     """Extract compact named JavaScript helpers from exact current source.
 
-    Published provider bundles can collapse an entire runtime onto one physical
-    line, so a line-based greedy matcher can accidentally treat every following
-    helper as part of the first function. Use the next *named* function
-    declaration as the structural boundary instead. Anonymous callbacks do not
-    terminate the unit. The resulting candidate is still syntax-validated by
-    the deterministic mutation compiler before it can leave Brain.
+    A balanced scanner owns the closing boundary so the last helper remains
+    selectable even when wrapper registration statements follow it. This is
+    required for provider runtimes that end with resolve and then register that
+    resolver on the global object.
     """
     text = str(source or "")
     declaration = re.compile(
@@ -951,19 +1041,14 @@ def _deterministic_complete_line_function_units(source: str) -> list[dict[str, A
     starts = [match.start(1) for match in declaration.finditer(text)]
     units: list[dict[str, Any]] = []
     for index, offset in enumerate(starts, start=1):
-        boundary = starts[index] if index < len(starts) else len(text)
-        chunk = text[offset:boundary].rstrip()
-        # Top-level compact helpers end at their own closing brace. Reject
-        # chunks with unrelated trailing statements rather than guessing.
-        close = chunk.rfind("}")
-        if close < 0:
+        end = _deterministic_function_end(text, offset)
+        if end <= offset:
             continue
-        find = chunk[: close + 1].strip()
-        trailing = chunk[close + 1 :].strip(" ;\t\r\n")
-        if trailing or not find or len(find) > 1800:
-            continue
-        leading = len(text[offset:boundary]) - len(text[offset:boundary].lstrip())
+        find = text[offset:end].strip()
+        leading = len(text[offset:end]) - len(text[offset:end].lstrip())
         exact_offset = offset + leading
+        if not find or len(find) > 1800:
+            continue
         if text[exact_offset: exact_offset + len(find)] != find:
             continue
         units.append({

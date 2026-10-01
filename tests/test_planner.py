@@ -46,6 +46,52 @@ class PlannerTests(unittest.TestCase):
         self.assertNotIn("if(out.length>=4)break", updated)
         self.assertIn("return out", updated)
 
+    def test_deterministic_variant_coverage_extracts_last_resolver_before_wrapper_registration(self):
+        source = (
+            'function quality(f){var m=/(2160|1080|720|480)p/i.exec(f);return m?m[1]+"p":"HD"} '
+            'async function chain(mv){var names=files(mv).slice(0,3),out=[];'
+            'for(var i=0;i<names.length&&!expired();i++){var us=finals(names[i]);'
+            'for(var j=0;j<us.length;j++)out.push(us[j]);if(out.length>=4)break}return out} '
+            'async function resolve(){var out=[],urlSeen={};'
+            'for(var k=0;k<links.length&&k<8&&!expired();k++){var z=await chain(links[k]);'
+            'for(var n=0;n<z.length;n++)if(!urlSeen[z[n]]){urlSeen[z[n]]=1;out.push(z[n])}'
+            'if(out.length>=4)break}return out} '
+            'try{globalThis.__runtimeResolver={resolve:resolve}}catch(_e){}'
+            '})(typeof globalThis!=="undefined"?globalThis:this,CONFIG);'
+        )
+        request = RepairRequest(
+            provider_id="demo",
+            failure_class="variant_coverage_gap",
+            status="FULL_OK",
+            allowed_mutations=["provider_bloc"],
+            provider_context={
+                "runtimeMutationSource": source,
+                "preferredRuntimeMutationSource": source,
+                "runtime_variant_coverage": {
+                    "riskKind": "variant-coverage-truncation",
+                    "risk": "high",
+                    "dimensions": ["quality", "language"],
+                    "qualityHints": ["2160p", "1080p", "720p", "480p"],
+                },
+            },
+        )
+        mutation = _deterministic_variant_coverage_mutation(
+            request,
+            {"allow_mutations": True, "allowed_scopes": ["provider_bloc"]},
+        )
+        self.assertIsNotNone(mutation)
+        self.assertEqual(mutation["family"], "bounded_variant_enumeration_before_cap")
+        updated = source.replace(mutation["find"], mutation["replace"], 1)
+        self.assertIn("for(var k=0;k<links.length&&k<8&&!expired();k++)", updated)
+        self.assertIn("if(out.length>=4)break}return out} async function resolve", updated)
+        self.assertNotIn(
+            "for(var k=0;k<links.length&&k<8&&!expired();k++){var z=await chain(links[k]);"
+            "for(var n=0;n<z.length;n++)if(!urlSeen[z[n]]){urlSeen[z[n]]=1;out.push(z[n])}"
+            "if(out.length>=4)break",
+            updated,
+        )
+        self.assertIn("__runtimeResolver={resolve:resolve}", updated)
+
     def test_deterministic_variant_coverage_refuses_unbounded_source_loop(self):
         source = (
             'async function resolve(){var out=[];'
