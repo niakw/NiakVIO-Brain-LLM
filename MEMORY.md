@@ -793,3 +793,11 @@
 - The public sanitizer correctly failed closed with `providerCount=0`; no mutation was handed to NiakVIO and no provider bytes changed.
 - Same-run portfolio feedback and within-candidate validation feedback now both retain `brain-force-sandbox-memory`. This keeps cross-run executed negatives authoritative while adding local rejection feedback. Portfolio telemetry reports `negative_memory_rows` so the next real run can prove the memory survived every slot boundary.
 - This is a Brain pipeline correction only. 4KHDHub remains unrepaired until a new Brain-produced mutation survives publication and NiakVIO isolated current-byte movie + TV playable/identity proof.
+
+
+## 2026-10-01 — Fourth deterministic route-gap hypothesis: optional format gate
+
+- Brain guidance run 36852049405 (#221, Brain d7f57cb2b27be137ea87f47a3427af92ffb7f14f) proved cross-run negative memory now survives every one-shot slot: all previously executed 4KHDHub class-container mechanisms stayed blocked in slots 1–4. The remaining 7B path produced only timeout/no-op outcomes, so no Force mutation was published and NiakVIO provider bytes remained unchanged.
+- Current exact 4KHDHub runtime contains a separate hard media-format gate inside the search/detail helper: an empty or unextractable format label rejects every otherwise identity-scored movie/tv card before detail traversal. Current evidence simultaneously reports live HTTP search/HTML structure and zero terminal result, so this is a distinct bounded causal hypothesis from the already rejected class-selector family.
+- Brain now has a provider-independent deterministic optional_metadata_format_gate compiler. It only activates on an existing exact helper that already owns classBlocks, classText, anchors, scoreTitle and paired movie/tv format guards. It changes those guards from hard rejection on empty metadata to rejection only when a format value is present and contradictory. It does not change routes, hosts, title scoring, identity thresholds or terminal extraction.
+- This is Brain capability, not a manual provider fix. It remains unproven until generated from current bytes, published, applied/rematerialized by NiakVIO, and accepted by isolated movie + TV playable/identity validation.

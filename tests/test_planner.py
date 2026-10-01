@@ -5,7 +5,7 @@ import unittest
 from niakvio_brain_llm.backend import StaticBackend
 from niakvio_brain_llm.contracts import RepairRequest
 from niakvio_brain_llm.document_memory import DocumentStore
-from niakvio_brain_llm.planner import BrainPlanner, COMPACT_FORCE_SYSTEM_PROMPT, _compact_edit_to_mutation, _deterministic_class_text_boundary_mutation, _deterministic_structural_force_mutation, _resolve_structured_anchor
+from niakvio_brain_llm.planner import BrainPlanner, COMPACT_FORCE_SYSTEM_PROMPT, _compact_edit_to_mutation, _deterministic_class_text_boundary_mutation, _deterministic_optional_format_gate_mutation, _deterministic_structural_force_mutation, _resolve_structured_anchor
 from niakvio_brain_llm.prompting import _force_source_windows, build_force_prompt_payload
 
 class PlannerTests(unittest.TestCase):
@@ -405,6 +405,39 @@ function resolve(){return []}'''
         self.assertIn("function classText", second["diff"])
         self.assertIn("(?![-_])", second["diff"])
         self.assertNotIn("closeRe", second["diff"])
+
+
+
+    def test_deterministic_optional_format_gate_preserves_known_type_and_allows_missing_label(self):
+        runtime = r'''function classBlocks(html,cls){return []} function classText(html,cls){return ""} function anchors(html,b){return []} function scoreTitle(a,b){return 1} async function detail(q,m){var sr={text:"",url:"https://example.invalid/"},cards=classBlocks(sr.text,"movie-card"),best=null;for(var i=0;i<cards.length;i++){var card=cards[i],title=classText(card.html,"movie-card-title"),format=classText(card.html,"movie-card-format"),href="",aa=anchors(card.html,sr.url);if(!href&&aa.length)href=aa[0].url;if(!href)continue;if(q.type==="tv"&&!/series/i.test(format))continue;if(q.type==="movie"&&!/movies?/i.test(format))continue;var sc=scoreTitle(m.title,title);if(!best||sc>best.score)best={url:href,score:sc}}return best} function resolve(){return []}'''
+        request = RepairRequest(
+            provider_id="demo",
+            failure_class="route_proven_gap",
+            status="ROUTE PROVEN",
+            observations=[{
+                "source":"census-sharded-current",
+                "value":{"structureHints":[
+                    "movie:classes=movie-card,movie-card-format,movie-card-title;"
+                    "classFacts=[movie-card;count=12;selfHref=1;nestedAnchors=12;"
+                    "tags=a,div;signals=movie,series,year]"
+                ]},
+            }],
+            allowed_mutations=["provider_bloc"],
+            provider_context={
+                "runtimeMutationFilename":"providers/demo.js",
+                "runtimeMutationSource":runtime,
+                "preferredRuntimeMutationSource":runtime,
+            },
+        )
+        mutation = _deterministic_optional_format_gate_mutation(
+            request,
+            {"allow_mutations":True,"allowed_scopes":["provider_bloc"]},
+        )
+        self.assertIsNotNone(mutation)
+        self.assertEqual(mutation["family"], "optional_metadata_format_gate")
+        self.assertIn('q.type==="tv"&&format&&!/series/i.test(format)', mutation["replace"])
+        self.assertIn('q.type==="movie"&&format&&!/movies?/i.test(format)', mutation["replace"])
+        self.assertNotIn('q.type==="tv"&&!/series/i.test(format)', mutation["replace"])
 
 
     def test_class_text_progression_scans_beyond_compact_prompt_unit_budget(self):

@@ -1279,6 +1279,132 @@ def _deterministic_class_attribute_tokens_mutation(
     )
 
 
+
+def _deterministic_optional_format_gate_mutation(
+    request: RepairRequest,
+    mutation_policy: dict[str, Any],
+) -> dict[str, Any] | None:
+    """Make a search-result media-format guard fail-open only when metadata is absent.
+
+    Some catalogue pages retain the result card/title/href structure while the
+    optional format label is absent or no longer extractable. A hard format
+    guard then drops every otherwise valid identity candidate before any detail
+    request is attempted. This repair is network-neutral: it preserves the
+    existing movie/series check whenever a format value exists and changes no
+    routes, hosts, identity threshold or terminal-media logic.
+    """
+    focus_keywords = _force_structural_focus_keywords(request)
+    if not focus_keywords:
+        return None
+    allowed = {
+        str(scope)
+        for scope in mutation_policy.get("allowed_scopes") or request.allowed_mutations or []
+    }
+    if not ({"provider_patch", "provider_bloc"} & allowed):
+        return None
+    context = request.provider_context or {}
+    source_rows: list[tuple[str, str, str]] = []
+    sources = context.get("registered_patch_sources")
+    if "provider_patch" in allowed and isinstance(sources, dict):
+        source_rows.extend(
+            ("provider_patch", str(path), str(source_raw or ""))
+            for path, source_raw in sources.items()
+            if str(path) and str(source_raw or "")
+        )
+    if "provider_bloc" in allowed:
+        runtime_source = str(
+            context.get("preferredRuntimeMutationSource")
+            or context.get("runtimeMutationSource")
+            or ""
+        )
+        if runtime_source:
+            source_rows.append(("provider_bloc", "", runtime_source))
+
+    tv_guard = re.compile(
+        r'if\((?P<media>[A-Za-z_$][A-Za-z0-9_$]*)\.type==='
+        r'(?P<quote>["\'])tv(?P=quote)&&!/series/i\.test\('
+        r'(?P<format>[A-Za-z_$][A-Za-z0-9_$]*)\)\)continue;'
+    )
+    movie_guard = re.compile(
+        r'if\((?P<media>[A-Za-z_$][A-Za-z0-9_$]*)\.type==='
+        r'(?P<quote>["\'])movie(?P=quote)&&!/movies\?/i\.test\('
+        r'(?P<format>[A-Za-z_$][A-Za-z0-9_$]*)\)\)continue;'
+    )
+    candidates: list[tuple[str, str, str, dict[str, Any], str]] = []
+    for scope, path, source in source_rows:
+        units = _deterministic_complete_line_function_units(source)
+        for unit in units:
+            if str(unit.get("kind") or "") != "function_unit":
+                continue
+            unit_source = str(unit.get("source") or "")
+            signature = re.match(
+                r"(?s)^\s*(?:async\s+)?function\s+[A-Za-z_$][A-Za-z0-9_$]*"
+                r"\s*\([^)]*\)\s*\{(?P<body>.*)\}\s*$",
+                unit_source,
+            )
+            if not signature:
+                continue
+            body = str(signature.group("body") or "")
+            if not all(token in body for token in ("classBlocks(", "classText(", "anchors(", "scoreTitle(")):
+                continue
+            tv = tv_guard.search(body)
+            movie = movie_guard.search(body)
+            if not tv or not movie:
+                continue
+            if tv.group("media") != movie.group("media") or tv.group("format") != movie.group("format"):
+                continue
+            format_var = tv.group("format")
+            if not re.search(rf"\b{re.escape(format_var)}\s*=\s*classText\(", body):
+                continue
+            replacement_body = body
+            replacement_body = replacement_body.replace(
+                tv.group(0),
+                tv.group(0).replace("&&!", f"&&{format_var}&&!", 1),
+                1,
+            )
+            replacement_body = replacement_body.replace(
+                movie.group(0),
+                movie.group(0).replace("&&!", f"&&{format_var}&&!", 1),
+                1,
+            )
+            if replacement_body == body:
+                continue
+            candidates.append((scope, path, source, unit, replacement_body))
+
+    if len(candidates) > 1:
+        groups: dict[tuple[str, str], list[tuple[str, str, str, dict[str, Any], str]]] = {}
+        for candidate in candidates:
+            key = (str(candidate[3].get("source") or ""), candidate[4])
+            groups.setdefault(key, []).append(candidate)
+        if len(groups) == 1:
+            same = next(iter(groups.values()))
+            candidates = [
+                next(
+                    (candidate for candidate in same if candidate[0] == "provider_patch"),
+                    same[0],
+                )
+            ]
+    if len(candidates) != 1:
+        return None
+
+    scope, path, source, unit, replacement_body = candidates[0]
+    if scope == "provider_patch":
+        return _deterministic_exact_function_mutation(
+            request,
+            path=path,
+            source=source,
+            unit=unit,
+            replacement_body=replacement_body,
+        )
+    return _deterministic_exact_bloc_function_mutation(
+        request,
+        source=source,
+        unit=unit,
+        replacement_body=replacement_body,
+        family="optional_metadata_format_gate",
+    )
+
+
 def _deterministic_structural_force_mutation(
     request: RepairRequest,
     mutation_policy: dict[str, Any],
@@ -1506,12 +1632,43 @@ def _deterministic_structural_force_mutation(
                     "reason=executed-negative-memory mechanism=exact_class_attribute_tokens",
                     flush=True,
                 )
+            else:
+                return token_mutation
+        else:
+            print(
+                "FIELD_BRAIN_FORCE_DETERMINISTIC_NEXT_MISSING "
+                f"provider={request.provider_id} mechanism=exact_class_attribute_tokens "
+                f"after_class_text_blocked={str(class_text_blocked).lower()}",
+                flush=True,
+            )
+
+        try:
+            format_gate_mutation = _deterministic_optional_format_gate_mutation(
+                request,
+                mutation_policy,
+            )
+        except ValueError as exc:
+            detail = re.sub(r"\s+", " ", str(exc or "ValueError")).strip()[:280]
+            print(
+                "FIELD_BRAIN_FORCE_DETERMINISTIC_NEXT_ERROR "
+                f"provider={request.provider_id} mechanism=optional_metadata_format_gate "
+                f"error=ValueError detail={detail}",
+                flush=True,
+            )
+            raise
+        if isinstance(format_gate_mutation, dict):
+            if _force_memory_blocks_mutation(request, format_gate_mutation):
+                print(
+                    "FIELD_BRAIN_FORCE_DETERMINISTIC_BLOCKED "
+                    f"provider={request.provider_id} scope={format_gate_mutation.get('scope')} "
+                    "reason=executed-negative-memory mechanism=optional_metadata_format_gate",
+                    flush=True,
+                )
                 return None
-            return token_mutation
+            return format_gate_mutation
         print(
             "FIELD_BRAIN_FORCE_DETERMINISTIC_NEXT_MISSING "
-            f"provider={request.provider_id} mechanism=exact_class_attribute_tokens "
-            f"after_class_text_blocked={str(class_text_blocked).lower()}",
+            f"provider={request.provider_id} mechanism=optional_metadata_format_gate",
             flush=True,
         )
         return None
@@ -1624,6 +1781,8 @@ def _force_mutation_mechanism(mutation: dict[str, Any] | None) -> str:
         return "exact-class-text-token-boundary"
     if "(?![-_])" in diff:
         return "exact-class-token-boundary"
+    if "/series/i.test(" in diff and "/movies?/i.test(" in diff and "&&!" in diff:
+        return "optional-metadata-format-gate"
     return ""
 
 
