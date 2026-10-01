@@ -768,3 +768,12 @@
 - Brain CI run `36798005400` is **SUCCESS** on `6270d1a9aeee37782d7c75c25ad8b3d774b7920d`, including the full unit suite and public-repository privacy audit.
 - No provider repair is claimed yet. Next proof remains a frozen single-provider 4KHDHub Advisor replay on this green Brain SHA, then NiakVIO isolated current-byte sandbox/playback/identity/non-regression if a new executable mutation is emitted.
 
+
+
+## 2026-10-01 — Same-run FORCE portfolio budget and feedback closure
+
+- Brain guidance run `36847662221` (#219, Brain `f15037022350affcd56964cae6e1e32e604da400`) proved that 4KHDHub's first deterministic candidate `exact_class_attribute_tokens` was generated immediately, but the requested four-candidate one-shot portfolio collapsed to one published candidate. Candidate 2 spent a 180 s model timeout, then returned a local no-op and consumed another validation timeout; candidate 3 repeated the same no-op/invalid-output path until the shared 600 s provider budget expired, so candidate 4 never started.
+- NiakVIO Repair V6 run `36849661755` executed candidate fingerprint `a21eaa643f0c0df30a14cffe8bbb7d3bef3258ea9217de595565902b189eb974` on exact current 4KHDHub bytes, applied and rematerialized the provider, then reproduced `no_streams` on 8 fixtures with 0 streams and 0 runtime errors. The candidate is therefore real executed-negative evidence, not a propagation or harness failure, and is persisted in `automation/brain-llm-force-memory.json`.
+- The Brain batch orchestrator now divides the remaining provider wall-clock budget across the remaining hypothesis slots, so one failed candidate cannot consume the time reserved for candidates 3/4. After a same-run candidate has been reserved, provider-Bloc model/validation calls use tighter <=90 s bounds and one validation correction.
+- A transport timeout during validation correction no longer overwrites the underlying local rejection such as `no_op`, syntax or window mismatch. That causal rejection is carried into the next hypothesis as focused same-run feedback, while prior portfolio reservations and current census/targeted evidence are retained.
+- Portfolio continuation is no longer limited to retryable transport errors: bounded local validation rejection or abstention can advance to the next causally distinct hypothesis. This is a Brain/pipeline correction only; it does not claim 4KHDHub repaired. Production proof still requires Brain-produced candidate(s) to pass NiakVIO current-byte movie + TV playable/identity validation.

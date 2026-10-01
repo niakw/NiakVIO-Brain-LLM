@@ -391,6 +391,12 @@ def main() -> int:
         scoped_request = copy.deepcopy(base_request)
         scoped_request.advisor_only = False
         scoped_request.allowed_mutations = [scope]
+        portfolio_reserved = any(
+            isinstance(observation, dict)
+            and str(observation.get("source") or "") == "brain-force-portfolio-reservation"
+            and bool(observation.get("value"))
+            for observation in (base_request.observations or [])
+        )
 
         scope_token_cap = {
             "provider_data": 192,
@@ -408,17 +414,22 @@ def main() -> int:
         retry_tokens = max(128, min(int(args.max_tokens), recovery_token_cap))
         validation_timeout = max(
             60,
-            min(int(args.timeout_seconds), 150 if scope == "provider_bloc" else 90),
+            min(
+                int(args.timeout_seconds),
+                (90 if portfolio_reserved else 150) if scope == "provider_bloc" else 90,
+            ),
         )
         primary_timeout = max(
             45,
-            min(int(args.timeout_seconds), 180),
+            min(int(args.timeout_seconds), 90 if portfolio_reserved else 180),
         )
         transport_timeout = max(
-            90,
-            min(int(args.timeout_seconds), 180),
+            60 if portfolio_reserved else 90,
+            min(int(args.timeout_seconds), 90 if portfolio_reserved else 180),
         )
-        max_validation_corrections = 3 if scope == "provider_bloc" else 1
+        max_validation_corrections = (
+            1 if portfolio_reserved else (3 if scope == "provider_bloc" else 1)
+        )
 
         def _remaining_timeout(desired: int) -> int:
             remaining = force_deadline - time.monotonic()
@@ -570,7 +581,16 @@ def main() -> int:
                         return None, validation_exc
                     continue
                 except Exception as retry_exc:
-                    return None, retry_exc
+                    print(
+                        "FIELD_BRAIN_FORCE_SCOPE_RETRY_ERROR "
+                        f"provider={provider} scope={scope} error={type(retry_exc).__name__} "
+                        f"preserving_validation_reason={_force_rejection_reason(current_exc)}",
+                        flush=True,
+                    )
+                    # A transport timeout while correcting an already-invalid edit
+                    # must not erase the causal local rejection. The next portfolio
+                    # hypothesis needs the no-op/syntax/window reason to diversify.
+                    return None, current_exc
             return None, current_exc
 
         try:
@@ -664,23 +684,82 @@ def main() -> int:
             terminal_error: Exception | None = None
             terminal_trace: list[dict[str, object]] = []
 
+            def _carry_force_portfolio_feedback(
+                reason: str,
+                candidate_index: int,
+                scope_trace: list[dict[str, object]],
+            ) -> None:
+                feedback = {
+                    "stage": "force_validation_feedback",
+                    "source": "brain-force-portfolio-rejection",
+                    "reason": str(reason or "rejected")[:120],
+                    "correction_index": 0,
+                    "portfolio_candidate_index": candidate_index,
+                    "instruction": (
+                        "previous same-run candidate did not yield an executable distinct mutation; "
+                        "produce one materially different minimal causal edit, do not repeat reserved "
+                        "mechanisms/fingerprints, and abstain rather than emit a no-op"
+                    ),
+                    "scope_trace": copy.deepcopy(scope_trace[-4:]),
+                }
+                retained = [
+                    copy.deepcopy(row)
+                    for row in (request.observations or [])
+                    if isinstance(row, dict)
+                    and str(row.get("stage") or "") != "force_validation_feedback"
+                    and (
+                        str(row.get("source") or "").strip().casefold()
+                        in {
+                            "census_current",
+                            "census-sharded-current",
+                            "targeted-regression-current",
+                            "brain-force-portfolio-reservation",
+                        }
+                    )
+                ][:12]
+                request.observations = [feedback, *retained]
+                print(
+                    "FIELD_BRAIN_FORCE_PORTFOLIO_FEEDBACK "
+                    f"provider={provider} after_index={candidate_index} reason={reason or 'rejected'}",
+                    flush=True,
+                )
+
             for candidate_index in range(1, max_hypotheses + 1):
+                remaining_candidates = max(1, max_hypotheses - candidate_index + 1)
+                now = time.monotonic()
+                remaining_provider_seconds = max(0.0, force_deadline - now)
+                candidate_budget_seconds = (
+                    remaining_provider_seconds / remaining_candidates
+                    if remaining_provider_seconds > 0
+                    else 0.0
+                )
+                candidate_deadline = min(
+                    force_deadline,
+                    now + max(5.0, candidate_budget_seconds),
+                )
+                print(
+                    "FIELD_BRAIN_FORCE_CANDIDATE_BUDGET "
+                    f"provider={provider} index={candidate_index}/{max_hypotheses} "
+                    f"seconds={max(0.0, candidate_deadline - now):.1f} "
+                    f"provider_remaining={remaining_provider_seconds:.1f}",
+                    flush=True,
+                )
                 last_error: Exception | None = None
                 last_row: dict | None = None
                 scope_trace: list[dict[str, object]] = []
                 selected_row: dict | None = None
 
                 for scope in scopes:
-                    if time.monotonic() >= force_deadline:
-                        last_error = TimeoutError("force provider budget exhausted")
+                    if time.monotonic() >= candidate_deadline:
+                        last_error = TimeoutError("force candidate budget exhausted")
                         scope_trace.append({
                             "scope": scope,
                             "outcome": "budget_exhausted",
-                            "reason": "provider_budget_exhausted",
+                            "reason": "candidate_budget_exhausted",
                         })
                         print(
-                            "FIELD_BRAIN_FORCE_PROVIDER_BUDGET_EXHAUSTED "
-                            f"provider={provider} budget_seconds={budget_seconds} "
+                            "FIELD_BRAIN_FORCE_CANDIDATE_BUDGET_EXHAUSTED "
+                            f"provider={provider} index={candidate_index}/{max_hypotheses} "
                             f"portfolio_generated={len(planned)}",
                             flush=True,
                         )
@@ -691,7 +770,7 @@ def main() -> int:
                         provider,
                         request,
                         scope,
-                        force_deadline,
+                        candidate_deadline,
                     )
                     if error is not None:
                         last_error = error
@@ -756,15 +835,20 @@ def main() -> int:
                         last_row["hypothesis_index"] = candidate_index
                         last_row["force_scope_trace"] = copy.deepcopy(scope_trace)
                         planned.append(last_row)
-                    if (
-                        candidate_index < max_hypotheses
-                        and last_error is not None
-                        and _retryable_force_error(last_error)
-                        and time.monotonic() < force_deadline
-                    ):
+                    if candidate_index < max_hypotheses and time.monotonic() < force_deadline:
+                        continuation_reason = (
+                            _force_rejection_reason(last_error)
+                            if last_error is not None
+                            else "abstain"
+                        )
+                        _carry_force_portfolio_feedback(
+                            continuation_reason,
+                            candidate_index,
+                            scope_trace,
+                        )
                         print(
                             "FIELD_BRAIN_FORCE_PORTFOLIO_CONTINUE "
-                            f"provider={provider} after={type(last_error).__name__} "
+                            f"provider={provider} after={continuation_reason} "
                             f"next_index={candidate_index + 1}/{max_hypotheses}",
                             flush=True,
                         )

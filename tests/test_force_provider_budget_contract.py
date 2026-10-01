@@ -10,6 +10,13 @@ assert 'exact_runtime_template = bool(' in batch
 assert 'portfolio={max_hypotheses}' in batch
 assert 'FIELD_BRAIN_FORCE_PORTFOLIO_READY' in batch
 assert 'FIELD_BRAIN_FORCE_PORTFOLIO_RESERVED' in batch
+assert 'FIELD_BRAIN_FORCE_CANDIDATE_BUDGET' in batch
+assert 'FIELD_BRAIN_FORCE_CANDIDATE_BUDGET_EXHAUSTED' in batch
+assert 'remaining_candidates = max(1, max_hypotheses - candidate_index + 1)' in batch
+assert 'candidate_deadline = min(' in batch
+assert 'FIELD_BRAIN_FORCE_PORTFOLIO_FEEDBACK' in batch
+assert 'brain-force-portfolio-rejection' in batch
+assert '90 if portfolio_reserved else 180' in batch
 assert 'failure_key == "provider_transport_gap"' in batch
 assert 'budget_seconds = min(budget_cap, 300)' in batch
 assert 'failure_key == "transport_environment_gap"' in batch
