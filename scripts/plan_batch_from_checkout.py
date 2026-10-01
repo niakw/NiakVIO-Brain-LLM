@@ -338,7 +338,12 @@ def main() -> int:
         )
 
         structural_gap = (
-            failure_key in {"route_proven_gap", "chain_terminal_gap", "media_extraction_gap"}
+            failure_key in {
+                "route_proven_gap",
+                "chain_terminal_gap",
+                "media_extraction_gap",
+                "variant_coverage_gap",
+            }
             or str(request.status or "").strip().upper() in {"ROUTE PROVEN", "CHAIN REACHED"}
         )
 
@@ -680,7 +685,12 @@ def main() -> int:
             if (
                 exact_runtime_template
                 and (
-                    failure_key in {"chain_terminal_gap", "media_extraction_gap", "route_proven_gap"}
+                    failure_key in {
+                        "chain_terminal_gap",
+                        "media_extraction_gap",
+                        "route_proven_gap",
+                        "variant_coverage_gap",
+                    }
                     or status_key in {"CHAIN REACHED", "ROUTE PROVEN"}
                 )
             ):
@@ -764,11 +774,29 @@ def main() -> int:
                 remaining_candidates = max(1, max_hypotheses - candidate_index + 1)
                 now = time.monotonic()
                 remaining_provider_seconds = max(0.0, force_deadline - now)
-                candidate_budget_seconds = (
-                    remaining_provider_seconds / remaining_candidates
-                    if remaining_provider_seconds > 0
-                    else 0.0
-                )
+                # Do not starve the first real synthesis merely because a
+                # multi-hypothesis portfolio is allowed. Before any executable
+                # candidate exists, reserve only a small bounded tail for later
+                # hypotheses and give the current candidate enough time to
+                # complete one 7B provider_bloc call. Once a mutation has been
+                # reserved, the existing speculative fast-fail path keeps later
+                # hypotheses cheap.
+                if remaining_provider_seconds <= 0:
+                    candidate_budget_seconds = 0.0
+                elif not planned:
+                    future_reserve = max(0, remaining_candidates - 1) * 45.0
+                    candidate_budget_seconds = min(
+                        180.0,
+                        remaining_provider_seconds,
+                        max(
+                            90.0,
+                            remaining_provider_seconds - future_reserve,
+                        ),
+                    )
+                else:
+                    candidate_budget_seconds = (
+                        remaining_provider_seconds / remaining_candidates
+                    )
                 candidate_deadline = min(
                     force_deadline,
                     now + max(5.0, candidate_budget_seconds),
