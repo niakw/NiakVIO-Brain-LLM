@@ -907,7 +907,10 @@ def _force_memory_blocks_mutation(
         ])
 
     for observation in request.observations or []:
-        if not isinstance(observation, dict) or str(observation.get("source") or "") != "brain-force-sandbox-memory":
+        if not isinstance(observation, dict):
+            continue
+        source = str(observation.get("source") or "")
+        if source not in {"brain-force-sandbox-memory", "brain-force-portfolio-reservation"}:
             continue
         rows = observation.get("value")
         if not isinstance(rows, list):
@@ -915,10 +918,13 @@ def _force_memory_blocks_mutation(
         for row in rows:
             if not isinstance(row, dict):
                 continue
-            if (
-                str(row.get("mutationFingerprint") or "").strip().casefold() != mutation_fp
-                or int(row.get("consecutiveFailures") or 0) <= 0
-            ):
+            if str(row.get("mutationFingerprint") or "").strip().casefold() != mutation_fp:
+                continue
+            if source == "brain-force-portfolio-reservation":
+                # Same-run portfolio candidates are not failures; they are only
+                # reserved so later hypotheses must be causally distinct.
+                return True
+            if int(row.get("consecutiveFailures") or 0) <= 0:
                 continue
             if scope == "provider_bloc":
                 return True
