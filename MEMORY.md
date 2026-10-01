@@ -758,3 +758,13 @@
 - Regression development exposed and fixed an over-escaped Python regex in the new full-source scanner itself. Final Brain CI run `36795452244` (#1240) is SUCCESS on `726bee69078d552c5e55825660e84021cffac4ea`, including unit tests and public-repository privacy audit.
 - No provider repair is claimed from this Brain change. Next authoritative proof is a fresh family-wave against exact NiakVIO 5.21.90, followed by NiakVIO isolated current-byte sandbox/playback/identity/non-regression if a new executable mutation is emitted.
 
+## 2026-10-01 — 4KHDHub witness #212 exposed selector/container ambiguity; deterministic progression disambiguated
+
+- Private-Guided Advisor run `36797012326` (#212) used Brain `0a63804bbddb258fa69aea473d17df690cc62c94` against exact NiakVIO `a9eee1bda5b95e1c0bf10e9194e31e9808a48b7c` / 5.21.90 with **4KHDHub as the only witness**. It still published 0 executable mutations.
+- Negative memory worked: the already executed/rejected structural provider-Bloc mutation was blocked. However deterministic progression again logged `FIELD_BRAIN_FORCE_DETERMINISTIC_NEXT_MISSING ... mechanism=class_text_boundary`, then fell back to Qwen 7B and timed out at ~180 s plus a ~58 s retry.
+- Root cause was not missing current bytes. The full-source scanner now sees both one-line helpers, but both `classText()` and `classBlocks()` satisfy the generic class-selector signature (class parameter + `.replace()` + `class=`). The progression required a unique candidate, so the valid text selector was rejected as ambiguous with the already-treated container/list extractor.
+- `_deterministic_class_text_boundary_mutation()` now excludes clearly container/list-oriented helpers when compiling the **text-boundary** progression: bounded generic signals are `starts=[]`, `starts[i+1].at`, or `out.push({html:`). This is provider-independent and prevents retrying a container extraction mechanism as a text-selector repair.
+- Regression coverage uses separate one-line `classText` and `classBlocks` helpers and proves that only the changed `classText` lines receive the negative-lookahead boundary while `classBlocks` remains context-only.
+- Brain CI run `36798005400` is **SUCCESS** on `6270d1a9aeee37782d7c75c25ad8b3d774b7920d`, including the full unit suite and public-repository privacy audit.
+- No provider repair is claimed yet. Next proof remains a frozen single-provider 4KHDHub Advisor replay on this green Brain SHA, then NiakVIO isolated current-byte sandbox/playback/identity/non-regression if a new executable mutation is emitted.
+
