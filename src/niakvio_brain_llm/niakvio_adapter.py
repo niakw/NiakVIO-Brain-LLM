@@ -611,7 +611,16 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
             row = candidate
             break
 
+    provider_context = build_provider_context(root, provider_id)
     failure = classify_census_failure(row)
+    coverage = (
+        provider_context.get("runtime_variant_coverage")
+        if isinstance(provider_context.get("runtime_variant_coverage"), dict)
+        else {}
+    )
+    status_key = _canon(row.get("status")).replace("_", " ")
+    if coverage.get("risk") == "high" and status_key in {"full ok", "partial ok"}:
+        failure = "variant_coverage_gap"
 
     provider_experience: list[Any] = []
     if isinstance(experience, dict):
@@ -773,7 +782,6 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
         "harnessTransportEvidence": row.get("harnessTransportEvidence") or [],
     }
 
-    provider_context = build_provider_context(root, provider_id)
     route_contract = (
         dict(provider_context.get("route_contract"))
         if isinstance(provider_context.get("route_contract"), dict)
@@ -808,6 +816,10 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
         census_prior=census_prior,
         observations=[
             {"source": "census_current", "value": census_prior},
+            *(
+                [{"source": "runtime-variant-coverage-current", "value": coverage}]
+                if coverage else []
+            ),
             *(
                 [{"source": "targeted-regression-current", "value": targeted_observation}]
                 if targeted_observation else []
