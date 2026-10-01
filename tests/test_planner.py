@@ -169,8 +169,8 @@ class PlannerTests(unittest.TestCase):
         self.assertIn("closeRe", mutation["diff"])
 
     def test_deterministic_negative_memory_blocks_identical_provider_bloc(self):
-        runtime = r'''function classBlocks(html,cls){var esc=cls.replace(/[-/\\^$*+?.()|[\]{}]/g,"\\    def test_deterministic_negative_memory_advances_to_class_text_boundary(self):
-"),re=new RegExp("<(?:div|article|li|a)\\b[^>]*class=[\"'][^\"']*\\b"+esc+"\\b[^\"']*[\"'][^>]*>","gi"),starts=[],m;while((m=re.exec(html||""))!==null)starts.push({at:m.index,tag:m[0]});var out=[];for(var i=0;i<starts.length;i++){var end=i+1<starts.length?starts[i+1].at:Math.min(String(html||"").length,starts[i].at+12000);out.push({html:String(html||"").slice(starts[i].at,end),tag:starts[i].tag})}return out} async function resolve(args){return []}'''
+        runtime = r'''function classBlocks(html,cls){var esc=cls.replace(/[-/\\^$*+?.()|[\]{}]/g,"\\cls.replace(/[-/\\^$*+?.()|[\]{}]/g,"\\    def test_deterministic_negative_memory_advances_to_class_text_boundary(self):
+")"),re=new RegExp("<(?:div|article|li|a)\\b[^>]*class=[\"'][^\"']*\\b"+esc+"\\b[^\"']*[\"'][^>]*>","gi"),starts=[],m;while((m=re.exec(html||""))!==null)starts.push({at:m.index,tag:m[0]});var out=[];for(var i=0;i<starts.length;i++){var end=i+1<starts.length?starts[i+1].at:Math.min(String(html||"").length,starts[i].at+12000);out.push({html:String(html||"").slice(starts[i].at,end),tag:starts[i].tag})}return out} async function resolve(args){return []}'''
         observations = [{
             "source":"census-sharded-current",
             "value":{"structureHints":[
@@ -217,11 +217,42 @@ class PlannerTests(unittest.TestCase):
         second = _deterministic_structural_force_mutation(second_request, policy)
         self.assertIsNone(second)
 
+    def test_class_text_progression_ignores_linewise_container_helper(self):
+        runtime = r'''function classText(html,cls){var re=new RegExp("class="+cls.replace(/x/g,"x")+"\\b");return re.test(html)?"x":""}
+function classBlocks(html,cls){var re=new RegExp("class="+cls.replace(/x/g,"x")+"\\b"),starts=[],m,out=[];while((m=re.exec(html||""))!==null){starts.push({at:m.index})}for(var i=0;i<starts.length;i++){var end=i+1<starts.length?starts[i+1].at:String(html||"").length;out.push({html:String(html||"").slice(starts[i].at,end)})}return out}
+function resolve(){return []}'''
+        path = "scripts/provider_patches/demo_runtime_v1.py"
+        patch = 'WRAPPER = r"""' + runtime + '"""\n'
+        request = RepairRequest(
+            provider_id="demo",
+            failure_class="route_proven_gap",
+            status="ROUTE PROVEN",
+            observations=[{
+                "source":"targeted-regression-current",
+                "value":{"structureHints":[
+                    "movie:classes=movie-card,movie-card-format,movie-card-content"
+                ]},
+            }],
+            allowed_mutations=["provider_patch"],
+            provider_context={"registered_patch_sources": {path: patch}},
+        )
+        mutation = _deterministic_class_text_boundary_mutation(
+            request,
+            {"allow_mutations": True, "allowed_scopes": ["provider_patch"]},
+        )
+        self.assertIsNotNone(mutation)
+        self.assertIn("function classText", mutation["diff"])
+        changed = [
+            line for line in mutation["diff"].splitlines()
+            if line[:1] in {"+", "-"} and not line.startswith(("+++", "---"))
+        ]
+        self.assertTrue(changed)
+        self.assertTrue(all("function classBlocks" not in line for line in changed))
+        self.assertIn("(?![-_])", mutation["diff"])
+
     def test_provider_bloc_negative_memory_advances_to_class_text_boundary(self):
-        runtime = r'''function classText(html,cls){var re=new RegExp("<span\\b[^>]*class=[\"'][^\"']*\\b"+cls.replace(/[-/\\^$*+?.()|[\]{}]/g,"\\    def test_class_text_progression_ignores_linewise_container_helper(self):
-")+"\\b[^\"']*[\"'][^>]*>","i");return re.test(html)?"x":""}
-function classBlocks(html,cls){var esc=cls.replace(/[-/\\^$*+?.()|[\]{}]/g,"\\    def test_class_text_progression_ignores_linewise_container_helper(self):
-"),re=new RegExp("<(?:div|article|li|a)\\b[^>]*class=[\"'][^\"']*\\b"+esc+"\\b[^\"']*[\"'][^>]*>","gi"),starts=[],m;while((m=re.exec(html||""))!==null)starts.push({at:m.index,tag:m[0]});var out=[];for(var i=0;i<starts.length;i++){var end=i+1<starts.length?starts[i+1].at:Math.min(String(html||"").length,starts[i].at+12000);out.push({html:String(html||"").slice(starts[i].at,end),tag:starts[i].tag})}return out}
+        runtime = r'''function classText(html,cls){var re=new RegExp("<span\\b[^>]*class=[\"'][^\"']*\\b"+cls.replace(/[-/\\^$*+?.()|[\]{}]/g,"\\$&")+"\\b[^\"']*[\"'][^>]*>","i");return re.test(html)?"x":""}
+function classBlocks(html,cls){var esc=cls.replace(/[-/\\^$*+?.()|[\]{}]/g,"\\$&"),re=new RegExp("<(?:div|article|li|a)\\b[^>]*class=[\"'][^\"']*\\b"+esc+"\\b[^\"']*[\"'][^>]*>","gi"),starts=[],m;while((m=re.exec(html||""))!==null)starts.push({at:m.index,tag:m[0]});var out=[];for(var i=0;i<starts.length;i++){var end=i+1<starts.length?starts[i+1].at:Math.min(String(html||"").length,starts[i].at+12000);out.push({html:String(html||"").slice(starts[i].at,end),tag:starts[i].tag})}return out}
 function resolve(){return []}'''
         evidence = [{
             "source":"census-sharded-current",
@@ -274,39 +305,6 @@ function resolve(){return []}'''
         self.assertEqual(second["family"], "class_text_boundary")
         self.assertIn("(?![-_])", second["replace"])
         self.assertNotIn("starts[i+1].at", second["replace"])
-
-    def test_class_text_progression_ignores_linewise_container_helper(self):
-        runtime = r'''function classText(html,cls){var re=new RegExp("class="+cls.replace(/x/g,"x")+"\\b");return re.test(html)?"x":""}
-function classBlocks(html,cls){var re=new RegExp("class="+cls.replace(/x/g,"x")+"\\b"),starts=[],m,out=[];while((m=re.exec(html||""))!==null){starts.push({at:m.index})}for(var i=0;i<starts.length;i++){var end=i+1<starts.length?starts[i+1].at:String(html||"").length;out.push({html:String(html||"").slice(starts[i].at,end)})}return out}
-function resolve(){return []}'''
-        path = "scripts/provider_patches/demo_runtime_v1.py"
-        patch = 'WRAPPER = r"""' + runtime + '"""\n'
-        request = RepairRequest(
-            provider_id="demo",
-            failure_class="route_proven_gap",
-            status="ROUTE PROVEN",
-            observations=[{
-                "source":"targeted-regression-current",
-                "value":{"structureHints":[
-                    "movie:classes=movie-card,movie-card-format,movie-card-content"
-                ]},
-            }],
-            allowed_mutations=["provider_patch"],
-            provider_context={"registered_patch_sources": {path: patch}},
-        )
-        mutation = _deterministic_class_text_boundary_mutation(
-            request,
-            {"allow_mutations": True, "allowed_scopes": ["provider_patch"]},
-        )
-        self.assertIsNotNone(mutation)
-        self.assertIn("function classText", mutation["diff"])
-        changed = [
-            line for line in mutation["diff"].splitlines()
-            if line[:1] in {"+", "-"} and not line.startswith(("+++", "---"))
-        ]
-        self.assertTrue(changed)
-        self.assertTrue(all("function classBlocks" not in line for line in changed))
-        self.assertIn("(?![-_])", mutation["diff"])
 
     def test_deterministic_negative_memory_advances_to_class_text_boundary(self):
         runtime = r'''function classText(html,cls){var re=new RegExp("<[a-z0-9]+\\b[^>]*class=[\"'][^\"']*\\b"+cls.replace(/[-/\\^$*+?.()|[\]{}]/g,"\\$&")+"\\b[^\"']*[\"'][^>]*>([\\s\\S]*?)<\\/[a-z0-9]+>","i"),m=re.exec(html||"");return m?m[1]:""} function classBlocks(html,cls){var esc=cls.replace(/[-/\\^$*+?.()|[\]{}]/g,"\\$&"),re=new RegExp("<(?:div|article|li|a)\\b[^>]*class=[\"'][^\"']*\\b"+esc+"\\b[^\"']*[\"'][^>]*>","gi"),starts=[],m;while((m=re.exec(html||""))!==null)starts.push({at:m.index,tag:m[0]});var out=[];for(var i=0;i<starts.length;i++){var end=i+1<starts.length?starts[i+1].at:Math.min(String(html||"").length,starts[i].at+12000);out.push({html:String(html||"").slice(starts[i].at,end),tag:starts[i].tag})}return out} async function resolve(args){return []}'''
