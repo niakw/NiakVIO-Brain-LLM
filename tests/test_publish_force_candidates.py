@@ -85,14 +85,24 @@ class ForceCandidatePublicationTests(unittest.TestCase):
         self.assertEqual(second["providerCount"], 0)
         self.assertEqual(second["rows"], [])
 
-    def test_multiple_concrete_candidates_require_isolated_sandbox(self):
-        with self.assertRaisesRegex(ValueError, "isolated candidate sandboxing"):
-            mod.sanitize(
-                [self.row("candidate-a"), self.row("candidate-b")],
-                niakvio_root=ROOT,
-                niakvio_sha="a" * 40,
-                brain_llm_sha="b" * 40,
-            )
+    def test_multiple_concrete_candidates_publish_as_ordered_portfolio(self):
+        first = self.row("candidate-a")
+        first["hypothesis_index"] = 1
+        second = self.row("candidate-b")
+        second["hypothesis_index"] = 2
+        out = mod.sanitize(
+            [first, second],
+            niakvio_root=ROOT,
+            niakvio_sha="a" * 40,
+            brain_llm_sha="b" * 40,
+        )
+        self.assertEqual(out["providerCount"], 1)
+        self.assertEqual(len(out["rows"]), 2)
+        self.assertEqual([row["candidateOrdinal"] for row in out["rows"]], [1, 2])
+        self.assertNotEqual(
+            out["rows"][0]["mutationFingerprint"],
+            out["rows"][1]["mutationFingerprint"],
+        )
 
 
 if __name__ == "__main__":
