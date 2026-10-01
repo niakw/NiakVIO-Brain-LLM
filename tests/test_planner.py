@@ -222,7 +222,7 @@ class PlannerTests(unittest.TestCase):
 function classBlocks(html,cls){var re=new RegExp("class="+cls.replace(/x/g,"x")+"\\b"),starts=[],m,out=[];while((m=re.exec(html||""))!==null){starts.push({at:m.index})}for(var i=0;i<starts.length;i++){var end=i+1<starts.length?starts[i+1].at:String(html||"").length;out.push({html:String(html||"").slice(starts[i].at,end)})}return out}
 function resolve(){return []}'''
         path = "scripts/provider_patches/demo_runtime_v1.py"
-        patch = 'WRAPPER = r"""' + runtime + '"""\\n'
+        patch = 'WRAPPER = r"""' + runtime + '"""\n'
         request = RepairRequest(
             provider_id="demo",
             failure_class="route_proven_gap",
