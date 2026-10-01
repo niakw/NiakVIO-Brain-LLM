@@ -169,6 +169,8 @@ def repair_family_descriptor(value: Any) -> dict[str, Any]:
     # per provider.
     if structural:
         mechanism_archetype = "dom-selector-container"
+    elif failure == "variant-coverage-gap":
+        mechanism_archetype = "variant-coverage"
     elif failure in {"chain-terminal-gap", "media-extraction-gap"}:
         mechanism_archetype = "terminal-extraction"
     elif failure in {"route-proven-gap", "candidate-replay-gap"}:
