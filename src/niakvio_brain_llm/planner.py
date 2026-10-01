@@ -761,6 +761,58 @@ def _deterministic_exact_function_mutation(
     }
 
 
+def _deterministic_exact_bloc_function_mutation(
+    request: RepairRequest,
+    *,
+    source: str,
+    unit: dict[str, Any],
+    replacement_body: str,
+    family: str,
+) -> dict[str, Any]:
+    """Compile one exact current-runtime function into a provider_bloc mutation."""
+    if str(unit.get("kind") or "") != "function_unit":
+        raise ValueError("deterministic Force exact Bloc unit is not a function")
+    find = str(unit.get("source") or "")
+    offset = int(unit.get("offset") or -1)
+    family = str(family or "").strip().casefold().replace("-", "_")
+    if not family or not find or offset < 0:
+        raise ValueError("deterministic Force exact Bloc metadata is incomplete")
+    if len(find) > 1800 or len(str(replacement_body or "")) > 1800:
+        raise ValueError("deterministic Force exact Bloc function is oversized")
+    if source[offset:offset + len(find)] != find:
+        raise ValueError("deterministic Force exact Bloc unit drifted from current bytes")
+    if source.count(find) != 1:
+        raise ValueError("deterministic Force exact Bloc function anchor is not unique")
+
+    _reject_causally_empty_deletion(request.failure_class, find, replacement_body)
+    replace = _preserve_selected_function_envelope(
+        find,
+        replacement_body,
+        normalize_explicit_wrapper=True,
+    )
+    _reject_removed_live_binding(source, offset, find, replace)
+    anchor_find, anchor_replace = _resolve_structured_anchor(
+        source,
+        request.failure_class,
+        "",
+        find,
+        replace,
+        max_find=1800,
+        max_replace=1800,
+        absolute_start_hint=offset,
+        allow_new_helpers=True,
+    )
+    updated = source.replace(anchor_find, anchor_replace, 1)
+    _node_check_javascript(updated)
+    return {
+        "scope": "provider_bloc",
+        "operation": "upsert",
+        "family": family,
+        "find": anchor_find,
+        "replace": anchor_replace,
+    }
+
+
 def _mixed_nested_class_container_evidence(
     request: RepairRequest,
     focus_keywords: tuple[str, ...],
@@ -910,7 +962,13 @@ def _deterministic_class_text_boundary_mutation(
     request: RepairRequest,
     mutation_policy: dict[str, Any],
 ) -> dict[str, Any] | None:
-    """Return the next exact class-selector repair after a failed container fix."""
+    """Return the next exact class-selector repair after a failed container fix.
+
+    The progression is surface-neutral: exact-runtime-first requests may expose
+    only provider_bloc, while older/generator-owned cases may expose
+    provider_patch. The same current-byte helper is compiled on whichever
+    provider-local surface the scoped FORCE request actually owns.
+    """
     focus_keywords = _force_structural_focus_keywords(request)
     if not focus_keywords:
         return None
@@ -918,23 +976,33 @@ def _deterministic_class_text_boundary_mutation(
         str(scope)
         for scope in mutation_policy.get("allowed_scopes") or request.allowed_mutations or []
     }
-    if "provider_patch" not in allowed:
+    if not ({"provider_patch", "provider_bloc"} & allowed):
         return None
     context = request.provider_context or {}
-    sources = context.get("registered_patch_sources")
-    if not isinstance(sources, dict):
-        return None
 
-    candidates: list[tuple[str, dict[str, Any], str]] = []
-    for path, source_raw in sources.items():
-        path = str(path)
-        source = str(source_raw or "")
-        if not path or not source:
-            continue
+    source_rows: list[tuple[str, str, str]] = []
+    sources = context.get("registered_patch_sources")
+    if "provider_patch" in allowed and isinstance(sources, dict):
+        source_rows.extend(
+            ("provider_patch", str(path), str(source_raw or ""))
+            for path, source_raw in sources.items()
+            if str(path) and str(source_raw or "")
+        )
+    if "provider_bloc" in allowed:
+        runtime_source = str(
+            context.get("preferredRuntimeMutationSource")
+            or context.get("runtimeMutationSource")
+            or ""
+        )
+        if runtime_source:
+            source_rows.append(("provider_bloc", "", runtime_source))
+
+    candidates: list[tuple[str, str, str, dict[str, Any], str]] = []
+    for scope, path, source in source_rows:
         # This is a deterministic local scan, not model prompt context. The
         # compact route-gap prompt intentionally exposes only two causal units,
-        # but negative-memory progression must still be able to inspect the
-        # next exact provider-owned helper after the first candidate failed.
+        # but negative-memory progression must still inspect the next exact
+        # provider-owned helper after the first mechanism failed.
         window_units = _force_edit_units(
             source,
             request.failure_class,
@@ -953,6 +1021,7 @@ def _deterministic_class_text_boundary_mutation(
             if key not in seen_units:
                 units.append(unit)
                 seen_units.add(key)
+
         for unit in units:
             if str(unit.get("kind") or "") != "function_unit":
                 continue
@@ -975,12 +1044,7 @@ def _deterministic_class_text_boundary_mutation(
             if not re.fullmatch(r"[A-Za-z_$][A-Za-z0-9_$]*", class_param):
                 continue
             body = str(signature.group("body") or "")
-            compact_body = re.sub(r"\\s+", "", body)
-            # class_text_boundary is the progression after a container/list
-            # extractor mutation was already executed and rejected. Do not
-            # reselect helpers whose job is clearly to enumerate/slice HTML
-            # containers; otherwise classText + classBlocks become an
-            # artificial two-candidate ambiguity on minified runtimes.
+            compact_body = re.sub(r"\s+", "", body)
             if (
                 "starts=[]" in compact_body
                 or "starts[i+1].at" in compact_body
@@ -1000,21 +1064,43 @@ def _deterministic_class_text_boundary_mutation(
                 + ')+"(?![-_])\\\\b'
                 + body[boundary_at + len(boundary):]
             )
-            candidates.append((path, unit, replacement_body))
+            candidates.append((scope, path, source, unit, replacement_body))
+
+    if len(candidates) > 1:
+        # The authored generator and exact materialized runtime can expose the
+        # same helper. Collapse byte-identical semantic candidates and keep the
+        # durable provider_patch surface when both are available.
+        groups: dict[tuple[str, str], list[tuple[str, str, str, dict[str, Any], str]]] = {}
+        for candidate in candidates:
+            key = (str(candidate[3].get("source") or ""), candidate[4])
+            groups.setdefault(key, []).append(candidate)
+        if len(groups) == 1:
+            same = next(iter(groups.values()))
+            candidates = [
+                next(
+                    (candidate for candidate in same if candidate[0] == "provider_patch"),
+                    same[0],
+                )
+            ]
 
     if len(candidates) != 1:
         return None
-    path, unit, replacement_body = candidates[0]
-    source = str(sources.get(path) or "")
-    mutation = _deterministic_exact_function_mutation(
+    scope, path, source, unit, replacement_body = candidates[0]
+    if scope == "provider_patch":
+        return _deterministic_exact_function_mutation(
+            request,
+            path=path,
+            source=source,
+            unit=unit,
+            replacement_body=replacement_body,
+        )
+    return _deterministic_exact_bloc_function_mutation(
         request,
-        path=path,
         source=source,
         unit=unit,
         replacement_body=replacement_body,
+        family="class_text_boundary",
     )
-    return mutation if isinstance(mutation, dict) else None
-
 
 def _deterministic_structural_force_mutation(
     request: RepairRequest,
