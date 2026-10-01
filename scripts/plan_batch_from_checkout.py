@@ -412,23 +412,34 @@ def main() -> int:
         }.get(scope, 384)
         primary_tokens = max(128, min(int(args.max_tokens), scope_token_cap))
         retry_tokens = max(128, min(int(args.max_tokens), recovery_token_cap))
+        speculative_portfolio_slot = portfolio_reserved
         validation_timeout = max(
-            60,
+            45 if speculative_portfolio_slot else 60,
             min(
                 int(args.timeout_seconds),
-                (90 if portfolio_reserved else 150) if scope == "provider_bloc" else 90,
+                (60 if speculative_portfolio_slot else 150)
+                if scope == "provider_bloc"
+                else (60 if speculative_portfolio_slot else 90),
             ),
         )
         primary_timeout = max(
             45,
-            min(int(args.timeout_seconds), 90 if portfolio_reserved else 180),
+            min(
+                int(args.timeout_seconds),
+                60 if speculative_portfolio_slot else 180,
+            ),
         )
         transport_timeout = max(
-            60 if portfolio_reserved else 90,
-            min(int(args.timeout_seconds), 90 if portfolio_reserved else 180),
+            45 if speculative_portfolio_slot else 90,
+            min(
+                int(args.timeout_seconds),
+                60 if speculative_portfolio_slot else 180,
+            ),
         )
         max_validation_corrections = (
-            1 if portfolio_reserved else (3 if scope == "provider_bloc" else 1)
+            0
+            if speculative_portfolio_slot
+            else (3 if scope == "provider_bloc" else 1)
         )
 
         def _remaining_timeout(desired: int) -> int:
@@ -563,6 +574,14 @@ def main() -> int:
         def _run_validation_chain(request, first_exc: ValueError):
             current_request = request
             current_exc = first_exc
+            if max_validation_corrections <= 0:
+                print(
+                    "FIELD_BRAIN_FORCE_SPECULATIVE_FAST_FAIL "
+                    f"provider={provider} scope={scope} reason={_force_rejection_reason(first_exc)} "
+                    "retry=validation-suppressed",
+                    flush=True,
+                )
+                return None, first_exc
             for correction_index in range(1, max_validation_corrections + 1):
                 retry_request = _validation_feedback(
                     current_request,
@@ -605,6 +624,14 @@ def main() -> int:
             return _run_validation_chain(scoped_request, validation_exc)
         except Exception as exc:
             if not _retryable_force_error(exc):
+                return None, exc
+            if speculative_portfolio_slot:
+                print(
+                    "FIELD_BRAIN_FORCE_SPECULATIVE_FAST_FAIL "
+                    f"provider={provider} scope={scope} reason={type(exc).__name__} "
+                    "retry=transport-suppressed",
+                    flush=True,
+                )
                 return None, exc
             transport_request = copy.deepcopy(scoped_request)
             try:

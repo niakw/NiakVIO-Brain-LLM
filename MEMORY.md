@@ -828,3 +828,11 @@
 - Brain CI run `36861921020` (#1294) is SUCCESS on `045828f825f2a8a326004444b515bc9d4e0c1c51`: full unit suite and public-repository privacy audit passed for the new deterministic catalogue identity/query progression.
 - The authoritative 4KHDHub replay is pinned to current NiakVIO `f90341b9d75c411c497b91706dc8291fb596005d`. That source includes the persisted executed-negative `optional_metadata_format_gate` evidence from Repair V6 #254 but no accepted provider-byte mutation.
 - Expected first deterministic progression: all prior DOM/format mechanisms remain blocked, then `catalog_identity_query_variants` is compiled from exact current search/detail bytes. Success still requires public mutation publication followed by isolated current-byte movie + TV playable/identity proof in NiakVIO.
+
+
+## 2026-10-01 — Bound speculative one-shot LLM slots after first executable candidate
+
+- Guidance #223 (`36862196193`) proved one-shot portfolio control works but exposed avoidable CPU waste: slot 1 generated `catalog_identity_query_variants` immediately, then slots 2–4 each spent two ~90 s provider-Bloc calls after every known deterministic mechanism was already blocked/reserved.
+- Once any same-run candidate is reserved, later portfolio slots are now explicitly speculative. Their model call is capped at 60 s, transport retry is suppressed, and deterministic-validation retry is suppressed. They still run deterministic progression first and can emit a distinct executable mutation immediately; only repeated expensive LLM recovery is removed.
+- Telemetry `FIELD_BRAIN_FORCE_SPECULATIVE_FAST_FAIL` distinguishes transport- vs validation-retry suppression. This preserves the four-slot one-shot contract while preventing a single already-populated portfolio from spending another ~9 minutes on repeated 7B timeouts.
+- NiakVIO sandbox/playback/identity authority is unchanged. This is orchestration latency control only and does not claim any provider repaired.

@@ -16,11 +16,11 @@ assert '"provider_js": 768' in source
 assert '"provider_bloc": 256' in source
 assert "primary_tokens = max(128, min(int(args.max_tokens), scope_token_cap))" in source
 assert "retry_tokens = max(128, min(int(args.max_tokens), recovery_token_cap))" in source
-assert '(90 if portfolio_reserved else 150) if scope == "provider_bloc" else 90' in source
+assert '(60 if speculative_portfolio_slot else 150)' in source
 assert "validation_timeout = max(" in source
 assert "primary_timeout = max(" in source
 assert "transport_timeout = max(" in source
-assert "90 if portfolio_reserved else 180" in source
+assert "60 if speculative_portfolio_slot else 180" in source
 assert "timeout_seconds=primary_timeout" in source
 assert "1280" not in source
 assert "timeout_seconds=150" not in source
@@ -30,7 +30,7 @@ assert '"function anchor is structurally incomplete", "truncated_fragment"' in s
 assert "except ValueError as validation_exc:" in source
 assert "timeout_seconds=validation_timeout" in source
 assert "timeout_seconds=transport_timeout" in source
-assert '1 if portfolio_reserved else (3 if scope == "provider_bloc" else 1)' in source
+assert '0\n            if speculative_portfolio_slot\n            else (3 if scope == "provider_bloc" else 1)' in source
 assert "for correction_index in range(1, max_validation_corrections + 1):" in source
 assert "helper_collision" in source
 assert "window-local edit in the same scope or abstain" in source
@@ -40,6 +40,9 @@ assert "FIELD_BRAIN_FORCE_PORTFOLIO_FEEDBACK" in source
 assert source.count('"brain-force-sandbox-memory"') >= 2
 assert "negative_memory_rows=" in source
 assert "preserving_validation_reason=" in source
+assert "FIELD_BRAIN_FORCE_SPECULATIVE_FAST_FAIL" in source
+assert "retry=transport-suppressed" in source
+assert "retry=validation-suppressed" in source
 assert "--force-provider-budget-seconds" in source
 assert "prefill_prompt=False" in source
 assert 'prefill_prompt=(args.mode == "repair" and not args.advisor_only)' in source
