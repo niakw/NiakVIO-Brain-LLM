@@ -804,3 +804,10 @@
 
 
 - Brain CI run 36859121754 on 96e1ec5e0fcf73b07d9cff97061a60bdda1d109a failed only because the new unit test expected the full function guard inside the emitted provider_bloc replacement. The deterministic compiler intentionally shrinks exact provider_bloc edits to the smallest unique structured anchor, so the mutation contained the correct transformed middle span rather than the whole helper. The test contract is aligned to the structured-anchor output; implementation bytes are unchanged.
+
+
+## 2026-10-01 — Green format-gate Brain replay armed
+
+- Brain CI run `36859284358` (#1292) is SUCCESS on `f380df914a1b75e17144546ccdf11a26c5d46818`: full unit suite and public-repository privacy audit passed after aligning the test with the structured-anchor compiler output.
+- Next authoritative 4KHDHub guidance replay remains pinned to unchanged NiakVIO `d6a3d6396b00ee1ea629e723eb83044cd249a261`. The new deterministic `optional_metadata_format_gate` must be generated from exact current provider-owned bytes while all earlier executed-negative class-selector fingerprints remain blocked.
+- No repair is claimed until the public Force artifact contains a novel executable candidate and NiakVIO isolated movie + TV playable/identity validation accepts it.
