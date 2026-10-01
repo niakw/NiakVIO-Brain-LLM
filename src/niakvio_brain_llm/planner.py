@@ -934,33 +934,44 @@ def _force_memory_blocks_mutation(
 
 
 def _deterministic_complete_line_function_units(source: str) -> list[dict[str, Any]]:
-    """Extract exact one-line JavaScript function units from full current source.
+    """Extract compact named JavaScript helpers from exact current source.
 
-    Generated provider runtime Blocs deliberately keep small helpers on one
-    physical line. Scanning the complete registered source avoids a false
-    negative when prompt windows clip a helper or when a JavaScript RegExp
-    contains braces that confuse a lightweight brace counter.
+    Published provider bundles can collapse an entire runtime onto one physical
+    line, so a line-based greedy matcher can accidentally treat every following
+    helper as part of the first function. Use the next *named* function
+    declaration as the structural boundary instead. Anonymous callbacks do not
+    terminate the unit. The resulting candidate is still syntax-validated by
+    the deterministic mutation compiler before it can leave Brain.
     """
     text = str(source or "")
-    pattern = re.compile(
-        r"(?m)^[ \t]*(?:async[ \t]+)?function[ \t]+"
-        r"[A-Za-z_$][A-Za-z0-9_$]*[ \t]*\([^\r\n]*\)[ \t]*"
-        r"\{[^\r\n]*\}[ \t]*$"
+    declaration = re.compile(
+        r"(?m)(?:^|[\s;])((?:async\s+)?function\s+"
+        r"[A-Za-z_$][A-Za-z0-9_$]*\s*\([^\r\n]*?\)\s*\{)"
     )
+    starts = [match.start(1) for match in declaration.finditer(text)]
     units: list[dict[str, Any]] = []
-    for index, match in enumerate(pattern.finditer(text), start=1):
-        raw = match.group(0)
-        leading = len(raw) - len(raw.lstrip())
-        find = raw.strip()
-        if not find or len(find) > 1800:
+    for index, offset in enumerate(starts, start=1):
+        boundary = starts[index] if index < len(starts) else len(text)
+        chunk = text[offset:boundary].rstrip()
+        # Top-level compact helpers end at their own closing brace. Reject
+        # chunks with unrelated trailing statements rather than guessing.
+        close = chunk.rfind("}")
+        if close < 0:
             continue
-        offset = match.start() + leading
+        find = chunk[: close + 1].strip()
+        trailing = chunk[close + 1 :].strip(" ;\t\r\n")
+        if trailing or not find or len(find) > 1800:
+            continue
+        leading = len(text[offset:boundary]) - len(text[offset:boundary].lstrip())
+        exact_offset = offset + leading
+        if text[exact_offset: exact_offset + len(find)] != find:
+            continue
         units.append({
             "id": f"detline{index}",
             "kind": "function_unit",
             "source": find,
-            "offset": offset,
-            "end_offset": offset + len(find),
+            "offset": exact_offset,
+            "end_offset": exact_offset + len(find),
             "window_id": "deterministic-full-source",
         })
     return units
