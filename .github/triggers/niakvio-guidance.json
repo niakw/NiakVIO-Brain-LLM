@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "a9eee1bda5b95e1c0bf10e9194e31e9808a48b7c",
-  "reason": "Authoritative single-provider 4KHDHub witness after generic selector/container disambiguation. Use latest executed negative memory; do not repeat rejected balanced_class_container/exact_class_token_boundary candidates. Deterministically advance to the exact class_text_boundary helper when current bytes permit it. Publish only a genuinely new executable mutation for isolated NiakVIO proof.",
+  "niakvio_sha": "03cc753e2bbc61976db5c12c9c335ad0715561a2",
+  "reason": "Authoritative single-provider 4KHDHub witness after exact-runtime Bloc selector progression and zero-offset function-unit fixes. Consume latest executed negative memory including rejected fingerprints c58fcb7a... and a33d7284.... Do not repeat balanced_class_container, exact_class_token_boundary, or class_blocks_renderer. Deterministically compile the next class_text_boundary mechanism on exact current provider Bloc bytes when possible; otherwise emit at most one genuinely new executable provider-local mutation. This run is guidance only until NiakVIO isolated sandbox/playback/identity/non-regression accepts it.",
   "requested_repair_queue": [
     "4khdhub"
   ]
