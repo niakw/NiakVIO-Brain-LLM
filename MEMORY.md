@@ -906,3 +906,11 @@
 - Brain CI #1319 passed on `8d269c85a318640335877c6a6a92524976d3b286`; the trailing-resolver extractor and representative bounded-coverage test are green.
 - Replay targets exact NiakVIO `8cc61b4af6f2003f5e2712d84102b004385b5eed` and HindMoviez only. Expected first candidate is `bounded_variant_enumeration_before_cap`, compiled without 7B from current bytes.
 - Acceptance still requires NiakVIO isolated sandbox execution to preserve identity/playability and demonstrate expanded quality coverage. A generated patch alone is not repair proof.
+
+
+## 2026-10-02 — Hierarchical player → variant fan-out compiler
+
+- User evidence clarified the representative Coflix shape: about two servers, with roughly 10 and 9 terminal choices respectively. Server count is therefore not stream-count completeness.
+- The deterministic `bounded_variant_enumeration_before_cap` compiler now recognizes bounded header caps in functions that actually call `_crawlDirectMedia`; it can widen server traversal to 16 and aggregate stream retention to 32 while remaining fail-closed for unrelated loops.
+- Positive and negative planner tests were added. No Coflix/PapaDuStream provider bytes were edited manually.
+- Next authority step is NiakVIO current-byte all-provider fan-out census, then one Brain-produced representative repair (Coflix first), isolated rematerialization/playback/identity validation, followed by PapaDuStream cross-check before any wider cohort application.
