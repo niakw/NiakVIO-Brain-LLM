@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
   "niakvio_sha": "d19cf01e1ad17a9711c4f80fd8701513bdf6aebe",
-  "reason": "Representative FORCE validation for generic runtime variant-coverage truncation. HindMoviez is census FULL OK but its registered runtime contains high-risk early global output caps adjacent to quality/language enumeration and explicit 480p/720p/1080p/2160p handling. Brain must synthesize from exact current bytes using coverage-before-final-cap, keep execution bounded, preserve identity/playable gates, and abstain if it cannot prove a safer provider-local candidate. Do not hand-edit HindMoviez.",
+  "reason": "Representative FORCE replay after fixing Brain variant-coverage scope/budget starvation. HindMoviez remains census FULL OK but current registered runtime has two early global output caps adjacent to explicit 480p/720p/1080p/2160p enumeration. Prefer exact provider_bloc, synthesize coverage-before-final-cap from current bytes, keep execution bounded, preserve identity/playable gates, and abstain if no safe candidate exists. No manual provider edit.",
   "requested_repair_queue": [
     "hindmoviez"
   ],
-  "retry": 8
+  "retry": 9
 }
