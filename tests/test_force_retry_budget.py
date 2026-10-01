@@ -16,11 +16,11 @@ assert '"provider_js": 768' in source
 assert '"provider_bloc": 256' in source
 assert "primary_tokens = max(128, min(int(args.max_tokens), scope_token_cap))" in source
 assert "retry_tokens = max(128, min(int(args.max_tokens), recovery_token_cap))" in source
-assert '150 if scope == "provider_bloc" else 90' in source
+assert '(90 if portfolio_reserved else 150) if scope == "provider_bloc" else 90' in source
 assert "validation_timeout = max(" in source
 assert "primary_timeout = max(" in source
 assert "transport_timeout = max(" in source
-assert "min(int(args.timeout_seconds), 180)" in source
+assert "90 if portfolio_reserved else 180" in source
 assert "timeout_seconds=primary_timeout" in source
 assert "1280" not in source
 assert "timeout_seconds=150" not in source
@@ -30,12 +30,14 @@ assert '"function anchor is structurally incomplete", "truncated_fragment"' in s
 assert "except ValueError as validation_exc:" in source
 assert "timeout_seconds=validation_timeout" in source
 assert "timeout_seconds=transport_timeout" in source
-assert 'max_validation_corrections = 3 if scope == "provider_bloc" else 1' in source
+assert '1 if portfolio_reserved else (3 if scope == "provider_bloc" else 1)' in source
 assert "for correction_index in range(1, max_validation_corrections + 1):" in source
 assert "helper_collision" in source
 assert "window-local edit in the same scope or abstain" in source
 assert "force provider budget exhausted" in source
-assert "FIELD_BRAIN_FORCE_PROVIDER_BUDGET_EXHAUSTED" in source
+assert "FIELD_BRAIN_FORCE_CANDIDATE_BUDGET_EXHAUSTED" in source
+assert "FIELD_BRAIN_FORCE_PORTFOLIO_FEEDBACK" in source
+assert "preserving_validation_reason=" in source
 assert "--force-provider-budget-seconds" in source
 assert "prefill_prompt=False" in source
 assert 'prefill_prompt=(args.mode == "repair" and not args.advisor_only)' in source

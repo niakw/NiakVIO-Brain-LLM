@@ -149,8 +149,8 @@ class CompactForceRetryTest(unittest.TestCase):
         self.assertIn("targeted-regression-current", script)
         self.assertIn("prior_feedback", script)
         self.assertIn("window-local edit in the same scope or abstain", script)
-        self.assertIn('150 if scope == "provider_bloc" else 90', script)
-        self.assertIn("min(int(args.timeout_seconds), 180)", script)
+        self.assertIn('(90 if portfolio_reserved else 150) if scope == "provider_bloc" else 90', script)
+        self.assertIn("90 if portfolio_reserved else 180", script)
         self.assertIn('budget_seconds = min(budget_cap, 600)', script)
         self.assertIn('FIELD_BRAIN_FORCE_PORTFOLIO_READY', script)
         self.assertIn('FIELD_BRAIN_FORCE_PORTFOLIO_RESERVED', script)
@@ -170,7 +170,7 @@ class CompactForceRetryTest(unittest.TestCase):
         self.assertIn("retry_tokens = max(", script)
         self.assertIn("prefill_prompt=False", script)
         self.assertIn("force_deadline = time.monotonic() + budget_seconds", script)
-        self.assertIn("FIELD_BRAIN_FORCE_PROVIDER_BUDGET_EXHAUSTED", script)
+        self.assertIn("FIELD_BRAIN_FORCE_CANDIDATE_BUDGET_EXHAUSTED", script)
         self.assertNotIn("1280", script)
 
 

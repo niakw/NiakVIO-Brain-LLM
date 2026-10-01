@@ -36,14 +36,17 @@ for token in (
     "primary_tokens = max(128, min(int(args.max_tokens), scope_token_cap))",
     "retry_tokens = max(128, min(int(args.max_tokens), recovery_token_cap))",
     "FIELD_BRAIN_FORCE_PROVIDER_BUDGET ",
-    '150 if scope == "provider_bloc" else 90',
-    "min(int(args.timeout_seconds), 180)",
+    '(90 if portfolio_reserved else 150) if scope == "provider_bloc" else 90',
+    "90 if portfolio_reserved else 180",
+    "FIELD_BRAIN_FORCE_CANDIDATE_BUDGET",
+    "FIELD_BRAIN_FORCE_CANDIDATE_BUDGET_EXHAUSTED",
+    "FIELD_BRAIN_FORCE_PORTFOLIO_FEEDBACK",
     'budget_seconds = min(budget_cap, 600)',
     "force_validation_feedback",
     "FIELD_BRAIN_FORCE_SCOPE_FEEDBACK",
     "window-local edit in the same scope or abstain",
     "force provider budget exhausted",
-    "FIELD_BRAIN_FORCE_PROVIDER_BUDGET_EXHAUSTED",
+    "candidate budget exhausted",
 ):
     assert token in src, token
 
