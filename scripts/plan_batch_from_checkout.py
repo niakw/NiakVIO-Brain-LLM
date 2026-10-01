@@ -521,7 +521,11 @@ def main() -> int:
             required_evidence = [
                 row for row in existing_observations
                 if str(row.get("source") or "").strip().casefold()
-                in {"census_current", "targeted-regression-current"}
+                in {
+                    "census_current",
+                    "targeted-regression-current",
+                    "brain-force-portfolio-reservation",
+                }
             ]
             retained = [feedback, *prior_feedback, *required_evidence]
             seen = set()
