@@ -879,3 +879,10 @@
 
 - Brain CI #1315 failed only the new representative coverage compiler test: the bounded-loop regex stopped at the closing parenthesis of an in-header helper call such as !expired(), so it never reached the real loop-closing parenthesis or the existing k<8 bound.
 - The loop-header matcher now consumes minimally until a closing parenthesis followed by the loop opening brace. Numeric-bound and collection-length requirements are unchanged; unbounded loops remain rejected.
+
+
+## 2026-10-01 — HindMoviez coverage replay after bounded-loop parser closure
+
+- Brain main `b2b815194321ff56ea7d0b83e82f6d0aa0499a87` is green in CI #1316 and fixes deterministic parsing of bounded loop headers containing calls, the remaining compiler gap exposed by HindMoviez.
+- Replay targets NiakVIO `728030d68d0f5832cd488f07a7c3851f58802353`. HindMoviez remains FULL OK functionally but exact current runtime contains two early global `out.length>=4` caps while source metadata exposes 480p/720p/1080p/2160p variants. This is coverage debt, not route failure.
+- Success requires a Brain-generated bounded coverage-before-final-cap mutation from current bytes. Provider identity/playable validation and execution deadlines remain mandatory; no manual HindMoviez provider edit is authorized.
