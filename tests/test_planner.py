@@ -79,7 +79,7 @@ class PlannerTests(unittest.TestCase):
         self.assertEqual(mutation["family"], "bounded_variant_enumeration_before_cap")
         updated = source.replace(mutation["find"], mutation["replace"], 1)
         self.assertIn("i<16", updated)
-        self.assertIn("out.length<12", updated)
+        self.assertIn("out.length<32", updated)
         self.assertNotIn("i<8", updated)
         self.assertNotIn("out.length<8", updated)
 
