@@ -637,7 +637,7 @@ def main() -> int:
                 # retaining the same bounded per-call timeouts.
                 budget_seconds = min(
                     budget_cap,
-                    600 if status_key == "CHAIN REACHED" or failure_key in {"chain_terminal_gap", "media_extraction_gap"} else 480,
+                    600,
                 )
             elif failure_key in {"chain_terminal_gap", "media_extraction_gap"} or status_key == "CHAIN REACHED":
                 budget_seconds = budget_cap
@@ -911,7 +911,7 @@ def main() -> int:
         "planned": sum(1 for row in rows if row["ok"]),
         "plannedProviders": len({str(row.get("provider") or "") for row in rows if row.get("ok") is True}),
         "plannedHypotheses": sum(1 for row in rows if row.get("ok") is True),
-        "maxHypothesesPerProvider": max(1, min(int(args.max_hypotheses or 1), 3)) if args.advisor_only else 1,
+        "maxHypothesesPerProvider": max(1, min(int(args.max_hypotheses or 1), 3 if args.advisor_only else 4)),
         "errors": sum(1 for row in rows if not row["ok"]),
         "model_processes": 1,
         "parallel_workers": workers,
