@@ -251,8 +251,13 @@ function resolve(){return []}'''
         self.assertIn("(?![-_])", mutation["diff"])
 
     def test_provider_bloc_negative_memory_advances_to_class_text_boundary(self):
-        runtime = r'''function classText(html,cls){var re=new RegExp("<span\\b[^>]*class=[\"'][^\"']*\\b"+cls.replace(/[-/\\^$*+?.()|[\]{}]/g,"\\$&")+"\\b[^\"']*[\"'][^>]*>","i");return re.test(html)?"x":""}
+        runtime = r'''function attr(tag,key){var m=String(tag||"").match(new RegExp("\\b"+key+"\\s*=\\s*[\"']([^\"']+)[\"']","i"));return m?m[1]:""}
+function classText(html,cls){var re=new RegExp("<span\\b[^>]*class=[\"'][^\"']*\\b"+cls.replace(/[-/\\^$*+?.()|[\]{}]/g,"\\        runtime = r'''function classText(html,cls){var re=new RegExp("<span\\b[^>]*class=[\"'][^\"']*\\b"+cls.replace(/[-/\\^$*+?.()|[\]{}]/g,"\\$&")+"\\b[^\"']*[\"'][^>]*>","i");return re.test(html)?"x":""}
 function classBlocks(html,cls){var esc=cls.replace(/[-/\\^$*+?.()|[\]{}]/g,"\\$&"),re=new RegExp("<(?:div|article|li|a)\\b[^>]*class=[\"'][^\"']*\\b"+esc+"\\b[^\"']*[\"'][^>]*>","gi"),starts=[],m;while((m=re.exec(html||""))!==null)starts.push({at:m.index,tag:m[0]});var out=[];for(var i=0;i<starts.length;i++){var end=i+1<starts.length?starts[i+1].at:Math.min(String(html||"").length,starts[i].at+12000);out.push({html:String(html||"").slice(starts[i].at,end),tag:starts[i].tag})}return out}
+function resolve(){return []}'''")+"\\b[^\"']*[\"'][^>]*>","i");return re.test(html)?"x":""}
+function classBlocks(html,cls){var esc=cls.replace(/[-/\\^$*+?.()|[\]{}]/g,"\\        runtime = r'''function classText(html,cls){var re=new RegExp("<span\\b[^>]*class=[\"'][^\"']*\\b"+cls.replace(/[-/\\^$*+?.()|[\]{}]/g,"\\$&")+"\\b[^\"']*[\"'][^>]*>","i");return re.test(html)?"x":""}
+function classBlocks(html,cls){var esc=cls.replace(/[-/\\^$*+?.()|[\]{}]/g,"\\$&"),re=new RegExp("<(?:div|article|li|a)\\b[^>]*class=[\"'][^\"']*\\b"+esc+"\\b[^\"']*[\"'][^>]*>","gi"),starts=[],m;while((m=re.exec(html||""))!==null)starts.push({at:m.index,tag:m[0]});var out=[];for(var i=0;i<starts.length;i++){var end=i+1<starts.length?starts[i+1].at:Math.min(String(html||"").length,starts[i].at+12000);out.push({html:String(html||"").slice(starts[i].at,end),tag:starts[i].tag})}return out}
+function resolve(){return []}'''"),re=new RegExp("<(?:div|article|li|a)\\b[^>]*class=[\"'][^\"']*\\b"+esc+"\\b[^\"']*[\"'][^>]*>","gi"),starts=[],m;while((m=re.exec(html||""))!==null)starts.push({at:m.index,tag:m[0]});var out=[];for(var i=0;i<starts.length;i++){var end=i+1<starts.length?starts[i+1].at:Math.min(String(html||"").length,starts[i].at+12000);out.push({html:String(html||"").slice(starts[i].at,end),tag:starts[i].tag})}return out}
 function resolve(){return []}'''
         evidence = [{
             "source":"census-sharded-current",
@@ -305,6 +310,39 @@ function resolve(){return []}'''
         self.assertEqual(second["family"], "class_text_boundary")
         self.assertIn("(?![-_])", second["replace"])
         self.assertNotIn("starts[i+1].at", second["replace"])
+
+        second_fp = hashlib.sha256(
+            json.dumps([second], ensure_ascii=True, sort_keys=True, separators=(",", ":")).encode("ascii")
+        ).hexdigest()
+        third_request = RepairRequest(
+            provider_id="demo",
+            failure_class="route_proven_gap",
+            status="ROUTE PROVEN",
+            observations=[
+                *evidence,
+                {"source":"brain-force-sandbox-memory","value":[
+                    {
+                        "mutationFingerprint": fp,
+                        "mutationContextFingerprint": "f"*64,
+                        "consecutiveFailures": 1,
+                    },
+                    {
+                        "mutationFingerprint": second_fp,
+                        "mutationContextFingerprint": "e"*64,
+                        "consecutiveFailures": 1,
+                    },
+                ]},
+            ],
+            allowed_mutations=["provider_bloc"],
+            provider_context=context,
+        )
+        third = _deterministic_structural_force_mutation(third_request, policy)
+        self.assertIsNotNone(third)
+        self.assertEqual(third["scope"], "provider_bloc")
+        self.assertEqual(third["family"], "exact_class_attribute_tokens")
+        self.assertIn('attr(m[0],"class").split(/\\s+/)', third["replace"])
+        self.assertIn("names.indexOf(cls)>=0", third["replace"])
+        self.assertNotIn('"+esc+"', third["replace"])
 
     def test_deterministic_negative_memory_advances_to_class_text_boundary(self):
         runtime = r'''function classText(html,cls){var re=new RegExp("<[a-z0-9]+\\b[^>]*class=[\"'][^\"']*\\b"+cls.replace(/[-/\\^$*+?.()|[\]{}]/g,"\\$&")+"\\b[^\"']*[\"'][^>]*>([\\s\\S]*?)<\\/[a-z0-9]+>","i"),m=re.exec(html||"");return m?m[1]:""} function classBlocks(html,cls){var esc=cls.replace(/[-/\\^$*+?.()|[\]{}]/g,"\\$&"),re=new RegExp("<(?:div|article|li|a)\\b[^>]*class=[\"'][^\"']*\\b"+esc+"\\b[^\"']*[\"'][^>]*>","gi"),starts=[],m;while((m=re.exec(html||""))!==null)starts.push({at:m.index,tag:m[0]});var out=[];for(var i=0;i<starts.length;i++){var end=i+1<starts.length?starts[i+1].at:Math.min(String(html||"").length,starts[i].at+12000);out.push({html:String(html||"").slice(starts[i].at,end),tag:starts[i].tag})}return out} async function resolve(args){return []}'''
