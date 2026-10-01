@@ -821,3 +821,10 @@
 - Current evidence now points above DOM parsing: the runtime searches localized TMDB titles and synthesizes `Season N` for TV, while current live evidence records queries such as `La Colonie 2021` and `Revenant Season 1` with HTTP 200 but no subsequent detail request. The same TMDB payload exposes original title/name fields, and the catalogue is English-oriented.
 - Brain now has a provider-independent deterministic `catalog_identity_query_variants` compiler for this route-proven search/detail archetype. It preserves existing media-format, year, season and terminal identity gates, but performs at most six catalogue queries across localized/original title plus season/year/plain variants and scores returned cards against both canonical and original titles. It does not invent domains or relax downstream playable/identity validation.
 - This is Brain capability only. It is not a 4KHDHub repair until generated from current bytes, published, applied/rematerialized and accepted by isolated real movie + TV proof.
+
+
+## 2026-10-01 — Catalogue identity/query replay armed on green Brain
+
+- Brain CI run `36861921020` (#1294) is SUCCESS on `045828f825f2a8a326004444b515bc9d4e0c1c51`: full unit suite and public-repository privacy audit passed for the new deterministic catalogue identity/query progression.
+- The authoritative 4KHDHub replay is pinned to current NiakVIO `f90341b9d75c411c497b91706dc8291fb596005d`. That source includes the persisted executed-negative `optional_metadata_format_gate` evidence from Repair V6 #254 but no accepted provider-byte mutation.
+- Expected first deterministic progression: all prior DOM/format mechanisms remain blocked, then `catalog_identity_query_variants` is compiled from exact current search/detail bytes. Success still requires public mutation publication followed by isolated current-byte movie + TV playable/identity proof in NiakVIO.
