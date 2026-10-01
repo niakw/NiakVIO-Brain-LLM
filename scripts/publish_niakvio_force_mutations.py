@@ -151,7 +151,6 @@ def sanitize(
 
     output: list[dict[str, Any]] = []
     seen: set[tuple[str, str]] = set()
-    seen_providers: set[str] = set()
     blocked_force = load_force_memory(niakvio_root)
 
     for row in rows:
@@ -222,11 +221,6 @@ def sanitize(
         )[:160]
         if (provider, mutation_fp, context_fp) in blocked_force:
             continue
-        if provider in seen_providers:
-            raise ValueError(
-                f"{provider}: multiple concrete Force candidates require isolated candidate sandboxing"
-            )
-        seen_providers.add(provider)
         key = (provider, mutation_fp)
         if key in seen:
             continue
@@ -244,6 +238,7 @@ def sanitize(
                 "tests": [str(x)[:500] for x in (proposal.get("tests") or [])[:12]],
                 "mutationFingerprint": mutation_fp,
                 "mutationContextFingerprint": context_fp,
+                "candidateOrdinal": max(1, int(row.get("hypothesis_index") or 1)),
             }
         )
 
