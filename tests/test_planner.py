@@ -5,10 +5,75 @@ import unittest
 from niakvio_brain_llm.backend import StaticBackend
 from niakvio_brain_llm.contracts import RepairRequest
 from niakvio_brain_llm.document_memory import DocumentStore
-from niakvio_brain_llm.planner import BrainPlanner, COMPACT_FORCE_SYSTEM_PROMPT, _compact_edit_to_mutation, _deterministic_catalog_identity_query_variants_mutation, _deterministic_class_text_boundary_mutation, _deterministic_optional_format_gate_mutation, _deterministic_structural_force_mutation, _resolve_structured_anchor
+from niakvio_brain_llm.planner import BrainPlanner, COMPACT_FORCE_SYSTEM_PROMPT, _compact_edit_to_mutation, _deterministic_catalog_identity_query_variants_mutation, _deterministic_class_text_boundary_mutation, _deterministic_optional_format_gate_mutation, _deterministic_structural_force_mutation, _deterministic_variant_coverage_mutation, _resolve_structured_anchor
 from niakvio_brain_llm.prompting import _force_source_windows, build_force_prompt_payload
 
 class PlannerTests(unittest.TestCase):
+    def test_deterministic_variant_coverage_defers_quota_until_bounded_source_loop_finishes(self):
+        source = (
+            'function quality(f){return /(2160|1080|720|480)p/i.test(f)} '
+            'async function resolve(){var out=[],urlSeen={};'
+            'for(var k=0;k<links.length&&k<8&&!expired();k++){'
+            'var z=await chain(links[k]);for(var n=0;n<z.length;n++)'
+            'if(!urlSeen[z[n].url]){urlSeen[z[n].url]=1;out.push(z[n])}'
+            'if(out.length>=4)break}return out}'
+        )
+        request = RepairRequest(
+            provider_id="demo",
+            failure_class="variant_coverage_gap",
+            status="FULL_OK",
+            allowed_mutations=["provider_bloc"],
+            provider_context={
+                "runtimeMutationSource": source,
+                "preferredRuntimeMutationSource": source,
+                "runtime_variant_coverage": {
+                    "riskKind": "variant-coverage-truncation",
+                    "risk": "high",
+                    "dimensions": ["quality", "source"],
+                    "qualityHints": ["2160p", "1080p", "720p", "480p"],
+                },
+            },
+        )
+        mutation = _deterministic_variant_coverage_mutation(
+            request,
+            {"allow_mutations": True, "allowed_scopes": ["provider_bloc"]},
+        )
+        self.assertIsNotNone(mutation)
+        self.assertEqual(mutation["scope"], "provider_bloc")
+        self.assertEqual(mutation["family"], "bounded_variant_enumeration_before_cap")
+        updated = source.replace(mutation["find"], mutation["replace"], 1)
+        self.assertIn("k<8", updated)
+        self.assertNotIn("if(out.length>=4)break", updated)
+        self.assertIn("return out", updated)
+
+    def test_deterministic_variant_coverage_refuses_unbounded_source_loop(self):
+        source = (
+            'async function resolve(){var out=[];'
+            'for(var k=0;k<links.length;k++){var z=await chain(links[k]);'
+            'for(var n=0;n<z.length;n++)out.push(z[n]);'
+            'if(out.length>=4)break}return out}'
+        )
+        request = RepairRequest(
+            provider_id="demo",
+            failure_class="variant_coverage_gap",
+            status="FULL_OK",
+            allowed_mutations=["provider_bloc"],
+            provider_context={
+                "runtimeMutationSource": source,
+                "runtime_variant_coverage": {
+                    "riskKind": "variant-coverage-truncation",
+                    "risk": "high",
+                    "dimensions": ["quality", "source"],
+                    "qualityHints": ["2160p", "1080p", "720p", "480p"],
+                },
+            },
+        )
+        mutation = _deterministic_variant_coverage_mutation(
+            request,
+            {"allow_mutations": True, "allowed_scopes": ["provider_bloc"]},
+        )
+        self.assertIsNone(mutation)
+
     def test_compact_force_function_unit_prompt_requires_body_only_rewrite(self):
         self.assertIn("kind=function_unit", COMPACT_FORCE_SYSTEM_PROMPT)
         self.assertIn("NEW FUNCTION BODY ONLY", COMPACT_FORCE_SYSTEM_PROMPT)

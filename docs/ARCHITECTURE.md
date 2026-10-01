@@ -472,3 +472,10 @@ providers.
 Brain provider context performs a provider-agnostic static diagnosis of registered runtime Blocs for early global output caps such as `if(out.length>=N) break`, first-success returns and capped source lists. The diagnosis records only mechanisms, variant dimensions (quality/language/server/player/source), quality hints and source offsets; it is not proof and cannot mutate bytes by itself.
 
 When present, FORCE source-window selection focuses on the exact quota/loop unit before generic routing tokens. The repair principle is **coverage before final cap**: enumerate distinct quality/language/server variants under the existing bounded execution budget, deduplicate safely, then apply the final global output limit. It must not solve truncation by making loops unbounded or by weakening playable/identity validation.
+
+
+### Deterministic coverage-before-cap compiler
+
+For a current variant_coverage_gap, FORCE no longer depends on model latency when the exact runtime proves a narrower safe transformation. Brain may defer a premature global out.length quota break only when that break is inside a source/variant loop that already carries an independent explicit numeric iteration bound. The loop bound, identity checks, playback validation and final return remain unchanged. Unbounded source loops fail closed.
+
+This compiler is provider-agnostic and current-byte bound. It emits provider_bloc family bounded_variant_enumeration_before_cap through the same exact-anchor, syntax and sandbox gates as any other FORCE mutation.

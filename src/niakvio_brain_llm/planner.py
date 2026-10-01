@@ -1560,6 +1560,140 @@ def _deterministic_catalog_identity_query_variants_mutation(
     )
 
 
+def _deterministic_variant_coverage_mutation(
+    request: RepairRequest,
+    mutation_policy: dict[str, Any],
+) -> dict[str, Any] | None:
+    """Defer a premature global stream quota until bounded variant enumeration completes.
+
+    This compiler is deliberately fail-closed. It activates only for current
+    high-risk variant-coverage evidence and only when the quota break sits inside
+    a loop that already has its own explicit numeric iteration bound. Removing
+    the quota break therefore cannot make traversal unbounded.
+    """
+    failure = str(request.failure_class or "").strip().casefold().replace("-", "_")
+    if failure not in {"variant_coverage_gap", "variant_coverage_truncation"}:
+        return None
+    context = request.provider_context if isinstance(request.provider_context, dict) else {}
+    coverage = context.get("runtime_variant_coverage")
+    if not isinstance(coverage, dict) or coverage.get("risk") != "high":
+        return None
+    if coverage.get("riskKind") != "variant-coverage-truncation":
+        return None
+
+    allowed = {
+        str(scope)
+        for scope in mutation_policy.get("allowed_scopes") or request.allowed_mutations or []
+    }
+    source_rows: list[tuple[str, str, str]] = []
+    if "provider_bloc" in allowed:
+        runtime_source = str(
+            context.get("preferredRuntimeMutationSource")
+            or context.get("runtimeMutationSource")
+            or ""
+        )
+        if runtime_source:
+            source_rows.append(("provider_bloc", "", runtime_source))
+    if "provider_patch" in allowed:
+        sources = context.get("registered_patch_sources")
+        if isinstance(sources, dict):
+            source_rows.extend(
+                ("provider_patch", str(path), str(source or ""))
+                for path, source in sources.items()
+                if str(path) and str(source or "")
+            )
+    if not source_rows:
+        return None
+
+    quota_break = re.compile(
+        r"if\s*\(\s*out\.length\s*>=\s*(?:\d+|[A-Za-z_$][A-Za-z0-9_$.]*)\s*\)\s*break\s*;?",
+        re.I,
+    )
+    bounded_loop = re.compile(
+        r"for\s*\((?P<header>[^)]{1,280})\)\s*\{",
+        re.I | re.S,
+    )
+    numeric_bound = re.compile(r"(?:^|[^A-Za-z0-9_$])\w+\s*<=?\s*\d+\b")
+
+    candidates: list[tuple[str, str, str, dict[str, Any], str]] = []
+    for scope, path, source in source_rows:
+        for unit in _deterministic_complete_line_function_units(source):
+            if str(unit.get("kind") or "") != "function_unit":
+                continue
+            unit_source = str(unit.get("source") or "")
+            signature = re.match(
+                r"(?s)^\s*(?:async\s+)?function\s+[A-Za-z_$][A-Za-z0-9_$]*"
+                r"\s*\([^)]*\)\s*\{(?P<body>.*)\}\s*$",
+                unit_source,
+            )
+            if not signature:
+                continue
+            body = str(signature.group("body") or "")
+            breaks = list(quota_break.finditer(body))
+            if not breaks:
+                continue
+            for break_match in breaks:
+                prior_loops = [
+                    match
+                    for match in bounded_loop.finditer(body[:break_match.start()])
+                    if numeric_bound.search(str(match.group("header") or ""))
+                ]
+                if not prior_loops:
+                    continue
+                loop_match = prior_loops[-1]
+                header = str(loop_match.group("header") or "")
+                if ".length" not in header:
+                    continue
+                replacement_body = body[:break_match.start()] + body[break_match.end():]
+                if replacement_body == body or header not in replacement_body:
+                    continue
+                candidates.append((scope, path, source, unit, replacement_body))
+                break
+
+    if not candidates:
+        return None
+
+    groups: dict[tuple[str, str], list[tuple[str, str, str, dict[str, Any], str]]] = {}
+    for candidate in candidates:
+        key = (str(candidate[3].get("source") or ""), candidate[4])
+        groups.setdefault(key, []).append(candidate)
+    if len(groups) == 1:
+        same = next(iter(groups.values()))
+        candidates = [
+            next(
+                (candidate for candidate in same if candidate[0] == "provider_bloc"),
+                next(
+                    (candidate for candidate in same if candidate[0] == "provider_patch"),
+                    same[0],
+                ),
+            )
+        ]
+    else:
+        bloc_candidates = [candidate for candidate in candidates if candidate[0] == "provider_bloc"]
+        if len(bloc_candidates) == 1:
+            candidates = bloc_candidates
+
+    if len(candidates) != 1:
+        return None
+
+    scope, path, source, unit, replacement_body = candidates[0]
+    if scope == "provider_patch":
+        return _deterministic_exact_function_mutation(
+            request,
+            path=path,
+            source=source,
+            unit=unit,
+            replacement_body=replacement_body,
+        )
+    return _deterministic_exact_bloc_function_mutation(
+        request,
+        source=source,
+        unit=unit,
+        replacement_body=replacement_body,
+        family="bounded_variant_enumeration_before_cap",
+    )
+
+
 def _deterministic_structural_force_mutation(
     request: RepairRequest,
     mutation_policy: dict[str, Any],
@@ -1971,6 +2105,8 @@ def _force_mutation_mechanism(mutation: dict[str, Any] | None) -> str:
         return "optional-metadata-format-gate"
     if "queries.length&&qi<6" in diff and "original_title||raw.title" in diff:
         return "catalog-identity-query-variants"
+    if "out.length" in diff and "break" in diff:
+        return "bounded-variant-enumeration-before-cap"
     return ""
 
 
@@ -1994,7 +2130,9 @@ class BrainPlanner:
         experiences = self.store.search(request.to_dict(), limit=6)
         causal_prior = build_causal_prior(request, experiences)
         mutation_policy = dict(build_mutation_policy(request, causal_prior))
-        mutation = _deterministic_structural_force_mutation(request, mutation_policy)
+        mutation = _deterministic_variant_coverage_mutation(request, mutation_policy)
+        if not isinstance(mutation, dict):
+            mutation = _deterministic_structural_force_mutation(request, mutation_policy)
         if not isinstance(mutation, dict):
             return None
         mechanism = _force_mutation_mechanism(mutation)
@@ -2060,10 +2198,15 @@ class BrainPlanner:
         _, documents, causal_prior, mutation_policy, user = self._prepare(request)
         if compact_force:
             try:
-                deterministic_mutation = _deterministic_structural_force_mutation(
+                deterministic_mutation = _deterministic_variant_coverage_mutation(
                     request,
                     mutation_policy,
                 )
+                if deterministic_mutation is None:
+                    deterministic_mutation = _deterministic_structural_force_mutation(
+                        request,
+                        mutation_policy,
+                    )
             except ValueError as deterministic_exc:
                 detail = re.sub(r"\\s+", " ", str(deterministic_exc or "ValueError")).strip()[:280]
                 print(
@@ -2080,13 +2223,25 @@ class BrainPlanner:
                     f"scope={deterministic_mutation.get('scope')}",
                     flush=True,
                 )
+                deterministic_family = str(deterministic_mutation.get("family") or "").strip()
+                coverage_candidate = deterministic_family == "bounded_variant_enumeration_before_cap"
                 proposal = RepairProposal(
                     provider_id=request.provider_id,
-                    diagnosis="structural class-token prefix collision",
+                    diagnosis=(
+                        "premature global output quota truncates bounded stream variant enumeration"
+                        if coverage_candidate
+                        else "structural class-token prefix collision"
+                    ),
                     strategy=str(causal_prior.get("strategy_prior") or "provider_local_repair"),
                     confidence=max(0.0, min(1.0, float(causal_prior.get("confidence") or 0.0))),
                     target_layer=str(causal_prior.get("target_layer") or "provider"),
-                    evidence=["current structural evidence proves class-token prefix collision"],
+                    evidence=[
+                        (
+                            "current runtime has high variant-coverage debt and an independent bounded source loop"
+                            if coverage_candidate
+                            else "current structural evidence proves class-token prefix collision"
+                        )
+                    ],
                     mutations=[deterministic_mutation],
                     experiment={},
                     tests=[],

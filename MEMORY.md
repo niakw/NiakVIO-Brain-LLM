@@ -865,3 +865,11 @@
 - The run produced zero executable mutations because `variant_coverage_gap` was not classified as a compact structural runtime gap. FORCE therefore tried the larger generator `provider_patch` first and the generic 150-second provider budget was split into four ~37-second candidates; Qwen 7B timed out on all four.
 - Pipeline fix: variant coverage now prefers exact materialized `provider_bloc`, receives the same bounded 600-second structural portfolio budget when an exact runtime template exists, and the first unsatisfied candidate is no longer blindly divided by portfolio size. It receives up to 180 seconds while retaining bounded reserve for later hypotheses; later reserved candidates still use speculative fast-fail.
 - No HindMoviez provider bytes were changed by #224. The representative must be replayed from exact current NiakVIO bytes and still pass isolated playable/identity/non-regression before this repair family can fan out.
+
+
+## 2026-10-01 — Deterministic coverage-before-cap compiler after HindMoviez Qwen timeout
+
+- HindMoviez guidance on exact NiakVIO d19cf01e1ad17a9711c4f80fd8701513bdf6aebe correctly classified variant_coverage_gap, but Qwen timed out on provider_bloc and published no executable mutation. Workflow success alone was not accepted as a repair.
+- Brain now compiles a narrow generic mechanism directly from exact current runtime bytes: a premature global output-quota break may be deferred only when it sits inside a source/variant loop with an independent explicit numeric iteration bound. That independent bound must remain present after the edit.
+- The emitted family is bounded_variant_enumeration_before_cap. Unbounded loops fail closed; identity/playability gates and downstream sandbox authority are unchanged.
+- Representative tests model the HindMoviez shape with later 2160/1080/720/480 variants and prove both successful compilation and rejection of an unbounded loop. No HindMoviez provider file was manually edited.
