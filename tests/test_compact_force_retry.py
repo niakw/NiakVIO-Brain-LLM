@@ -141,6 +141,8 @@ class CompactForceRetryTest(unittest.TestCase):
         self.assertIn('90 if portfolio_reserved else 180', script)
         self.assertIn('preserving_validation_reason=', script)
         self.assertIn('FIELD_BRAIN_FORCE_PORTFOLIO_FEEDBACK', script)
+        self.assertGreaterEqual(script.count('"brain-force-sandbox-memory"'), 2)
+        self.assertIn('negative_memory_rows=', script)
         self.assertIn('FIELD_BRAIN_FORCE_CANDIDATE_BUDGET', script)
         self.assertIn("for correction_index in range(1, max_validation_corrections + 1):", script)
         self.assertIn("helper_collision", script)

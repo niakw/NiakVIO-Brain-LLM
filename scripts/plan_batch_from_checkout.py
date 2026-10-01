@@ -535,6 +535,7 @@ def main() -> int:
                 in {
                     "census_current",
                     "targeted-regression-current",
+                    "brain-force-sandbox-memory",
                     "brain-force-portfolio-reservation",
                 }
             ]
@@ -713,14 +714,22 @@ def main() -> int:
                             "census_current",
                             "census-sharded-current",
                             "targeted-regression-current",
+                            "brain-force-sandbox-memory",
                             "brain-force-portfolio-reservation",
                         }
                     )
                 ][:12]
                 request.observations = [feedback, *retained]
+                negative_memory_rows = sum(
+                    1
+                    for row in retained
+                    if str(row.get("source") or "").strip().casefold()
+                    == "brain-force-sandbox-memory"
+                )
                 print(
                     "FIELD_BRAIN_FORCE_PORTFOLIO_FEEDBACK "
-                    f"provider={provider} after_index={candidate_index} reason={reason or 'rejected'}",
+                    f"provider={provider} after_index={candidate_index} reason={reason or 'rejected'} "
+                    f"negative_memory_rows={negative_memory_rows}",
                     flush=True,
                 )
 

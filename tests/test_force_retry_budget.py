@@ -37,6 +37,8 @@ assert "window-local edit in the same scope or abstain" in source
 assert "force provider budget exhausted" in source
 assert "FIELD_BRAIN_FORCE_CANDIDATE_BUDGET_EXHAUSTED" in source
 assert "FIELD_BRAIN_FORCE_PORTFOLIO_FEEDBACK" in source
+assert source.count('"brain-force-sandbox-memory"') >= 2
+assert "negative_memory_rows=" in source
 assert "preserving_validation_reason=" in source
 assert "--force-provider-budget-seconds" in source
 assert "prefill_prompt=False" in source

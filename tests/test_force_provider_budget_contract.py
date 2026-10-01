@@ -16,6 +16,8 @@ assert 'remaining_candidates = max(1, max_hypotheses - candidate_index + 1)' in 
 assert 'candidate_deadline = min(' in batch
 assert 'FIELD_BRAIN_FORCE_PORTFOLIO_FEEDBACK' in batch
 assert 'brain-force-portfolio-rejection' in batch
+assert '"brain-force-sandbox-memory"' in batch
+assert 'negative_memory_rows=' in batch
 assert '90 if portfolio_reserved else 180' in batch
 assert 'failure_key == "provider_transport_gap"' in batch
 assert 'budget_seconds = min(budget_cap, 300)' in batch

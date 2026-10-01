@@ -784,3 +784,12 @@
 - Follow-up test-contract commit `56eac04b4d25287b3af28b6c649d0e17b3302ee4` is green in Brain CI run `36851018731`: full unit suite and public-repository privacy audit passed.
 - The next frozen 4KHDHub guidance replay targets NiakVIO `d6a3d6396b00ee1ea629e723eb83044cd249a261`, whose persisted Force memory already contains rejected executed fingerprint `a21eaa643f0c0df30a14cffe8bbb7d3bef3258ea9217de595565902b189eb974`.
 - Success for this Brain replay is not workflow completion alone: logs must prove bounded per-candidate budgets/feedback continuation and the published artifact must contain causally distinct executable candidate(s), after which NiakVIO must apply/rematerialize/sandbox them on exact current bytes.
+
+
+## 2026-10-01 — Preserve executed-negative memory across one-shot FORCE slots
+
+- Guidance run `36851137203` (#220, Brain `57d809881df6b37c939e6ffbbebf2ac2304a04c0`) proved the new per-hypothesis wall-clock budgeting works: slot 1 was capped at about 150 s after a model timeout and slots 2–4 still executed in the same run.
+- The run also exposed a Brain regression before any NiakVIO mutation escaped: `_carry_force_portfolio_feedback()` retained same-run reservations but dropped the `brain-force-sandbox-memory` observation. Slot 1 correctly blocked all previously executed-negative deterministic mechanisms, then slots 2–4 lost that blocker and re-proposed `balanced_class_container`, `class_text_boundary`, and the already rejected `exact_class_attribute_tokens` fingerprint `a21eaa643f0c0df30a14cffe8bbb7d3bef3258ea9217de595565902b189eb974`.
+- The public sanitizer correctly failed closed with `providerCount=0`; no mutation was handed to NiakVIO and no provider bytes changed.
+- Same-run portfolio feedback and within-candidate validation feedback now both retain `brain-force-sandbox-memory`. This keeps cross-run executed negatives authoritative while adding local rejection feedback. Portfolio telemetry reports `negative_memory_rows` so the next real run can prove the memory survived every slot boundary.
+- This is a Brain pipeline correction only. 4KHDHub remains unrepaired until a new Brain-produced mutation survives publication and NiakVIO isolated current-byte movie + TV playable/identity proof.
