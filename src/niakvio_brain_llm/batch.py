@@ -4,13 +4,29 @@ import json
 from pathlib import Path
 from typing import Any
 
+from .provider_context import audit_registered_runtime_variant_coverage
+
 def load_census(root: str | Path) -> list[dict[str, Any]]:
-    path = Path(root) / "automation" / "provider-census-status.json"
+    root = Path(root)
+    path = root / "automation" / "provider-census-status.json"
     data = json.loads(path.read_text(encoding="utf-8"))
-    return [
-        row for row in data.get("providers") or []
-        if isinstance(row, dict) and row.get("provider")
-    ]
+    audit = audit_registered_runtime_variant_coverage(root)
+    coverage_by_provider = {
+        str(row.get("provider") or "").strip().casefold(): row
+        for row in audit.get("providers") or []
+        if isinstance(row, dict) and str(row.get("provider") or "").strip()
+    }
+    output: list[dict[str, Any]] = []
+    for raw in data.get("providers") or []:
+        if not isinstance(raw, dict) or not raw.get("provider"):
+            continue
+        row = dict(raw)
+        coverage = coverage_by_provider.get(str(row.get("provider") or "").strip().casefold())
+        if coverage:
+            row["runtimeVariantCoverageRisk"] = str(coverage.get("risk") or "none")
+            row["runtimeVariantCoverage"] = coverage.get("coverage") or {}
+        output.append(row)
+    return output
 
 def target_priority(row: dict[str, Any]) -> tuple[int, str]:
     """Prefer the cheapest/highest-evidence work, never provider identity."""
@@ -21,6 +37,8 @@ def target_priority(row: dict[str, Any]) -> tuple[int, str]:
         rank = 10
     elif "chain_reached" in depths or "chain reached" in status:
         rank = 20
+    elif row.get("runtimeVariantCoverageRisk") == "high":
+        rank = 25
     elif row.get("routeProof") or "route proven" in status:
         rank = 30
     elif "provider js broken" in status:
@@ -51,12 +69,16 @@ def select_batch_targets(
 
         brain_required = bool(row.get("brainCheckRequired"))
         repair_eligible = bool(row.get("repairEligible"))
+        explicit_coverage_debt = bool(
+            wanted
+            and str(row.get("runtimeVariantCoverageRisk") or "").strip().casefold() == "high"
+        )
 
-        if mode == "repair" and repair_eligible:
+        if mode == "repair" and (repair_eligible or explicit_coverage_debt):
             selected.append(row)
         elif mode == "diagnostic" and brain_required and not repair_eligible:
             selected.append(row)
-        elif mode == "brain" and brain_required:
+        elif mode == "brain" and (brain_required or explicit_coverage_debt):
             selected.append(row)
 
     return sorted(selected, key=target_priority)
