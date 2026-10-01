@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "728030d68d0f5832cd488f07a7c3851f58802353",
-  "reason": "Authoritative HindMoviez variant-coverage replay after Brain bounded-loop parser fix b2b815194321ff56ea7d0b83e82f6d0aa0499a87. Current NiakVIO runtime is FULL OK but contains two early global output caps while the provider publishes 480p/720p/1080p/2160p variants. Generate a bounded coverage-before-final-cap provider_bloc from exact current bytes; preserve identity/playable gates and execution deadlines; no manual provider edit.",
+  "niakvio_sha": "8cc61b4af6f2003f5e2712d84102b004385b5eed",
+  "reason": "Authoritative HindMoviez variant-coverage replay after trailing-resolver extraction fix. Brain CI #1319 is green. Compile bounded_variant_enumeration_before_cap deterministically from exact current runtime bytes; remove only the outer global quota that truncates later quality variants while retaining inner per-source cap, k<8 bound, identity/playability gates and provider deadline. No 7B fallback if deterministic compilation succeeds; no manual provider edit.",
   "requested_repair_queue": [
     "hindmoviez"
   ],
-  "retry": 10
+  "retry": 11
 }

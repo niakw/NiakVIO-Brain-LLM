@@ -899,3 +899,10 @@
 
 - Brain CI #1318 on `a9a6fd2ca63abea760dcc5508e9e0a454c09eac3` reached the new trailing-resolver mutation and failed only at Node syntax validation because the synthetic regression fixture had an IIFE closing tail without a matching opening wrapper.
 - Production parser code was not implicated by that error. The fixture now remains valid standalone JavaScript while still preserving the required shape: final named `resolve` helper followed by resolver-registration statements.
+
+
+## 2026-10-01 — HindMoviez deterministic replay armed on current NiakVIO head
+
+- Brain CI #1319 passed on `8d269c85a318640335877c6a6a92524976d3b286`; the trailing-resolver extractor and representative bounded-coverage test are green.
+- Replay targets exact NiakVIO `8cc61b4af6f2003f5e2712d84102b004385b5eed` and HindMoviez only. Expected first candidate is `bounded_variant_enumeration_before_cap`, compiled without 7B from current bytes.
+- Acceptance still requires NiakVIO isolated sandbox execution to preserve identity/playability and demonstrate expanded quality coverage. A generated patch alone is not repair proof.
