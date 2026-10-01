@@ -45,21 +45,19 @@ Return one JSON object only with provider_id, diagnosis, strategy, confidence, t
 evidence, mutations, experiment, tests, abstain and abstain_reason.
 """
 
-COMPACT_FORCE_SYSTEM_PROMPT = """NiakVIO Brain Force. Return JSON only:
+COMPACT_FORCE_SYSTEM_PROMPT = """NiakVIO Brain Force. JSON only:
 {"edit":<one provider-local edit or null>,"abstain_reason":"<short>"}
-Rules:
-- One edit max; never invent URLs/routes/hosts/headers/tokens/cookies/placeholders or facts.
+Use only current evidence and editable_units. Never invent network facts, URLs, routes, hosts, headers, tokens, cookies or placeholders.
+One edit max:
 - provider_data: {scope,operation,path,value?}
-- provider_patch/provider_js: {scope,path,unit_id,replace}; no unified diff.
-- provider_bloc is the invention fallback for a new provider-local mechanism: {scope:"provider_bloc",family,unit_id,replace}; family must be lowercase snake_case.
-- unit_id must come from editable_units. Brain owns the exact current-byte find text; never copy or invent find bytes.
-- Existing-file replace <=640 chars, or <=1800 only for a supplied function_unit; provider_bloc replace <=1800 chars.
-- Preserve syntax/function boundaries; do not emit partial function declarations.
-- When the chosen editable unit has kind=function_unit, replace is the NEW FUNCTION BODY ONLY. Never emit or rename the function declaration/name/signature; Brain preserves that exact envelope deterministically.
-- FULL OK references are optional inspiration only: adapt/combine/ignore them or invent a new provider-local mechanism. Never copy provider-specific network facts.
-- runtime_template_prior is authoritative reuse guidance: adapt an existing shared/current runtime template before inventing a provider_bloc. Keep provider-specific code to DATA and the smallest hooks possible.\n- provider_bloc is the last-resort invention path when no supplied template can express the observed protocol. If the same protocol repeats across providers, prefer a reusable family renderer rather than another large provider-specific runtime.\n- For provider_bloc, an editable unit does NOT need to already implement the missing mechanism. Prefer the nearest complete function_unit and rewrite it with a new bounded provider-local mechanism using only observed current facts.
-- Do not abstain merely because existing code lacks the desired helper/strategy. Abstain only when current evidence lacks a required network fact/value or no complete syntax-safe unit can carry a provider-local repair.
-- force_validation_feedback means the previous shape failed; choose a materially different unit/replacement in the same scope or abstain.\n- prior_force_sandbox_failures are executed negative evidence: if a prior edit applied but did not improve playable proof, do not make a cosmetic variant of that mechanism; choose a materially different causal mechanism/unit or abstain."""
+- provider_patch/provider_js: {scope,path,unit_id,replace}
+- provider_bloc: {scope:"provider_bloc",family,unit_id,replace}
+unit_id MUST come from editable_units; Brain owns exact find bytes.
+For function_unit, replace is the NEW FUNCTION BODY only; preserve the declaration/signature.
+Existing-file replace <=640 chars unless function_unit; provider_bloc replace <=1200 chars.
+Prefer runtime_template_prior/current runtime reuse before a novel Bloc. A new provider-local mechanism is allowed when current evidence supports it.
+Never cosmetically repeat prior_force_sandbox_failures. force_validation_feedback requires a materially different valid edit or abstention.
+Abstain only when required current network facts are absent or no complete syntax-safe unit can carry the repair."""
 
 
 def _extract_json(text: str) -> dict[str, Any]:
@@ -875,6 +873,39 @@ def _force_memory_blocks_mutation(
     return False
 
 
+def _deterministic_complete_line_function_units(source: str) -> list[dict[str, Any]]:
+    """Extract exact one-line JavaScript function units from full current source.
+
+    Generated provider runtime Blocs deliberately keep small helpers on one
+    physical line. Scanning the complete registered source avoids a false
+    negative when prompt windows clip a helper or when a JavaScript RegExp
+    contains braces that confuse a lightweight brace counter.
+    """
+    text = str(source or "")
+    pattern = re.compile(
+        r"(?m)^[ \\t]*(?:async[ \\t]+)?function[ \\t]+"
+        r"[A-Za-z_$][A-Za-z0-9_$]*[ \\t]*\\([^\\r\\n]*\\)[ \\t]*"
+        r"\\{[^\\r\\n]*\\}[ \\t]*$"
+    )
+    units: list[dict[str, Any]] = []
+    for index, match in enumerate(pattern.finditer(text), start=1):
+        raw = match.group(0)
+        leading = len(raw) - len(raw.lstrip())
+        find = raw.strip()
+        if not find or len(find) > 1800:
+            continue
+        offset = match.start() + leading
+        units.append({
+            "id": f"detline{index}",
+            "kind": "function_unit",
+            "source": find,
+            "offset": offset,
+            "end_offset": offset + len(find),
+            "window_id": "deterministic-full-source",
+        })
+    return units
+
+
 def _deterministic_class_text_boundary_mutation(
     request: RepairRequest,
     mutation_policy: dict[str, Any],
@@ -904,7 +935,7 @@ def _deterministic_class_text_boundary_mutation(
         # compact route-gap prompt intentionally exposes only two causal units,
         # but negative-memory progression must still be able to inspect the
         # next exact provider-owned helper after the first candidate failed.
-        units = _force_edit_units(
+        window_units = _force_edit_units(
             source,
             request.failure_class,
             max_chars=5000,
@@ -912,6 +943,16 @@ def _deterministic_class_text_boundary_mutation(
             max_units=32,
             focus_keywords=focus_keywords,
         )
+        units = _deterministic_complete_line_function_units(source)
+        seen_units = {
+            (int(unit.get("offset") or -1), str(unit.get("source") or ""))
+            for unit in units
+        }
+        for unit in window_units:
+            key = (int(unit.get("offset") or -1), str(unit.get("source") or ""))
+            if key not in seen_units:
+                units.append(unit)
+                seen_units.add(key)
         for unit in units:
             if str(unit.get("kind") or "") != "function_unit":
                 continue
@@ -1198,7 +1239,7 @@ def _compact_wire_schema_for(
                     "scope": {"type": "string", "enum": ["provider_bloc"]},
                     "family": {"type": "string", "minLength": 3, "maxLength": 49, "pattern": "^[a-z][a-z0-9_]{2,48}$"},
                     "unit_id": {"type": "string", "enum": unit_ids},
-                    "replace": {"type": "string", "maxLength": 1800},
+                    "replace": {"type": "string", "maxLength": 1200},
                 },
             })
             continue
@@ -1362,10 +1403,19 @@ class BrainPlanner:
     ) -> tuple[RepairProposal, dict[str, Any], dict[str, Any]]:
         _, documents, causal_prior, mutation_policy, user = self._prepare(request)
         if compact_force:
-            deterministic_mutation = _deterministic_structural_force_mutation(
-                request,
-                mutation_policy,
-            )
+            try:
+                deterministic_mutation = _deterministic_structural_force_mutation(
+                    request,
+                    mutation_policy,
+                )
+            except ValueError as deterministic_exc:
+                detail = re.sub(r"\\s+", " ", str(deterministic_exc or "ValueError")).strip()[:280]
+                print(
+                    "FIELD_BRAIN_FORCE_DETERMINISTIC_ERROR "
+                    f"provider={request.provider_id} error=ValueError detail={detail}",
+                    flush=True,
+                )
+                deterministic_mutation = None
             if deterministic_mutation is not None:
                 print(
                     "FIELD_BRAIN_FORCE_DETERMINISTIC "
