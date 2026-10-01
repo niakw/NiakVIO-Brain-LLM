@@ -85,12 +85,35 @@ jobs:
           INPUT_TARGETS: ${{ inputs.target_providers || '' }}
         run: |
           set -euo pipefail
-          python - "$RUNNER_TEMP/niakvio-guidance-targets.txt" "$INPUT_TARGETS" <<'PY'
+          PYTHONPATH=brain/src python - <<'PY'
+          import json
+          from pathlib import Path
+          from niakvio_brain_llm.provider_context import audit_registered_runtime_variant_coverage
+
+          audit=audit_registered_runtime_variant_coverage("niakvio")
+          Path("niakvio-runtime-variant-coverage.json").write_text(
+              json.dumps(audit,ensure_ascii=False,indent=2)+"\n",
+              encoding="utf-8",
+          )
+          print(
+              "FIELD_NIAKVIO_RUNTIME_VARIANT_COVERAGE "
+              f"providers={int(audit.get('providerCount') or 0)} "
+              f"high={len(audit.get('highRiskProviders') or [])} "
+              f"review={len(audit.get('reviewProviders') or [])}"
+          )
+          PY
+          python - "$RUNNER_TEMP/niakvio-guidance-targets.txt" "$INPUT_TARGETS" "niakvio-runtime-variant-coverage.json" <<'PY'
           import json,sys
           from pathlib import Path
 
           out=Path(sys.argv[1])
           raw=str(sys.argv[2] or "").strip()
+          coverage=json.loads(Path(sys.argv[3]).read_text(encoding="utf-8"))
+          coverage_high={
+              str(value or "").strip().lower().replace("_","-")
+              for value in coverage.get("highRiskProviders") or []
+              if str(value or "").strip()
+          }
           trigger=Path("brain/.github/triggers/niakvio-guidance.json")
           if not raw and trigger.is_file():
               data=json.loads(trigger.read_text(encoding="utf-8"))
@@ -107,6 +130,7 @@ jobs:
               if str(v or "").strip()
           ]
           repair_set=set(repair)
+          explicit_allowed=repair_set|coverage_high
           requested=[]
           seen=set()
           for value in values:
@@ -115,9 +139,12 @@ jobs:
                   seen.add(provider); requested.append(provider)
           if not requested:
               requested=repair
-          missing=[provider for provider in requested if provider not in repair_set]
+          missing=[provider for provider in requested if provider not in explicit_allowed]
           if missing:
-              raise SystemExit("requested Brain LLM cohort is not current repairQueue: "+",".join(missing))
+              raise SystemExit(
+                  "requested Brain LLM cohort is neither current repairQueue nor high runtime coverage debt: "
+                  + ",".join(missing)
+              )
           if not requested:
               raise SystemExit("Brain LLM requested cohort is empty")
           out.write_text("\n".join(requested)+"\n",encoding="utf-8")
@@ -586,5 +613,6 @@ jobs:
             routing-force-summary.json
             routing.jsonl
             routing-force.jsonl
+            niakvio-runtime-variant-coverage.json
           retention-days: 14
           if-no-files-found: warn
