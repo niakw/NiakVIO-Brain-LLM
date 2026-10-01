@@ -873,3 +873,9 @@
 - Brain now compiles a narrow generic mechanism directly from exact current runtime bytes: a premature global output-quota break may be deferred only when it sits inside a source/variant loop with an independent explicit numeric iteration bound. That independent bound must remain present after the edit.
 - The emitted family is bounded_variant_enumeration_before_cap. Unbounded loops fail closed; identity/playability gates and downstream sandbox authority are unchanged.
 - Representative tests model the HindMoviez shape with later 2160/1080/720/480 variants and prove both successful compilation and rejection of an unbounded loop. No HindMoviez provider file was manually edited.
+
+
+## 2026-10-01 — Coverage compiler nested-call loop-header fix
+
+- Brain CI #1315 failed only the new representative coverage compiler test: the bounded-loop regex stopped at the closing parenthesis of an in-header helper call such as !expired(), so it never reached the real loop-closing parenthesis or the existing k<8 bound.
+- The loop-header matcher now consumes minimally until a closing parenthesis followed by the loop opening brace. Numeric-bound and collection-length requirements are unchanged; unbounded loops remain rejected.

@@ -1610,7 +1610,7 @@ def _deterministic_variant_coverage_mutation(
         re.I,
     )
     bounded_loop = re.compile(
-        r"for\s*\((?P<header>[^)]{1,280})\)\s*\{",
+        r"for\s*\((?P<header>.{1,280}?)\)\s*\{",
         re.I | re.S,
     )
     numeric_bound = re.compile(r"(?:^|[^A-Za-z0-9_$])\w+\s*<=?\s*\d+\b")
