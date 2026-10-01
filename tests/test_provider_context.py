@@ -159,6 +159,35 @@ class ProviderContextTests(unittest.TestCase):
             self.assertIn("2160p", risk["qualityHints"])
             self.assertFalse(risk["proofAuthority"])
 
+    def test_runtime_variant_coverage_flags_numeric_shared_crawler_cap(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "scripts" / "provider_patches").mkdir(parents=True)
+            (root / "scripts" / "provider_patches" / "demo_runtime_v1.py").write_text(
+                'MANAGED_FIX_ID = "PROVIDER.DEMO.RUNTIME.V1"\n'
+                'WRAPPER = r"""async function terminal(players,ref){var out=[];'
+                'for(var i=0;i<players.length&&i<8;i++){'
+                'var rows=await _crawlDirectMedia([players[i].server],ref,2);'
+                'for(var j=0;j<rows.length&&out.length<8;j++){'
+                'var x=rows[j];x.quality=x.quality||"1080p";out.push(x)}}return out}"""\n',
+                encoding="utf-8",
+            )
+            (root / "provider-overrides.json").write_text(json.dumps({
+                "provider_patches": {
+                    "demo": {
+                        "provider_lego_scripts": ["scripts/provider_patches/demo_runtime_v1.py"]
+                    }
+                }
+            }), encoding="utf-8")
+            (root / "provider-hubs.json").write_text("{}", encoding="utf-8")
+            (root / "manifest.json").write_text(json.dumps({"scrapers": []}), encoding="utf-8")
+            context = build_provider_context(root, "demo")
+            risk = context["runtime_variant_coverage"]
+            self.assertEqual(risk["risk"], "high")
+            self.assertIn("global_output_numeric_loop_cap", risk["mechanisms"])
+            self.assertIn("player", risk["dimensions"])
+            self.assertIn("server", risk["dimensions"])
+
     def test_stremio_route_shape_prefers_shared_json_renderer(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
