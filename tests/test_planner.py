@@ -251,10 +251,7 @@ function resolve(){return []}'''
         self.assertIn("(?![-_])", mutation["diff"])
 
     def test_provider_bloc_negative_memory_advances_to_class_text_boundary(self):
-        runtime = r'''function attr(tag,key){var m=String(tag||"").match(new RegExp("\\b"+key+"\\s*=\\s*[\\x22\\x27]([^\\x22\\x27]+)[\\x22\\x27]","i"));return m?m[1]:""}
-function classText(html,cls){var re=new RegExp("<span\\b[^>]*class=[\\x22\\x27][^\\x22\\x27]*\\b"+cls.replace(/[-/\\^$*+?.()|[\\]{}]/g,"\\$&")+"\\b[^\\x22\\x27]*[\\x22\\x27][^>]*>","i");return re.test(html)?"x":""}
-function classBlocks(html,cls){var esc=cls.replace(/[-/\\^$*+?.()|[\\]{}]/g,"\\$&"),re=new RegExp("<(?:div|article|li|a)\\b[^>]*class=[\\x22\\x27][^\\x22\\x27]*\\b"+esc+"\\b[^\\x22\\x27]*[\\x22\\x27][^>]*>","gi"),starts=[],m;while((m=re.exec(html||""))!==null)starts.push({at:m.index,tag:m[0]});var out=[];for(var i=0;i<starts.length;i++){var end=i+1<starts.length?starts[i+1].at:Math.min(String(html||"").length,starts[i].at+12000);out.push({html:String(html||"").slice(starts[i].at,end),tag:starts[i].tag})}return out}
-function resolve(){return []}'''
+        runtime = r'''function attr(tag,key){var m=String(tag||"").match(new RegExp("\\b"+key+"\\s*=\\s*[\\x22\\x27]([^\\x22\\x27]+)[\\x22\\x27]","i"));return m?m[1]:""} function classText(html,cls){var re=new RegExp("<span\\b[^>]*class=[\\x22\\x27][^\\x22\\x27]*\\b"+cls.replace(/[-/\\^$*+?.()|[\\]{}]/g,"\\$&")+"\\b[^\\x22\\x27]*[\\x22\\x27][^>]*>","i");return re.test(html)?"x":""} function classBlocks(html,cls){var esc=cls.replace(/[-/\\^$*+?.()|[\\]{}]/g,"\\$&"),re=new RegExp("<(?:div|article|li|a)\\b[^>]*class=[\\x22\\x27][^\\x22\\x27]*\\b"+esc+"\\b[^\\x22\\x27]*[\\x22\\x27][^>]*>","gi"),starts=[],m;while((m=re.exec(html||""))!==null)starts.push({at:m.index,tag:m[0]});var out=[];for(var i=0;i<starts.length;i++){var end=i+1<starts.length?starts[i+1].at:Math.min(String(html||"").length,starts[i].at+12000);out.push({html:String(html||"").slice(starts[i].at,end),tag:starts[i].tag})}return out} function resolve(){return []}'''
         evidence = [{
             "source":"census-sharded-current",
             "value":{"structureHints":[
