@@ -827,7 +827,7 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
             {"source": "brain-repair-experience", "value": provider_experience[:4]},
             {"source": "brain-repair-memory", "value": negative_memory[:4]},
             *(
-                [{"source": "brain-force-sandbox-memory", "value": force_negative_memory[:4]}]
+                [{"source": "brain-force-sandbox-memory", "value": force_negative_memory[:8]}]
                 if force_negative_memory else []
             ),
         ],

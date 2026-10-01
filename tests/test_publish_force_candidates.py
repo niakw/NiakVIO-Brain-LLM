@@ -85,6 +85,33 @@ class ForceCandidatePublicationTests(unittest.TestCase):
         self.assertEqual(second["providerCount"], 0)
         self.assertEqual(second["rows"], [])
 
+    def test_provider_bloc_failed_fingerprint_survives_neutral_context_drift(self):
+        blocked = {
+            ("demo", "a" * 64, "b" * 64),
+            ("other", "c" * 64, "d" * 64),
+        }
+        self.assertTrue(mod.force_candidate_blocked(
+            blocked,
+            provider="demo",
+            mutation_fp="a" * 64,
+            context_fp="e" * 64,
+            scopes={"provider_bloc"},
+        ))
+        self.assertFalse(mod.force_candidate_blocked(
+            blocked,
+            provider="demo",
+            mutation_fp="a" * 64,
+            context_fp="e" * 64,
+            scopes={"provider_patch"},
+        ))
+        self.assertTrue(mod.force_candidate_blocked(
+            blocked,
+            provider="demo",
+            mutation_fp="a" * 64,
+            context_fp="b" * 64,
+            scopes={"provider_patch"},
+        ))
+
     def test_multiple_concrete_candidates_publish_as_ordered_portfolio(self):
         first = self.row("candidate-a")
         first["hypothesis_index"] = 1

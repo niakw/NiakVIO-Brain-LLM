@@ -110,6 +110,30 @@ def mutation_context_fingerprint(
     return fingerprint(surfaces)
 
 
+def force_candidate_blocked(
+    blocked_force: set[tuple[str, str, str]],
+    *,
+    provider: str,
+    mutation_fp: str,
+    context_fp: str,
+    scopes: set[str],
+) -> bool:
+    """Keep planner and publisher negative-memory semantics identical.
+
+    Runtime provider_bloc mutations already fingerprint their exact find/replace
+    bytes. Once that exact edit failed in a real sandbox, neutral release/context
+    drift must not make it eligible again.
+    """
+    if (provider, mutation_fp, context_fp) in blocked_force:
+        return True
+    if "provider_bloc" in scopes:
+        return any(
+            blocked_provider == provider and blocked_fp == mutation_fp
+            for blocked_provider, blocked_fp, _blocked_context in blocked_force
+        )
+    return False
+
+
 def load_force_memory(root: Path) -> set[tuple[str,str,str]]:
     path=root/"automation"/"brain-llm-force-memory.json"
     try:
@@ -219,7 +243,13 @@ def sanitize(
             if mutation_families
             else canon(proposal.get("strategy")) + ":" + "+".join(sorted(scopes))
         )[:160]
-        if (provider, mutation_fp, context_fp) in blocked_force:
+        if force_candidate_blocked(
+            blocked_force,
+            provider=provider,
+            mutation_fp=mutation_fp,
+            context_fp=context_fp,
+            scopes=scopes,
+        ):
             continue
         key = (provider, mutation_fp)
         if key in seen:

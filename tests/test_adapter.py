@@ -72,7 +72,7 @@ class AdapterTests(unittest.TestCase):
             )
             self.assertEqual(
                 [row["lastReason"] for row in force_observation["value"]],
-                ["sandbox-6", "sandbox-5", "sandbox-4", "sandbox-3"],
+                ["sandbox-6", "sandbox-5", "sandbox-4", "sandbox-3", "sandbox-2", "sandbox-1"],
             )
             self.assertEqual(
                 force_observation["value"][0]["mutationFingerprint"],
