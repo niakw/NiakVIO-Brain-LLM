@@ -1699,6 +1699,15 @@ def _deterministic_variant_coverage_mutation(
         re.I | re.S,
     )
     numeric_bound = re.compile(r"(?:^|[^A-Za-z0-9_$])\w+\s*<=?\s*\d+\b")
+    length_guard = re.compile(
+        r"\b(?P<index>[A-Za-z_$][A-Za-z0-9_$]*)\s*<\s*"
+        r"[A-Za-z_$][A-Za-z0-9_$.[\]]*\.length\b",
+        re.I,
+    )
+    output_header_cap = re.compile(
+        r"(?P<prefix>out\.length\s*<\s*)(?P<cap>\d+)\b",
+        re.I,
+    )
 
     candidates: list[tuple[str, str, str, dict[str, Any], str]] = []
     for scope, path, source in source_rows:
@@ -1715,8 +1724,7 @@ def _deterministic_variant_coverage_mutation(
                 continue
             body = str(signature.group("body") or "")
             breaks = list(quota_break.finditer(body))
-            if not breaks:
-                continue
+            break_candidate_added = False
             for break_match in breaks:
                 prior_loops = [
                     match
@@ -1733,7 +1741,68 @@ def _deterministic_variant_coverage_mutation(
                 if replacement_body == body or header not in replacement_body:
                     continue
                 candidates.append((scope, path, source, unit, replacement_body))
+                break_candidate_added = True
                 break
+            if break_candidate_added:
+                continue
+
+            # Some current provider runtimes truncate fan-out directly in loop
+            # headers rather than through an explicit quota break, e.g.
+            #   i<players.length&&i<8
+            # plus an inner out.length<8 guard.  Only touch functions that
+            # actually delegate player resolution to the shared media crawler.
+            # Keep both traversal and output explicitly bounded while aligning
+            # them with the common 16-player / 12-stream fan-out envelope.
+            if "_crawlDirectMedia" not in body:
+                continue
+            edits: list[tuple[int, int, str]] = []
+            for loop_match in bounded_loop.finditer(body):
+                header = str(loop_match.group("header") or "")
+                guard = length_guard.search(header)
+                if not guard:
+                    continue
+                index_name = str(guard.group("index") or "")
+                if not index_name:
+                    continue
+                iterator_cap = re.compile(
+                    rf"(?P<prefix>\b{re.escape(index_name)}\s*<\s*)(?P<cap>\d+)\b",
+                    re.I,
+                )
+                iterator_matches = [
+                    match
+                    for match in iterator_cap.finditer(header)
+                    if 4 <= int(match.group("cap")) < 16
+                ]
+                output_matches = [
+                    match
+                    for match in output_header_cap.finditer(header)
+                    if 4 <= int(match.group("cap")) < 12
+                ]
+                next_header = header
+                for match in reversed(output_matches):
+                    next_header = (
+                        next_header[:match.start("cap")]
+                        + "12"
+                        + next_header[match.end("cap"):]
+                    )
+                for match in reversed(iterator_matches):
+                    next_header = (
+                        next_header[:match.start("cap")]
+                        + "16"
+                        + next_header[match.end("cap"):]
+                    )
+                if next_header == header:
+                    continue
+                header_start = loop_match.start("header")
+                header_end = loop_match.end("header")
+                edits.append((header_start, header_end, next_header))
+            if not edits:
+                continue
+            replacement_body = body
+            for start, end, next_header in reversed(edits):
+                replacement_body = replacement_body[:start] + next_header + replacement_body[end:]
+            if replacement_body != body:
+                candidates.append((scope, path, source, unit, replacement_body))
 
     if not candidates:
         return None
