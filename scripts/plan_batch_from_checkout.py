@@ -601,18 +601,17 @@ def main() -> int:
         provider = str(census_row["provider"])
         request = request_cache.get(provider) or request_from_checkout(args.niakvio_root, provider)
         request.advisor_only = bool(args.advisor_only)
-        max_hypotheses = (
-            max(1, min(int(args.max_hypotheses or request.max_hypotheses or 1), 3))
-            if args.advisor_only
-            else 1
+        max_hypotheses = max(
+            1,
+            min(
+                int(args.max_hypotheses or request.max_hypotheses or 1),
+                4 if args.mode == "repair" and not args.advisor_only else 3,
+            ),
         )
         planned: list[dict] = []
 
         if args.mode == "repair" and not args.advisor_only:
             scopes = _force_scope_order(request)
-            last_error: Exception | None = None
-            last_row: dict | None = None
-            scope_trace: list[dict[str, object]] = []
             budget_cap = max(60, min(int(args.force_provider_budget_seconds), 900))
             failure_key = str(request.failure_class or "").strip().casefold().replace("-", "_")
             status_key = str(request.status or "").strip().upper()
@@ -633,11 +632,12 @@ def main() -> int:
                     or status_key in {"CHAIN REACHED", "ROUTE PROVEN"}
                 )
             ):
-                # Fleet waves should rotate after one bounded exact-runtime attempt
-                # instead of letting one witness monopolize ten minutes.
+                # One provider run may now emit several causally distinct
+                # hypotheses, so keep a larger shared portfolio budget while
+                # retaining the same bounded per-call timeouts.
                 budget_seconds = min(
                     budget_cap,
-                    300 if status_key == "CHAIN REACHED" or failure_key in {"chain_terminal_gap", "media_extraction_gap"} else 240,
+                    600 if status_key == "CHAIN REACHED" or failure_key in {"chain_terminal_gap", "media_extraction_gap"} else 480,
                 )
             elif failure_key in {"chain_terminal_gap", "media_extraction_gap"} or status_key == "CHAIN REACHED":
                 budget_seconds = budget_cap
@@ -653,84 +653,134 @@ def main() -> int:
             print(
                 "FIELD_BRAIN_FORCE_PROVIDER_BUDGET "
                 f"provider={provider} failure={failure_key or 'unknown'} status={status_key or 'unknown'} "
-                f"budget_seconds={budget_seconds} cap_seconds={budget_cap}",
+                f"budget_seconds={budget_seconds} cap_seconds={budget_cap} portfolio={max_hypotheses}",
                 flush=True,
             )
             force_deadline = time.monotonic() + budget_seconds
-            for scope in scopes:
-                if time.monotonic() >= force_deadline:
-                    last_error = TimeoutError("force provider budget exhausted")
+            terminal_error: Exception | None = None
+            terminal_trace: list[dict[str, object]] = []
+
+            for candidate_index in range(1, max_hypotheses + 1):
+                last_error: Exception | None = None
+                last_row: dict | None = None
+                scope_trace: list[dict[str, object]] = []
+                selected_row: dict | None = None
+
+                for scope in scopes:
+                    if time.monotonic() >= force_deadline:
+                        last_error = TimeoutError("force provider budget exhausted")
+                        scope_trace.append({
+                            "scope": scope,
+                            "outcome": "budget_exhausted",
+                            "reason": "provider_budget_exhausted",
+                        })
+                        print(
+                            "FIELD_BRAIN_FORCE_PROVIDER_BUDGET_EXHAUSTED "
+                            f"provider={provider} budget_seconds={budget_seconds} "
+                            f"portfolio_generated={len(planned)}",
+                            flush=True,
+                        )
+                        break
+
+                    row, error = _run_force_scope(
+                        position,
+                        provider,
+                        request,
+                        scope,
+                        force_deadline,
+                    )
+                    if error is not None:
+                        last_error = error
+                        rejection_reason = _force_rejection_reason(error)
+                        scope_trace.append({
+                            "scope": scope,
+                            "outcome": "rejected",
+                            "reason": rejection_reason,
+                            "errorType": type(error).__name__,
+                        })
+                        error_detail = re.sub(r"[^a-zA-Z0-9._:/ -]+", "_", str(error).strip())[:240] or "unspecified"
+                        print(
+                            "FIELD_BRAIN_FORCE_SCOPE_REJECTED "
+                            f"provider={provider} scope={scope} error={type(error).__name__} "
+                            f"reason={rejection_reason} detail={error_detail} "
+                            f"portfolio_index={candidate_index}",
+                            flush=True,
+                        )
+                        continue
+                    if row is None:
+                        continue
+
+                    last_row = row
+                    proposal = row.get("proposal") if isinstance(row, dict) else None
+                    mutations = proposal.get("mutations") if isinstance(proposal, dict) else None
+                    if isinstance(mutations, list) and mutations:
+                        scope_trace.append({
+                            "scope": scope,
+                            "outcome": "selected",
+                            "reason": "executable_mutation",
+                        })
+                        row["hypothesis_index"] = candidate_index
+                        row["force_scope_trace"] = copy.deepcopy(scope_trace)
+                        selected_row = row
+                        print(
+                            "FIELD_BRAIN_FORCE_SCOPE_SELECTED "
+                            f"provider={provider} scope={scope} portfolio_index={candidate_index}",
+                            flush=True,
+                        )
+                        break
+
+                    abstain_reason = ""
+                    if isinstance(proposal, dict):
+                        abstain_reason = str(proposal.get("abstain_reason") or "")
+                    safe_reason = re.sub(r"[^a-zA-Z0-9._:-]+", "_", abstain_reason.strip())[:160] or "unspecified"
                     scope_trace.append({
                         "scope": scope,
-                        "outcome": "budget_exhausted",
-                        "reason": "provider_budget_exhausted",
+                        "outcome": "abstain",
+                        "reason": safe_reason,
                     })
                     print(
-                        "FIELD_BRAIN_FORCE_PROVIDER_BUDGET_EXHAUSTED "
-                        f"provider={provider} budget_seconds={budget_seconds}",
+                        "FIELD_BRAIN_FORCE_SCOPE_ABSTAIN "
+                        f"provider={provider} scope={scope} reason={safe_reason} "
+                        f"portfolio_index={candidate_index}",
                         flush=True,
                     )
+
+                if selected_row is None:
+                    terminal_error = last_error
+                    terminal_trace = copy.deepcopy(scope_trace)
+                    if last_row is not None and not planned:
+                        last_row["hypothesis_index"] = candidate_index
+                        last_row["force_scope_trace"] = copy.deepcopy(scope_trace)
+                        planned.append(last_row)
                     break
-                row, error = _run_force_scope(
-                    position,
-                    provider,
-                    request,
-                    scope,
-                    force_deadline,
-                )
-                if error is not None:
-                    last_error = error
-                    rejection_reason = _force_rejection_reason(error)
-                    scope_trace.append({
-                        "scope": scope,
-                        "outcome": "rejected",
-                        "reason": rejection_reason,
-                        "errorType": type(error).__name__,
-                    })
-                    error_detail = re.sub(r"[^a-zA-Z0-9._:/ -]+", "_", str(error).strip())[:240] or "unspecified"
-                    print(
-                        "FIELD_BRAIN_FORCE_SCOPE_REJECTED "
-                        f"provider={provider} scope={scope} error={type(error).__name__} "
-                        f"reason={rejection_reason} detail={error_detail}",
-                        flush=True,
-                    )
-                    continue
-                if row is None:
-                    continue
-                last_row = row
-                proposal = row.get("proposal") if isinstance(row, dict) else None
-                mutations = proposal.get("mutations") if isinstance(proposal, dict) else None
-                if isinstance(mutations, list) and mutations:
-                    scope_trace.append({
-                        "scope": scope,
-                        "outcome": "selected",
-                        "reason": "executable_mutation",
-                    })
-                    row["force_scope_trace"] = copy.deepcopy(scope_trace)
-                    print(
-                        "FIELD_BRAIN_FORCE_SCOPE_SELECTED "
-                        f"provider={provider} scope={scope}",
-                        flush=True,
-                    )
-                    return [row]
-                abstain_reason = ""
-                if isinstance(proposal, dict):
-                    abstain_reason = str(proposal.get("abstain_reason") or "")
-                safe_reason = re.sub(r"[^a-zA-Z0-9._:-]+", "_", abstain_reason.strip())[:160] or "unspecified"
-                scope_trace.append({
-                    "scope": scope,
-                    "outcome": "abstain",
-                    "reason": safe_reason,
-                })
+
+                planned.append(selected_row)
+                mutation_fp = _reserve_force_portfolio_candidate(request, selected_row)
                 print(
-                    "FIELD_BRAIN_FORCE_SCOPE_ABSTAIN "
-                    f"provider={provider} scope={scope} reason={safe_reason}",
+                    "FIELD_BRAIN_FORCE_PORTFOLIO_RESERVED "
+                    f"provider={provider} index={candidate_index}/{max_hypotheses} "
+                    f"fingerprint={mutation_fp or '-'}",
                     flush=True,
                 )
-            if last_row is not None:
-                last_row["force_scope_trace"] = copy.deepcopy(scope_trace)
-                return [last_row]
-            exc = last_error or RuntimeError("no bounded Force mutation scope is available")
+
+            executable_rows = [
+                row for row in planned
+                if isinstance(row.get("proposal"), dict)
+                and isinstance(row["proposal"].get("mutations"), list)
+                and bool(row["proposal"]["mutations"])
+            ]
+            if executable_rows:
+                print(
+                    "FIELD_BRAIN_FORCE_PORTFOLIO_READY "
+                    f"provider={provider} candidates={len(executable_rows)} "
+                    f"requested={max_hypotheses}",
+                    flush=True,
+                )
+                return executable_rows
+
+            if planned:
+                return planned
+            exc = terminal_error or RuntimeError("no bounded Force mutation scope is available")
             return [{
                 "position": position,
                 "hypothesis_index": 1,
@@ -740,7 +790,7 @@ def main() -> int:
                 "repair_family": repair_family_descriptor(request),
                 "ok": False,
                 "error": type(exc).__name__ + ": " + str(exc),
-                "force_scope_trace": copy.deepcopy(scope_trace),
+                "force_scope_trace": copy.deepcopy(terminal_trace),
             }]
 
         try:
