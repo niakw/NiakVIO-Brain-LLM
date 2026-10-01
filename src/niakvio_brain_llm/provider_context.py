@@ -129,6 +129,76 @@ def runtime_variant_coverage_signals(sources: dict[str, str] | None) -> dict[str
     }
 
 
+
+def audit_registered_runtime_variant_coverage(root: str | Path) -> dict[str, Any]:
+    """Audit every runtime currently registered by provider-overrides.
+
+    Static findings are repair debt, not runtime proof. Only high-risk rows may
+    enter explicit FORCE selection; review rows remain diagnostic until a
+    stronger representative proof exists.
+    """
+    root = Path(root)
+    overrides = _load_json(root / "provider-overrides.json")
+    patches = (
+        overrides.get("provider_patches")
+        if isinstance(overrides, dict) and isinstance(overrides.get("provider_patches"), dict)
+        else {}
+    )
+    rows: list[dict[str, Any]] = []
+    script_count = 0
+    for raw_provider, raw_patch in sorted(patches.items(), key=lambda item: str(item[0]).casefold()):
+        if not isinstance(raw_patch, dict):
+            continue
+        provider = str(raw_provider or "").strip().casefold().replace("_", "-")
+        scripts = [
+            str(value).strip()
+            for value in [
+                *(raw_patch.get("patch_scripts") or []),
+                *(raw_patch.get("provider_lego_scripts") or []),
+            ]
+            if isinstance(value, str)
+            and str(value).strip().startswith("scripts/provider_patches/")
+            and "runtime" in Path(str(value)).name.casefold()
+            and str(value).strip().endswith(".py")
+        ]
+        scripts = list(dict.fromkeys(scripts))
+        if not scripts:
+            continue
+        sources: dict[str, str] = {}
+        for relative in scripts:
+            path = root / relative
+            if path.is_file():
+                sources[relative] = sanitize_exact_source(
+                    path.read_text(encoding="utf-8", errors="replace")
+                )
+        if not sources:
+            continue
+        script_count += len(sources)
+        coverage = runtime_variant_coverage_signals(sources)
+        risk = str(coverage.get("risk") or "none") if coverage else "none"
+        rows.append({
+            "provider": provider,
+            "risk": risk,
+            "scripts": sorted(sources),
+            "coverage": coverage,
+        })
+
+    high = [row["provider"] for row in rows if row["risk"] == "high"]
+    review = [row["provider"] for row in rows if row["risk"] == "review"]
+    clean = [row["provider"] for row in rows if row["risk"] == "none"]
+    return {
+        "schemaVersion": 1,
+        "role": "static-runtime-variant-coverage-debt",
+        "proofAuthority": False,
+        "providerCount": len(rows),
+        "registeredRuntimeScriptCount": script_count,
+        "highRiskProviders": high,
+        "reviewProviders": review,
+        "cleanProviders": clean,
+        "providers": rows,
+    }
+
+
 def _sanitize_reference_source(text: str, provider_id: str, *, limit: int = 1400) -> str:
     """Keep transferable code shape while removing provider addressing/content."""
     value = sanitize_source(str(text or ""), limit=9000)
