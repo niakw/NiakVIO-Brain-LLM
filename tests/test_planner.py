@@ -5,7 +5,7 @@ import unittest
 from niakvio_brain_llm.backend import StaticBackend
 from niakvio_brain_llm.contracts import RepairRequest
 from niakvio_brain_llm.document_memory import DocumentStore
-from niakvio_brain_llm.planner import BrainPlanner, COMPACT_FORCE_SYSTEM_PROMPT, _compact_edit_to_mutation, _deterministic_class_text_boundary_mutation, _deterministic_optional_format_gate_mutation, _deterministic_structural_force_mutation, _resolve_structured_anchor
+from niakvio_brain_llm.planner import BrainPlanner, COMPACT_FORCE_SYSTEM_PROMPT, _compact_edit_to_mutation, _deterministic_catalog_identity_query_variants_mutation, _deterministic_class_text_boundary_mutation, _deterministic_optional_format_gate_mutation, _deterministic_structural_force_mutation, _resolve_structured_anchor
 from niakvio_brain_llm.prompting import _force_source_windows, build_force_prompt_payload
 
 class PlannerTests(unittest.TestCase):
@@ -406,6 +406,43 @@ function resolve(){return []}'''
         self.assertIn("(?![-_])", second["diff"])
         self.assertNotIn("closeRe", second["diff"])
 
+
+
+
+    def test_deterministic_catalog_identity_query_variants_are_bounded_and_identity_safe(self):
+        runtime = r'''function s(v){return String(v||"").trim()} function norm(v){return s(v).toLowerCase()} function base(){return "https://example.invalid"} async function meta(q){return {title:"Localized",original_title:"Original",name:"Show",original_name:"Original Show"}} async function fetchText(u,r){return null} function classBlocks(h,c){return []} function classText(h,c){return ""} function visible(h){return ""} function attr(t,k){return ""} function anchors(h,b){return []} function abs(u,b){return u} function scoreTitle(a,b){return 0} async function detail(q,m){var b=base();if(!b||!m.title)return null;var query=q.type==="tv"?m.title+" Season "+q.season:(m.title+(m.year?" "+m.year:""));var sr=await fetchText(b+"/?s="+encodeURIComponent(query),b+"/");if(!sr)return null;var cards=classBlocks(sr.text,"movie-card"),best=null;for(var i=0;i<cards.length;i++){var card=cards[i],title=classText(card.html,"movie-card-title")||visible(card.html),format=classText(card.html,"movie-card-format"),metaText=classText(card.html,"movie-card-meta"),href=attr(card.tag,"href"),aa=anchors(card.html,sr.url);if(!href&&aa.length)href=aa[0].url;href=abs(href,sr.url);if(!href)continue;if(q.type==="tv"&&!/series/i.test(format))continue;if(q.type==="movie"&&!/movies?/i.test(format))continue;var sc=scoreTitle(m.title,title),ym=metaText.match(/\\b(19|20)\\d{2}\\b/),y=ym?Number(ym[0]):0,w=Number(m.year)||0;if(w&&y){if(y===w)sc+=0.35;else if(Math.abs(y-w)>1)sc-=0.5}if(q.type==="tv"){var sm=title.match(/(?:season\\s*|s)(\\d+)/i);if(sm&&Number(sm[1])===q.season)sc+=0.4;else if(sm)sc-=0.6}if(!best||sc>best.score)best={url:href,score:sc,title:title}}if(!best||best.score<0.7)return null;return await fetchText(best.url,sr.url)}'''
+        request = RepairRequest(
+            provider_id="demo",
+            failure_class="route_proven_gap",
+            status="ROUTE PROVEN",
+            observations=[{
+                "source":"census-sharded-current",
+                "value":{"structureHints":[
+                    "movie:classes=movie-card,movie-card-title;provider-http-2xx",
+                    "tv:classes=movie-card-format;provider-network-zero-result",
+                ]},
+            }],
+            allowed_mutations=["provider_bloc"],
+            provider_context={
+                "runtimeMutationFilename":"providers/demo.js",
+                "runtimeMutationSource":runtime,
+                "preferredRuntimeMutationSource":runtime,
+            },
+        )
+        mutation = _deterministic_catalog_identity_query_variants_mutation(
+            request,
+            {"allow_mutations":True,"allowed_scopes":["provider_bloc"]},
+        )
+        self.assertIsNotNone(mutation)
+        self.assertEqual(mutation["family"], "catalog_identity_query_variants")
+        updated = runtime.replace(mutation["find"], mutation["replace"], 1)
+        self.assertIn("raw.original_title||raw.title", updated)
+        self.assertIn("raw.original_name||raw.name", updated)
+        self.assertIn("queries.length&&qi<6", updated)
+        self.assertIn("Math.max(scoreTitle(m.title,title),alt?scoreTitle(alt,title):0)", updated)
+        self.assertIn('q.type==="tv"&&!/series/i.test(format)', updated)
+        self.assertIn('q.type==="movie"&&!/movies?/i.test(format)', updated)
+        self.assertLessEqual(len(mutation["replace"]), 1800)
 
 
     def test_deterministic_optional_format_gate_preserves_known_type_and_allows_missing_label(self):
