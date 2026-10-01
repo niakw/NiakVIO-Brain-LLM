@@ -53,7 +53,7 @@ One edit max:
 - provider_patch/provider_js: {scope,path,unit_id,replace}
 - provider_bloc: {scope:"provider_bloc",family,unit_id,replace}
 unit_id MUST come from editable_units; Brain owns exact find bytes.
-For kind=function_unit, replace is the NEW FUNCTION BODY only; preserve the declaration/signature.
+For kind=function_unit, replace is the NEW FUNCTION BODY ONLY; preserve the declaration/signature.
 Existing-file replace <=640 chars unless function_unit; provider_bloc replace <=1200 chars.
 Prefer runtime_template_prior/current runtime reuse before a novel Bloc. A new provider-local mechanism is allowed when current evidence supports it.
 Never cosmetically repeat prior_force_sandbox_failures. force_validation_feedback requires a materially different valid edit or abstention.
