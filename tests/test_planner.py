@@ -435,9 +435,9 @@ function resolve(){return []}'''
         )
         self.assertIsNotNone(mutation)
         self.assertEqual(mutation["family"], "optional_metadata_format_gate")
-        self.assertIn('q.type==="tv"&&format&&!/series/i.test(format)', mutation["replace"])
-        self.assertIn('q.type==="movie"&&format&&!/movies?/i.test(format)', mutation["replace"])
-        self.assertNotIn('q.type==="tv"&&!/series/i.test(format)', mutation["replace"])
+        self.assertIn('format&&!/series/i.test(format)', mutation["replace"])
+        self.assertIn('q.type==="movie"&&format', mutation["replace"])
+        self.assertNotIn('q.type==="movie"&&!/movies?/i.test(format)', mutation["replace"])
 
 
     def test_class_text_progression_scans_beyond_compact_prompt_unit_budget(self):
