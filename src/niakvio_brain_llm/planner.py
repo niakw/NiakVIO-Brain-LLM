@@ -1214,15 +1214,15 @@ def _deterministic_class_attribute_tokens_mutation(
                 continue
             cap = max(256, min(int(cap_match.group(1)), 50000))
             replacement_body = (
-                "var re=/<(?:" + tags + r")\b[^>]*>/gi,starts=[],m;"
-                "while((m=re.exec(" + html_param + '||""))!==null){'
+                f'var re=/<(?:{tags})\\b[^>]*>/gi,starts=[],m;'
+                f'while((m=re.exec({html_param}||""))!==null){{'
                 'var names=attr(m[0],"class").split(/\\s+/).filter(Boolean);'
-                "if(names.indexOf(" + class_param + ")>=0)starts.push({at:m.index,tag:m[0]})}"
-                "var out=[];for(var i=0;i<starts.length;i++){"
-                "var end=i+1<starts.length?starts[i+1].at:"
-                "Math.min(String(" + html_param + '||"").length,starts[i].at+' + str(cap) + ");"
-                "out.push({html:String(" + html_param + '||"").slice(starts[i].at,end),tag:starts[i].tag})}"
-                "return out"
+                f'if(names.indexOf({class_param})>=0)starts.push({{at:m.index,tag:m[0]}})}}'
+                'var out=[];for(var i=0;i<starts.length;i++){'
+                'var end=i+1<starts.length?starts[i+1].at:'
+                f'Math.min(String({html_param}||"").length,starts[i].at+{cap});'
+                f'out.push({{html:String({html_param}||"").slice(starts[i].at,end),tag:starts[i].tag}})}}'
+                'return out'
             )
             candidates.append((scope, path, source, unit, replacement_body))
 
