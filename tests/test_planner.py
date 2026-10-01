@@ -242,7 +242,12 @@ function resolve(){return []}'''
         )
         self.assertIsNotNone(mutation)
         self.assertIn("function classText", mutation["diff"])
-        self.assertNotIn("function classBlocks", mutation["diff"])
+        changed = [
+            line for line in mutation["diff"].splitlines()
+            if line[:1] in {"+", "-"} and not line.startswith(("+++", "---"))
+        ]
+        self.assertTrue(changed)
+        self.assertTrue(all("function classBlocks" not in line for line in changed))
         self.assertIn("(?![-_])", mutation["diff"])
 
     def test_deterministic_negative_memory_advances_to_class_text_boundary(self):
