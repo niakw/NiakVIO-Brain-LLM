@@ -6,6 +6,51 @@ from pathlib import Path
 from niakvio_brain_llm.niakvio_adapter import classify_census_failure, request_from_checkout
 
 class AdapterFailureClassTests(unittest.TestCase):
+    def test_full_ok_high_runtime_variant_coverage_becomes_explicit_provider_gap(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "automation").mkdir(parents=True)
+            (root / "scripts" / "provider_patches").mkdir(parents=True)
+            (root / "automation" / "provider-census-status.json").write_text(
+                json.dumps({
+                    "runId": "run-coverage",
+                    "providers": [{
+                        "provider": "demo",
+                        "status": "FULL OK",
+                        "dominantIssue": "none",
+                        "declaredLanes": ["movie"],
+                    }],
+                }),
+                encoding="utf-8",
+            )
+            (root / "scripts" / "provider_patches" / "demo_runtime_v1.py").write_text(
+                'MANAGED_FIX_ID = "PROVIDER.DEMO.RUNTIME.V1"\n'
+                'WRAPPER = r"""function quality(x){return /(2160|1080|720|480)p/.test(x)} '
+                'async function resolve(links){var out=[];for(var i=0;i<links.length;i++){'
+                'var rows=source(links[i]);for(var j=0;j<rows.length;j++)out.push(rows[j]);'
+                'if(out.length>=4)break}return out}"""\n',
+                encoding="utf-8",
+            )
+            (root / "provider-overrides.json").write_text(
+                json.dumps({
+                    "provider_patches": {
+                        "demo": {
+                            "provider_lego_scripts": [
+                                "scripts/provider_patches/demo_runtime_v1.py"
+                            ]
+                        }
+                    }
+                }),
+                encoding="utf-8",
+            )
+            (root / "provider-hubs.json").write_text("{}", encoding="utf-8")
+            (root / "manifest.json").write_text(json.dumps({"scrapers": []}), encoding="utf-8")
+            request = request_from_checkout(root, "demo")
+            self.assertEqual(request.failure_class, "variant_coverage_gap")
+            self.assertEqual(request.provider_context["runtime_variant_coverage"]["risk"], "high")
+            by_source = {row["source"]: row["value"] for row in request.observations}
+            self.assertEqual(by_source["runtime-variant-coverage-current"]["risk"], "high")
+
     def test_chain_reached_beats_generic_zero_issue(self):
         row = {
             "status": "CHAIN REACHED",
