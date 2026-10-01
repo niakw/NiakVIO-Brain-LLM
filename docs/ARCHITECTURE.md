@@ -479,3 +479,10 @@ When present, FORCE source-window selection focuses on the exact quota/loop unit
 For a current variant_coverage_gap, FORCE no longer depends on model latency when the exact runtime proves a narrower safe transformation. Brain may defer a premature global out.length quota break only when that break is inside a source/variant loop that already carries an independent explicit numeric iteration bound. The loop bound, identity checks, playback validation and final return remain unchanged. Unbounded source loops fail closed.
 
 This compiler is provider-agnostic and current-byte bound. It emits provider_bloc family bounded_variant_enumeration_before_cap through the same exact-anchor, syntax and sandbox gates as any other FORCE mutation.
+
+
+## Dense per-server fan-out
+
+Variant completeness is hierarchical: a provider may expose a small number of servers/players while each server exposes many legitimate terminal variants. The deterministic FORCE compiler may therefore widen bounded player traversal separately from aggregate stream retention when current runtime evidence is a high-risk variant-coverage truncation and the function delegates to the shared media crawler.
+
+The current bounded envelope is 16 player/server rows and 32 aggregate terminal streams. This is intentionally provider-shape agnostic: provider-local runtimes still own how their own HTML/JSON names and locates servers, while the Brain only removes proven truncation from exact current bytes. Isolated sandbox acceptance still requires no runtime/identity/playback regression plus a verified completeness dimension gain.
