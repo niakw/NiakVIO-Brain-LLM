@@ -129,6 +129,36 @@ class ProviderContextTests(unittest.TestCase):
                 context["preferredRuntimeMutationSource"],
             )
 
+    def test_runtime_variant_coverage_flags_premature_global_cap(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "scripts" / "provider_patches").mkdir(parents=True)
+            (root / "scripts" / "provider_patches" / "demo_runtime_v1.py").write_text(
+                'MANAGED_FIX_ID = "PROVIDER.DEMO.RUNTIME.V1"\n'
+                'WRAPPER = r"""function quality(f){return /(2160|1080|720|480)p/.test(f)} '
+                'async function resolve(links){var out=[];for(var i=0;i<links.length;i++){'
+                'var rows=await source(links[i]);for(var j=0;j<rows.length;j++)out.push(rows[j]);'
+                'if(out.length>=4)break}return out}"""\n',
+                encoding="utf-8",
+            )
+            (root / "provider-overrides.json").write_text(json.dumps({
+                "provider_patches": {
+                    "demo": {
+                        "provider_lego_scripts": ["scripts/provider_patches/demo_runtime_v1.py"]
+                    }
+                }
+            }), encoding="utf-8")
+            (root / "provider-hubs.json").write_text("{}", encoding="utf-8")
+            (root / "manifest.json").write_text(json.dumps({"scrapers": []}), encoding="utf-8")
+            context = build_provider_context(root, "demo")
+            risk = context["runtime_variant_coverage"]
+            self.assertEqual(risk["riskKind"], "variant-coverage-truncation")
+            self.assertEqual(risk["risk"], "high")
+            self.assertIn("global_output_quota_break", risk["mechanisms"])
+            self.assertIn("quality", risk["dimensions"])
+            self.assertIn("2160p", risk["qualityHints"])
+            self.assertFalse(risk["proofAuthority"])
+
     def test_stremio_route_shape_prefers_shared_json_renderer(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

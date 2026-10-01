@@ -42,6 +42,93 @@ def _technical_features(text: str) -> set[str]:
     lowered = str(text or "").casefold()
     return {token for token in TECHNICAL_TOKENS if token in lowered}
 
+RUNTIME_VARIANT_CAP_PATTERNS = (
+    ("global_output_quota_break", re.compile(r"if\s*\(\s*out\.length\s*>=\s*[^)]{1,96}\)\s*break", re.I)),
+    ("global_output_quota_return", re.compile(r"if\s*\(\s*out\.length\s*>=\s*[^)]{1,96}\)\s*return\s+out", re.I)),
+    ("first_success_short_circuit", re.compile(r"if\s*\(\s*out\.length\s*\)\s*return\s+out", re.I)),
+    ("global_output_loop_cap", re.compile(r"out\.length\s*<\s*c\.(?:maxStreams|targetStreams|maxPlayers)", re.I)),
+    ("source_list_slice_cap", re.compile(r"\.slice\s*\(\s*0\s*,\s*(?:c\.(?:maxStreams|targetStreams|maxPlayers)|[348])\s*\)", re.I)),
+)
+RUNTIME_VARIANT_DIMENSIONS = {
+    "quality": re.compile(r"\b(?:quality|resolution|2160|1080|720|480|4k|uhd)\b", re.I),
+    "language": re.compile(r"\b(?:language|languages|lang|audio|dub|sub|vf|vostfr|dual)\b", re.I),
+    "server": re.compile(r"\b(?:server|servers|mirror|mirrors|host|hosts)\b", re.I),
+    "player": re.compile(r"\b(?:player|players|embed|iframe)\b", re.I),
+    "source": re.compile(r"\b(?:source|sources|variant|variants|release|releases)\b", re.I),
+}
+QUALITY_HINT = re.compile(r"\b(2160|1080|720|480|360)p?\b|\b4k\b|\buhd\b", re.I)
+
+
+def runtime_variant_coverage_signals(sources: dict[str, str] | None) -> dict[str, Any]:
+    """Diagnose bounded-output code that may truncate later stream variants."""
+    if not isinstance(sources, dict):
+        return {}
+    findings: list[dict[str, Any]] = []
+    qualities: set[str] = set()
+    for path, raw_source in list(sources.items())[:8]:
+        source = str(raw_source or "")
+        if not source:
+            continue
+        for match in QUALITY_HINT.finditer(source):
+            token = str(match.group(0) or "").strip().casefold()
+            if token:
+                qualities.add(
+                    "2160p"
+                    if token in {"4k", "uhd", "2160", "2160p"}
+                    else token if token.endswith("p") else token + "p"
+                )
+        for mechanism, pattern in RUNTIME_VARIANT_CAP_PATTERNS:
+            for match in list(pattern.finditer(source))[:12]:
+                window = source[max(0, match.start() - 900):min(len(source), match.end() + 1100)]
+                dimensions = sorted(
+                    name
+                    for name, dimension_pattern in RUNTIME_VARIANT_DIMENSIONS.items()
+                    if dimension_pattern.search(window)
+                )
+                if not dimensions and mechanism == "source_list_slice_cap":
+                    continue
+                findings.append({
+                    "path": str(path)[:220],
+                    "mechanism": mechanism,
+                    "dimensions": dimensions[:5],
+                    "offset": int(match.start()),
+                })
+                if len(findings) >= 32:
+                    break
+            if len(findings) >= 32:
+                break
+        if len(findings) >= 32:
+            break
+    if not findings:
+        return {}
+    mechanisms = sorted({row["mechanism"] for row in findings})
+    dimensions = sorted({value for row in findings for value in row.get("dimensions") or []})
+    high_risk = any(
+        row["mechanism"] in {
+            "global_output_quota_break",
+            "global_output_quota_return",
+            "first_success_short_circuit",
+        }
+        and bool(set(row.get("dimensions") or []) & {"quality", "language", "server", "player", "source"})
+        for row in findings
+    )
+    return {
+        "schemaVersion": 1,
+        "riskKind": "variant-coverage-truncation",
+        "risk": "high" if high_risk else "review",
+        "mechanisms": mechanisms,
+        "dimensions": dimensions,
+        "qualityHints": sorted(
+            qualities,
+            key=lambda value: (-int(re.sub(r"\D", "", value) or 0), value),
+        )[:8],
+        "findingCount": len(findings),
+        "findings": findings[:12],
+        "repairHint": "enumerate distinct quality/language/server variants before applying the final global output cap",
+        "proofAuthority": False,
+    }
+
+
 def _sanitize_reference_source(text: str, provider_id: str, *, limit: int = 1400) -> str:
     """Keep transferable code shape while removing provider addressing/content."""
     value = sanitize_source(str(text or ""), limit=9000)
@@ -575,6 +662,9 @@ def build_provider_context(root: str | Path, provider_id: str) -> dict[str, Any]
             if sources:
                 context["registered_patch_sources"] = sources
                 context["registered_patch_sha256"] = source_sha256
+                coverage = runtime_variant_coverage_signals(sources)
+                if coverage:
+                    context["runtime_variant_coverage"] = coverage
                 managed_ids: list[str] = []
                 for source_text in sources.values():
                     managed_ids.extend(

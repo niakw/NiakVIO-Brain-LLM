@@ -166,6 +166,12 @@ def compact_request(
     runtime_template_prior = context.get("runtime_template_prior")
     if isinstance(runtime_template_prior, dict) and runtime_template_prior:
         bounded_context["runtime_template_prior"] = _compact(runtime_template_prior, string_limit=260)
+    runtime_variant_coverage = context.get("runtime_variant_coverage")
+    if isinstance(runtime_variant_coverage, dict) and runtime_variant_coverage:
+        bounded_context["runtime_variant_coverage"] = _compact(
+            runtime_variant_coverage,
+            string_limit=220,
+        )
     history = context.get("advisor_experiment_history")
     if isinstance(history, list):
         bounded_context["advisor_experiment_history"] = [
@@ -343,13 +349,9 @@ def build_prompt_payload(
 
 
 def _force_structural_focus_keywords(request: RepairRequest) -> tuple[str, ...]:
-    """Derive bounded source-focus tokens from current structural evidence.
-
-    If an exact HTML class token is also the prefix of sibling class tokens,
-    word-boundary based selectors can accidentally match the whole prefix
-    family. Surface that collision to Force without retaining HTML or URLs.
-    """
+    """Derive bounded source-focus tokens from current structural evidence."""
     class_tokens: list[str] = []
+    focus: list[str] = []
 
     def record_token(raw: object) -> None:
         token = str(raw or "").strip().casefold()
@@ -371,15 +373,12 @@ def _force_structural_focus_keywords(request: RepairRequest) -> tuple[str, ...]:
             if match:
                 for raw in match.group(1).split(","):
                     record_token(raw)
-
-            # Current targeted evidence may expose the richer privacy-safe
-            # classFacts form without duplicating a legacy classes= list.
-            # The first field inside each bounded fact is the exact CSS token.
             if "classFacts=" in text:
                 facts_text = text.split("classFacts=", 1)[1]
                 for fragment in facts_text.split("[")[1:]:
                     raw_fact = fragment.split("]", 1)[0]
                     record_token(raw_fact.split(";", 1)[0])
+
     collisions = [
         token for token in class_tokens
         if any(
@@ -388,9 +387,26 @@ def _force_structural_focus_keywords(request: RepairRequest) -> tuple[str, ...]:
             for other in class_tokens
         )
     ]
-    if not collisions:
-        return ()
-    return ("classblocks", "classtext", "selector", "class=", *collisions[:2])
+    if collisions:
+        focus.extend(("classblocks", "classtext", "selector", "class=", *collisions[:2]))
+
+    context = request.provider_context if isinstance(request.provider_context, dict) else {}
+    coverage = context.get("runtime_variant_coverage")
+    if isinstance(coverage, dict) and coverage.get("riskKind") == "variant-coverage-truncation":
+        focus.extend(("out.length", "maxstreams", "targetstreams", "break", "return out", "slice("))
+        dimensions = {str(value).strip().casefold() for value in coverage.get("dimensions") or []}
+        if "quality" in dimensions:
+            focus.extend(("quality", "2160", "1080", "720", "480"))
+        if "language" in dimensions:
+            focus.extend(("language", "audio", "dub", "sub"))
+        if "server" in dimensions:
+            focus.extend(("server", "mirror"))
+        if "player" in dimensions:
+            focus.extend(("player", "embed"))
+        if "source" in dimensions:
+            focus.extend(("source", "variant", "release"))
+    return tuple(dict.fromkeys(value for value in focus if value))
+
 
 _FORCE_SOURCE_KEYWORDS: dict[str, tuple[str, ...]] = {
     "provider_transport_gap": (
@@ -1245,7 +1261,12 @@ def build_force_prompt_payload(
             "force_abstain": bool(policy.get("force_abstain")),
             "reason": _clip(policy.get("reason"), 260),
         },
-        "structural_focus": list(structural_focus_keywords)[:6],
+        "structural_focus": list(structural_focus_keywords)[:12],
+        "runtime_variant_coverage": (
+            _compact(context.get("runtime_variant_coverage"), string_limit=240)
+            if isinstance(context.get("runtime_variant_coverage"), dict)
+            else {}
+        ),
         "current_observations": observations,
         "current_route_contract": (
             _compact(context.get("route_contract"), string_limit=260)

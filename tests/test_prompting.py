@@ -23,6 +23,55 @@ class PromptingTests(unittest.TestCase):
         self.assertLess(len(payload["request"]["observations"][0]["blob"]), 700)
         self.assertLess(len(payload["retrieved_experiences"][0]["lesson"]), 700)
 
+    def test_variant_coverage_focus_survives_advisor_and_force_compaction(self):
+        source = (
+            "function quality(f){return /(2160|1080|720|480)p/.test(f);} "
+            "async function resolve(links){var out=[];for(var i=0;i<links.length;i++){"
+            "var rows=source(links[i]);for(var j=0;j<rows.length;j++)out.push(rows[j]);"
+            "if(out.length>=4)break}return out;}"
+        )
+        coverage = {
+            "schemaVersion": 1,
+            "riskKind": "variant-coverage-truncation",
+            "risk": "high",
+            "mechanisms": ["global_output_quota_break"],
+            "dimensions": ["quality", "source"],
+            "qualityHints": ["2160p", "1080p", "720p", "480p"],
+            "repairHint": "enumerate variants before final cap",
+            "proofAuthority": False,
+        }
+        request = RepairRequest(
+            provider_id="demo",
+            failure_class="chain_terminal_gap",
+            provider_context={
+                "runtimeMutationFilename": "providers/demo.js",
+                "runtimeMutationSource": source,
+                "registered_patch_sources": {
+                    "scripts/provider_patches/demo_runtime_v1.py": source,
+                },
+                "runtime_variant_coverage": coverage,
+            },
+        )
+        advisor = build_prompt_payload(
+            request, [], [],
+            {"target_layer": "provider", "confidence": 0.96},
+            {"allow_mutations": True, "allowed_scopes": ["provider_bloc"]},
+        )
+        self.assertEqual(
+            advisor["request"]["provider_context"]["runtime_variant_coverage"]["risk"],
+            "high",
+        )
+        force = build_force_prompt_payload(
+            request,
+            {"target_layer": "provider", "confidence": 0.96, "strategy_prior": "terminal"},
+            {"allow_mutations": True, "allowed_scopes": ["provider_bloc"]},
+        )
+        self.assertEqual(force["runtime_variant_coverage"]["riskKind"], "variant-coverage-truncation")
+        self.assertIn("out.length", force["structural_focus"])
+        self.assertIn("quality", force["structural_focus"])
+        windows = force["new_bloc_target"]["source_windows"]
+        self.assertTrue(any("out.length>=4" in row["source"] for row in windows), windows)
+
     def test_high_confidence_prior_uses_focused_rag_budget(self):
         request = RepairRequest(
             provider_id="demo",

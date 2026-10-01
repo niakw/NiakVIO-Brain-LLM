@@ -465,3 +465,10 @@ Fleet health must therefore expose both raw provider count and repair-family cou
 The scaling objective for hundreds of providers is that LLM calls track the number
 of novel causal families plus exceptional providers, not the total number of
 providers.
+
+
+## Variant-coverage truncation diagnosis
+
+Brain provider context performs a provider-agnostic static diagnosis of registered runtime Blocs for early global output caps such as `if(out.length>=N) break`, first-success returns and capped source lists. The diagnosis records only mechanisms, variant dimensions (quality/language/server/player/source), quality hints and source offsets; it is not proof and cannot mutate bytes by itself.
+
+When present, FORCE source-window selection focuses on the exact quota/loop unit before generic routing tokens. The repair principle is **coverage before final cap**: enumerate distinct quality/language/server variants under the existing bounded execution budget, deduplicate safely, then apply the final global output limit. It must not solve truncation by making loops unbounded or by weakening playable/identity validation.

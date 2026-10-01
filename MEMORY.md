@@ -842,3 +842,10 @@
 
 - Brain CI #1296 (`36864988998`) failed only because two source-contract assertions still required the superseded post-reservation 90-second timeout literal. Runtime/planner tests otherwise passed.
 - The stale assertions now pin the intended one-shot behavior: post-reservation speculative calls use the 60-second ceiling and expose explicit transport/validation retry suppression telemetry. No provider logic or proof gate changed in this follow-up.
+
+
+## 2026-10-01 — Brain learns variant-coverage truncation from runtime structure
+
+- Added provider-agnostic runtime Bloc analysis for premature global output caps, first-success short circuits and capped source lists. It detects affected dimensions (quality, language, server, player, source) and quality hints without treating the static signal as proof.
+- FORCE prompt compaction now preserves this diagnosis and prioritizes exact `out.length` / cap / break / quality-language-server code windows. The intended repair family is coverage-before-cap: enumerate bounded distinct variants first, then apply the final global stream cap.
+- This directly addresses the newly observed HindMoviez shape (later 720p/1080p/2160p variants can sit behind an earlier source that already fills a global quota) while remaining reusable across providers. No HindMoviez provider bytes were hand-edited here.
