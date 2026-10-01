@@ -1161,9 +1161,17 @@ def _deterministic_class_attribute_tokens_mutation(
 
     candidates: list[tuple[str, str, str, dict[str, Any], str]] = []
     for scope, path, source in source_rows:
-        if not re.search(r"(?m)^\s*function\s+attr\s*\(", source):
-            continue
         units = _deterministic_complete_line_function_units(source)
+        has_attr_helper = any(
+            re.match(
+                r"^\s*(?:async\s+)?function\s+attr\s*\(",
+                str(unit.get("source") or ""),
+            )
+            for unit in units
+            if str(unit.get("kind") or "") == "function_unit"
+        )
+        if not has_attr_helper:
+            continue
         window_units = _force_edit_units(
             source,
             request.failure_class,
