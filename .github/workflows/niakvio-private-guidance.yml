@@ -315,8 +315,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          # Force mutations are the critical path. Generate them first, then
-          # spend only a short bounded pass rotating advisor-only experiments.
+          # Force mutations are the critical path. Generate an ordered
+          # same-provider portfolio in one run so NiakVIO can sandbox several
+          # causal hypotheses without requiring one GitHub cycle per attempt.
           provider_args=()
           while IFS= read -r provider; do
             [ -z "$provider" ] || provider_args+=(--provider "$provider")
@@ -327,6 +328,7 @@ jobs:
             --documents public-documents.jsonl \
             --extra-documents private-documents.jsonl \
             --mode repair \
+            --max-hypotheses 4 \
             --stop-after-first-mutation \
             "${provider_args[@]}" \
             --endpoint http://127.0.0.1:8080 \
