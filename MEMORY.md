@@ -849,3 +849,11 @@
 - Added provider-agnostic runtime Bloc analysis for premature global output caps, first-success short circuits and capped source lists. It detects affected dimensions (quality, language, server, player, source) and quality hints without treating the static signal as proof.
 - FORCE prompt compaction now preserves this diagnosis and prioritizes exact `out.length` / cap / break / quality-language-server code windows. The intended repair family is coverage-before-cap: enumerate bounded distinct variants first, then apply the final global stream cap.
 - This directly addresses the newly observed HindMoviez shape (later 720p/1080p/2160p variants can sit behind an earlier source that already fills a global quota) while remaining reusable across providers. No HindMoviez provider bytes were hand-edited here.
+
+
+## 2026-10-01 — FULL OK no longer hides high runtime variant-coverage debt
+
+- Brain now audits every runtime registered by NiakVIO provider-overrides, not merely providers already in the census repairQueue. Static findings remain non-proof: only the high-risk class can be selected as an explicit FORCE target; review findings stay diagnostic.
+- A FULL/PARTIAL provider with high premature-cap evidence is represented as `variant_coverage_gap` with provider-local causal prior `enumerate_stream_variants_before_global_cap`. Ordinary unrequested Repair remains unchanged, so green providers are not mass-mutated from static heuristics.
+- The Private-Guided Advisor accepts an explicit provider when it is either in the current repairQueue or in the current exact-checkout high runtime-coverage audit. This closes the HindMoviez blind spot where terminal playability was green while later 720p/1080p/2160p variants could be truncated.
+- Required proof remains Brain candidate -> isolated current-byte sandbox -> playable/identity validation -> non-regression -> NiakVIO publication. Static coverage findings alone never mark a provider broken or repaired.
