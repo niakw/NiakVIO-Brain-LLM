@@ -115,6 +115,11 @@ STATIC_FAILURE_PRIORS: dict[str, dict[str, Any]] = {
         "confidence": 0.96,
         "strategy_prior": "proven_request_program_and_terminal_extraction",
     },
+    "variant-coverage-gap": {
+        "target_layer": "provider",
+        "confidence": 0.99,
+        "strategy_prior": "enumerate_stream_variants_before_global_cap",
+    },
 }
 
 def _canon(value: object) -> str:
