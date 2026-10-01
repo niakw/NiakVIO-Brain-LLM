@@ -1752,7 +1752,10 @@ def _deterministic_variant_coverage_mutation(
             # plus an inner out.length<8 guard.  Only touch functions that
             # actually delegate player resolution to the shared media crawler.
             # Keep both traversal and output explicitly bounded while aligning
-            # them with the common 16-player / 12-stream fan-out envelope.
+            # them with a bounded 16-player / 32-aggregate-stream envelope.
+            # The shared crawler remains independently bounded per player; the
+            # wider aggregate cap preserves providers where a small number of
+            # servers each expose many legitimate quality/source variants.
             if "_crawlDirectMedia" not in body:
                 continue
             edits: list[tuple[int, int, str]] = []
@@ -1776,13 +1779,13 @@ def _deterministic_variant_coverage_mutation(
                 output_matches = [
                     match
                     for match in output_header_cap.finditer(header)
-                    if 4 <= int(match.group("cap")) < 12
+                    if 4 <= int(match.group("cap")) < 32
                 ]
                 next_header = header
                 for match in reversed(output_matches):
                     next_header = (
                         next_header[:match.start("cap")]
-                        + "12"
+                        + "32"
                         + next_header[match.end("cap"):]
                     )
                 for match in reversed(iterator_matches):
