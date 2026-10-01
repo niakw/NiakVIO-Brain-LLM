@@ -14,6 +14,32 @@ class RoutingTests(unittest.TestCase):
         self.assertEqual(decision.mode, "skip")
         self.assertFalse(decision.requires_llm)
 
+    def test_full_ok_variant_coverage_gap_routes_provider_synthesis(self):
+        decision = route_request(
+            RepairRequest(
+                provider_id="demo",
+                failure_class="variant_coverage_gap",
+                status="FULL OK",
+                allowed_mutations=["provider_bloc"],
+                provider_context={
+                    "runtimeMutationSource": (
+                        "function resolve(links){var out=[];"
+                        "for(var i=0;i<links.length;i++){if(out.length>=4)break}"
+                        "return out}"
+                    ),
+                    "runtime_variant_coverage": {
+                        "riskKind": "variant-coverage-truncation",
+                        "risk": "high",
+                    },
+                },
+            )
+        )
+        self.assertEqual(decision.mode, "llm_repair")
+        self.assertEqual(decision.target_layer, "provider")
+        self.assertEqual(decision.strategy, "enumerate_stream_variants_before_global_cap")
+        self.assertTrue(decision.requires_llm)
+        self.assertEqual(decision.allowed_mutations, ["provider_bloc"])
+
     def test_harness_failure_is_deterministic(self):
         decision = route_request(
             RepairRequest(
