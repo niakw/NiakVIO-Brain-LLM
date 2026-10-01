@@ -1207,6 +1207,27 @@ def build_force_prompt_payload(
         if isinstance(row, dict)
         and str(row.get("memoryRole") or "") == "force_sandbox_execution"
     ][:3]
+    portfolio_reservations = []
+    for observation in request.observations or []:
+        if not isinstance(observation, dict) or str(observation.get("source") or "") != "brain-force-portfolio-reservation":
+            continue
+        for row in observation.get("value") or []:
+            if not isinstance(row, dict):
+                continue
+            portfolio_reservations.append({
+                "mutationFingerprint": _clip(row.get("mutationFingerprint"), 80),
+                "reservedMechanisms": [
+                    {
+                        "scope": _clip(item.get("scope"), 40),
+                        "operation": _clip(item.get("operation"), 40),
+                        **({"family": _clip(item.get("family"), 80)} if item.get("family") else {}),
+                        **({"path": _clip(item.get("path"), 160)} if item.get("path") else {}),
+                    }
+                    for item in (row.get("lastMutationSummary") or [])[:4]
+                    if isinstance(item, dict)
+                ],
+            })
+    portfolio_reservations = portfolio_reservations[:4]
     census = {}
     return {
         "provider_id": request.provider_id,
@@ -1243,6 +1264,7 @@ def build_force_prompt_payload(
             "extract_repeated_protocol_into_family_renderer": True,
         },
         "prior_force_sandbox_failures": force_failures,
+        "force_portfolio_reservations": portfolio_reservations,
         "census_prior": census,
         "validated_reference_patterns": references,
         "provider_field_evidence": field_evidence,
