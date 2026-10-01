@@ -1110,6 +1110,156 @@ def _deterministic_class_text_boundary_mutation(
         family="class_text_boundary",
     )
 
+def _deterministic_class_attribute_tokens_mutation(
+    request: RepairRequest,
+    mutation_policy: dict[str, Any],
+) -> dict[str, Any] | None:
+    """Replace regex class-prefix matching with exact class-attribute tokens.
+
+    This progression is current-byte-derived and provider-independent. It only
+    activates for the already-proven mixed/nested class-container family, keeps
+    the existing tag family and slice cap from the selected helper, and requires
+    an existing local attr() helper instead of inventing a DOM/network contract.
+    """
+    focus_keywords = _force_structural_focus_keywords(request)
+    if not focus_keywords or not _mixed_nested_class_container_evidence(request, focus_keywords):
+        return None
+    allowed = {
+        str(scope)
+        for scope in mutation_policy.get("allowed_scopes") or request.allowed_mutations or []
+    }
+    if not ({"provider_patch", "provider_bloc"} & allowed):
+        return None
+    context = request.provider_context or {}
+    source_rows: list[tuple[str, str, str]] = []
+    sources = context.get("registered_patch_sources")
+    if "provider_patch" in allowed and isinstance(sources, dict):
+        source_rows.extend(
+            ("provider_patch", str(path), str(source_raw or ""))
+            for path, source_raw in sources.items()
+            if str(path) and str(source_raw or "")
+        )
+    if "provider_bloc" in allowed:
+        runtime_source = str(
+            context.get("preferredRuntimeMutationSource")
+            or context.get("runtimeMutationSource")
+            or ""
+        )
+        if runtime_source:
+            source_rows.append(("provider_bloc", "", runtime_source))
+
+    candidates: list[tuple[str, str, str, dict[str, Any], str]] = []
+    for scope, path, source in source_rows:
+        if not re.search(r"(?m)^\s*function\s+attr\s*\(", source):
+            continue
+        units = _deterministic_complete_line_function_units(source)
+        window_units = _force_edit_units(
+            source,
+            request.failure_class,
+            max_chars=5000,
+            max_windows=4,
+            max_units=32,
+            focus_keywords=focus_keywords,
+        )
+        seen = {
+            (int(unit.get("offset") if unit.get("offset") is not None else -1), str(unit.get("source") or ""))
+            for unit in units
+        }
+        for unit in window_units:
+            key = (
+                int(unit.get("offset") if unit.get("offset") is not None else -1),
+                str(unit.get("source") or ""),
+            )
+            if key not in seen:
+                units.append(unit)
+                seen.add(key)
+
+        for unit in units:
+            if str(unit.get("kind") or "") != "function_unit":
+                continue
+            unit_source = str(unit.get("source") or "")
+            signature = re.match(
+                r"(?s)^\s*(?:async\s+)?function\s+[A-Za-z_$][A-Za-z0-9_$]*"
+                r"\s*\((?P<params>[^)]*)\)\s*\{(?P<body>.*)\}\s*$",
+                unit_source,
+            )
+            if not signature:
+                continue
+            params = [
+                value.strip()
+                for value in str(signature.group("params") or "").split(",")
+                if value.strip()
+            ]
+            if len(params) != 2 or not all(
+                re.fullmatch(r"[A-Za-z_$][A-Za-z0-9_$]*", value)
+                for value in params
+            ):
+                continue
+            html_param, class_param = params
+            body = str(signature.group("body") or "")
+            compact = re.sub(r"\s+", "", body)
+            if (
+                "starts=[]" not in compact
+                or "starts[i+1].at" not in compact
+                or "out.push({html:" not in compact
+                or class_param + ".replace(" not in body
+            ):
+                continue
+            tags_match = re.search(r"<\(\?:([A-Za-z0-9|]+)\)\\\\b", body)
+            cap_match = re.search(r"starts\[i\]\.at\+(\d{2,6})", compact)
+            if not tags_match or not cap_match:
+                continue
+            tags = tags_match.group(1)
+            if not re.fullmatch(r"[A-Za-z0-9]+(?:\|[A-Za-z0-9]+){0,12}", tags):
+                continue
+            cap = max(256, min(int(cap_match.group(1)), 50000))
+            replacement_body = (
+                "var re=/<(?:" + tags + r")\b[^>]*>/gi,starts=[],m;"
+                "while((m=re.exec(" + html_param + '||""))!==null){'
+                'var names=attr(m[0],"class").split(/\\s+/).filter(Boolean);'
+                "if(names.indexOf(" + class_param + ")>=0)starts.push({at:m.index,tag:m[0]})}"
+                "var out=[];for(var i=0;i<starts.length;i++){"
+                "var end=i+1<starts.length?starts[i+1].at:"
+                "Math.min(String(" + html_param + '||"").length,starts[i].at+' + str(cap) + ");"
+                "out.push({html:String(" + html_param + '||"").slice(starts[i].at,end),tag:starts[i].tag})}"
+                "return out"
+            )
+            candidates.append((scope, path, source, unit, replacement_body))
+
+    if len(candidates) > 1:
+        groups: dict[tuple[str, str], list[tuple[str, str, str, dict[str, Any], str]]] = {}
+        for candidate in candidates:
+            key = (str(candidate[3].get("source") or ""), candidate[4])
+            groups.setdefault(key, []).append(candidate)
+        if len(groups) == 1:
+            same = next(iter(groups.values()))
+            candidates = [
+                next(
+                    (candidate for candidate in same if candidate[0] == "provider_patch"),
+                    same[0],
+                )
+            ]
+    if len(candidates) != 1:
+        return None
+
+    scope, path, source, unit, replacement_body = candidates[0]
+    if scope == "provider_patch":
+        return _deterministic_exact_function_mutation(
+            request,
+            path=path,
+            source=source,
+            unit=unit,
+            replacement_body=replacement_body,
+        )
+    return _deterministic_exact_bloc_function_mutation(
+        request,
+        source=source,
+        unit=unit,
+        replacement_body=replacement_body,
+        family="exact_class_attribute_tokens",
+    )
+
+
 def _deterministic_structural_force_mutation(
     request: RepairRequest,
     mutation_policy: dict[str, Any],
@@ -1296,19 +1446,53 @@ def _deterministic_structural_force_mutation(
                 flush=True,
             )
             raise
+        class_text_blocked = False
         if isinstance(next_mutation, dict):
             if _force_memory_blocks_mutation(request, next_mutation):
+                class_text_blocked = True
                 print(
                     "FIELD_BRAIN_FORCE_DETERMINISTIC_BLOCKED "
                     f"provider={request.provider_id} scope={next_mutation.get('scope')} "
                     "reason=executed-negative-memory mechanism=class_text_boundary",
                     flush=True,
                 )
+            else:
+                return next_mutation
+        else:
+            print(
+                "FIELD_BRAIN_FORCE_DETERMINISTIC_NEXT_MISSING "
+                f"provider={request.provider_id} mechanism=class_text_boundary",
+                flush=True,
+            )
+
+        try:
+            token_mutation = _deterministic_class_attribute_tokens_mutation(
+                request,
+                mutation_policy,
+            )
+        except ValueError as exc:
+            detail = re.sub(r"\s+", " ", str(exc or "ValueError")).strip()[:280]
+            print(
+                "FIELD_BRAIN_FORCE_DETERMINISTIC_NEXT_ERROR "
+                f"provider={request.provider_id} mechanism=exact_class_attribute_tokens "
+                f"error=ValueError detail={detail}",
+                flush=True,
+            )
+            raise
+        if isinstance(token_mutation, dict):
+            if _force_memory_blocks_mutation(request, token_mutation):
+                print(
+                    "FIELD_BRAIN_FORCE_DETERMINISTIC_BLOCKED "
+                    f"provider={request.provider_id} scope={token_mutation.get('scope')} "
+                    "reason=executed-negative-memory mechanism=exact_class_attribute_tokens",
+                    flush=True,
+                )
                 return None
-            return next_mutation
+            return token_mutation
         print(
             "FIELD_BRAIN_FORCE_DETERMINISTIC_NEXT_MISSING "
-            f"provider={request.provider_id} mechanism=class_text_boundary",
+            f"provider={request.provider_id} mechanism=exact_class_attribute_tokens "
+            f"after_class_text_blocked={str(class_text_blocked).lower()}",
             flush=True,
         )
         return None
