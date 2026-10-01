@@ -836,3 +836,9 @@
 - Once any same-run candidate is reserved, later portfolio slots are now explicitly speculative. Their model call is capped at 60 s, transport retry is suppressed, and deterministic-validation retry is suppressed. They still run deterministic progression first and can emit a distinct executable mutation immediately; only repeated expensive LLM recovery is removed.
 - Telemetry `FIELD_BRAIN_FORCE_SPECULATIVE_FAST_FAIL` distinguishes transport- vs validation-retry suppression. This preserves the four-slot one-shot contract while preventing a single already-populated portfolio from spending another ~9 minutes on repeated 7B timeouts.
 - NiakVIO sandbox/playback/identity authority is unchanged. This is orchestration latency control only and does not claim any provider repaired.
+
+
+## 2026-10-01 — Speculative-slot latency CI contract alignment
+
+- Brain CI #1296 (`36864988998`) failed only because two source-contract assertions still required the superseded post-reservation 90-second timeout literal. Runtime/planner tests otherwise passed.
+- The stale assertions now pin the intended one-shot behavior: post-reservation speculative calls use the 60-second ceiling and expose explicit transport/validation retry suppression telemetry. No provider logic or proof gate changed in this follow-up.

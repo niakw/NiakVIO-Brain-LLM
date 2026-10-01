@@ -18,7 +18,10 @@ assert 'FIELD_BRAIN_FORCE_PORTFOLIO_FEEDBACK' in batch
 assert 'brain-force-portfolio-rejection' in batch
 assert '"brain-force-sandbox-memory"' in batch
 assert 'negative_memory_rows=' in batch
-assert '90 if portfolio_reserved else 180' in batch
+assert '60 if speculative_portfolio_slot else 180' in batch
+assert 'FIELD_BRAIN_FORCE_SPECULATIVE_FAST_FAIL' in batch
+assert 'retry=transport-suppressed' in batch
+assert 'retry=validation-suppressed' in batch
 assert 'failure_key == "provider_transport_gap"' in batch
 assert 'budget_seconds = min(budget_cap, 300)' in batch
 assert 'failure_key == "transport_environment_gap"' in batch
