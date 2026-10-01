@@ -8,15 +8,15 @@ assert "scope_token_cap = {" in source
 assert '"provider_data": 192' in source
 assert '"provider_patch": 640' in source
 assert '"provider_js": 640' in source
-assert '"provider_bloc": 448' in source
+assert '"provider_bloc": 320' in source
 assert "recovery_token_cap = {" in source
 assert '"provider_data": 256' in source
 assert '"provider_patch": 768' in source
 assert '"provider_js": 768' in source
-assert '"provider_bloc": 768' in source
+assert '"provider_bloc": 256' in source
 assert "primary_tokens = max(128, min(int(args.max_tokens), scope_token_cap))" in source
-assert "retry_tokens = max(primary_tokens, min(int(args.max_tokens), recovery_token_cap))" in source
-assert '120 if scope == "provider_bloc" else 90' in source
+assert "retry_tokens = max(128, min(int(args.max_tokens), recovery_token_cap))" in source
+assert '150 if scope == "provider_bloc" else 90' in source
 assert "validation_timeout = max(" in source
 assert "primary_timeout = max(" in source
 assert "transport_timeout = max(" in source
