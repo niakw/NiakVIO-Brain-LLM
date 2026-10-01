@@ -448,10 +448,24 @@ function resolve(){return []}'''
     def test_minified_single_line_runtime_extracts_named_helpers_individually(self):
         from niakvio_brain_llm.planner import _deterministic_complete_line_function_units
 
-        source = (
-            'function attr(tag,key){return key} '
-            'function classText(html,cls){return cls} '
-            'function classBlocks(html,cls){var esc=cls.replace(/[-/\\\\^$*+?.()|[\\]{}]/g,"\\\\    def test_structural_focus_unit_id_resolves_to_same_dom_helper(self):
+        source = r'''function attr(tag,key){return key} function classText(html,cls){return cls} function classBlocks(html,cls){var re=/[{}]/g,starts=[],m;while((m=re.exec(html||""))!==null)starts.push({at:m.index,tag:m[0]});var out=[];for(var i=0;i<starts.length;i++){var end=i+1<starts.length?starts[i+1].at:Math.min(String(html||"").length,starts[i].at+12000);out.push({html:String(html||"").slice(starts[i].at,end),tag:starts[i].tag})}return out} function scoreTitle(want,label){return want===label?1:0}'''
+        units = _deterministic_complete_line_function_units(source)
+        by_name = {
+            row["source"].split("(", 1)[0].strip(): row
+            for row in units
+        }
+        self.assertIn("function classBlocks", by_name)
+        unit = by_name["function classBlocks"]
+        self.assertLess(len(unit["source"]), 1800)
+        self.assertIn("starts[i+1].at", unit["source"])
+        self.assertIn("/[{}]/g", unit["source"])
+        self.assertNotIn("function scoreTitle", unit["source"])
+        self.assertEqual(
+            source[unit["offset"]:unit["end_offset"]],
+            unit["source"],
+        )
+
+    def test_structural_focus_unit_id_resolves_to_same_dom_helper(self):
 "),'
             're=new RegExp("<(?:div|article|li|a)\\\\b[^>]*class=[\\\"\'][^\\\"\']*\\\\b"+esc+"\\\\b[^\\\"\']*[\\\"\'][^>]*>","gi"),'
             'starts=[],m;while((m=re.exec(html||""))!==null)starts.push({at:m.index,tag:m[0]});'
