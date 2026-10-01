@@ -1,20 +1,8 @@
 {
   "schema_version": 1,
   "niakvio_sha": "a9eee1bda5b95e1c0bf10e9194e31e9808a48b7c",
-  "reason": "Authoritative family-first FORCE replay against published NiakVIO 5.21.90 after recent sandbox-negative-memory and exact-runtime-first corrections. Consume newest rejected provider_bloc fingerprints, do not repeat the rejected 4KHDHub mutation, rotate family witnesses/mechanisms under bounded budgets, preserve route-first behavior, and stop after producing genuinely new executable mutation candidates for isolated NiakVIO proof.",
+  "reason": "Single-provider witness replay after deterministic full-source runtime progression and CPU-safe provider_bloc generation fixes. Target only 4khdhub. Consume latest rejected mutation fingerprints, do not repeat balanced_class_container/exact_class_token_boundary failures, prefer the next deterministic class_text_boundary mechanism when exact current bytes permit it, otherwise use one bounded provider_bloc synthesis. Publish only a genuinely new executable mutation candidate for NiakVIO isolated current-byte proof.",
   "requested_repair_queue": [
-    "4khdhub",
-    "allanime",
-    "allwish",
-    "anime-ultime",
-    "animesalt",
-    "animesultra",
-    "animevost-fr",
-    "flemmix",
-    "mallumv",
-    "moviebox",
-    "moviesmod",
-    "vidfast",
-    "yflix"
+    "4khdhub"
   ]
 }
