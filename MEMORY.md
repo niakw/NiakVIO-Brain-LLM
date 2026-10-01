@@ -893,3 +893,9 @@
 - HindMoviez guidance #226 still timed out despite the bounded-variant compiler because the compiler never selected its outer resolve helper. The exact runtime ends with resolve followed by resolver registration/IIFE statements; the old deterministic helper extractor treated everything after the final named function as forbidden trailing text and dropped resolve entirely.
 - The extractor now uses a balanced JavaScript function-boundary scanner that ignores strings, comments and regex literals. Final helpers remain selectable even when registration statements follow them.
 - A representative regression reproduces the HindMoviez topology: an inner per-source quota remains bounded, while the outer k<8 aggregation loop global out.length>=4 break is removed. This proves the intended repair is coverage-before-final-cap, not unbounded traversal and not a hand-authored HindMoviez patch.
+
+
+## 2026-10-01 — Coverage-parser regression fixture corrected
+
+- Brain CI #1318 on `a9a6fd2ca63abea760dcc5508e9e0a454c09eac3` reached the new trailing-resolver mutation and failed only at Node syntax validation because the synthetic regression fixture had an IIFE closing tail without a matching opening wrapper.
+- Production parser code was not implicated by that error. The fixture now remains valid standalone JavaScript while still preserving the required shape: final named `resolve` helper followed by resolver-registration statements.

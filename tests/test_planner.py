@@ -57,7 +57,6 @@ class PlannerTests(unittest.TestCase):
             'for(var n=0;n<z.length;n++)if(!urlSeen[z[n]]){urlSeen[z[n]]=1;out.push(z[n])}'
             'if(out.length>=4)break}return out} '
             'try{globalThis.__runtimeResolver={resolve:resolve}}catch(_e){}'
-            '})(typeof globalThis!=="undefined"?globalThis:this,CONFIG);'
         )
         request = RepairRequest(
             provider_id="demo",
