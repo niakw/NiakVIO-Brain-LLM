@@ -53,7 +53,7 @@ One edit max:
 - provider_patch/provider_js: {scope,path,unit_id,replace}
 - provider_bloc: {scope:"provider_bloc",family,unit_id,replace}
 unit_id MUST come from editable_units; Brain owns exact find bytes.
-For kind=function_unit, replace is the NEW FUNCTION BODY ONLY; preserve the declaration/signature.
+For kind=function_unit, replace is the NEW FUNCTION BODY ONLY. Never emit or rename the function declaration/name/signature; Brain preserves it.
 Existing-file replace <=640 chars unless function_unit; provider_bloc replace <=1200 chars.
 Prefer runtime_template_prior/current runtime reuse before a novel Bloc. A new provider-local mechanism is allowed when current evidence supports it.
 Never cosmetically repeat prior_force_sandbox_failures. force_validation_feedback requires a materially different valid edit or abstention.
@@ -883,9 +883,9 @@ def _deterministic_complete_line_function_units(source: str) -> list[dict[str, A
     """
     text = str(source or "")
     pattern = re.compile(
-        r"(?m)^[ \\t]*(?:async[ \\t]+)?function[ \\t]+"
-        r"[A-Za-z_$][A-Za-z0-9_$]*[ \\t]*\\([^\\r\\n]*\\)[ \\t]*"
-        r"\\{[^\\r\\n]*\\}[ \\t]*$"
+        r"(?m)^[ \t]*(?:async[ \t]+)?function[ \t]+"
+        r"[A-Za-z_$][A-Za-z0-9_$]*[ \t]*\([^\r\n]*\)[ \t]*"
+        r"\{[^\r\n]*\}[ \t]*$"
     )
     units: list[dict[str, Any]] = []
     for index, match in enumerate(pattern.finditer(text), start=1):
