@@ -342,19 +342,19 @@ def main() -> int:
             "provider_data": 192,
             "provider_patch": 640,
             "provider_js": 640,
-            "provider_bloc": 448,
+            "provider_bloc": 320,
         }.get(scope, 320)
         recovery_token_cap = {
             "provider_data": 256,
             "provider_patch": 768,
             "provider_js": 768,
-            "provider_bloc": 768,
+            "provider_bloc": 256,
         }.get(scope, 384)
         primary_tokens = max(128, min(int(args.max_tokens), scope_token_cap))
-        retry_tokens = max(primary_tokens, min(int(args.max_tokens), recovery_token_cap))
+        retry_tokens = max(128, min(int(args.max_tokens), recovery_token_cap))
         validation_timeout = max(
             60,
-            min(int(args.timeout_seconds), 120 if scope == "provider_bloc" else 90),
+            min(int(args.timeout_seconds), 150 if scope == "provider_bloc" else 90),
         )
         primary_timeout = max(
             45,
