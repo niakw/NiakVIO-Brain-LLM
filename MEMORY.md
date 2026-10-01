@@ -857,3 +857,11 @@
 - A FULL/PARTIAL provider with high premature-cap evidence is represented as `variant_coverage_gap` with provider-local causal prior `enumerate_stream_variants_before_global_cap`. Ordinary unrequested Repair remains unchanged, so green providers are not mass-mutated from static heuristics.
 - The Private-Guided Advisor accepts an explicit provider when it is either in the current repairQueue or in the current exact-checkout high runtime-coverage audit. This closes the HindMoviez blind spot where terminal playability was green while later 720p/1080p/2160p variants could be truncated.
 - Required proof remains Brain candidate -> isolated current-byte sandbox -> playable/identity validation -> non-regression -> NiakVIO publication. Static coverage findings alone never mark a provider broken or repaired.
+
+
+## 2026-10-01 — HindMoviez representative exposed FORCE budget starvation
+
+- Brain guidance #224 successfully admitted census-FULL HindMoviez through the new `variant_coverage_gap` path on exact NiakVIO `d19cf01e1ad17a9711c4f80fd8701513bdf6aebe`, proving the green-provider coverage-debt selection works.
+- The run produced zero executable mutations because `variant_coverage_gap` was not classified as a compact structural runtime gap. FORCE therefore tried the larger generator `provider_patch` first and the generic 150-second provider budget was split into four ~37-second candidates; Qwen 7B timed out on all four.
+- Pipeline fix: variant coverage now prefers exact materialized `provider_bloc`, receives the same bounded 600-second structural portfolio budget when an exact runtime template exists, and the first unsatisfied candidate is no longer blindly divided by portfolio size. It receives up to 180 seconds while retaining bounded reserve for later hypotheses; later reserved candidates still use speculative fast-fail.
+- No HindMoviez provider bytes were changed by #224. The representative must be replayed from exact current NiakVIO bytes and still pass isolated playable/identity/non-regression before this repair family can fan out.
