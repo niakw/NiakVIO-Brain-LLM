@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import copy
+import hashlib
 import json
 import os
 import re
@@ -36,7 +37,7 @@ def main() -> int:
         "--max-hypotheses",
         type=int,
         default=3,
-        help="Advisor-only hypotheses per provider. Force remains one concrete edit per provider.",
+        help="Bounded hypotheses per provider. In Force mode these form an ordered same-run sandbox portfolio.",
     )
     parser.add_argument(
         "--workers",
@@ -218,6 +219,59 @@ def main() -> int:
         context["advisor_experiment_history"] = history[-32:]
         request.provider_context = context
         return True
+
+    def _reserve_force_portfolio_candidate(request, row: dict) -> str:
+        proposal = row.get("proposal") if isinstance(row, dict) else None
+        mutations = proposal.get("mutations") if isinstance(proposal, dict) else None
+        if not isinstance(mutations, list) or not mutations:
+            return ""
+        payload = [dict(value) for value in mutations if isinstance(value, dict)]
+        if not payload:
+            return ""
+        raw = json.dumps(
+            payload,
+            ensure_ascii=True,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("ascii")
+        mutation_fp = hashlib.sha256(raw).hexdigest()
+        summary = [
+            {
+                "scope": str(value.get("scope") or "")[:40],
+                "operation": str(value.get("operation") or "")[:40],
+                **({"family": str(value.get("family") or "")[:80]} if value.get("family") else {}),
+                **({"path": str(value.get("path") or "")[:160]} if value.get("path") else {}),
+            }
+            for value in payload[:4]
+        ]
+        observations = [
+            copy.deepcopy(value)
+            for value in (request.observations or [])
+            if isinstance(value, dict)
+        ]
+        reservation = next(
+            (
+                value for value in observations
+                if str(value.get("source") or "") == "brain-force-portfolio-reservation"
+                and isinstance(value.get("value"), list)
+            ),
+            None,
+        )
+        if reservation is None:
+            reservation = {
+                "source": "brain-force-portfolio-reservation",
+                "value": [],
+            }
+            observations.append(reservation)
+        reservation["value"].append({
+            "mutationFingerprint": mutation_fp,
+            "lastMutationSummary": summary,
+            "portfolioReserved": True,
+        })
+        reservation["value"] = reservation["value"][-4:]
+        request.observations = observations
+        return mutation_fp
+
 
     def _retryable_force_error(exc: Exception) -> bool:
         return (
