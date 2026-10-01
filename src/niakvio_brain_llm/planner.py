@@ -726,7 +726,8 @@ def _deterministic_exact_function_mutation(
     if str(unit.get("kind") or "") != "function_unit":
         raise ValueError("deterministic Force exact unit is not a function")
     find = str(unit.get("source") or "")
-    offset = int(unit.get("offset") or -1)
+    raw_offset = unit.get("offset")
+    offset = int(raw_offset) if raw_offset is not None else -1
     if not path or not find or offset < 0:
         raise ValueError("deterministic Force exact unit metadata is incomplete")
     if len(find) > 1800 or len(str(replacement_body or "")) > 1800:
@@ -773,7 +774,8 @@ def _deterministic_exact_bloc_function_mutation(
     if str(unit.get("kind") or "") != "function_unit":
         raise ValueError("deterministic Force exact Bloc unit is not a function")
     find = str(unit.get("source") or "")
-    offset = int(unit.get("offset") or -1)
+    raw_offset = unit.get("offset")
+    offset = int(raw_offset) if raw_offset is not None else -1
     family = str(family or "").strip().casefold().replace("-", "_")
     if not family or not find or offset < 0:
         raise ValueError("deterministic Force exact Bloc metadata is incomplete")
