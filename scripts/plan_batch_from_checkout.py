@@ -756,6 +756,19 @@ def main() -> int:
                         last_row["hypothesis_index"] = candidate_index
                         last_row["force_scope_trace"] = copy.deepcopy(scope_trace)
                         planned.append(last_row)
+                    if (
+                        candidate_index < max_hypotheses
+                        and last_error is not None
+                        and _retryable_force_error(last_error)
+                        and time.monotonic() < force_deadline
+                    ):
+                        print(
+                            "FIELD_BRAIN_FORCE_PORTFOLIO_CONTINUE "
+                            f"provider={provider} after={type(last_error).__name__} "
+                            f"next_index={candidate_index + 1}/{max_hypotheses}",
+                            flush=True,
+                        )
+                        continue
                     break
 
                 planned.append(selected_row)
