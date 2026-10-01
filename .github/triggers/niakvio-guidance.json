@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
   "niakvio_sha": "d6a3d6396b00ee1ea629e723eb83044cd249a261",
-  "reason": "Authoritative 4KHDHub one-shot portfolio replay after executed rejection of a21eaa64 and Brain budget/feedback closure. Consume persisted negative sandbox memory, reserve remaining wall-clock per hypothesis, carry local no-op/syntax/window feedback forward, generate up to four causally distinct candidates in this single run, and publish only executable ordered mutations for NiakVIO sequential sandbox proof.",
+  "reason": "Authoritative 4KHDHub one-shot replay after preserving brain-force-sandbox-memory across every same-run feedback boundary. Keep all executed-negative deterministic mechanisms blocked in slots 1-4, carry local rejection feedback without deleting cross-run proof, and publish only genuinely novel executable mutations for isolated NiakVIO movie+tv identity validation.",
   "requested_repair_queue": [
     "4khdhub"
   ],
-  "retry": 4
+  "retry": 5
 }
