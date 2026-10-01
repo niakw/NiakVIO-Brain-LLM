@@ -46,6 +46,71 @@ class PlannerTests(unittest.TestCase):
         self.assertNotIn("if(out.length>=4)break", updated)
         self.assertIn("return out", updated)
 
+    def test_deterministic_variant_coverage_widens_bounded_player_fanout_header_caps(self):
+        source = (
+            'async function terminal(rows,ref){var out=[],seen={};'
+            'for(var i=0;i<rows.length&&i<8;i++){'
+            'var direct=await _crawlDirectMedia([rows[i].url],ref,2);'
+            'for(var j=0;j<direct.length&&out.length<8;j++){'
+            'if(!seen[direct[j].url]){seen[direct[j].url]=1;out.push(direct[j])}}}'
+            'return out}'
+        )
+        request = RepairRequest(
+            provider_id="demo",
+            failure_class="variant_coverage_gap",
+            status="FULL_OK",
+            allowed_mutations=["provider_bloc"],
+            provider_context={
+                "runtimeMutationSource": source,
+                "preferredRuntimeMutationSource": source,
+                "runtime_variant_coverage": {
+                    "riskKind": "variant-coverage-truncation",
+                    "risk": "high",
+                    "dimensions": ["quality", "source"],
+                    "qualityHints": ["2160p", "1080p", "720p", "480p"],
+                },
+            },
+        )
+        mutation = _deterministic_variant_coverage_mutation(
+            request,
+            {"allow_mutations": True, "allowed_scopes": ["provider_bloc"]},
+        )
+        self.assertIsNotNone(mutation)
+        self.assertEqual(mutation["family"], "bounded_variant_enumeration_before_cap")
+        updated = source.replace(mutation["find"], mutation["replace"], 1)
+        self.assertIn("i<16", updated)
+        self.assertIn("out.length<12", updated)
+        self.assertNotIn("i<8", updated)
+        self.assertNotIn("out.length<8", updated)
+
+    def test_deterministic_variant_coverage_header_caps_require_shared_player_crawler(self):
+        source = (
+            'async function resolve(rows){var out=[];'
+            'for(var i=0;i<rows.length&&i<8;i++){'
+            'for(var j=0;j<rows[i].length&&out.length<8;j++)out.push(rows[i][j])}'
+            'return out}'
+        )
+        request = RepairRequest(
+            provider_id="demo",
+            failure_class="variant_coverage_gap",
+            status="FULL_OK",
+            allowed_mutations=["provider_bloc"],
+            provider_context={
+                "runtimeMutationSource": source,
+                "runtime_variant_coverage": {
+                    "riskKind": "variant-coverage-truncation",
+                    "risk": "high",
+                    "dimensions": ["quality", "source"],
+                    "qualityHints": ["1080p", "720p", "480p"],
+                },
+            },
+        )
+        mutation = _deterministic_variant_coverage_mutation(
+            request,
+            {"allow_mutations": True, "allowed_scopes": ["provider_bloc"]},
+        )
+        self.assertIsNone(mutation)
+
     def test_deterministic_variant_coverage_extracts_last_resolver_before_wrapper_registration(self):
         source = (
             'function quality(f){var m=/(2160|1080|720|480)p/i.exec(f);return m?m[1]+"p":"HD"} '
