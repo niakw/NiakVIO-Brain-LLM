@@ -3,6 +3,7 @@ import unittest
 
 from niakvio_brain_llm.contracts import RepairRequest
 from niakvio_brain_llm.planner import _compact_wire_schema_for
+from niakvio_brain_llm.planner import _deterministic_complete_line_function_units
 from niakvio_brain_llm.planner import _preserve_selected_function_envelope
 from niakvio_brain_llm.prompting import build_force_prompt_payload
 from niakvio_brain_llm.prompting import _force_window_kwargs_for_request
@@ -144,7 +145,7 @@ class CompactForceRetryTest(unittest.TestCase):
         self.assertIn("targeted-regression-current", script)
         self.assertIn("prior_feedback", script)
         self.assertIn("window-local edit in the same scope or abstain", script)
-        self.assertIn('120 if scope == "provider_bloc" else 90', script)
+        self.assertIn('150 if scope == "provider_bloc" else 90', script)
         self.assertIn("min(int(args.timeout_seconds), 180)", script)
         self.assertIn('budget_seconds = min(budget_cap, 600)', script)
         self.assertIn('300 if status_key == "CHAIN REACHED"', script)
@@ -236,12 +237,32 @@ class CompactForceRetryTest(unittest.TestCase):
         )
         self.assertEqual(bloc_variant["properties"]["family"]["pattern"], "^[a-z][a-z0-9_]{2,48}$")
         self.assertEqual(bloc_variant["properties"]["family"]["minLength"], 3)
+        self.assertEqual(bloc_variant["properties"]["replace"]["maxLength"], 1200)
         self.assertNotIn("path", bloc_variant["properties"])
         self.assertIn("w1u1", bloc_variant["properties"]["unit_id"]["enum"])
         self.assertGreaterEqual(len(bloc_variant["properties"]["unit_id"]["enum"]), 1)
         self.assertNotIn("find", bloc_variant["properties"])
         self.assertNotIn("window_id", bloc_variant["properties"])
 
+
+
+    def test_full_source_one_line_function_scan_survives_regex_braces(self):
+        source = (
+            "WRAPPER = r'''\n"
+            "function classText(html,cls){var re=new RegExp(cls.replace(/[-/\\\\^$*+?.()|[\\]{}]/g,\"\\\\    def test_complete_wrong_function_wrapper_keeps_selected_identity(self):
+\")+\"\\\\b\");return re.test(html)}\n"
+            "function other(v){return v}\n"
+            "'''\n"
+        )
+        units = _deterministic_complete_line_function_units(source)
+        self.assertEqual([row["source"].split("(", 1)[0] for row in units], [
+            "function classText",
+            "function other",
+        ])
+        self.assertIn("{}", units[0]["source"])
+        for row in units:
+            offset = row["offset"]
+            self.assertEqual(source[offset:offset + len(row["source"])], row["source"])
 
 
     def test_complete_wrong_function_wrapper_keeps_selected_identity(self):
