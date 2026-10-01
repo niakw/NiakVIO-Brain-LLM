@@ -47,6 +47,7 @@ RUNTIME_VARIANT_CAP_PATTERNS = (
     ("global_output_quota_return", re.compile(r"if\s*\(\s*out\.length\s*>=\s*[^)]{1,96}\)\s*return\s+out", re.I)),
     ("first_success_short_circuit", re.compile(r"if\s*\(\s*out\.length\s*\)\s*return\s+out", re.I)),
     ("global_output_loop_cap", re.compile(r"out\.length\s*<\s*c\.(?:maxStreams|targetStreams|maxPlayers)", re.I)),
+    ("global_output_numeric_loop_cap", re.compile(r"out\.length\s*<\s*(?:[1-9]|[12]\d)\b", re.I)),
     ("source_list_slice_cap", re.compile(r"\.slice\s*\(\s*0\s*,\s*(?:c\.(?:maxStreams|targetStreams|maxPlayers)|[348])\s*\)", re.I)),
 )
 RUNTIME_VARIANT_DIMENSIONS = {
@@ -108,6 +109,7 @@ def runtime_variant_coverage_signals(sources: dict[str, str] | None) -> dict[str
             "global_output_quota_break",
             "global_output_quota_return",
             "first_success_short_circuit",
+            "global_output_numeric_loop_cap",
         }
         and bool(set(row.get("dimensions") or []) & {"quality", "language", "server", "player", "source"})
         for row in findings
