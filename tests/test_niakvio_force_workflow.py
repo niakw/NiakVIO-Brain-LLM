@@ -29,6 +29,11 @@ assert "--timeout-seconds 45" in workflow
 assert "--limit 4" not in workflow
 assert "requested_repair_queue" in workflow
 assert "niakvio-guidance-targets.txt" in workflow
+assert "audit_registered_runtime_variant_coverage" in workflow
+assert "niakvio-runtime-variant-coverage.json" in workflow
+assert "coverage_high" in workflow
+assert "repair_set|coverage_high" in workflow
+assert "neither current repairQueue nor high runtime coverage debt" in workflow
 assert '"${provider_args[@]}"' in workflow
 assert "FIELD_NIAKVIO_FORCE_MUTATIONS_READY ready=false" in workflow
 force_command = workflow.index("--mode repair \\\n            --max-hypotheses 4 \\\n            --stop-after-first-mutation \\\n            \"${provider_args[@]}\" \\\n            --endpoint")
