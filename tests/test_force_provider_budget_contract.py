@@ -13,6 +13,9 @@ assert 'FIELD_BRAIN_FORCE_PORTFOLIO_RESERVED' in batch
 assert 'FIELD_BRAIN_FORCE_CANDIDATE_BUDGET' in batch
 assert 'FIELD_BRAIN_FORCE_CANDIDATE_BUDGET_EXHAUSTED' in batch
 assert 'remaining_candidates = max(1, max_hypotheses - candidate_index + 1)' in batch
+assert '"variant_coverage_gap",' in batch
+assert 'future_reserve = max(0, remaining_candidates - 1) * 45.0' in batch
+assert 'max(\n                            90.0,' in batch
 assert 'candidate_deadline = min(' in batch
 assert 'FIELD_BRAIN_FORCE_PORTFOLIO_FEEDBACK' in batch
 assert 'brain-force-portfolio-rejection' in batch
