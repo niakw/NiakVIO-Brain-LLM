@@ -36,6 +36,13 @@ ROWS = [
         "brainCheckRequired": False,
         "repairEligible": False,
     },
+    {
+        "provider": "coverage",
+        "status": "FULL OK",
+        "brainCheckRequired": False,
+        "repairEligible": False,
+        "runtimeVariantCoverageRisk": "high",
+    },
 ]
 
 class BatchTests(unittest.TestCase):
@@ -56,6 +63,14 @@ class BatchTests(unittest.TestCase):
             {row["provider"] for row in rows},
             {"candidate", "chain", "route", "harness"},
         )
+
+    def test_high_coverage_debt_requires_explicit_target(self):
+        default_rows = select_batch_targets(ROWS, mode="repair")
+        self.assertNotIn("coverage", {row["provider"] for row in default_rows})
+        explicit = select_batch_targets(ROWS, mode="repair", providers={"coverage"})
+        self.assertEqual([row["provider"] for row in explicit], ["coverage"])
+        brain = select_batch_targets(ROWS, mode="brain", providers={"coverage"})
+        self.assertEqual([row["provider"] for row in brain], ["coverage"])
 
     def test_summary_counts_statuses(self):
         summary = batch_summary(ROWS[:2])
