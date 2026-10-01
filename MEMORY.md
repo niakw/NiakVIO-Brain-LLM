@@ -777,3 +777,10 @@
 - The Brain batch orchestrator now divides the remaining provider wall-clock budget across the remaining hypothesis slots, so one failed candidate cannot consume the time reserved for candidates 3/4. After a same-run candidate has been reserved, provider-Bloc model/validation calls use tighter <=90 s bounds and one validation correction.
 - A transport timeout during validation correction no longer overwrites the underlying local rejection such as `no_op`, syntax or window mismatch. That causal rejection is carried into the next hypothesis as focused same-run feedback, while prior portfolio reservations and current census/targeted evidence are retained.
 - Portfolio continuation is no longer limited to retryable transport errors: bounded local validation rejection or abstention can advance to the next causally distinct hypothesis. This is a Brain/pipeline correction only; it does not claim 4KHDHub repaired. Production proof still requires Brain-produced candidate(s) to pass NiakVIO current-byte movie + TV playable/identity validation.
+
+
+## 2026-10-01 — One-shot portfolio replay armed on green Brain
+
+- Follow-up test-contract commit `56eac04b4d25287b3af28b6c649d0e17b3302ee4` is green in Brain CI run `36851018731`: full unit suite and public-repository privacy audit passed.
+- The next frozen 4KHDHub guidance replay targets NiakVIO `d6a3d6396b00ee1ea629e723eb83044cd249a261`, whose persisted Force memory already contains rejected executed fingerprint `a21eaa643f0c0df30a14cffe8bbb7d3bef3258ea9217de595565902b189eb974`.
+- Success for this Brain replay is not workflow completion alone: logs must prove bounded per-candidate budgets/feedback continuation and the published artifact must contain causally distinct executable candidate(s), after which NiakVIO must apply/rematerialize/sandbox them on exact current bytes.
