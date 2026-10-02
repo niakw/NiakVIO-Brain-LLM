@@ -16,7 +16,7 @@ on:
         required: false
         default: ""
       target_providers:
-        description: "Optional comma-separated exact Repair cohort; empty uses trigger requested_repair_queue, then current repairQueue"
+        description: "Optional comma-separated exact Repair cohort; empty auto-unions repairQueue with current static/dynamic completeness debt"
         required: false
         default: ""
       page_size:
