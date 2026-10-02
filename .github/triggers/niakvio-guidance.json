@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "2d52174d6fd148ac5db34c17e59fefb028d990f4",
-  "reason": "Regenerate the exact HindMoviez quality/release completeness witness on current NiakVIO main after Provider v3 domain/materialization transaction changed the published provider bytes from v1.0.114 to v1.0.115. Keep the same Brain-owned bounded_variant_enumeration_before_cap family, but derive a fresh mutation/context fingerprint from current bytes. Current structure evidence observes 480/720/1080/2160. Target HindMoviez only; no manual provider patch.",
+  "niakvio_sha": "828731d81f89d326ba8925b57f855fb4ec934348",
+  "reason": "Negative-memory progression witness for HindMoviez on current NiakVIO 828731d8. Prior bounded_variant_enumeration_before_cap global quota removal fingerprint 58d187... was sandbox-rejected with variant_coverage_stream_regression (7 returned / 720p baseline -> 5 / 480p candidate). Brain must not replay it. Current structure observes 480/720/1080/2160 while provider-owned files/source helper retains only slice(0,3). Compile the next generic bounded source-slice hypothesis from current bytes, keep the global deadline/output guard, target HindMoviez only, no manual provider patch.",
   "requested_repair_queue": [
     "hindmoviez"
   ],
-  "retry": 18
+  "retry": 19
 }
