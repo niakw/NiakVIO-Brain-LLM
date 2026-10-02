@@ -1,9 +1,10 @@
 {
   "schema_version": 1,
   "niakvio_sha": "7434d3065e88c6db8d50e8d6b74dec7a6acb55fa",
-  "reason": "Fast deterministic HindMoviez cycle-3 after fixing preflight to honor the workflow-resolved exact cohort. Negative memory blocks quota removal and slice 3->4. Compile quality_stratified_variant_enumeration from current 480/720/1080/2160 evidence. Target HindMoviez only. Preflight must report provider=hindmoviez candidate=true and skip Qwen; publication remains sandbox-only.",
+  "reason": "Deterministic fail-fast HindMoviez diagnostic on exact current source. Two negative fingerprints must block quota removal and slice 3->4; quality_stratified_variant_enumeration must compile from observed 480/720/1080/2160. Target HindMoviez only. If deterministic preflight cannot produce a candidate, fail before Qwen and expose risk/dimensions/qualities/memory/candidate diagnostics.",
   "requested_repair_queue": [
     "hindmoviez"
   ],
-  "retry": 22
+  "retry": 23,
+  "require_deterministic_force": true
 }
