@@ -220,6 +220,7 @@ def _provider_sharded_observation(payload: Any, provider_id: str) -> dict[str, A
     statuses: dict[str, str] = {}
     network: dict[str, list[dict[str, Any]]] = {}
     sample_titles: dict[str, list[str]] = {}
+    fanout: dict[str, dict[str, Any]] = {}
     verified_lanes: list[str] = []
     playable_lanes: list[str] = []
     contradictions = 0
@@ -249,6 +250,43 @@ def _provider_sharded_observation(payload: Any, provider_id: str) -> dict[str, A
         if titles:
             sample_titles[lane] = titles
 
+        fanout_state = str(row.get("variant_fanout_state") or "")[:80].casefold()
+        announced_players = max(0, int(row.get("announced_player_candidates") or 0))
+        announced_variants = max(0, int(row.get("announced_variant_candidates") or 0))
+        explored_requests = max(0, int(row.get("explored_player_requests") or 0))
+        streams_returned = max(0, int(row.get("streams_returned") or row.get("raw") or 0))
+        if (
+            fanout_state
+            or announced_players
+            or announced_variants
+            or explored_requests
+        ):
+            fanout[lane] = {
+                "streamsReturned": streams_returned,
+                "streamsPlayable": max(0, int(row.get("playable") or 0)),
+                "streamsVerified": max(0, int(row.get("verified") or 0)),
+                "announcedPlayerCandidates": announced_players,
+                "announcedVariantCandidates": announced_variants,
+                "announcedPlayerHosts": [
+                    str(value)[:160].casefold()
+                    for value in (row.get("announced_player_hosts") or [])[:24]
+                    if str(value).strip()
+                ],
+                "announcedQualityHeights": [
+                    int(value)
+                    for value in (row.get("announced_quality_heights") or [])[:12]
+                    if str(value or "").isdigit() and int(value) > 0
+                ],
+                "exploredPlayerRequests": explored_requests,
+                "exploredPlayerHosts": [
+                    str(value)[:160].casefold()
+                    for value in (row.get("explored_player_hosts") or [])[:24]
+                    if str(value).strip()
+                ],
+                "state": fanout_state,
+                "fixtureTitle": str(row.get("fanout_fixture_title") or row.get("fixture_title") or "")[:160],
+            }
+
         safe_fetches: list[dict[str, Any]] = []
         for fetch in (row.get("debug_fetches") or [])[:16]:
             if not isinstance(fetch, dict):
@@ -271,9 +309,9 @@ def _provider_sharded_observation(payload: Any, provider_id: str) -> dict[str, A
         if safe_fetches:
             network[lane] = safe_fetches
 
-    if not debug_stages and not statuses and not network:
+    if not debug_stages and not statuses and not network and not fanout:
         return {}
-    return _provider_targeted_observation(
+    result = _provider_targeted_observation(
         {
             "providers": {
                 provider_id: {
@@ -289,6 +327,32 @@ def _provider_sharded_observation(payload: Any, provider_id: str) -> dict[str, A
         },
         provider_id,
     )
+    if fanout:
+        result["fanout"] = fanout
+    return result
+
+
+def _dynamic_variant_coverage_gap(observation: dict[str, Any]) -> bool:
+    """Treat current multi-player/server census evidence as repairable completeness debt."""
+    fanout = observation.get("fanout") if isinstance(observation, dict) else None
+    if not isinstance(fanout, dict):
+        return False
+    gap_states = {
+        "announced-not-explored",
+        "explored-not-resolved",
+        "returned-subset",
+        "quality-gap",
+    }
+    for raw in fanout.values():
+        if not isinstance(raw, dict):
+            continue
+        announced = max(0, int(raw.get("announcedVariantCandidates") or 0))
+        returned = max(0, int(raw.get("streamsReturned") or 0))
+        state = str(raw.get("state") or "").strip().casefold()
+        if announced >= 2 and (state in gap_states or returned < announced):
+            return True
+    return False
+
 
 def _provider_waf_observation(payload: Any, provider_id: str) -> dict[str, Any]:
     if not isinstance(payload, dict):
@@ -658,6 +722,9 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
         else {}
     )
     census_sharded_observation = _provider_sharded_observation(census_sharded, provider_id)
+    dynamic_variant_gap = _dynamic_variant_coverage_gap(census_sharded_observation)
+    if dynamic_variant_gap and status_key in {"full ok", "partial ok", "candidate ok"}:
+        failure = "variant_coverage_gap"
     waf_observation = _provider_waf_observation(waf, provider_id)
     targeted_stages = {
         str(value or "").strip().casefold()
