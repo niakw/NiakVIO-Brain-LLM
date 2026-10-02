@@ -14,6 +14,13 @@ assert "Qwen/Qwen2.5-Coder-7B-Instruct-GGUF:Q4_K_M" in workflow
 assert "--model qwen2.5-coder-7b" in workflow
 assert "-np 1" in workflow
 assert "private-force-batch.jsonl" in workflow
+assert "plan_deterministic_force_from_checkout.py" in workflow
+assert "FIELD_BRAIN_DETERMINISTIC_FORCE_PREFLIGHT_READY" in workflow
+assert "FIELD_BRAIN_FORCE_MODEL_BYPASS deterministic=true" in workflow
+assert "steps.deterministic_force.outputs.ready != 'true'" in workflow
+assert workflow.count("Compile deterministic Force candidates before model") == 1
+assert workflow.count("id: llama-bin-cache") == 1
+assert workflow.count("Start bounded local Qwen advisor") == 1
 assert "publish_niakvio_force_mutations.py" in workflow
 assert "guidance/niakvio-force-mutations.json" in workflow
 assert "sandboxMutationAuthority" in workflow
