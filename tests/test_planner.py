@@ -5,7 +5,7 @@ import unittest
 from niakvio_brain_llm.backend import StaticBackend
 from niakvio_brain_llm.contracts import RepairRequest
 from niakvio_brain_llm.document_memory import DocumentStore
-from niakvio_brain_llm.planner import BrainPlanner, COMPACT_FORCE_SYSTEM_PROMPT, _compact_edit_to_mutation, _deterministic_catalog_identity_query_variants_mutation, _deterministic_class_text_boundary_mutation, _deterministic_optional_format_gate_mutation, _deterministic_structural_force_mutation, _deterministic_variant_coverage_mutation, _resolve_structured_anchor
+from niakvio_brain_llm.planner import BrainPlanner, COMPACT_FORCE_SYSTEM_PROMPT, _compact_edit_to_mutation, _deterministic_catalog_identity_query_variants_mutation, _deterministic_class_text_boundary_mutation, _deterministic_optional_format_gate_mutation, _deterministic_quality_diversity_source_mutation, _deterministic_structural_force_mutation, _deterministic_variant_coverage_mutation, _force_memory_blocks_mutation, _resolve_structured_anchor
 from niakvio_brain_llm.prompting import _force_source_windows, build_force_prompt_payload
 
 class PlannerTests(unittest.TestCase):
@@ -201,6 +201,9 @@ class PlannerTests(unittest.TestCase):
             allowed_mutations=["provider_bloc"],
             provider_context=context,
         )
+        self.assertTrue(_force_memory_blocks_mutation(third_request, second))
+        quality_direct = _deterministic_quality_diversity_source_mutation(third_request, policy)
+        self.assertIsNotNone(quality_direct)
         third = _deterministic_variant_coverage_mutation(third_request, policy)
         self.assertIsNotNone(third)
         self.assertEqual(third["family"], "quality_stratified_variant_enumeration")
