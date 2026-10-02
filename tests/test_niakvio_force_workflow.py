@@ -36,6 +36,9 @@ assert "dynamic_high" in workflow
 assert "audit_current_dynamic_variant_coverage" in workflow
 assert "niakvio-dynamic-variant-coverage.json" in workflow
 assert "repair_set|coverage_high|dynamic_high" in workflow
+assert 'Path("niakvio/manifest.json")' in workflow
+assert "coverage_high &= current" in workflow
+assert "dynamic_high &= current" in workflow
 assert "*sorted(dynamic_high)" in workflow
 assert "neither current repairQueue nor static/dynamic variant coverage debt" in workflow
 assert '"${provider_args[@]}"' in workflow
