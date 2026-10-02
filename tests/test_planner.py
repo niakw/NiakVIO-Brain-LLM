@@ -217,6 +217,54 @@ class PlannerTests(unittest.TestCase):
         self.assertIn("function finals(src)", updated)
         self.assertIn("return out.slice(0,4)", updated)
 
+        third_fp = hashlib.sha256(
+            json.dumps([third], ensure_ascii=True, sort_keys=True, separators=(",", ":")).encode("ascii")
+        ).hexdigest()
+        fourth_request = RepairRequest(
+            provider_id="demo",
+            failure_class="variant_coverage_gap",
+            status="FULL_OK",
+            observations=[{
+                "source": "brain-force-sandbox-memory",
+                "value": [
+                    {
+                        "mutationFingerprint": first_fp,
+                        "consecutiveFailures": 1,
+                        "lastReason": "variant_coverage_stream_regression",
+                    },
+                    {
+                        "mutationFingerprint": second_fp,
+                        "consecutiveFailures": 1,
+                        "lastReason": "identity_gate:playable_identity_not_fully_verified",
+                    },
+                    {
+                        "mutationFingerprint": third_fp,
+                        "consecutiveFailures": 1,
+                        "lastReason": "variant_coverage_playable_regression",
+                        "lastCoverageDelta": {
+                            "maxPlayableHeight": -600,
+                            "announcedVariantCandidates": -13,
+                            "exploredPlayerRequests": -8,
+                        },
+                    },
+                ],
+            }],
+            allowed_mutations=["provider_bloc"],
+            provider_context=context,
+        )
+        self.assertTrue(_force_memory_blocks_mutation(fourth_request, third))
+        fourth = _deterministic_variant_coverage_mutation(fourth_request, policy)
+        self.assertIsNotNone(fourth)
+        self.assertEqual(
+            fourth["family"],
+            "cross_source_round_robin_before_global_cap",
+        )
+        fourth_updated = source.replace(fourth["find"], fourth["replace"], 1)
+        self.assertIn("k<8", fourth_updated)
+        self.assertIn("if(out.length>=4)break", fourth_updated)
+        self.assertIn("for(var n=0;n<z.length&&n<1;n++)", fourth_updated)
+        self.assertIn("return out.slice(0,3)", fourth_updated)
+
     def test_deterministic_variant_source_slice_requires_observed_quality_gain(self):
         source = (
             'function files(src){var out=[];return out.slice(0,3)} '

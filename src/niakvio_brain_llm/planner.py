@@ -2024,6 +2024,192 @@ def _deterministic_quality_diversity_source_mutation(
     )
 
 
+def _deterministic_cross_source_round_robin_mutation(
+    request: RepairRequest,
+    mutation_policy: dict[str, Any],
+) -> dict[str, Any] | None:
+    """Spread a bounded global stream budget across upstream sources.
+
+    This post-negative-memory compiler preserves the existing bounded outer
+    source loop, deadline checks and global output break. It only limits how many
+    terminal rows one upstream source may contribute before traversal advances,
+    preventing same-source mirrors from consuming the complete global budget.
+    """
+    failure = str(request.failure_class or "").strip().casefold().replace("-", "_")
+    if failure not in {"variant_coverage_gap", "variant_coverage_truncation"}:
+        return None
+    observed = _current_observed_quality_heights(request)
+    if len(observed) < 2:
+        return None
+    context = request.provider_context if isinstance(request.provider_context, dict) else {}
+    coverage = context.get("runtime_variant_coverage")
+    if not isinstance(coverage, dict) or coverage.get("riskKind") != "variant-coverage-truncation":
+        return None
+    dimensions = {
+        str(value or "").strip().casefold()
+        for value in coverage.get("dimensions") or []
+        if str(value or "").strip()
+    }
+    if "quality" not in dimensions and "source" not in dimensions:
+        return None
+
+    allowed = {
+        str(scope)
+        for scope in mutation_policy.get("allowed_scopes") or request.allowed_mutations or []
+    }
+    source_rows: list[tuple[str, str, str]] = []
+    if "provider_bloc" in allowed:
+        runtime_source = str(
+            context.get("preferredRuntimeMutationSource")
+            or context.get("runtimeMutationSource")
+            or ""
+        )
+        if runtime_source:
+            source_rows.append(("provider_bloc", "", runtime_source))
+    if "provider_patch" in allowed:
+        sources = context.get("registered_patch_sources")
+        if isinstance(sources, dict):
+            source_rows.extend(
+                ("provider_patch", str(path), str(source or ""))
+                for path, source in sources.items()
+                if str(path) and str(source or "")
+            )
+    if not source_rows:
+        return None
+
+    outer_prefix = re.compile(
+        r"for\s*\(\s*(?:var|let)\s+(?P<outer>[A-Za-z_$][A-Za-z0-9_$]*)\s*=\s*0\s*;"
+        r"\s*(?P=outer)\s*<\s*(?P<sources>[A-Za-z_$][A-Za-z0-9_$]*)\.length"
+        r"\s*&&\s*(?P=outer)\s*<\s*(?P<source_cap>\d+)",
+        re.I,
+    )
+    global_break = re.compile(
+        r"if\s*\(\s*(?P<out>[A-Za-z_$][A-Za-z0-9_$]*)\.length\s*>=\s*"
+        r"(?P<cap>[2-9]|1[0-6])\s*\)\s*break\s*;?",
+        re.I,
+    )
+
+    candidates: list[tuple[str, str, str, dict[str, Any], str]] = []
+    for scope, path, source in source_rows:
+        for unit in _deterministic_complete_line_function_units(source):
+            if str(unit.get("kind") or "") != "function_unit":
+                continue
+            unit_source = str(unit.get("source") or "")
+            signature = re.match(
+                r"(?s)^\s*(?:async\s+)?function\s+[A-Za-z_$][A-Za-z0-9_$]*"
+                r"\s*\([^)]*\)\s*\{(?P<body>.*)\}\s*$",
+                unit_source,
+            )
+            if not signature:
+                continue
+            body = str(signature.group("body") or "")
+            outers = list(outer_prefix.finditer(body))
+            breaks = list(global_break.finditer(body))
+            if len(outers) != 1 or len(breaks) != 1:
+                continue
+            outer = outers[0]
+            breaker = breaks[0]
+            source_name = str(outer.group("sources") or "")
+            outer_index = str(outer.group("outer") or "")
+            out_name = str(breaker.group("out") or "")
+            global_cap = int(breaker.group("cap"))
+            if not source_name or not outer_index or not out_name:
+                continue
+
+            call = re.compile(
+                rf"(?:var|let|const)\s+(?P<result>[A-Za-z_$][A-Za-z0-9_$]*)\s*=\s*"
+                rf"await\s+[A-Za-z_$][A-Za-z0-9_$.]*\s*\(\s*"
+                rf"{re.escape(source_name)}\s*\[\s*{re.escape(outer_index)}\s*\]",
+                re.I,
+            ).search(body, outer.end())
+            if not call or call.start() >= breaker.start():
+                continue
+            result_name = str(call.group("result") or "")
+            inner_re = re.compile(
+                rf"for\s*\(\s*(?:var|let)\s+(?P<inner>[A-Za-z_$][A-Za-z0-9_$]*)\s*=\s*0\s*;"
+                rf"\s*(?P=inner)\s*<\s*{re.escape(result_name)}\.length"
+                rf"(?P<extra>[^;]*)\s*;\s*(?P=inner)\+\+\s*\)",
+                re.I,
+            )
+            inners = list(inner_re.finditer(body, call.end(), breaker.start()))
+            if len(inners) != 1:
+                continue
+            inner = inners[0]
+            inner_index = str(inner.group("inner") or "")
+            extra = str(inner.group("extra") or "")
+            if not inner_index or re.search(
+                rf"\b{re.escape(inner_index)}\s*<\s*\d+",
+                extra,
+            ):
+                continue
+            contribution = body[inner.end():breaker.start()]
+            if not re.search(
+                rf"\b{re.escape(out_name)}\.push\s*\(\s*"
+                rf"{re.escape(result_name)}\s*\[\s*{re.escape(inner_index)}\s*\]",
+                contribution,
+            ):
+                continue
+
+            diversity_target = min(global_cap, max(2, len(observed)))
+            per_source_cap = max(
+                1,
+                (global_cap + diversity_target - 1) // diversity_target,
+            )
+            insertion = inner.end("extra")
+            replacement_body = (
+                body[:insertion]
+                + f"&&{inner_index}<{per_source_cap}"
+                + body[insertion:]
+            )
+            if replacement_body != body:
+                candidates.append((scope, path, source, unit, replacement_body))
+
+    if not candidates:
+        return None
+    groups: dict[tuple[str, str], list[tuple[str, str, str, dict[str, Any], str]]] = {}
+    for candidate in candidates:
+        groups.setdefault(
+            (str(candidate[3].get("source") or ""), candidate[4]),
+            [],
+        ).append(candidate)
+    if len(groups) == 1:
+        same = next(iter(groups.values()))
+        candidates = [
+            next(
+                (candidate for candidate in same if candidate[0] == "provider_bloc"),
+                next(
+                    (candidate for candidate in same if candidate[0] == "provider_patch"),
+                    same[0],
+                ),
+            )
+        ]
+    else:
+        bloc_candidates = [candidate for candidate in candidates if candidate[0] == "provider_bloc"]
+        if len(bloc_candidates) == 1:
+            candidates = bloc_candidates
+    if len(candidates) != 1:
+        return None
+
+    scope, path, source, unit, replacement_body = candidates[0]
+    if scope == "provider_patch":
+        mutation = _deterministic_exact_function_mutation(
+            request,
+            path=path,
+            source=source,
+            unit=unit,
+            replacement_body=replacement_body,
+        )
+        mutation["family"] = "cross_source_round_robin_before_global_cap"
+        return mutation
+    return _deterministic_exact_bloc_function_mutation(
+        request,
+        source=source,
+        unit=unit,
+        replacement_body=replacement_body,
+        family="cross_source_round_robin_before_global_cap",
+    )
+
+
 def _deterministic_variant_coverage_mutation(
     request: RepairRequest,
     mutation_policy: dict[str, Any],
@@ -2305,7 +2491,35 @@ def _deterministic_variant_coverage_mutation(
                 "reason=executed-negative-memory mechanism=quality_stratified_variant_enumeration",
                 flush=True,
             )
-            return None
+            round_robin = _deterministic_cross_source_round_robin_mutation(
+                request,
+                mutation_policy,
+            )
+            if not isinstance(round_robin, dict):
+                print(
+                    "FIELD_BRAIN_FORCE_DETERMINISTIC_NEXT_MISSING "
+                    f"provider={request.provider_id} "
+                    "mechanism=cross_source_round_robin_before_global_cap",
+                    flush=True,
+                )
+                return None
+            if _force_memory_blocks_mutation(request, round_robin):
+                print(
+                    "FIELD_BRAIN_FORCE_DETERMINISTIC_BLOCKED "
+                    f"provider={request.provider_id} scope={round_robin.get('scope')} "
+                    "reason=executed-negative-memory "
+                    "mechanism=cross_source_round_robin_before_global_cap",
+                    flush=True,
+                )
+                return None
+            print(
+                "FIELD_BRAIN_FORCE_DETERMINISTIC_NEXT "
+                f"provider={request.provider_id} "
+                "mechanism=cross_source_round_robin_before_global_cap "
+                f"observed_qualities={len(_current_observed_quality_heights(request))}",
+                flush=True,
+            )
+            return round_robin
         print(
             "FIELD_BRAIN_FORCE_DETERMINISTIC_NEXT "
             f"provider={request.provider_id} mechanism=quality_stratified_variant_enumeration "
