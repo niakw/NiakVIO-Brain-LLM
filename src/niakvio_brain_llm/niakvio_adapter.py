@@ -17,6 +17,91 @@ def _load(path: Path, default: Any) -> Any:
 def _canon(value: object) -> str:
     return " ".join(str(value or "").strip().casefold().replace("_", " ").split())
 
+def _provider_current_structure_evidence(payload: Any, provider_id: str) -> dict[str, Any]:
+    """Project current provider structure into bounded, observation-only Brain evidence."""
+    providers = payload.get("providers") if isinstance(payload, dict) else None
+    if not isinstance(providers, dict):
+        return {}
+    wanted = _canon(provider_id)
+    raw = next(
+        (
+            value for key, value in providers.items()
+            if _canon(key) == wanted and isinstance(value, dict)
+        ),
+        {},
+    )
+    if not raw:
+        return {}
+
+    origin_host = str(raw.get("originHost") or "").strip().casefold()[:160]
+    if origin_host and not all(ch.isalnum() or ch in ".-" for ch in origin_host):
+        origin_host = ""
+
+    routes: list[dict[str, Any]] = []
+    for value in (raw.get("routes") or [])[:12]:
+        if not isinstance(value, dict):
+            continue
+        path = str(value.get("path") or "").strip()
+        if not path.startswith("/") or len(path) > 260:
+            continue
+        method = str(value.get("method") or "").strip().upper()[:12]
+        if method not in {"GET", "POST", "PUT", "PATCH", "DELETE", "UNKNOWN", ""}:
+            method = "UNKNOWN"
+        role = str(value.get("role") or "").strip()[:80]
+        row_out: dict[str, Any] = {"path": path}
+        if method:
+            row_out["method"] = method
+        if role:
+            row_out["role"] = role
+        routes.append(row_out)
+
+    request_keys = [
+        str(value)[:48]
+        for value in (raw.get("requestKeys") or [])[:24]
+        if str(value)
+        and str(value)[0].isalpha()
+        and all(ch.isalnum() or ch in "_-" for ch in str(value))
+    ]
+
+    fanout_raw = raw.get("fanout") if isinstance(raw.get("fanout"), dict) else {}
+
+    def bounded_int(value: Any, limit: int) -> int:
+        try:
+            return max(0, min(int(value or 0), limit))
+        except (TypeError, ValueError):
+            return 0
+
+    group_counts = [
+        bounded_int(value, 128)
+        for value in (fanout_raw.get("groupVariantCounts") or [])[:16]
+        if bounded_int(value, 128) > 0
+    ]
+    language_labels = [
+        str(value)[:24].upper()
+        for value in (fanout_raw.get("languageLabels") or [])[:16]
+        if str(value).strip()
+        and all(ch.isalnum() or ch in "_-" for ch in str(value))
+    ]
+    fanout = {
+        "groupCount": bounded_int(fanout_raw.get("groupCount"), 32),
+        "groupVariantCounts": group_counts,
+        "indexedVariantCount": bounded_int(fanout_raw.get("indexedVariantCount"), 512),
+        "languageLabels": language_labels,
+    }
+
+    return {
+        "role": "current-provider-structure-observation",
+        "proofAuthority": False,
+        "executionAuthority": False,
+        "sourceKind": str(raw.get("sourceKind") or "manual-current-observation")[:80],
+        "observedAt": str(raw.get("observedAt") or "")[:32],
+        **({"originHost": origin_host} if origin_host else {}),
+        "routes": routes,
+        "requestKeys": request_keys,
+        "fanout": fanout,
+    }
+
+
 def _safe_response_shape(value: Any) -> dict[str, Any]:
     if not isinstance(value, dict):
         return {}
@@ -668,6 +753,10 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
     targeted = _load(root / "automation" / "provider-targeted-regression-recovery-latest.json", {})
     waf = _load(root / "automation" / "provider-waf-browser-session-latest.json", {})
     refined = _load(root / "automation" / "provider-repair-batch-refined-latest.json", {})
+    current_structure_payload = _load(
+        root / "automation" / "provider-current-structure-evidence.json",
+        {},
+    )
 
     row: dict[str, Any] = {}
     for candidate in census.get("providers") or []:
@@ -725,6 +814,10 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
     dynamic_variant_gap = _dynamic_variant_coverage_gap(census_sharded_observation)
     if dynamic_variant_gap and status_key in {"full ok", "partial ok", "candidate ok"}:
         failure = "variant_coverage_gap"
+    current_structure_observation = _provider_current_structure_evidence(
+        current_structure_payload,
+        provider_id,
+    )
     waf_observation = _provider_waf_observation(waf, provider_id)
     targeted_stages = {
         str(value or "").strip().casefold()
@@ -859,6 +952,16 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
         failure,
         route_contract,
     )
+    if current_structure_observation:
+        current_routes = [
+            str(value.get("path") or "")
+            for value in current_structure_observation.get("routes") or []
+            if isinstance(value, dict) and str(value.get("path") or "").startswith("/")
+        ][:12]
+        if current_routes:
+            route_contract["currentObservedRoutes"] = current_routes
+            route_contract["currentObservedRoutesAuthority"] = "observation-only"
+        provider_context["current_structure_evidence"] = current_structure_observation
     provider_context["route_contract"] = route_contract
     provider_context["advisor_experiment_history"] = [
         *negative_memory,
@@ -894,6 +997,10 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
             *(
                 [{"source": "census-sharded-current", "value": census_sharded_observation}]
                 if census_sharded_observation else []
+            ),
+            *(
+                [{"source": "current-provider-structure", "value": current_structure_observation}]
+                if current_structure_observation else []
             ),
             *(
                 [{"source": "waf-client-differential-current", "value": waf_observation}]

@@ -6,6 +6,77 @@ from pathlib import Path
 from niakvio_brain_llm.niakvio_adapter import classify_census_failure, request_from_checkout
 
 class AdapterFailureClassTests(unittest.TestCase):
+    def test_current_structure_evidence_reaches_brain_as_observation_only(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "automation").mkdir(parents=True)
+            (root / "automation" / "provider-census-status.json").write_text(
+                json.dumps({
+                    "runId": "run-structure",
+                    "providers": [{
+                        "provider": "demo",
+                        "status": "FULL OK",
+                        "dominantIssue": "none",
+                        "declaredLanes": ["movie"],
+                    }],
+                }),
+                encoding="utf-8",
+            )
+            (root / "automation" / "provider-current-structure-evidence.json").write_text(
+                json.dumps({
+                    "schemaVersion": 1,
+                    "providers": {
+                        "demo": {
+                            "sourceKind": "user-current-page",
+                            "observedAt": "2026-10-01",
+                            "originHost": "demo.example",
+                            "routes": [
+                                {"path": "/wp-json/demo/v1/resolve", "method": "POST", "role": "player-resolver"},
+                                {"path": "https://must-not-pass.example/unsafe", "method": "GET"},
+                            ],
+                            "requestKeys": ["tmdb", "type", "year", "pid", "bad key"],
+                            "fanout": {
+                                "groupCount": 2,
+                                "groupVariantCounts": [10, 9],
+                                "indexedVariantCount": 19,
+                                "languageLabels": ["VF", "VOSTFR", "bad label"],
+                            },
+                        }
+                    },
+                }),
+                encoding="utf-8",
+            )
+            (root / "provider-overrides.json").write_text(
+                json.dumps({"provider_patches": {}}),
+                encoding="utf-8",
+            )
+            (root / "provider-hubs.json").write_text("{}", encoding="utf-8")
+            (root / "manifest.json").write_text(json.dumps({"scrapers": []}), encoding="utf-8")
+
+            request = request_from_checkout(root, "demo")
+            by_source = {row["source"]: row["value"] for row in request.observations}
+            observed = by_source["current-provider-structure"]
+            self.assertFalse(observed["proofAuthority"])
+            self.assertFalse(observed["executionAuthority"])
+            self.assertEqual(observed["originHost"], "demo.example")
+            self.assertEqual(observed["routes"], [{
+                "path": "/wp-json/demo/v1/resolve",
+                "method": "POST",
+                "role": "player-resolver",
+            }])
+            self.assertEqual(observed["requestKeys"], ["tmdb", "type", "year", "pid"])
+            self.assertEqual(observed["fanout"]["groupVariantCounts"], [10, 9])
+            self.assertEqual(observed["fanout"]["indexedVariantCount"], 19)
+            self.assertEqual(observed["fanout"]["languageLabels"], ["VF", "VOSTFR"])
+            self.assertEqual(
+                request.provider_context["route_contract"]["currentObservedRoutes"],
+                ["/wp-json/demo/v1/resolve"],
+            )
+            self.assertEqual(
+                request.provider_context["route_contract"]["currentObservedRoutesAuthority"],
+                "observation-only",
+            )
+
     def test_full_ok_high_runtime_variant_coverage_becomes_explicit_provider_gap(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
