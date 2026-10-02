@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
   "niakvio_sha": "bdb9112fd26ec1a445769ac64e6492e784a0ea4a",
-  "reason": "Authoritative representative CoFlix Brain-first repair after FORCE prompt evidence fix. Current all-provider census run 36968430407 proves returned-subset on current bytes; sanitized current structure must remain model-visible: origin coflix.ac, resolver /wp-json/coflix/v1/resolve, request-key names tmdb/type/year/pid, two groups 10+9 = 19 indexed choices, VF/VFF/VOSTFR. Generate provider-owned mutation only; preserve identity/playability and require measured completeness gain. Supersedes stale run 36970348376.",
+  "reason": "Authoritative representative CoFlix Brain-first repair after FORCE prompt evidence retention and exact-trigger cohort fixes. Source NiakVIO bdb9112f...; current all-provider census 36968430407; current structure coflix.ac + /wp-json/coflix/v1/resolve + 2 groups 10+9 = 19 indexed choices; dynamic returned-subset. Target CoFlix only. Generate provider-owned mutation, then require isolated current-byte sandbox, rematerialization, identity/playability preservation and measured completeness gain.",
   "requested_repair_queue": [
     "coflix"
   ],
-  "retry": 13
+  "retry": 14
 }
