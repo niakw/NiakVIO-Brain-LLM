@@ -82,11 +82,15 @@ def _provider_current_structure_evidence(payload: Any, provider_id: str) -> dict
         if str(value).strip()
         and all(ch.isalnum() or ch in "_-" for ch in str(value))
     ]
-    quality_heights = sorted({
-        bounded_int(value, 4320)
-        for value in (fanout_raw.get("qualityHeights") or [])[:16]
-        if 144 <= bounded_int(value, 4320) <= 4320
-    })
+    quality_height_values: set[int] = set()
+    for value in (fanout_raw.get("qualityHeights") or [])[:16]:
+        try:
+            height = int(value)
+        except (TypeError, ValueError):
+            continue
+        if 144 <= height <= 4320:
+            quality_height_values.add(height)
+    quality_heights = sorted(quality_height_values)
     fanout = {
         "groupCount": bounded_int(fanout_raw.get("groupCount"), 32),
         "groupVariantCounts": group_counts,
