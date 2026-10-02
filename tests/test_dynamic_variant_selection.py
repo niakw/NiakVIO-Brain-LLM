@@ -3,10 +3,25 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from niakvio_brain_llm.provider_context import audit_current_dynamic_variant_coverage
+from niakvio_brain_llm.provider_context import (
+    FAMILY_REFERENCE_TOKENS,
+    _technical_features,
+    audit_current_dynamic_variant_coverage,
+)
 
 
 class DynamicVariantSelectionTests(unittest.TestCase):
+    def test_variant_family_peer_vocabulary_covers_player_server_quality(self):
+        features = _technical_features(
+            "player server mirror source variant quality resolution language audio stream"
+        )
+        expected = {
+            "player", "server", "mirror", "source", "variant",
+            "quality", "resolution", "language", "audio", "stream",
+        }
+        self.assertTrue(expected <= features)
+        self.assertTrue(expected <= FAMILY_REFERENCE_TOKENS["variant_coverage_gap"])
+
     def test_current_sharded_fanout_debt_becomes_repair_target(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
