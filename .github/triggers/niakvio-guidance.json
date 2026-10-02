@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "9c6dc0cf6479bad0a2e0a5e04f084e1e90fcb989",
-  "reason": "Authoritative representative CoFlix Brain-first completeness witness after deterministic terminal-fanout disambiguation. Exact cohort CoFlix only. Static debt has both catalogue and terminal caps; prefer current terminal _crawlDirectMedia fanout candidate for player/server/source dimensions. Preserve current-structure evidence coflix.ac + /wp-json/coflix/v1/resolve + 2 groups 10+9=19 and current sharded returned-subset evidence. Publication still requires NiakVIO isolated current-byte sandbox, rematerialization, identity/playability preservation and measured completeness gain; no manual provider fallback.",
+  "niakvio_sha": "72ba9006bf6aa4a537bec2ed2c21d707091612d9",
+  "reason": "Regenerate exact CoFlix deterministic terminal-fanout Force artifact on current NiakVIO Brain pipeline after current-structure UNKNOWN-route peer-recipe guard. CoFlix only. Preserve current structure evidence and dynamic completeness debt. Mutation must remain provider-owned and sandbox-only until NiakVIO proves playback/identity/completeness gain.",
   "requested_repair_queue": [
     "coflix"
   ],
-  "retry": 15
+  "retry": 16
 }
