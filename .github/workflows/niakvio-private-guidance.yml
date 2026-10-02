@@ -156,9 +156,10 @@ jobs:
           dynamic_high &= current
           repair_set=set(repair)
           explicit_allowed=repair_set|coverage_high|dynamic_high
-          if not raw:
+          # An explicit manual input or trigger cohort is exact. Auto-union
+          # repair/static/dynamic debt only when no explicit cohort exists.
+          if not raw and not trigger_values:
               values=[
-                  *values,
                   *repair,
                   *sorted(coverage_high),
                   *sorted(dynamic_high),
