@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "8cc61b4af6f2003f5e2712d84102b004385b5eed",
-  "reason": "Authoritative HindMoviez variant-coverage replay after trailing-resolver extraction fix. Brain CI #1319 is green. Compile bounded_variant_enumeration_before_cap deterministically from exact current runtime bytes; remove only the outer global quota that truncates later quality variants while retaining inner per-source cap, k<8 bound, identity/playability gates and provider deadline. No 7B fallback if deterministic compilation succeeds; no manual provider edit.",
+  "niakvio_sha": "728bdd813e49e64276fed11082136eead0672c3e",
+  "reason": "Representative CoFlix Brain-first repair on current NiakVIO authority. Current all-provider census run 36968430407 proves returned-subset on anime/movie/tv while runtime still executes stale coflix.wiki AJAX traversal; sanitized current structure evidence proves current coflix.ac resolver /wp-json/coflix/v1/resolve with two groups 10+9 indexed variants. Generate provider-owned current-contract mutation; preserve identity/playability; enumerate bounded variants; no manual provider fallback.",
   "requested_repair_queue": [
-    "hindmoviez"
+    "coflix"
   ],
-  "retry": 11
+  "retry": 12
 }
