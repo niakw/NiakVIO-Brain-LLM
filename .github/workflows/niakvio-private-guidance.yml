@@ -341,18 +341,14 @@ jobs:
             --experience public-experience.jsonl \
             "${provider_args[@]}" \
             --output private-force-deterministic.jsonl
-          count="$(grep -cve '^[[:space:]]*        with:
-          path: llama-prebuilt
-          key: llama-cpp-b11140-ubuntu-x64
-
-      - name: Download official llama.cpp binary
-        if: steps.route.outputs.llm_needed == 'true' && steps.deterministic_force.outputs.ready != 'true' && steps.llama-bin-cache.outputs.cache-hit != 'true' && steps.deterministic_force.outputs.ready != 'true'
-        run: |
-          mkdir -p llama-prebuilt
-          curl -fL --retry 3             https://github.com/ggml-org/llama.cpp/releases/download/b11140/llama-b11140-bin-ubuntu-x64.tar.gz             -o llama-b11140.tar.gz
-          tar -xzf llama-b11140.tar.gz -C llama-prebuilt
-          test -n "$(find llama-prebuilt -type f -name llama-server -print -quit)"
-
+          count="$(python -c 'from pathlib import Path; p=Path("private-force-deterministic.jsonl"); print(sum(1 for line in p.read_text(encoding="utf-8").splitlines() if line.strip()))')"
+          if [ "$count" -gt 0 ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+            echo "FIELD_BRAIN_DETERMINISTIC_FORCE_PREFLIGHT_READY ready=true rows=$count"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "FIELD_BRAIN_DETERMINISTIC_FORCE_PREFLIGHT_READY ready=false rows=0"
+          fi
       - uses: actions/cache@v4
         if: steps.route.outputs.llm_needed == 'true' && steps.deterministic_force.outputs.ready != 'true'
         with:
@@ -681,7 +677,7 @@ jobs:
           key: llama-cpp-b11140-ubuntu-x64
 
       - name: Download official llama.cpp binary
-        if: steps.route.outputs.llm_needed == 'true' && steps.deterministic_force.outputs.ready != 'true' && steps.llama-bin-cache.outputs.cache-hit != 'true' && steps.deterministic_force.outputs.ready != 'true'
+        if: steps.route.outputs.llm_needed == 'true' && steps.llama-bin-cache.outputs.cache-hit != 'true' && steps.deterministic_force.outputs.ready != 'true'
         run: |
           mkdir -p llama-prebuilt
           curl -fL --retry 3             https://github.com/ggml-org/llama.cpp/releases/download/b11140/llama-b11140-bin-ubuntu-x64.tar.gz             -o llama-b11140.tar.gz
