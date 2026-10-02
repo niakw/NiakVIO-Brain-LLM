@@ -379,6 +379,23 @@ def _force_structural_focus_keywords(request: RepairRequest) -> tuple[str, ...]:
                     raw_fact = fragment.split("]", 1)[0]
                     record_token(raw_fact.split(";", 1)[0])
 
+        fanout = value.get("fanout") if isinstance(value.get("fanout"), dict) else {}
+        for lane_row in list(fanout.values())[:6]:
+            if not isinstance(lane_row, dict):
+                continue
+            announced = max(0, int(lane_row.get("announcedVariantCandidates") or 0))
+            returned = max(0, int(lane_row.get("streamsReturned") or 0))
+            state = str(lane_row.get("state") or "").strip().casefold()
+            if announced < 2:
+                continue
+            if state in {"announced-not-explored", "explored-not-resolved", "returned-subset", "quality-gap"} or returned < announced:
+                focus.extend((
+                    "out.length", "maxstreams", "targetstreams", "break", "return out", "slice(",
+                    "player", "server", "mirror", "embed", "source", "variant",
+                ))
+                if lane_row.get("announcedQualityHeights"):
+                    focus.extend(("quality", "2160", "1080", "720", "480"))
+
     collisions = [
         token for token in class_tokens
         if any(
@@ -417,6 +434,10 @@ _FORCE_SOURCE_KEYWORDS: dict[str, tuple[str, ...]] = {
     ),
     "chain_terminal_gap": (
         "confirm", "internal", "resolve", "m3u8", "iframe", "terminal", "crawl", "source",
+    ),
+    "variant_coverage_gap": (
+        "out.length", "maxstreams", "targetstreams", "slice(", "break",
+        "player", "server", "mirror", "embed", "source", "variant", "quality",
     ),
 }
 
