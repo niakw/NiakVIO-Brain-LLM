@@ -17,11 +17,13 @@ TECHNICAL_TOKENS = (
     "timeout", "search", "detail", "episode", "watch", "player", "iframe", "embed",
     "confirm", "internal", "resolve", "m3u8", "mp4", "playlist", "json", "regex",
     "base64", "decrypt", "decode", "session", "token", "source",
+    "server", "mirror", "quality", "resolution", "language", "audio", "variant", "stream",
 )
 FAMILY_REFERENCE_TOKENS = {
     "provider_transport_gap": {"fetch", "headers", "cookie", "user-agent", "referer", "origin", "redirect", "timeout", "session"},
     "route_proven_gap": {"search", "detail", "episode", "watch", "player", "iframe", "embed", "fetch", "resolve"},
     "chain_terminal_gap": {"confirm", "internal", "player", "iframe", "resolve", "m3u8", "mp4", "playlist", "source"},
+    "variant_coverage_gap": {"player", "server", "mirror", "source", "variant", "quality", "resolution", "language", "audio", "stream"},
 }
 
 def _clip(text: str, limit: int) -> str:
