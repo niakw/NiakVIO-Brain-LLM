@@ -88,40 +88,56 @@ jobs:
           PYTHONPATH=brain/src python - <<'PY'
           import json
           from pathlib import Path
-          from niakvio_brain_llm.provider_context import audit_registered_runtime_variant_coverage
+          from niakvio_brain_llm.provider_context import (
+              audit_current_dynamic_variant_coverage,
+              audit_registered_runtime_variant_coverage,
+          )
 
           audit=audit_registered_runtime_variant_coverage("niakvio")
+          dynamic=audit_current_dynamic_variant_coverage("niakvio")
           Path("niakvio-runtime-variant-coverage.json").write_text(
               json.dumps(audit,ensure_ascii=False,indent=2)+"\n",
+              encoding="utf-8",
+          )
+          Path("niakvio-dynamic-variant-coverage.json").write_text(
+              json.dumps(dynamic,ensure_ascii=False,indent=2)+"\n",
               encoding="utf-8",
           )
           print(
               "FIELD_NIAKVIO_RUNTIME_VARIANT_COVERAGE "
               f"providers={int(audit.get('providerCount') or 0)} "
               f"high={len(audit.get('highRiskProviders') or [])} "
-              f"review={len(audit.get('reviewProviders') or [])}"
+              f"review={len(audit.get('reviewProviders') or [])} "
+              f"dynamic_high={len(dynamic.get('highRiskProviders') or [])}"
           )
           PY
-          python - "$RUNNER_TEMP/niakvio-guidance-targets.txt" "$INPUT_TARGETS" "niakvio-runtime-variant-coverage.json" <<'PY'
+          python - "$RUNNER_TEMP/niakvio-guidance-targets.txt" "$INPUT_TARGETS" "niakvio-runtime-variant-coverage.json" "niakvio-dynamic-variant-coverage.json" <<'PY'
           import json,sys
           from pathlib import Path
 
           out=Path(sys.argv[1])
           raw=str(sys.argv[2] or "").strip()
           coverage=json.loads(Path(sys.argv[3]).read_text(encoding="utf-8"))
+          dynamic=json.loads(Path(sys.argv[4]).read_text(encoding="utf-8"))
           coverage_high={
               str(value or "").strip().lower().replace("_","-")
               for value in coverage.get("highRiskProviders") or []
               if str(value or "").strip()
           }
+          dynamic_high={
+              str(value or "").strip().lower().replace("_","-")
+              for value in dynamic.get("highRiskProviders") or []
+              if str(value or "").strip()
+          }
           trigger=Path("brain/.github/triggers/niakvio-guidance.json")
+          trigger_values=[]
           if not raw and trigger.is_file():
               data=json.loads(trigger.read_text(encoding="utf-8"))
-              values=data.get("requested_repair_queue") or []
-          elif raw:
+              trigger_values=data.get("requested_repair_queue") or []
+          if raw:
               values=raw.split(",")
           else:
-              values=[]
+              values=list(trigger_values)
 
           census=json.loads(Path("niakvio/automation/provider-census-status.json").read_text(encoding="utf-8"))
           repair=[
@@ -130,19 +146,24 @@ jobs:
               if str(v or "").strip()
           ]
           repair_set=set(repair)
-          explicit_allowed=repair_set|coverage_high
+          explicit_allowed=repair_set|coverage_high|dynamic_high
+          if not raw:
+              values=[
+                  *values,
+                  *repair,
+                  *sorted(coverage_high),
+                  *sorted(dynamic_high),
+              ]
           requested=[]
           seen=set()
           for value in values:
               provider=str(value or "").strip().lower().replace("_","-")
               if provider and provider not in seen:
                   seen.add(provider); requested.append(provider)
-          if not requested:
-              requested=repair
           missing=[provider for provider in requested if provider not in explicit_allowed]
           if missing:
               raise SystemExit(
-                  "requested Brain LLM cohort is neither current repairQueue nor high runtime coverage debt: "
+                  "requested Brain LLM cohort is neither current repairQueue nor static/dynamic variant coverage debt: "
                   + ",".join(missing)
               )
           if not requested:
