@@ -121,6 +121,7 @@ class PlannerTests(unittest.TestCase):
             'while((m=re.exec(src))!==null){var f=String(m[0]);if(!seen[f]){seen[f]=1;out.push(f)}}'
             'return out.slice(0,3)} '
             'function quality(f){var m=/(2160|1080|720|480|360)p/i.exec(f);return m?m[1]+"p":"HD"} '
+            'function finals(src){var out=[];if(/[?&]file=/i.test(src))out.push(src);return out.slice(0,4)} '
             'async function resolve(){var out=[];for(var k=0;k<links.length&&k<8;k++){'
             'var z=await chain(links[k]);for(var n=0;n<z.length;n++)out.push(z[n]);'
             'if(out.length>=4)break}return out}'
@@ -213,6 +214,8 @@ class PlannerTests(unittest.TestCase):
         self.assertIn("return __qv.slice(0,4)", updated)
         self.assertIn("if(out.length>=4)break", updated)
         self.assertNotIn("return out.slice(0,3)", updated)
+        self.assertIn("function finals(src)", updated)
+        self.assertIn("return out.slice(0,4)", updated)
 
     def test_deterministic_variant_source_slice_requires_observed_quality_gain(self):
         source = (

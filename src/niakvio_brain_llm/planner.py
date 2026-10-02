@@ -1940,6 +1940,56 @@ def _deterministic_quality_diversity_source_mutation(
 
     if not candidates:
         return None
+
+    # A terminal URL extractor may contain query keys such as "?file=" and an
+    # unrelated return slice, which is not evidence that it enumerates source
+    # qualities. Prefer the unique candidate whose own helper identity/body is
+    # closest to upstream file/source/release enumeration. This ranking is
+    # provider-neutral and only resolves ambiguity between already-safe exact
+    # current-byte candidates.
+    if len(candidates) > 1:
+        def quality_source_rank(
+            candidate: tuple[str, str, str, dict[str, Any], str],
+        ) -> int:
+            unit_source = str(candidate[3].get("source") or "")
+            name_match = re.match(
+                r"(?s)^\s*(?:async\s+)?function\s+(?P<name>[A-Za-z_$][A-Za-z0-9_$]*)",
+                unit_source,
+            )
+            function_name = str(name_match.group("name") if name_match else "")
+            score = 0
+            if re.search(r"(?:file|source|release|quality|stream)", function_name, re.I):
+                score += 4
+            if re.search(r"\.(?:mkv|mp4|avi|m3u8)\b", unit_source, re.I):
+                score += 2
+            if sum(
+                1
+                for height in observed
+                if re.search(rf"(?<!\\d){int(height)}(?!\\d)", unit_source)
+            ) >= 2:
+                score += 2
+            if re.search(r"https?://|workers\.dev|[?&]file=", unit_source, re.I):
+                score -= 2
+            return score
+
+        ranked = [(quality_source_rank(candidate), candidate) for candidate in candidates]
+        best_score = max(score for score, _candidate in ranked)
+        best = [candidate for score, candidate in ranked if score == best_score]
+        if best_score > 0 and len({
+            str(candidate[3].get("source") or "")
+            for candidate in best
+        }) == 1:
+            candidates = best
+        elif best_score > 0:
+            # Keep duplicate provider_bloc/provider_patch views of the same
+            # semantic helper for the normal exact-source grouping below.
+            best_sources = {
+                str(candidate[3].get("source") or "")
+                for candidate in best
+            }
+            if len(best_sources) == 1:
+                candidates = best
+
     groups: dict[tuple[str, str], list[tuple[str, str, str, dict[str, Any], str]]] = {}
     for candidate in candidates:
         groups.setdefault((str(candidate[3].get("source") or ""), candidate[4]), []).append(candidate)
