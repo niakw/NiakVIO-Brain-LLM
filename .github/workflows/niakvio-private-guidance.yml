@@ -140,11 +140,20 @@ jobs:
               values=list(trigger_values)
 
           census=json.loads(Path("niakvio/automation/provider-census-status.json").read_text(encoding="utf-8"))
+          manifest=json.loads(Path("niakvio/manifest.json").read_text(encoding="utf-8"))
+          current={
+              str(row.get("id") or "").strip().lower().replace("_","-")
+              for row in manifest.get("scrapers") or []
+              if isinstance(row,dict) and str(row.get("id") or "").strip()
+          }
           repair=[
               str(v or "").strip().lower().replace("_","-")
               for v in census.get("repairQueue") or []
               if str(v or "").strip()
+              and str(v or "").strip().lower().replace("_","-") in current
           ]
+          coverage_high &= current
+          dynamic_high &= current
           repair_set=set(repair)
           explicit_allowed=repair_set|coverage_high|dynamic_high
           if not raw:
