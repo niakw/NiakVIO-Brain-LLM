@@ -24,11 +24,32 @@ def main() -> int:
     args = parser.parse_args()
 
     census = load_census(args.niakvio_root)
-    selected = select_batch_targets(
-        census,
-        mode="repair",
-        providers=set(args.provider) or None,
-    )
+    requested = {
+        str(value or "").strip().casefold()
+        for value in args.provider
+        if str(value or "").strip()
+    }
+    if requested:
+        # The workflow page is already the resolved, authority-checked Repair
+        # cohort. Do not reapply status/repair eligibility here: doing so can
+        # silently discard FULL OK providers intentionally reopened for current
+        # completeness debt.
+        selected = [
+            row for row in census
+            if str(row.get("provider") or "").strip().casefold() in requested
+        ]
+        found = {
+            str(row.get("provider") or "").strip().casefold()
+            for row in selected
+        }
+        missing = sorted(requested - found)
+        if missing:
+            raise SystemExit(
+                "deterministic Force preflight missing current census providers: "
+                + ",".join(missing)
+            )
+    else:
+        selected = select_batch_targets(census, mode="repair")
     store = ExperienceStore.from_jsonl_many(
         [args.experience, *args.extra_experience]
     )
@@ -42,6 +63,12 @@ def main() -> int:
         request = request_from_checkout(args.niakvio_root, provider)
         request.advisor_only = False
         proposal = planner.plan_deterministic_force(request)
+        print(
+            "FIELD_BRAIN_DETERMINISTIC_FORCE_PROVIDER "
+            f"provider={provider} failure={request.failure_class} status={request.status} "
+            f"candidate={str(bool(proposal and proposal.mutations)).lower()}",
+            flush=True,
+        )
         if proposal is None or not proposal.mutations:
             continue
         rows.append({
