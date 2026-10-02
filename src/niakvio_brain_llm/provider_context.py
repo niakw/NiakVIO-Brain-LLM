@@ -201,6 +201,117 @@ def audit_registered_runtime_variant_coverage(root: str | Path) -> dict[str, Any
     }
 
 
+def audit_current_dynamic_variant_coverage(root: str | Path) -> dict[str, Any]:
+    """Audit current sharded census rows for observed player/server fan-out debt.
+
+    Unlike the static runtime audit, this is current execution evidence. It keeps
+    only bounded counts/hosts/quality heights already persisted by NiakVIO and
+    never reads response bodies, stream URLs, cookies, headers or tokens.
+    """
+    root = Path(root)
+    payload = _load_json(root / "automation" / "provider-census-sharded-latest.json")
+    rows = payload.get("rows") if isinstance(payload, dict) else None
+    if not isinstance(rows, list):
+        rows = []
+
+    gap_states = {
+        "announced-not-explored",
+        "explored-not-resolved",
+        "returned-subset",
+        "quality-gap",
+    }
+    providers: dict[str, dict[str, Any]] = {}
+    for raw in rows:
+        if not isinstance(raw, dict):
+            continue
+        provider = str(raw.get("provider_id") or "").strip().casefold().replace("_", "-")
+        lane = str(raw.get("semantic_type") or "").strip().casefold()[:40]
+        if not provider or not lane:
+            continue
+        announced = max(0, int(raw.get("announced_variant_candidates") or 0))
+        announced_players = max(0, int(raw.get("announced_player_candidates") or 0))
+        returned = max(0, int(raw.get("streams_returned") or raw.get("raw") or 0))
+        explored = max(0, int(raw.get("explored_player_requests") or 0))
+        state = str(raw.get("variant_fanout_state") or "").strip().casefold()[:80]
+        dynamic_gap = announced >= 2 and (
+            state in gap_states
+            or returned < announced
+        )
+        if not dynamic_gap:
+            continue
+        lane_row = {
+            "lane": lane,
+            "state": state or "observed-gap",
+            "announcedPlayerCandidates": announced_players,
+            "announcedVariantCandidates": announced,
+            "streamsReturned": returned,
+            "exploredPlayerRequests": explored,
+            "announcedPlayerHosts": [
+                str(value)[:160].casefold()
+                for value in (raw.get("announced_player_hosts") or [])[:24]
+                if str(value).strip()
+            ],
+            "exploredPlayerHosts": [
+                str(value)[:160].casefold()
+                for value in (raw.get("explored_player_hosts") or [])[:24]
+                if str(value).strip()
+            ],
+            "announcedQualityHeights": [
+                int(value)
+                for value in (raw.get("announced_quality_heights") or [])[:12]
+                if str(value or "").isdigit() and int(value) > 0
+            ],
+            "fixtureTitle": str(
+                raw.get("fanout_fixture_title") or raw.get("fixture_title") or ""
+            )[:160],
+        }
+        target = providers.setdefault(provider, {
+            "provider": provider,
+            "risk": "high",
+            "lanes": [],
+        })
+        target["lanes"].append(lane_row)
+
+    provider_rows = []
+    for provider in sorted(providers):
+        row = providers[provider]
+        row["lanes"] = sorted(
+            row["lanes"],
+            key=lambda item: (
+                str(item.get("lane") or ""),
+                -int(item.get("announcedVariantCandidates") or 0),
+            ),
+        )[:8]
+        row["maxAnnouncedVariantCandidates"] = max(
+            [0, *[
+                int(item.get("announcedVariantCandidates") or 0)
+                for item in row["lanes"]
+            ]]
+        )
+        row["maxReturnedStreams"] = max(
+            [0, *[
+                int(item.get("streamsReturned") or 0)
+                for item in row["lanes"]
+            ]]
+        )
+        provider_rows.append(row)
+
+    return {
+        "schemaVersion": 1,
+        "role": "current-dynamic-variant-coverage-debt",
+        "proofAuthority": True,
+        "source": "provider-census-sharded-latest",
+        "sourceRunId": str(
+            (payload or {}).get("run_id")
+            or (payload or {}).get("runId")
+            or ""
+        )[:80] if isinstance(payload, dict) else "",
+        "providerCount": len(provider_rows),
+        "highRiskProviders": [row["provider"] for row in provider_rows],
+        "providers": provider_rows,
+    }
+
+
 def _sanitize_reference_source(text: str, provider_id: str, *, limit: int = 1400) -> str:
     """Keep transferable code shape while removing provider addressing/content."""
     value = sanitize_source(str(text or ""), limit=9000)
