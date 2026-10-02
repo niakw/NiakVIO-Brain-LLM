@@ -348,6 +348,21 @@ jobs:
           else
             echo "ready=false" >> "$GITHUB_OUTPUT"
             echo "FIELD_BRAIN_DETERMINISTIC_FORCE_PREFLIGHT_READY ready=false rows=0"
+            deterministic_required="$(python - <<'PY'
+          import json
+          from pathlib import Path
+          path=Path("brain/.github/triggers/niakvio-guidance.json")
+          try:
+              data=json.loads(path.read_text(encoding="utf-8"))
+          except Exception:
+              data={}
+          print("true" if data.get("require_deterministic_force") is True else "false")
+          PY
+            )"
+            if [ "$deterministic_required" = "true" ]; then
+              echo "FIELD_BRAIN_DETERMINISTIC_FORCE_REQUIRED_MISSING required=true" >&2
+              exit 42
+            fi
           fi
 
       - uses: actions/cache@v4
