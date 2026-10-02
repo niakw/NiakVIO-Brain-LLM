@@ -72,6 +72,106 @@ class PromptingTests(unittest.TestCase):
         windows = force["new_bloc_target"]["source_windows"]
         self.assertTrue(any("out.length>=4" in row["source"] for row in windows), windows)
 
+    def test_current_structure_and_dynamic_fanout_survive_force_compaction(self):
+        source = (
+            "async function resolve(q){var out=[];"
+            "for(var i=0;i<players.length&&i<8;i++){out.push(players[i]);}"
+            "return out;}"
+        )
+        structure = {
+            "role": "current-provider-structure-observation",
+            "proofAuthority": False,
+            "executionAuthority": False,
+            "originHost": "current.example",
+            "routes": [{
+                "path": "/wp-json/demo/v1/resolve",
+                "method": "UNKNOWN",
+                "role": "player-resolver",
+            }],
+            "requestKeys": ["tmdb", "type", "year", "pid"],
+            "fanout": {
+                "groupCount": 2,
+                "groupVariantCounts": [10, 9],
+                "indexedVariantCount": 19,
+                "languageLabels": ["VF", "VOSTFR"],
+            },
+        }
+        dynamic = {
+            "provider": "demo",
+            "fanout": {
+                "movie": {
+                    "announcedVariantCandidates": 7,
+                    "streamsReturned": 2,
+                    "state": "returned-subset",
+                }
+            },
+        }
+        coverage = {
+            "riskKind": "variant-coverage-truncation",
+            "risk": "high",
+            "dimensions": ["player", "server", "source"],
+            "proofAuthority": False,
+        }
+        request = RepairRequest(
+            provider_id="demo",
+            failure_class="variant_coverage_gap",
+            status="FULL OK",
+            observations=[
+                {"source": "census_current", "value": {"status": "FULL OK"}},
+                {"source": "runtime-variant-coverage-current", "value": coverage},
+                {"source": "targeted-regression-current", "value": {"debugStages": {}}},
+                {"source": "census-sharded-current", "value": dynamic},
+                {"source": "current-provider-structure", "value": structure},
+            ],
+            provider_context={
+                "registered_patch_sources": {
+                    "scripts/provider_patches/demo_runtime_v1.py": source,
+                },
+                "route_contract": {
+                    "currentObservedRoutes": ["/wp-json/demo/v1/resolve"],
+                    "currentObservedRoutesAuthority": "observation-only",
+                },
+                "current_structure_evidence": structure,
+                "runtime_variant_coverage": coverage,
+            },
+        )
+
+        advisor = build_prompt_payload(
+            request,
+            [],
+            [],
+            {"target_layer": "provider", "confidence": 0.96},
+            {"allow_mutations": True, "allowed_scopes": ["provider_patch"]},
+        )
+        self.assertEqual(
+            advisor["request"]["provider_context"]["current_structure_evidence"]["originHost"],
+            "current.example",
+        )
+
+        force = build_force_prompt_payload(
+            request,
+            {"target_layer": "provider", "confidence": 0.96, "strategy_prior": "variant"},
+            {"allow_mutations": True, "allowed_scopes": ["provider_patch"]},
+        )
+        self.assertEqual(force["current_provider_structure"]["originHost"], "current.example")
+        self.assertEqual(
+            force["current_provider_structure"]["fanout"]["indexedVariantCount"],
+            19,
+        )
+        sources = [row.get("source") for row in force["current_observations"]]
+        self.assertEqual(sources[:3], [
+            "current-provider-structure",
+            "census-sharded-current",
+            "runtime-variant-coverage-current",
+        ])
+        sharded = next(
+            row["value"] for row in force["current_observations"]
+            if row.get("source") == "census-sharded-current"
+        )
+        self.assertEqual(sharded["fanout"]["movie"]["announcedVariantCandidates"], 7)
+        self.assertEqual(sharded["fanout"]["movie"]["streamsReturned"], 2)
+        self.assertEqual(sharded["fanout"]["movie"]["state"], "returned-subset")
+
     def test_high_confidence_prior_uses_focused_rag_budget(self):
         request = RepairRequest(
             provider_id="demo",

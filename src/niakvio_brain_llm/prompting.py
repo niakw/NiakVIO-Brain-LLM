@@ -163,6 +163,12 @@ def compact_request(
     route_contract = context.get("route_contract")
     if isinstance(route_contract, dict) and route_contract:
         bounded_context["route_contract"] = _compact(route_contract, string_limit=260)
+    current_structure = context.get("current_structure_evidence")
+    if isinstance(current_structure, dict) and current_structure:
+        bounded_context["current_structure_evidence"] = _compact(
+            current_structure,
+            string_limit=260,
+        )
     runtime_template_prior = context.get("runtime_template_prior")
     if isinstance(runtime_template_prior, dict) and runtime_template_prior:
         bounded_context["runtime_template_prior"] = _compact(runtime_template_prior, string_limit=260)
@@ -331,7 +337,9 @@ def build_prompt_payload(
                 for key, value in ctx.items()
                 if key in {
                     "source_repo", "read_only", "provider_id",
-                    "registered_patch_scripts", "route_contract", "runtime_template_prior", "advisor_experiment_history",
+                    "registered_patch_scripts", "route_contract",
+                    "current_structure_evidence", "runtime_variant_coverage",
+                    "runtime_template_prior", "advisor_experiment_history",
                 }
             }
             history = request_payload["provider_context"].get("advisor_experiment_history")
@@ -1166,11 +1174,38 @@ def build_force_prompt_payload(
             "editable_units": _force_edit_units(runtime_source, request.failure_class, focus_keywords=structural_focus_keywords, **force_window_kwargs),
         }
 
-    observation_source = (
-        [validation_feedback]
-        if validation_feedback is not None
-        else list(request.observations or [])[:2]
-    )
+    if validation_feedback is not None:
+        observation_source = [validation_feedback]
+    else:
+        # FORCE needs the current structural facts before generic census prose.
+        # A stale runtime can never observe a provider's new origin/route, and a
+        # nominally FULL provider can still hide announced/explored/returned
+        # completeness loss. Preserve both channels explicitly under the same
+        # bounded prompt budget.
+        priority = (
+            "current-provider-structure",
+            "census-sharded-current",
+            "runtime-variant-coverage-current",
+            "targeted-regression-current",
+            "census_current",
+        )
+        current = [
+            row for row in (request.observations or [])
+            if isinstance(row, dict)
+        ]
+        observation_source = []
+        seen_ids: set[int] = set()
+        for source in priority:
+            for row in current:
+                if str(row.get("source") or "") != source or id(row) in seen_ids:
+                    continue
+                observation_source.append(row)
+                seen_ids.add(id(row))
+                break
+            if len(observation_source) >= 4:
+                break
+        if not observation_source:
+            observation_source = current[:2]
     observations = [
         _compact_force_observation(row)
         for row in observation_source
@@ -1292,6 +1327,11 @@ def build_force_prompt_payload(
         "current_route_contract": (
             _compact(context.get("route_contract"), string_limit=260)
             if isinstance(context.get("route_contract"), dict)
+            else {}
+        ),
+        "current_provider_structure": (
+            _compact(context.get("current_structure_evidence"), string_limit=320)
+            if isinstance(context.get("current_structure_evidence"), dict)
             else {}
         ),
         "runtime_template_prior": (
