@@ -83,6 +83,49 @@ class PlannerTests(unittest.TestCase):
         self.assertNotIn("i<8", updated)
         self.assertNotIn("out.length<8", updated)
 
+    def test_deterministic_variant_coverage_prefers_terminal_fanout_over_search_quota(self):
+        source = (
+            'async function search(als){var out=[];'
+            'for(var i=0;i<als.length&&i<5;i++){out.push(als[i]);if(out.length>=4)break}'
+            'return out} '
+            'async function terminal(rows,referer,q){var out=[],seen={};'
+            'for(var i=0;i<rows.length&&i<8;i++){var direct=[];'
+            'try{if(typeof _crawlDirectMedia==="function")'
+            'direct=await _crawlDirectMedia([rows[i].url],referer,2)}catch(_e){direct=[]}'
+            'if(!Array.isArray(direct))continue;'
+            'for(var j=0;j<direct.length&&out.length<8;j++){'
+            'var row=direct[j];if(!row||seen[row.url])continue;'
+            'seen[row.url]=1;out.push(row)}}return out}'
+        )
+        request = RepairRequest(
+            provider_id="demo",
+            failure_class="variant_coverage_gap",
+            status="FULL_OK",
+            allowed_mutations=["provider_bloc"],
+            provider_context={
+                "runtimeMutationSource": source,
+                "preferredRuntimeMutationSource": source,
+                "runtime_variant_coverage": {
+                    "riskKind": "variant-coverage-truncation",
+                    "risk": "high",
+                    "dimensions": ["language", "player"],
+                    "qualityHints": [],
+                },
+            },
+        )
+        mutation = _deterministic_variant_coverage_mutation(
+            request,
+            {"allow_mutations": True, "allowed_scopes": ["provider_bloc"]},
+        )
+        self.assertIsNotNone(mutation)
+        self.assertEqual(mutation["family"], "bounded_variant_enumeration_before_cap")
+        updated = source.replace(mutation["find"], mutation["replace"], 1)
+        self.assertIn("if(out.length>=4)break", updated)
+        self.assertIn("i<16", updated)
+        self.assertIn("out.length<32", updated)
+        self.assertNotIn("i<rows.length&&i<8", updated)
+        self.assertNotIn("direct.length&&out.length<8", updated)
+
     def test_deterministic_variant_coverage_header_caps_require_shared_player_crawler(self):
         source = (
             'async function resolve(rows){var out=[];'

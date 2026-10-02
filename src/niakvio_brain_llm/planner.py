@@ -1810,6 +1810,44 @@ def _deterministic_variant_coverage_mutation(
     if not candidates:
         return None
 
+    # A runtime may contain both an upstream catalogue/search quota and a
+    # terminal player/media fan-out quota. When current variant debt explicitly
+    # involves player/server/source dimensions, the terminal crawler is the
+    # causal surface: widening a search result cap cannot recover variants that
+    # were already announced but not returned. Prefer one unique terminal
+    # _crawlDirectMedia candidate before treating those independent caps as
+    # ambiguous. Keep fail-closed behavior if several terminal candidates exist.
+    dimensions = {
+        str(value or "").strip().casefold()
+        for value in coverage.get("dimensions") or []
+        if str(value or "").strip()
+    }
+    if len(candidates) > 1 and dimensions & {"player", "server", "source"}:
+        terminal_candidates = [
+            candidate
+            for candidate in candidates
+            if "_crawlDirectMedia" in str(candidate[3].get("source") or "")
+        ]
+        if terminal_candidates:
+            terminal_groups: dict[
+                tuple[str, str],
+                list[tuple[str, str, str, dict[str, Any], str]],
+            ] = {}
+            for candidate in terminal_candidates:
+                key = (str(candidate[3].get("source") or ""), candidate[4])
+                terminal_groups.setdefault(key, []).append(candidate)
+            if len(terminal_groups) == 1:
+                same = next(iter(terminal_groups.values()))
+                candidates = [
+                    next(
+                        (candidate for candidate in same if candidate[0] == "provider_bloc"),
+                        next(
+                            (candidate for candidate in same if candidate[0] == "provider_patch"),
+                            same[0],
+                        ),
+                    )
+                ]
+
     groups: dict[tuple[str, str], list[tuple[str, str, str, dict[str, Any], str]]] = {}
     for candidate in candidates:
         key = (str(candidate[3].get("source") or ""), candidate[4])
