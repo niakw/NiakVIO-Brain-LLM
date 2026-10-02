@@ -1830,6 +1830,147 @@ def _deterministic_source_slice_variant_mutation(
     )
 
 
+def _deterministic_quality_diversity_source_mutation(
+    request: RepairRequest,
+    mutation_policy: dict[str, Any],
+) -> dict[str, Any] | None:
+    """Prefer bounded source diversity across currently observed quality heights."""
+    failure = str(request.failure_class or "").strip().casefold().replace("-", "_")
+    if failure not in {"variant_coverage_gap", "variant_coverage_truncation"}:
+        return None
+    observed = _current_observed_quality_heights(request)
+    if len(observed) < 2:
+        return None
+
+    context = request.provider_context if isinstance(request.provider_context, dict) else {}
+    coverage = context.get("runtime_variant_coverage")
+    if not isinstance(coverage, dict) or coverage.get("riskKind") != "variant-coverage-truncation":
+        return None
+    dimensions = {
+        str(value or "").strip().casefold()
+        for value in coverage.get("dimensions") or []
+        if str(value or "").strip()
+    }
+    if "quality" not in dimensions and "source" not in dimensions:
+        return None
+
+    allowed = {
+        str(scope)
+        for scope in mutation_policy.get("allowed_scopes") or request.allowed_mutations or []
+    }
+    source_rows: list[tuple[str, str, str]] = []
+    if "provider_bloc" in allowed:
+        runtime_source = str(
+            context.get("preferredRuntimeMutationSource")
+            or context.get("runtimeMutationSource")
+            or ""
+        )
+        if runtime_source:
+            source_rows.append(("provider_bloc", "", runtime_source))
+    if "provider_patch" in allowed:
+        sources = context.get("registered_patch_sources")
+        if isinstance(sources, dict):
+            source_rows.extend(
+                ("provider_patch", str(path), str(source or ""))
+                for path, source in sources.items()
+                if str(path) and str(source or "")
+            )
+    if not source_rows:
+        return None
+
+    target_count = min(16, len(observed))
+    quality_alternation = "|".join(str(value) for value in sorted(observed, reverse=True))
+    return_slice = re.compile(
+        r"return\s+(?P<array>[A-Za-z_$][A-Za-z0-9_$]*)"
+        r"\.slice\s*\(\s*0\s*,\s*(?P<cap>[1-9]|1[0-6])\s*\)\s*;?",
+        re.I,
+    )
+    semantic = re.compile(
+        r"\b(?:file|files|source|sources|release|releases|quality|qualities|resolution|stream|streams)\b"
+        r"|\.(?:mkv|mp4|avi|m3u8)\b",
+        re.I,
+    )
+    quality_classifier = re.compile(r"(?:2160|1080|720|480|360)p", re.I)
+
+    candidates: list[tuple[str, str, str, dict[str, Any], str]] = []
+    for scope, path, source in source_rows:
+        if not quality_classifier.search(source):
+            continue
+        for unit in _deterministic_complete_line_function_units(source):
+            if str(unit.get("kind") or "") != "function_unit":
+                continue
+            unit_source = str(unit.get("source") or "")
+            name_match = re.match(
+                r"(?s)^\s*(?:async\s+)?function\s+(?P<name>[A-Za-z_$][A-Za-z0-9_$]*)",
+                unit_source,
+            )
+            function_name = str(name_match.group("name") if name_match else "")
+            if not (
+                semantic.search(unit_source)
+                or re.search(r"(?:file|source|release|quality|stream)", function_name, re.I)
+            ):
+                continue
+            matches = list(return_slice.finditer(unit_source))
+            if len(matches) != 1:
+                continue
+            match = matches[0]
+            cap = int(match.group("cap"))
+            if cap <= 0 or cap > target_count:
+                continue
+            array_name = str(match.group("array") or "")
+            if not array_name:
+                continue
+            replacement_return = (
+                f'var __qv=[],__qs={{}},__qm,__qh,__qi;'
+                f'for(__qi=0;__qi<{array_name}.length;__qi++){{'
+                f'__qm=/(?:^|[^0-9])({quality_alternation})p(?:[^0-9]|$)/i.exec(String({array_name}[__qi]||""));'
+                f'__qh=__qm?String(__qm[1]):"";'
+                f'if(__qh&&!__qs[__qh]){{__qs[__qh]=1;__qv.push({array_name}[__qi])}}'
+                f'}}'
+                f'for(__qi=0;__qi<{array_name}.length&&__qv.length<{target_count};__qi++){{'
+                f'if(__qv.indexOf({array_name}[__qi])<0)__qv.push({array_name}[__qi])'
+                f'}}'
+                f'return __qv.slice(0,{target_count})'
+            )
+            replacement = unit_source[:match.start()] + replacement_return + unit_source[match.end():]
+            candidates.append((scope, path, source, unit, replacement))
+
+    if not candidates:
+        return None
+    groups: dict[tuple[str, str], list[tuple[str, str, str, dict[str, Any], str]]] = {}
+    for candidate in candidates:
+        groups.setdefault((str(candidate[3].get("source") or ""), candidate[4]), []).append(candidate)
+    if len(groups) == 1:
+        same = next(iter(groups.values()))
+        candidates = [
+            next(
+                (candidate for candidate in same if candidate[0] == "provider_bloc"),
+                next((candidate for candidate in same if candidate[0] == "provider_patch"), same[0]),
+            )
+        ]
+    else:
+        bloc_candidates = [candidate for candidate in candidates if candidate[0] == "provider_bloc"]
+        if len(bloc_candidates) == 1:
+            candidates = bloc_candidates
+    if len(candidates) != 1:
+        return None
+
+    scope, path, source, unit, replacement_body = candidates[0]
+    if scope == "provider_patch":
+        mutation = _deterministic_exact_function_mutation(
+            request, path=path, source=source, unit=unit, replacement_body=replacement_body
+        )
+        mutation["family"] = "quality_stratified_variant_enumeration"
+        return mutation
+    return _deterministic_exact_bloc_function_mutation(
+        request,
+        source=source,
+        unit=unit,
+        replacement_body=replacement_body,
+        family="quality_stratified_variant_enumeration",
+    )
+
+
 def _deterministic_variant_coverage_mutation(
     request: RepairRequest,
     mutation_policy: dict[str, Any],
@@ -2101,7 +2242,24 @@ def _deterministic_variant_coverage_mutation(
             "reason=executed-negative-memory mechanism=bounded_source_slice_by_observed_quality",
             flush=True,
         )
-        return None
+        quality_mutation = _deterministic_quality_diversity_source_mutation(request, mutation_policy)
+        if not isinstance(quality_mutation, dict):
+            return None
+        if _force_memory_blocks_mutation(request, quality_mutation):
+            print(
+                "FIELD_BRAIN_FORCE_DETERMINISTIC_BLOCKED "
+                f"provider={request.provider_id} scope={quality_mutation.get('scope')} "
+                "reason=executed-negative-memory mechanism=quality_stratified_variant_enumeration",
+                flush=True,
+            )
+            return None
+        print(
+            "FIELD_BRAIN_FORCE_DETERMINISTIC_NEXT "
+            f"provider={request.provider_id} mechanism=quality_stratified_variant_enumeration "
+            f"observed_qualities={len(_current_observed_quality_heights(request))}",
+            flush=True,
+        )
+        return quality_mutation
     print(
         "FIELD_BRAIN_FORCE_DETERMINISTIC_NEXT "
         f"provider={request.provider_id} mechanism=bounded_source_slice_by_observed_quality "
