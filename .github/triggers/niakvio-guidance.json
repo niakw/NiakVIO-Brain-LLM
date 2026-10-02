@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "72ba9006bf6aa4a537bec2ed2c21d707091612d9",
-  "reason": "Regenerate exact CoFlix deterministic terminal-fanout Force artifact on current NiakVIO Brain pipeline after current-structure UNKNOWN-route peer-recipe guard. CoFlix only. Preserve current structure evidence and dynamic completeness debt. Mutation must remain provider-owned and sandbox-only until NiakVIO proves playback/identity/completeness gain.",
+  "niakvio_sha": "6acfeed386127ec6e0e02b20f62b42e35350341f",
+  "reason": "Representative HindMoviez Brain-first quality/release completeness witness. Current provider is nominally FULL OK but registered runtime has bounded link/file/output caps and current structure evidence reports available quality heights 480/720/1080/2160 with proofAuthority=false. Target HindMoviez only. Brain must diagnose whether enumeration truncates higher-quality releases, generate provider-owned current-byte mutation if justified, and leave publication to NiakVIO isolated sandbox requiring identity/playability preservation plus measurable new quality dimension beyond baseline. No manual provider fallback.",
   "requested_repair_queue": [
-    "coflix"
+    "hindmoviez"
   ],
-  "retry": 16
+  "retry": 17
 }
