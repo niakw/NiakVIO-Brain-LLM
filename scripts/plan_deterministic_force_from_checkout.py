@@ -9,8 +9,8 @@ from niakvio_brain_llm.backend import StaticBackend
 from niakvio_brain_llm.batch import load_census, select_batch_targets
 from niakvio_brain_llm.document_memory import DocumentStore
 from niakvio_brain_llm.niakvio_adapter import request_from_checkout
-from niakvio_brain_llm.causal import build_causal_prior
-from niakvio_brain_llm.mutation_policy import build_mutation_policy
+from niakvio_brain_llm.priors import build_causal_prior
+from niakvio_brain_llm.policy import build_mutation_policy
 from niakvio_brain_llm.planner import (
     BrainPlanner,
     _current_observed_quality_heights,
