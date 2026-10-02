@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "6acfeed386127ec6e0e02b20f62b42e35350341f",
-  "reason": "Representative HindMoviez Brain-first quality/release completeness witness. Current provider is nominally FULL OK but registered runtime has bounded link/file/output caps and current structure evidence reports available quality heights 480/720/1080/2160 with proofAuthority=false. Target HindMoviez only. Brain must diagnose whether enumeration truncates higher-quality releases, generate provider-owned current-byte mutation if justified, and leave publication to NiakVIO isolated sandbox requiring identity/playability preservation plus measurable new quality dimension beyond baseline. No manual provider fallback.",
+  "niakvio_sha": "2d52174d6fd148ac5db34c17e59fefb028d990f4",
+  "reason": "Regenerate the exact HindMoviez quality/release completeness witness on current NiakVIO main after Provider v3 domain/materialization transaction changed the published provider bytes from v1.0.114 to v1.0.115. Keep the same Brain-owned bounded_variant_enumeration_before_cap family, but derive a fresh mutation/context fingerprint from current bytes. Current structure evidence observes 480/720/1080/2160. Target HindMoviez only; no manual provider patch.",
   "requested_repair_queue": [
     "hindmoviez"
   ],
-  "retry": 17
+  "retry": 18
 }
