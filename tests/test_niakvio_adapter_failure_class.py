@@ -51,6 +51,60 @@ class AdapterFailureClassTests(unittest.TestCase):
             by_source = {row["source"]: row["value"] for row in request.observations}
             self.assertEqual(by_source["runtime-variant-coverage-current"]["risk"], "high")
 
+    def test_full_ok_dynamic_multi_player_subset_becomes_variant_coverage_gap(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "automation").mkdir(parents=True)
+            (root / "automation" / "provider-census-status.json").write_text(
+                json.dumps({
+                    "runId": "12345",
+                    "providers": [{
+                        "provider": "demo",
+                        "status": "FULL OK",
+                        "dominantIssue": "none",
+                        "declaredLanes": ["movie"],
+                    }],
+                }),
+                encoding="utf-8",
+            )
+            (root / "automation" / "provider-census-sharded-12345.json").write_text(
+                json.dumps({
+                    "rows": [{
+                        "provider_id": "demo",
+                        "semantic_type": "movie",
+                        "status": "playable_verified",
+                        "debug_stage": "provider_returned_streams",
+                        "raw": 8,
+                        "playable": 8,
+                        "verified": 8,
+                        "contradictions": 0,
+                        "announced_player_candidates": 2,
+                        "announced_variant_candidates": 19,
+                        "announced_player_hosts": ["player-a.test", "player-b.test"],
+                        "announced_quality_heights": [480, 720, 1080],
+                        "explored_player_requests": 2,
+                        "explored_player_hosts": ["player-a.test", "player-b.test"],
+                        "variant_fanout_state": "returned-subset",
+                        "fanout_fixture_title": "Representative",
+                        "debug_fetches": [],
+                    }],
+                }),
+                encoding="utf-8",
+            )
+            (root / "provider-overrides.json").write_text("{}", encoding="utf-8")
+            (root / "provider-hubs.json").write_text("{}", encoding="utf-8")
+            (root / "manifest.json").write_text(json.dumps({"scrapers": []}), encoding="utf-8")
+
+            request = request_from_checkout(root, "demo")
+            self.assertEqual(request.failure_class, "variant_coverage_gap")
+            by_source = {row["source"]: row["value"] for row in request.observations}
+            fanout = by_source["census-sharded-current"]["fanout"]["movie"]
+            self.assertEqual(fanout["announcedPlayerCandidates"], 2)
+            self.assertEqual(fanout["announcedVariantCandidates"], 19)
+            self.assertEqual(fanout["streamsReturned"], 8)
+            self.assertEqual(fanout["exploredPlayerRequests"], 2)
+            self.assertEqual(fanout["state"], "returned-subset")
+
     def test_chain_reached_beats_generic_zero_issue(self):
         row = {
             "status": "CHAIN REACHED",
