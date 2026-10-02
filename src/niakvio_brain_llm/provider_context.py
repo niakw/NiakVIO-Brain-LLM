@@ -299,7 +299,8 @@ def audit_current_dynamic_variant_coverage(root: str | Path) -> dict[str, Any]:
     return {
         "schemaVersion": 1,
         "role": "current-dynamic-variant-coverage-debt",
-        "proofAuthority": True,
+        "proofAuthority": False,
+        "repairTargetAuthority": True,
         "source": "provider-census-sharded-latest",
         "sourceRunId": str(
             (payload or {}).get("run_id")
