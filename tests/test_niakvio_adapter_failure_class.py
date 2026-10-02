@@ -39,6 +39,7 @@ class AdapterFailureClassTests(unittest.TestCase):
                                 "groupCount": 2,
                                 "groupVariantCounts": [10, 9],
                                 "indexedVariantCount": 19,
+                                "qualityHeights": [1080, 480, 2160, 720, 0, 99999],
                                 "languageLabels": ["VF", "VOSTFR", "bad label"],
                             },
                         }
@@ -67,6 +68,7 @@ class AdapterFailureClassTests(unittest.TestCase):
             self.assertEqual(observed["requestKeys"], ["tmdb", "type", "year", "pid"])
             self.assertEqual(observed["fanout"]["groupVariantCounts"], [10, 9])
             self.assertEqual(observed["fanout"]["indexedVariantCount"], 19)
+            self.assertEqual(observed["fanout"]["qualityHeights"], [480, 720, 1080, 2160])
             self.assertEqual(observed["fanout"]["languageLabels"], ["VF", "VOSTFR"])
             self.assertEqual(
                 request.provider_context["route_contract"]["currentObservedRoutes"],
