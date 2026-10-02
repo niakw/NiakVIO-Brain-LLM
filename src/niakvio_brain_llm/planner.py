@@ -1890,11 +1890,14 @@ def _deterministic_quality_diversity_source_mutation(
         r"|\.(?:mkv|mp4|avi|m3u8)\b",
         re.I,
     )
-    quality_classifier = re.compile(r"(?:2160|1080|720|480|360)p", re.I)
-
     candidates: list[tuple[str, str, str, dict[str, Any], str]] = []
     for scope, path, source in source_rows:
-        if not quality_classifier.search(source):
+        observed_tokens = sum(
+            1
+            for height in observed
+            if re.search(rf"(?<!\\d){int(height)}(?!\\d)", source)
+        )
+        if observed_tokens < min(2, len(observed)):
             continue
         for unit in _deterministic_complete_line_function_units(source):
             if str(unit.get("kind") or "") != "function_unit":
