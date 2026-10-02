@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "2fc80aec0dec806d696835c9fe0d46c0051744f8",
-  "reason": "Authoritative fast HindMoviez cycle-3 witness after deterministic-preflight workflow. Two exact current-byte negatives remain mandatory: quota removal rejected; source slice 3->4 rejected with 480p-only/no quality gain and identity regression. Compile quality_stratified_variant_enumeration from current observed 480/720/1080/2160 evidence. Target HindMoviez only. Deterministic candidate must bypass Qwen when available; publication still requires V6 sandbox/rematerialization/playable identity and quality gain.",
+  "niakvio_sha": "7434d3065e88c6db8d50e8d6b74dec7a6acb55fa",
+  "reason": "Fast deterministic HindMoviez cycle-3 after fixing preflight to honor the workflow-resolved exact cohort. Negative memory blocks quota removal and slice 3->4. Compile quality_stratified_variant_enumeration from current 480/720/1080/2160 evidence. Target HindMoviez only. Preflight must report provider=hindmoviez candidate=true and skip Qwen; publication remains sandbox-only.",
   "requested_repair_queue": [
     "hindmoviez"
   ],
-  "retry": 21
+  "retry": 22
 }
