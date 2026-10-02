@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "34eb7f37c41b847b2d2317e3fa15bd877c56e6d6",
-  "reason": "Third representative HindMoviez completeness hypothesis after two exact current-byte rejections. Negative memory now records: (1) global quota removal regressed returned/max quality; (2) source slice 3->4 still only 480p, reduced announced variants/exploration, and failed playable identity. Brain must not replay either fingerprint. Compile the generic next mechanism from current observed quality heights 480/720/1080/2160: bounded quality-stratified source enumeration before existing deadline/output guards. Target HindMoviez only; no manual provider patch. Publication requires isolated current-byte sandbox, rematerialization, identity/playback preservation and verified playable quality gain.",
+  "niakvio_sha": "2fc80aec0dec806d696835c9fe0d46c0051744f8",
+  "reason": "Authoritative fast HindMoviez cycle-3 witness after deterministic-preflight workflow. Two exact current-byte negatives remain mandatory: quota removal rejected; source slice 3->4 rejected with 480p-only/no quality gain and identity regression. Compile quality_stratified_variant_enumeration from current observed 480/720/1080/2160 evidence. Target HindMoviez only. Deterministic candidate must bypass Qwen when available; publication still requires V6 sandbox/rematerialization/playable identity and quality gain.",
   "requested_repair_queue": [
     "hindmoviez"
   ],
-  "retry": 20
+  "retry": 21
 }
