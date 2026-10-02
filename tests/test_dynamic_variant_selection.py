@@ -35,7 +35,7 @@ class DynamicVariantSelectionTests(unittest.TestCase):
                             "semantic_type": "movie",
                             "raw": 8,
                             "streams_returned": 8,
-                            "announced_player_candidates": 10,
+                            "announced_player_candidates": 2,
                             "announced_variant_candidates": 19,
                             "announced_player_hosts": ["one.test", "two.test"],
                             "announced_quality_heights": [480, 720, 1080],
@@ -48,7 +48,7 @@ class DynamicVariantSelectionTests(unittest.TestCase):
                             "semantic_type": "movie",
                             "raw": 19,
                             "streams_returned": 19,
-                            "announced_player_candidates": 10,
+                            "announced_player_candidates": 2,
                             "announced_variant_candidates": 19,
                             "announced_player_hosts": ["a.test", "b.test"],
                             "explored_player_requests": 2,
@@ -78,7 +78,7 @@ class DynamicVariantSelectionTests(unittest.TestCase):
             self.assertEqual(row["maxAnnouncedVariantCandidates"], 19)
             self.assertEqual(row["maxReturnedStreams"], 8)
             lane = row["lanes"][0]
-            self.assertEqual(lane["announcedPlayerCandidates"], 10)
+            self.assertEqual(lane["announcedPlayerCandidates"], 2)
             self.assertEqual(lane["announcedVariantCandidates"], 19)
             self.assertEqual(lane["announcedPlayerHosts"], ["one.test", "two.test"])
             self.assertEqual(lane["exploredPlayerRequests"], 2)
