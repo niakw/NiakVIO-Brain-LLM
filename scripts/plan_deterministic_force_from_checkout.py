@@ -9,7 +9,15 @@ from niakvio_brain_llm.backend import StaticBackend
 from niakvio_brain_llm.batch import load_census, select_batch_targets
 from niakvio_brain_llm.document_memory import DocumentStore
 from niakvio_brain_llm.niakvio_adapter import request_from_checkout
-from niakvio_brain_llm.planner import BrainPlanner
+from niakvio_brain_llm.causal import build_causal_prior
+from niakvio_brain_llm.mutation_policy import build_mutation_policy
+from niakvio_brain_llm.planner import (
+    BrainPlanner,
+    _current_observed_quality_heights,
+    _deterministic_quality_diversity_source_mutation,
+    _deterministic_source_slice_variant_mutation,
+    _force_memory_blocks_mutation,
+)
 from niakvio_brain_llm.repair_family import repair_family_descriptor
 from niakvio_brain_llm.retrieval import ExperienceStore
 
@@ -62,11 +70,40 @@ def main() -> int:
             continue
         request = request_from_checkout(args.niakvio_root, provider)
         request.advisor_only = False
+        experiences = store.search(request.to_dict(), limit=6)
+        causal_prior = build_causal_prior(request, experiences)
+        mutation_policy = dict(build_mutation_policy(request, causal_prior))
+        source_slice = _deterministic_source_slice_variant_mutation(request, mutation_policy)
+        quality_diversity = _deterministic_quality_diversity_source_mutation(
+            request,
+            mutation_policy,
+        )
         proposal = planner.plan_deterministic_force(request)
+        coverage = (
+            request.provider_context.get("runtime_variant_coverage")
+            if isinstance(request.provider_context, dict)
+            else {}
+        )
+        if not isinstance(coverage, dict):
+            coverage = {}
+        negative_rows = sum(
+            len(row.get("value") or [])
+            for row in (request.observations or [])
+            if isinstance(row, dict)
+            and str(row.get("source") or "") == "brain-force-sandbox-memory"
+            and isinstance(row.get("value"), list)
+        )
         print(
             "FIELD_BRAIN_DETERMINISTIC_FORCE_PROVIDER "
             f"provider={provider} failure={request.failure_class} status={request.status} "
-            f"candidate={str(bool(proposal and proposal.mutations)).lower()}",
+            f"candidate={str(bool(proposal and proposal.mutations)).lower()} "
+            f"risk={coverage.get('risk')} dimensions={','.join(str(x) for x in coverage.get('dimensions') or []) or 'none'} "
+            f"qualities={','.join(str(x) for x in _current_observed_quality_heights(request)) or 'none'} "
+            f"negative_rows={negative_rows} "
+            f"slice_candidate={str(bool(source_slice)).lower()} "
+            f"slice_blocked={str(bool(source_slice and _force_memory_blocks_mutation(request, source_slice))).lower()} "
+            f"quality_candidate={str(bool(quality_diversity)).lower()} "
+            f"quality_blocked={str(bool(quality_diversity and _force_memory_blocks_mutation(request, quality_diversity))).lower()}",
             flush=True,
         )
         if proposal is None or not proposal.mutations:
