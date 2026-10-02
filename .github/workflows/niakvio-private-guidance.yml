@@ -327,15 +327,26 @@ jobs:
                 f"providers={int(force.get('provider_count') or advisor.get('provider_count') or 0)}")
           PY
 
-      - uses: actions/cache@v4
-        if: steps.route.outputs.llm_needed == 'true'
-        id: llama-bin-cache
-        with:
+      - name: Compile deterministic Force candidates before model
+        id: deterministic_force
+        shell: bash
+        run: |
+          set -euo pipefail
+          provider_args=()
+          while IFS= read -r provider; do
+            [ -z "$provider" ] || provider_args+=(--provider "$provider")
+          done < "$RUNNER_TEMP/niakvio-guidance-page.txt"
+          python brain/scripts/plan_deterministic_force_from_checkout.py \
+            --niakvio-root niakvio \
+            --experience public-experience.jsonl \
+            "${provider_args[@]}" \
+            --output private-force-deterministic.jsonl
+          count="$(grep -cve '^[[:space:]]*        with:
           path: llama-prebuilt
           key: llama-cpp-b11140-ubuntu-x64
 
       - name: Download official llama.cpp binary
-        if: steps.route.outputs.llm_needed == 'true' && steps.llama-bin-cache.outputs.cache-hit != 'true'
+        if: steps.route.outputs.llm_needed == 'true' && steps.deterministic_force.outputs.ready != 'true' && steps.llama-bin-cache.outputs.cache-hit != 'true' && steps.deterministic_force.outputs.ready != 'true'
         run: |
           mkdir -p llama-prebuilt
           curl -fL --retry 3             https://github.com/ggml-org/llama.cpp/releases/download/b11140/llama-b11140-bin-ubuntu-x64.tar.gz             -o llama-b11140.tar.gz
@@ -343,7 +354,7 @@ jobs:
           test -n "$(find llama-prebuilt -type f -name llama-server -print -quit)"
 
       - uses: actions/cache@v4
-        if: steps.route.outputs.llm_needed == 'true'
+        if: steps.route.outputs.llm_needed == 'true' && steps.deterministic_force.outputs.ready != 'true'
         with:
           path: |
             ~/.cache/llama.cpp
@@ -351,7 +362,342 @@ jobs:
           key: qwen25-coder-7b-q4-km-v1
 
       - name: Start bounded local Qwen advisor
-        if: steps.route.outputs.llm_needed == 'true'
+        if: steps.route.outputs.llm_needed == 'true' && steps.deterministic_force.outputs.ready != 'true'
+        run: |
+          SERVER="$(find llama-prebuilt -type f -name llama-server -print -quit)"
+          test -n "$SERVER"
+          chmod +x "$SERVER"
+          # Force proposals are small provider-local diffs. Use one llama slot:
+          # the GitHub runner has limited CPU and two concurrent generations were
+          # making every Force request hit its timeout before returning a patch.
+          # Compact Force source windows are bounded so prompt ingestion stays
+          # cheap; a single larger retry handles truncated JSON/code.
+          "$SERVER"             -hf Qwen/Qwen2.5-Coder-7B-Instruct-GGUF:Q4_K_M             --host 127.0.0.1             --port 8080             -c 16384             -np 1             > llama-server.log 2>&1 &
+          for i in $(seq 1 180); do
+            curl -fsS http://127.0.0.1:8080/health >/dev/null 2>&1 && exit 0
+            sleep 2
+          done
+          cat llama-server.log
+          exit 1
+
+      - name: Produce private-informed advisor and Force batches
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Force mutations are the critical path. Generate an ordered
+          # same-provider portfolio in one run so NiakVIO can sandbox several
+          # causal hypotheses without requiring one GitHub cycle per attempt.
+          provider_args=()
+          while IFS= read -r provider; do
+            [ -z "$provider" ] || provider_args+=(--provider "$provider")
+          done < "$RUNNER_TEMP/niakvio-guidance-page.txt"
+          if [ "${{ steps.deterministic_force.outputs.ready }}" = "true" ]; then
+            cp private-force-deterministic.jsonl private-force-batch.jsonl
+            : > private-guided-batch.jsonl
+            echo "FIELD_BRAIN_FORCE_MODEL_BYPASS deterministic=true"
+            exit 0
+          fi
+          python brain/scripts/plan_batch_from_checkout.py \
+            --niakvio-root niakvio \
+            --experience public-experience.jsonl \
+            --documents public-documents.jsonl \
+            --extra-documents private-documents.jsonl \
+            --mode repair \
+            --max-hypotheses 4 \
+            --stop-after-first-mutation \
+            "${provider_args[@]}" \
+            --endpoint http://127.0.0.1:8080 \
+            --model qwen2.5-coder-7b \
+            --workers 1 \
+            --max-tokens 512 \
+            --timeout-seconds 240 \
+            --force-provider-budget-seconds 600 \
+            --output private-force-batch.jsonl
+          python brain/scripts/plan_batch_from_checkout.py \
+            --niakvio-root niakvio \
+            --experience public-experience.jsonl \
+            --documents public-documents.jsonl \
+            --extra-documents private-documents.jsonl \
+            --mode brain \
+            "${provider_args[@]}" \
+            --endpoint http://127.0.0.1:8080 \
+            --model qwen2.5-coder-3b \
+            --workers 2 \
+            --advisor-only \
+            --max-tokens 160 \
+            --timeout-seconds 45 \
+            --output private-guided-batch.jsonl
+
+      - name: Sanitize advisor output
+        shell: bash
+        env:
+          FORCE_LLM_TARGETS: ${{ steps.route.outputs.force_llm_targets || '0' }}
+        run: |
+          set -euo pipefail
+          brain_sha="$(git -C brain rev-parse HEAD)"
+          python brain/scripts/publish_niakvio_guidance.py             --input private-guided-batch.jsonl             --output niakvio-guidance.json             --niakvio-root niakvio             --niakvio-sha "${{ steps.source.outputs.sha }}"             --brain-llm-sha "$brain_sha"
+          python brain/scripts/publish_niakvio_force_mutations.py             --input private-force-batch.jsonl             --output niakvio-force-mutations.json             --niakvio-root niakvio             --niakvio-sha "${{ steps.source.outputs.sha }}"             --brain-llm-sha "$brain_sha"
+          python brain/scripts/publish_niakvio_force_diagnostics.py             --input private-force-batch.jsonl             --output niakvio-force-diagnostics.json             --niakvio-sha "${{ steps.source.outputs.sha }}"             --brain-llm-sha "$brain_sha"
+          python - <<'PY'
+          import json,os,re
+          d=json.load(open("niakvio-guidance.json"))
+          assert d["privateContentRetained"] is False
+          assert d["proofAuthority"] is False
+          assert d["directMutationAuthority"] is False
+          assert d["publicationAuthority"] is False
+          serialized=json.dumps(d)
+          assert not re.search(r"https?://|authorization[=:]|cookie[=:]|token[=:]",serialized,re.I)
+          allowed={"providerId","failureClass","targetLayer","strategy","profile","confidence","priorOnly","experiment","experimentFingerprint"}
+          exp_allowed={"routePolicy","recipePolicy","roleOrder","terminalOnly","aliasSearch","responseSalvage","documentRequestMining","sessionBootstrap","maxDepth","maxPages","maxEmbeds","maxRecipePasses"}
+          assert d.get("schemaVersion")==2
+          for row in d["rows"]:
+              assert set(row)<=allowed
+              assert set(row.get("experiment") or {})==exp_allowed
+              assert re.fullmatch(r"[0-9a-f]{64}",str(row.get("experimentFingerprint") or ""))
+          print("FIELD_NIAKVIO_GUIDANCE_SANITIZED "
+                f"providers={d['providerCount']} rows={len(d['rows'])} private_content=false")
+          force=json.load(open("niakvio-force-mutations.json"))
+          assert force.get("schemaVersion")==1
+          assert force.get("sandboxMutationAuthority") is True
+          assert force.get("publicationAuthority") is False
+          assert force.get("proofAuthority") is False
+          assert force.get("privateContentRetained") is False
+          force_targets=int(os.environ.get("FORCE_LLM_TARGETS") or 0)
+          if force_targets > 0 and int(force.get("providerCount") or 0) <= 0:
+              # Advisor guidance remains useful and non-mutating even when the
+              # concrete Force generator abstains or fails. Do not throw away
+              # valid multi-hypothesis guidance. NiakVIO explicit Force still
+              # fails closed later when requireExternalForceMutations=true.
+              print(
+                  "FIELD_NIAKVIO_FORCE_MUTATIONS_READY ready=false "
+                  f"requested={force_targets} reason=no-executable-mutation"
+              )
+          else:
+              print(
+                  "FIELD_NIAKVIO_FORCE_MUTATIONS_READY ready=true "
+                  f"requested={force_targets} providers={int(force.get('providerCount') or 0)}"
+              )
+          allowed_scopes={"provider_data","provider_patch","provider_bloc","provider_js"}
+          for row in force.get("rows") or []:
+              assert row.get("targetLayer")=="provider"
+              assert re.fullmatch(r"[0-9a-f]{64}",str(row.get("mutationFingerprint") or ""))
+              assert re.fullmatch(r"[0-9a-f]{64}",str(row.get("mutationContextFingerprint") or ""))
+              mutations=row.get("mutations") or []
+              assert mutations
+              assert all(str(m.get("scope") or "") in allowed_scopes for m in mutations)
+          print("FIELD_NIAKVIO_FORCE_MUTATIONS_SANITIZED "
+                f"providers={force['providerCount']} rows={len(force['rows'])} publication=false")
+          diag=json.load(open("niakvio-force-diagnostics.json"))
+          assert diag.get("schemaVersion")==1
+          assert diag.get("privateContentRetained") is False
+          assert diag.get("proofAuthority") is False
+          assert diag.get("publicationAuthority") is False
+          serialized_diag=json.dumps(diag)
+          assert not re.search(r"https?://|authorization[=:]|cookie[=:]|token[=:]",serialized_diag,re.I)
+          print("FIELD_NIAKVIO_FORCE_DIAGNOSTICS_SANITIZED "
+                f"providers={diag.get('providerCount',0)} rows={len(diag.get('rows') or [])} private_content=false")
+          PY
+
+      - name: Delete ephemeral private/model context
+        if: always()
+        run: |
+          rm -f private-documents.jsonl private-guided-batch.jsonl private-force-batch.jsonl private-force-deterministic.jsonl public-documents.jsonl public-experience.jsonl
+          rm -rf private
+
+      - name: Publish merged paged guidance ref
+        id: publish
+        shell: bash
+        env:
+          BRANCH: niakvio-guidance
+        run: |
+          set -euo pipefail
+          git -C brain config user.name "niakvio-brain-llm"
+          git -C brain config user.email "actions@users.noreply.github.com"
+          candidate_brain="${{ steps.page.outputs.brain_sha }}"
+          candidate_source="${{ steps.source.outputs.sha }}"
+          git -C brain fetch origin "+refs/heads/main:refs/remotes/origin/main"
+          current_main="$(git -C brain rev-parse refs/remotes/origin/main)"
+          # A continuation page is intentionally pinned to the Brain revision
+          # that published page 1. Brain main may advance while the cycle runs.
+          # Allow that exact incomplete cycle to finish, but do not let any
+          # other stale run publish after main has moved.
+          git -C brain fetch origin "+refs/heads/$BRANCH:refs/remotes/origin/$BRANCH" || true
+          same_incomplete_cycle=false
+          if git -C brain show "refs/remotes/origin/$BRANCH:guidance/niakvio-guidance-state.json" > "$RUNNER_TEMP/niakvio-guidance-state.continuation.json" 2>/dev/null; then
+            read -r continuation_brain continuation_source continuation_complete < <(python - "$RUNNER_TEMP/niakvio-guidance-state.continuation.json" <<'PY'
+          import json,sys
+          d=json.load(open(sys.argv[1],encoding="utf-8"))
+          print(
+              str(d.get("brainLlmSha") or "").strip().lower(),
+              str(d.get("sourceNiakvioSha") or "").strip().lower(),
+              "true" if d.get("complete") is True else "false",
+          )
+          PY
+            )
+            if [ "$continuation_brain" = "$candidate_brain" ] \
+               && [ "$continuation_source" = "$candidate_source" ] \
+               && [ "$continuation_complete" != "true" ]; then
+              same_incomplete_cycle=true
+            fi
+          fi
+          if [ "$candidate_brain" != "$current_main" ]; then
+            if git -C brain merge-base --is-ancestor "$candidate_brain" "$current_main"; then
+              if [ "$same_incomplete_cycle" = "true" ]; then
+                echo "FIELD_NIAKVIO_GUIDANCE_CONTINUATION_PIN allowed=true candidate=$candidate_brain current=$current_main source=$candidate_source"
+              else
+                echo "published=false" >> "$GITHUB_OUTPUT"
+                echo "FIELD_NIAKVIO_GUIDANCE_STALE_PUBLISH skipped=true reason=brain_main_advanced candidate=$candidate_brain current=$current_main"
+                exit 0
+              fi
+            else
+              echo "candidate Brain revision diverges from current main; refusing guidance publication" >&2
+              exit 5
+            fi
+          fi
+          git -C brain fetch origin "+refs/heads/$BRANCH:refs/remotes/origin/$BRANCH" || true
+          expected_sha=""
+          previous_advisor_args=()
+          previous_force_args=()
+          previous_diagnostics_args=()
+          if git -C brain rev-parse --verify "refs/remotes/origin/$BRANCH" >/dev/null 2>&1; then
+            expected_sha="$(git -C brain rev-parse "refs/remotes/origin/$BRANCH")"
+            if git -C brain show "refs/remotes/origin/$BRANCH:guidance/niakvio-guidance.json" > "$RUNNER_TEMP/niakvio-guidance.previous.json" 2>/dev/null; then
+              previous_advisor_args=(--previous-advisor "$RUNNER_TEMP/niakvio-guidance.previous.json")
+            fi
+            if git -C brain show "refs/remotes/origin/$BRANCH:guidance/niakvio-force-mutations.json" > "$RUNNER_TEMP/niakvio-force.previous.json" 2>/dev/null; then
+              previous_force_args=(--previous-force "$RUNNER_TEMP/niakvio-force.previous.json")
+            fi
+            if git -C brain show "refs/remotes/origin/$BRANCH:guidance/niakvio-force-diagnostics.json" > "$RUNNER_TEMP/niakvio-force-diagnostics.previous.json" 2>/dev/null; then
+              previous_diagnostics_args=(--previous-diagnostics "$RUNNER_TEMP/niakvio-force-diagnostics.previous.json")
+            fi
+                    if git -C brain show "refs/remotes/origin/$BRANCH:guidance/niakvio-guidance-state.json" > "$RUNNER_TEMP/niakvio-guidance-state.publish-previous.json" 2>/dev/null; then
+              read -r published_brain published_source < <(python - "$RUNNER_TEMP/niakvio-guidance-state.publish-previous.json" <<'PY'
+          import json,sys
+          d=json.load(open(sys.argv[1],encoding="utf-8"))
+          print(str(d.get("brainLlmSha") or "").strip().lower(), str(d.get("sourceNiakvioSha") or "").strip().lower())
+          PY
+              )
+              candidate_brain="${{ steps.page.outputs.brain_sha }}"
+              candidate_source="${{ steps.source.outputs.sha }}"
+              if [ -n "$published_brain" ] && [ "$published_brain" != "$candidate_brain" ]; then
+                if git -C brain merge-base --is-ancestor "$candidate_brain" "$published_brain"; then
+                  echo "published=false" >> "$GITHUB_OUTPUT"
+                  echo "FIELD_NIAKVIO_GUIDANCE_STALE_PUBLISH skipped=true reason=newer_brain_already_published candidate=$candidate_brain published=$published_brain"
+                  exit 0
+                fi
+                if ! git -C brain merge-base --is-ancestor "$published_brain" "$candidate_brain"; then
+                  echo "published Brain revision diverges from candidate; refusing destructive guidance overwrite" >&2
+                  exit 3
+                fi
+              elif [ -n "$published_brain" ] && [ "$published_brain" = "$candidate_brain" ] \
+                   && [ -n "$published_source" ] && [ "$published_source" != "$candidate_source" ]; then
+                echo "same Brain revision already published for a different NiakVIO source; refusing ambiguous overwrite" >&2
+                exit 4
+              fi
+            fi
+          fi
+          python brain/scripts/merge_niakvio_guidance_page.py \
+            "${previous_advisor_args[@]}" \
+            "${previous_force_args[@]}" \
+            "${previous_diagnostics_args[@]}" \
+            --candidate-advisor niakvio-guidance.json \
+            --candidate-force niakvio-force-mutations.json \
+            --candidate-diagnostics niakvio-force-diagnostics.json \
+            --refreshed-providers "$RUNNER_TEMP/niakvio-guidance-page.txt" \
+            --advisor-output "$RUNNER_TEMP/niakvio-guidance.merged.json" \
+            --force-output "$RUNNER_TEMP/niakvio-force.merged.json" \
+            --diagnostics-output "$RUNNER_TEMP/niakvio-force-diagnostics.merged.json"
+          cp "$RUNNER_TEMP/niakvio-guidance.merged.json" niakvio-guidance.json
+          cp "$RUNNER_TEMP/niakvio-force.merged.json" niakvio-force-mutations.json
+          cp "$RUNNER_TEMP/niakvio-force-diagnostics.merged.json" niakvio-force-diagnostics.json
+
+          git -C brain switch --orphan "niakvio-guidance-$GITHUB_RUN_ID"
+          git -C brain rm -rf . >/dev/null 2>&1 || true
+          mkdir -p brain/guidance
+          cp niakvio-guidance.json brain/guidance/niakvio-guidance.json
+          cp niakvio-force-mutations.json brain/guidance/niakvio-force-mutations.json
+          cp niakvio-force-diagnostics.json brain/guidance/niakvio-force-diagnostics.json
+          cp "$RUNNER_TEMP/niakvio-guidance-state.next.json" brain/guidance/niakvio-guidance-state.json
+          git -C brain add guidance/niakvio-guidance.json guidance/niakvio-force-mutations.json guidance/niakvio-force-diagnostics.json guidance/niakvio-guidance-state.json
+          git -C brain commit -m "guidance: merge NiakVIO advisor page ${{ steps.page.outputs.cycle }}"
+          tracked="$(git -C brain ls-files | sort)"
+          expected_tracked="$(printf '%s\n' guidance/niakvio-force-diagnostics.json guidance/niakvio-force-mutations.json guidance/niakvio-guidance-state.json guidance/niakvio-guidance.json | sort)"
+          test "$tracked" = "$expected_tracked"
+          if [ -n "$expected_sha" ]; then
+            git -C brain push --force-with-lease="$BRANCH:$expected_sha" origin HEAD:"$BRANCH"
+          else
+            git -C brain push origin HEAD:"$BRANCH"
+          fi
+          echo "published=true" >> "$GITHUB_OUTPUT"
+          echo "FIELD_NIAKVIO_GUIDANCE_PUBLISH files=4 private_content=false force_mutations=true force_diagnostics=true complete=${{ steps.page.outputs.complete }} remaining=${{ steps.page.outputs.remaining }}"
+
+      - name: Continue remaining guidance page
+        if: ${{ steps.publish.outputs.published == 'true' && steps.page.outputs.complete != 'true' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh workflow run niakvio-private-guidance.yml \
+            --repo "$GITHUB_REPOSITORY" \
+            --ref main \
+            -f niakvio_sha="${{ steps.source.outputs.sha }}" \
+            -f brain_sha="${{ steps.page.outputs.brain_sha }}" \
+            -f target_providers="${{ steps.cohort.outputs.csv }}" \
+            -f page_size="${{ inputs.page_size || '9' }}"
+          echo "FIELD_NIAKVIO_GUIDANCE_CONTINUE remaining=${{ steps.page.outputs.remaining }} source=${{ steps.source.outputs.sha }}"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: niakvio-guidance-${{ github.run_id }}
+          path: |
+            niakvio-guidance.json
+            niakvio-force-mutations.json
+            niakvio-force-diagnostics.json
+            $RUNNER_TEMP/niakvio-guidance-state.next.json
+            $RUNNER_TEMP/niakvio-guidance-family-wave.json
+            private-memory-report.json
+            routing-summary.json
+            routing-force-summary.json
+            routing.jsonl
+            routing-force.jsonl
+            niakvio-runtime-variant-coverage.json
+          retention-days: 14
+          if-no-files-found: warn
+ private-force-deterministic.jsonl || true)"
+          if [ "$count" -gt 0 ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+            echo "FIELD_BRAIN_DETERMINISTIC_FORCE_PREFLIGHT_READY ready=true rows=$count"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "FIELD_BRAIN_DETERMINISTIC_FORCE_PREFLIGHT_READY ready=false rows=0"
+          fi
+
+      - uses: actions/cache@v4
+        if: steps.route.outputs.llm_needed == 'true' && steps.deterministic_force.outputs.ready != 'true'
+        id: llama-bin-cache
+        with:
+          path: llama-prebuilt
+          key: llama-cpp-b11140-ubuntu-x64
+
+      - name: Download official llama.cpp binary
+        if: steps.route.outputs.llm_needed == 'true' && steps.deterministic_force.outputs.ready != 'true' && steps.llama-bin-cache.outputs.cache-hit != 'true' && steps.deterministic_force.outputs.ready != 'true'
+        run: |
+          mkdir -p llama-prebuilt
+          curl -fL --retry 3             https://github.com/ggml-org/llama.cpp/releases/download/b11140/llama-b11140-bin-ubuntu-x64.tar.gz             -o llama-b11140.tar.gz
+          tar -xzf llama-b11140.tar.gz -C llama-prebuilt
+          test -n "$(find llama-prebuilt -type f -name llama-server -print -quit)"
+
+      - uses: actions/cache@v4
+        if: steps.route.outputs.llm_needed == 'true' && steps.deterministic_force.outputs.ready != 'true'
+        with:
+          path: |
+            ~/.cache/llama.cpp
+            ~/.cache/huggingface
+          key: qwen25-coder-7b-q4-km-v1
+
+      - name: Start bounded local Qwen advisor
+        if: steps.route.outputs.llm_needed == 'true' && steps.deterministic_force.outputs.ready != 'true'
         run: |
           SERVER="$(find llama-prebuilt -type f -name llama-server -print -quit)"
           test -n "$SERVER"
