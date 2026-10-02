@@ -115,6 +115,102 @@ class PlannerTests(unittest.TestCase):
         self.assertNotIn("out.slice(0,3)", second_updated)
         self.assertIn("out.slice(0,4)", second_updated)
 
+    def test_deterministic_variant_second_negative_advances_to_quality_diversity(self):
+        source = (
+            'function files(src){var out=[],seen={},re=/[^ ]+\\.(?:mkv|mp4|avi)/gi,m;'
+            'while((m=re.exec(src))!==null){var f=String(m[0]);if(!seen[f]){seen[f]=1;out.push(f)}}'
+            'return out.slice(0,3)} '
+            'function quality(f){var m=/(2160|1080|720|480|360)p/i.exec(f);return m?m[1]+"p":"HD"} '
+            'async function resolve(){var out=[];for(var k=0;k<links.length&&k<8;k++){'
+            'var z=await chain(links[k]);for(var n=0;n<z.length;n++)out.push(z[n]);'
+            'if(out.length>=4)break}return out}'
+        )
+        context = {
+            "runtimeMutationSource": source,
+            "preferredRuntimeMutationSource": source,
+            "runtime_variant_coverage": {
+                "riskKind": "variant-coverage-truncation",
+                "risk": "high",
+                "dimensions": ["quality", "source"],
+                "mechanisms": ["global_output_quota_break", "source_list_slice_cap"],
+            },
+            "current_structure_evidence": {
+                "fanout": {"qualityHeights": [480, 720, 1080, 2160]},
+            },
+        }
+        policy = {"allow_mutations": True, "allowed_scopes": ["provider_bloc"]}
+
+        first_request = RepairRequest(
+            provider_id="demo",
+            failure_class="variant_coverage_gap",
+            status="FULL_OK",
+            allowed_mutations=["provider_bloc"],
+            provider_context=context,
+        )
+        first = _deterministic_variant_coverage_mutation(first_request, policy)
+        self.assertIsNotNone(first)
+        first_fp = hashlib.sha256(
+            json.dumps([first], ensure_ascii=True, sort_keys=True, separators=(",", ":")).encode("ascii")
+        ).hexdigest()
+
+        second_request = RepairRequest(
+            provider_id="demo",
+            failure_class="variant_coverage_gap",
+            status="FULL_OK",
+            observations=[{
+                "source": "brain-force-sandbox-memory",
+                "value": [{
+                    "mutationFingerprint": first_fp,
+                    "consecutiveFailures": 1,
+                    "lastReason": "variant_coverage_stream_regression",
+                }],
+            }],
+            allowed_mutations=["provider_bloc"],
+            provider_context=context,
+        )
+        second = _deterministic_variant_coverage_mutation(second_request, policy)
+        self.assertIsNotNone(second)
+        second_fp = hashlib.sha256(
+            json.dumps([second], ensure_ascii=True, sort_keys=True, separators=(",", ":")).encode("ascii")
+        ).hexdigest()
+
+        third_request = RepairRequest(
+            provider_id="demo",
+            failure_class="variant_coverage_gap",
+            status="FULL_OK",
+            observations=[{
+                "source": "brain-force-sandbox-memory",
+                "value": [
+                    {
+                        "mutationFingerprint": first_fp,
+                        "consecutiveFailures": 1,
+                        "lastReason": "variant_coverage_stream_regression",
+                    },
+                    {
+                        "mutationFingerprint": second_fp,
+                        "consecutiveFailures": 1,
+                        "lastReason": "identity_gate:playable_identity_not_fully_verified",
+                        "lastCoverageDelta": {
+                            "maxPlayableHeight": 0,
+                            "announcedVariantCandidates": -13,
+                            "exploredPlayerRequests": -1,
+                        },
+                    },
+                ],
+            }],
+            allowed_mutations=["provider_bloc"],
+            provider_context=context,
+        )
+        third = _deterministic_variant_coverage_mutation(third_request, policy)
+        self.assertIsNotNone(third)
+        self.assertEqual(third["family"], "quality_stratified_variant_enumeration")
+        updated = source.replace(third["find"], third["replace"], 1)
+        self.assertIn("__qv", updated)
+        self.assertIn("(2160|1080|720|480)p", updated)
+        self.assertIn("return __qv.slice(0,4)", updated)
+        self.assertIn("if(out.length>=4)break", updated)
+        self.assertNotIn("return out.slice(0,3)", updated)
+
     def test_deterministic_variant_source_slice_requires_observed_quality_gain(self):
         source = (
             'function files(src){var out=[];return out.slice(0,3)} '
