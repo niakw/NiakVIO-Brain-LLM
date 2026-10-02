@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
   "niakvio_sha": "7434d3065e88c6db8d50e8d6b74dec7a6acb55fa",
-  "reason": "Deterministic fail-fast HindMoviez diagnostic after preflight import repair. Exact target hindmoviez only. Negative memory must block quota removal and slice 3->4; compile quality_stratified_variant_enumeration from observed 480/720/1080/2160. require_deterministic_force=true; bypass Qwen if candidate exists.",
+  "reason": "Deterministic fail-fast HindMoviez preflight after causal ranking fix. Exact target hindmoviez only. Prior quota and slice hypotheses blocked by negative memory; quality_stratified_variant_enumeration must compile from observed 480/720/1080/2160 without confusing terminal ?file= URL extractors for source enumerators.",
   "requested_repair_queue": [
     "hindmoviez"
   ],
-  "retry": 24,
+  "retry": 25,
   "require_deterministic_force": true
 }
