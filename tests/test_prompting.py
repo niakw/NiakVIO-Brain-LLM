@@ -168,8 +168,8 @@ class PromptingTests(unittest.TestCase):
             row["value"] for row in force["current_observations"]
             if row.get("source") == "census-sharded-current"
         )
-        self.assertEqual(sharded["fanout"]["movie"]["announcedVariantCandidates"], 7)
-        self.assertEqual(sharded["fanout"]["movie"]["streamsReturned"], 2)
+        self.assertEqual(int(sharded["fanout"]["movie"]["announcedVariantCandidates"]), 7)
+        self.assertEqual(int(sharded["fanout"]["movie"]["streamsReturned"]), 2)
         self.assertEqual(sharded["fanout"]["movie"]["state"], "returned-subset")
 
     def test_high_confidence_prior_uses_focused_rag_budget(self):
