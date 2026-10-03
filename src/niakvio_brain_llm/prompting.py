@@ -363,6 +363,116 @@ def build_prompt_payload(
                 request_payload["provider_context"]["advisor_experiment_history"] = history[-2:]
         payload["causal_prior"] = _compact(payload["causal_prior"], string_limit=220)
         payload["mutation_policy"] = _compact(payload["mutation_policy"], string_limit=220)
+    if encoded_size() > 7600 and advisor_only:
+        # Guidance-only requests may still exceed the first-pass bound when the
+        # current census/structure evidence is itself rich. Do not discard the
+        # provider case or silently fall back to generic deterministic repair.
+        # Rebuild the payload from essential *current* evidence only, preserving
+        # dynamic fanout/variant coverage, current structure and route authority
+        # ahead of any historical/retrieval prose.
+        request_payload = payload["request"]
+        current_context = request_payload.get("provider_context") or {}
+        essential_context: dict[str, Any] = {
+            "source_repo": _clip(current_context.get("source_repo"), 80),
+            "read_only": bool(current_context.get("read_only", True)),
+            "provider_id": _clip(current_context.get("provider_id"), 120),
+        }
+        for key, limit in (
+            ("runtime_variant_coverage", 140),
+            ("current_structure_evidence", 140),
+            ("route_contract", 140),
+            ("runtime_template_prior", 120),
+        ):
+            value = current_context.get(key)
+            if isinstance(value, dict) and value:
+                essential_context[key] = _compact(value, string_limit=limit)
+        history = current_context.get("advisor_experiment_history")
+        if isinstance(history, list) and history:
+            essential_context["advisor_experiment_history"] = [
+                _compact(history[-1], string_limit=100)
+            ]
+
+        priority = {
+            "current-provider-structure": 0,
+            "census-sharded-current": 1,
+            "runtime-variant-coverage-current": 2,
+            "targeted-regression-current": 3,
+            "census_current": 4,
+        }
+        observations = list(request_payload.get("observations") or [])
+        observations.sort(
+            key=lambda row: priority.get(
+                str(row.get("source") or row.get("stage") or ""), 99
+            ) if isinstance(row, dict) else 99
+        )
+        essential_request = {
+            key: request_payload.get(key)
+            for key in (
+                "provider_id",
+                "failure_class",
+                "status",
+                "supported_types",
+                "advisor_only",
+            )
+            if key in request_payload
+        }
+        essential_request["observations"] = [
+            _compact(row, string_limit=120)
+            for row in observations[:3]
+        ]
+        essential_request["census_prior"] = _compact(
+            request_payload.get("census_prior") or {},
+            string_limit=100,
+        )
+        essential_request["provider_context"] = essential_context
+
+        prior_payload = payload.get("causal_prior") or {}
+        payload["causal_prior"] = {
+            key: _compact(prior_payload.get(key), string_limit=120)
+            for key in ("target_layer", "confidence", "strategy_prior", "failure_signature")
+            if key in prior_payload
+        }
+        payload["mutation_policy"] = {
+            "allow_mutations": False,
+            "allowed_scopes": [],
+            "advisor_only": True,
+        }
+        payload["retrieved_experiences"] = []
+        payload["retrieved_documents"] = []
+        payload["request"] = essential_request
+        payload["context_budget"]["experience_limit"] = 0
+        payload["context_budget"]["document_limit"] = 0
+        payload["context_budget"]["essential_current_evidence"] = True
+
+    if encoded_size() > 7600 and advisor_only:
+        # Last deterministic reduction: retain the two strongest current
+        # observations and the three causal provider-context contracts with a
+        # tighter scalar bound. This path is intentionally advisor-only; Force
+        # mutation prompts retain their separate exact-source budget.
+        request_payload = payload["request"]
+        ctx = request_payload.get("provider_context") or {}
+        request_payload["observations"] = [
+            _compact(row, string_limit=80)
+            for row in (request_payload.get("observations") or [])[:2]
+        ]
+        request_payload["census_prior"] = {}
+        request_payload["provider_context"] = {
+            key: (
+                _compact(value, string_limit=80)
+                if isinstance(value, (dict, list))
+                else _clip(value, 80)
+            )
+            for key, value in ctx.items()
+            if key in {
+                "provider_id",
+                "read_only",
+                "runtime_variant_coverage",
+                "current_structure_evidence",
+                "route_contract",
+            }
+        }
+        payload["context_budget"]["essential_current_evidence_tight"] = True
+
     if encoded_size() > 7600:
         # This is a programming-contract failure, not a model/runtime failure.
         # Refuse to create an oversized request rather than let llama.cpp reject it.

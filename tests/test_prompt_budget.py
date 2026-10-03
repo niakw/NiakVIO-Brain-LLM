@@ -164,3 +164,97 @@ assert advisor_payload["mutation_policy"]["allowed_scopes"] == []
 advisor_ctx = advisor_payload["request"]["provider_context"]
 assert advisor_ctx.get("runtime_variant_coverage", {}).get("riskKind") == "variant-coverage-truncation"
 assert advisor_payload["request"]["advisor_only"] is True
+
+
+class ExtremeAdvisorVariantRequest(AdvisorOnlyVariantRequest):
+    def to_dict(self):
+        data = super().to_dict()
+        # Reproduce the real Coflix failure mode: several simultaneously rich
+        # current-evidence contracts survive normal compaction and can still
+        # exceed the advisor payload budget.
+        data["census_prior"] = {
+            f"lane_{i}": {f"k{j}": "c" * 1200 for j in range(8)}
+            for i in range(8)
+        }
+        data["provider_context"]["route_contract"] = {
+            f"route_{i}": {
+                "path": "/player/" + ("r" * 600),
+                "role": "player-resolver",
+                "method": "GET",
+                "notes": "n" * 1200,
+            }
+            for i in range(8)
+        }
+        data["provider_context"]["current_structure_evidence"] = {
+            f"group_{i}": {
+                "originHost": "current.example",
+                "routes": ["/detail/" + ("x" * 500)] * 8,
+                "fanout": {
+                    "groupCount": 8,
+                    "groupVariantCounts": [19] * 8,
+                    "indexedVariantCount": 152,
+                },
+            }
+            for i in range(8)
+        }
+        data["provider_context"]["runtime_variant_coverage"] = {
+            "riskKind": "variant-coverage-truncation",
+            "dimensions": ["player", "server", "source", "quality"],
+            "lanes": [
+                {
+                    "lane": f"lane-{i}",
+                    "announcedVariantCandidates": 19,
+                    "streamsReturned": 2,
+                    "state": "returned-subset",
+                    "notes": "v" * 1200,
+                }
+                for i in range(8)
+            ],
+        }
+        data["observations"] = [
+            {
+                "source": source,
+                "value": {f"k{j}": "o" * 1200 for j in range(8)},
+            }
+            for source in (
+                "current-provider-structure",
+                "census-sharded-current",
+                "runtime-variant-coverage-current",
+                "targeted-regression-current",
+                "census_current",
+                "other",
+            )
+        ]
+        return data
+
+
+extreme_payload = build_prompt_payload(
+    ExtremeAdvisorVariantRequest(),
+    experiences,
+    documents,
+    {
+        "confidence": 0.95,
+        "target_layer": "provider",
+        "strategy_prior": "enumerate_stream_variants_before_global_cap",
+        "failure_signature": "variant-coverage-gap:coflix",
+    },
+    {
+        "allow_mutations": True,
+        "allowed_scopes": ["provider_bloc", "provider_patch"],
+        "required_tests": ["playback", "identity", "variant-coverage"],
+    },
+)
+extreme_encoded = json.dumps(extreme_payload, ensure_ascii=True, separators=(",", ":"))
+assert len(extreme_encoded) <= 7800, len(extreme_encoded)
+assert extreme_payload["context_budget"]["serialized_user_chars"] <= 7600
+assert extreme_payload["context_budget"]["essential_current_evidence"] is True
+assert extreme_payload["mutation_policy"]["allow_mutations"] is False
+extreme_ctx = extreme_payload["request"]["provider_context"]
+assert extreme_ctx["runtime_variant_coverage"]["riskKind"] == "variant-coverage-truncation"
+assert "current_structure_evidence" in extreme_ctx
+assert "route_contract" in extreme_ctx
+assert extreme_payload["request"]["observations"][0]["source"] == "current-provider-structure"
+assert any(
+    row.get("source") == "census-sharded-current"
+    for row in extreme_payload["request"]["observations"]
+)
