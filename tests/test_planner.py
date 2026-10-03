@@ -265,6 +265,59 @@ class PlannerTests(unittest.TestCase):
         self.assertIn("for(var n=0;n<z.length&&n<1;n++)", fourth_updated)
         self.assertIn("return out.slice(0,3)", fourth_updated)
 
+        fourth_fp = hashlib.sha256(
+            json.dumps([fourth], ensure_ascii=True, sort_keys=True, separators=(",", ":")).encode("ascii")
+        ).hexdigest()
+        fifth_request = RepairRequest(
+            provider_id="demo",
+            failure_class="variant_coverage_gap",
+            status="FULL_OK",
+            observations=[{
+                "source": "brain-force-sandbox-memory",
+                "value": [
+                    {
+                        "mutationFingerprint": first_fp,
+                        "consecutiveFailures": 1,
+                        "lastReason": "variant_coverage_stream_regression",
+                    },
+                    {
+                        "mutationFingerprint": second_fp,
+                        "consecutiveFailures": 1,
+                        "lastReason": "identity_gate:playable_identity_not_fully_verified",
+                    },
+                    {
+                        "mutationFingerprint": third_fp,
+                        "consecutiveFailures": 1,
+                        "lastReason": "variant_coverage_playable_regression",
+                    },
+                    {
+                        "mutationFingerprint": fourth_fp,
+                        "consecutiveFailures": 1,
+                        "lastReason": "identity_gate:playable_identity_not_fully_verified",
+                        "lastCoverageDelta": {
+                            "maxPlayableHeight": 0,
+                            "announcedVariantCandidates": -13,
+                            "exploredPlayerRequests": -1,
+                        },
+                    },
+                ],
+            }],
+            allowed_mutations=["provider_bloc"],
+            provider_context=context,
+        )
+        self.assertTrue(_force_memory_blocks_mutation(fifth_request, fourth))
+        fifth = _deterministic_variant_coverage_mutation(fifth_request, policy)
+        self.assertIsNotNone(fifth)
+        self.assertEqual(fifth["family"], "quality_aware_global_stop")
+        fifth_updated = source.replace(fifth["find"], fifth["replace"], 1)
+        self.assertIn("k<8", fifth_updated)
+        self.assertIn("for(var n=0;n<z.length&&out.length<8;n++)", fifth_updated)
+        self.assertIn("Object.keys(__qh).length>=4", fifth_updated)
+        self.assertIn("out.length>=8", fifth_updated)
+        self.assertIn("/(2160|1080|720|480)p/i", fifth_updated)
+        self.assertNotIn("if(out.length>=4)break", fifth_updated)
+        self.assertIn("return out.slice(0,3)", fifth_updated)
+
     def test_deterministic_variant_source_slice_requires_observed_quality_gain(self):
         source = (
             'function files(src){var out=[];return out.slice(0,3)} '
