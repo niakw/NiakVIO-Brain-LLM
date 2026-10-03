@@ -20,7 +20,7 @@ from .policy import build_mutation_policy
 from .priors import build_causal_prior
 from .prompting import _force_edit_units, _force_source_windows, _force_structural_focus_keywords, _force_window_kwargs_for_request, build_force_prompt_payload, build_prompt_payload
 from .retrieval import ExperienceStore
-from .schema import REPAIR_PROPOSAL_SCHEMA, compact_force_schema_for, proposal_schema_for
+from .schema import REPAIR_PROPOSAL_SCHEMA, advisor_schema_for, compact_force_schema_for, proposal_schema_for
 from .verification_plan import recommended_tests
 
 SYSTEM_PROMPT = """You are NiakVIO Brain LLM, a bounded repair planner.
@@ -44,6 +44,13 @@ Never return shell commands or edits to unrelated files.
 Return one JSON object only with provider_id, diagnosis, strategy, confidence, target_layer,
 evidence, mutations, experiment, tests, abstain and abstain_reason.
 """
+
+ADVISOR_SYSTEM_PROMPT = """NiakVIO Brain advisor. JSON only.
+Return exactly: provider_id, strategy, confidence, target_layer, experiment, abstain, abstain_reason.
+Never return mutations, source text, evidence, tests, URLs, routes, headers, tokens, cookies or private-memory text.
+Keep the high-confidence causal strategy/layer exactly when constrained by schema.
+experiment is the only provider guidance payload: use only the abstract deterministic sandbox knobs allowed by the schema.
+Abstain only if current evidence cannot justify a distinct bounded experiment."""
 
 COMPACT_FORCE_SYSTEM_PROMPT = """NiakVIO Brain Force. JSON only:
 {"edit":<one provider-local edit or null>,"abstain_reason":"<short>"}
@@ -3534,20 +3541,30 @@ class BrainPlanner:
             # without paying for the complete production proposal schema.
             schema = _compact_wire_schema_for(request, mutation_policy)
         else:
-            schema = (
-                proposal_schema_for(
+            if request.advisor_only:
+                schema = advisor_schema_for(
                     request.provider_id,
                     causal_prior,
-                    mutation_policy,
-                    request.provider_context,
                 )
-                if constrained
-                else REPAIR_PROPOSAL_SCHEMA
-            )
+            else:
+                schema = (
+                    proposal_schema_for(
+                        request.provider_id,
+                        causal_prior,
+                        mutation_policy,
+                        request.provider_context,
+                    )
+                    if constrained
+                    else REPAIR_PROPOSAL_SCHEMA
+                )
         started = time.monotonic()
         try:
             raw = self.backend.complete(
-                system=COMPACT_FORCE_SYSTEM_PROMPT if compact_force else SYSTEM_PROMPT,
+                system=(
+                    COMPACT_FORCE_SYSTEM_PROMPT
+                    if compact_force
+                    else (ADVISOR_SYSTEM_PROMPT if request.advisor_only else SYSTEM_PROMPT)
+                ),
                 user=user,
                 response_schema=schema,
             )
@@ -3590,6 +3607,31 @@ class BrainPlanner:
                 tests=[],
                 abstain=abstain,
                 abstain_reason=str(parsed.get("abstain_reason") or ("no executable mutation" if abstain else "")),
+            )
+            return proposal, causal_prior, mutation_policy
+        if request.advisor_only:
+            proposal = RepairProposal(
+                provider_id=str(parsed.get("provider_id") or request.provider_id),
+                diagnosis="advisor-only strategy/experiment guidance",
+                strategy=str(parsed.get("strategy") or ""),
+                confidence=max(0.0, min(1.0, float(parsed.get("confidence") or 0.0))),
+                target_layer=str(parsed.get("target_layer") or "unknown"),
+                evidence=[],
+                mutations=[],
+                experiment=(
+                    dict(parsed.get("experiment") or {})
+                    if isinstance(parsed.get("experiment"), dict)
+                    else {}
+                ),
+                tests=[],
+                abstain=bool(parsed.get("abstain", False)),
+                abstain_reason=str(parsed.get("abstain_reason") or ""),
+            )
+            print(
+                "FIELD_BRAIN_ADVISOR_COMPACT "
+                f"provider={request.provider_id} chars={len(raw)} "
+                f"max_tokens={getattr(self.backend, 'max_tokens', 'unknown')}",
+                flush=True,
             )
             return proposal, causal_prior, mutation_policy
         return RepairProposal.from_dict(parsed), causal_prior, mutation_policy
