@@ -914,3 +914,12 @@
 - The deterministic `bounded_variant_enumeration_before_cap` compiler now recognizes bounded header caps in functions that actually call `_crawlDirectMedia`; it can widen server traversal to 16 and aggregate stream retention to 32 while remaining fail-closed for unrelated loops.
 - Positive and negative planner tests were added. No Coflix/PapaDuStream provider bytes were edited manually.
 - Next authority step is NiakVIO current-byte all-provider fan-out census, then one Brain-produced representative repair (Coflix first), isolated rematerialization/playback/identity validation, followed by PapaDuStream cross-check before any wider cohort application.
+
+
+## 2026-10-03 — Advisor-only FORCE prompt budget preserves Coflix coverage guidance
+
+- NiakVIO Learning FORCE run 37090364428 routed Coflix correctly as `variant_coverage_gap`, started Qwen 2.5 Coder 7B at 16k context, but made zero LLM calls because `build_prompt_payload` rejected the advisor request with `advisor prompt payload exceeded bounded context budget`.
+- Root cause: advisor-only guidance inherited the mutation policy's `allow_mutations=true`, so prompt compaction retained mutation-sized provider source even though this phase only needs sanitized strategy/experiment guidance and has no direct mutation authority.
+- Brain-LLM now treats `advisor_only` as a distinct prompt mode: the model-facing mutation policy is forced to no-mutation and source blobs use the smaller diagnostic/advisor compaction path. Deterministic Force remains the only mutation owner and exact source stays outside the advisor payload.
+- A regression test reproduces a Coflix-style hierarchical variant-coverage request with large negative experiment history and verifies the serialized advisor payload remains inside the 7600-character bound while preserving the dynamic variant-coverage signal.
+- This is a Brain pipeline correction only; it does not claim Coflix repaired. Coflix must be rerun through guidance -> Learning -> executable candidate/materialization -> playback/identity/completeness proof.

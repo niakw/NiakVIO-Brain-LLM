@@ -257,7 +257,17 @@ def build_prompt_payload(
         if key != "required_tests"
     }
     high_confidence = float(prior.get("confidence") or 0.0) >= 0.90
-    mutation_allowed = bool(policy.get("allow_mutations"))
+    advisor_only = bool(data.get("advisor_only"))
+    # Advisor-only runs synthesize strategy/experiment guidance. They never own
+    # provider bytes, so carrying mutation-sized source blobs wastes context and
+    # can prevent the model from seeing the case at all. Keep deterministic
+    # mutation authority outside this payload and tell the model explicitly to
+    # return no mutations.
+    mutation_allowed = bool(policy.get("allow_mutations")) and not advisor_only
+    if advisor_only:
+        model_policy["allow_mutations"] = False
+        model_policy["allowed_scopes"] = []
+        model_policy["advisor_only"] = True
 
     if mutation_allowed:
         # Force is a code/data synthesis phase, not a research pass. Current
@@ -292,7 +302,11 @@ def build_prompt_payload(
             for row in (documents or [])[:document_limit]
         ],
         "context_budget": {
-            "mode": "focused" if high_confidence else "exploratory",
+            "mode": (
+                "advisor-only"
+                if advisor_only
+                else ("focused" if high_confidence else "exploratory")
+            ),
             "experience_limit": experience_limit,
             "document_limit": document_limit,
         },

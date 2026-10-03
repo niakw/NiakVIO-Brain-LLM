@@ -89,3 +89,78 @@ if "published_bundle" in ctx:
     assert len(ctx["published_bundle"].get("providerBlocks") or []) <= 1
 
 print("bounded advisor prompt context contract passed")
+
+
+class AdvisorOnlyVariantRequest(FakeRequest):
+    def to_dict(self):
+        data = super().to_dict()
+        data["provider_id"] = "coflix"
+        data["failure_class"] = "variant_coverage_gap"
+        data["status"] = "FULL OK"
+        data["advisor_only"] = True
+        data["allowed_mutations"] = ["provider_bloc", "provider_patch"]
+        data["provider_context"]["runtime_variant_coverage"] = {
+            "riskKind": "variant-coverage-truncation",
+            "dimensions": ["player", "server", "source", "quality"],
+            "lanes": [
+                {
+                    "lane": lane,
+                    "announcedVariantCandidates": 19,
+                    "streamsReturned": 2,
+                    "state": "returned-subset",
+                    "announcedQualityHeights": [360, 480, 720, 1080, 2160],
+                    "notes": "x" * 2000,
+                }
+                for lane in ("anime", "movie", "tv")
+            ],
+        }
+        data["provider_context"]["advisor_experiment_history"] = [
+            {
+                "failureClass": "variant_coverage_gap",
+                "lastReason": "blocked current sandbox " + ("z" * 2000),
+                "observedPipelineStage": "player",
+                "experimentFingerprint": str(i) * 64,
+            }
+            for i in range(32)
+        ]
+        data["observations"].append({
+            "source": "census-sharded-current",
+            "value": {
+                "fanout": {
+                    "movie": {
+                        "announcedVariantCandidates": 19,
+                        "streamsReturned": 2,
+                        "state": "returned-subset",
+                        "announcedQualityHeights": [360, 480, 720, 1080, 2160],
+                    }
+                },
+                "structureHints": ["player->server->variants"] * 20,
+            },
+        })
+        return data
+
+
+advisor_payload = build_prompt_payload(
+    AdvisorOnlyVariantRequest(),
+    experiences,
+    documents,
+    {
+        "confidence": 0.95,
+        "target_layer": "provider",
+        "strategy_prior": "enumerate_stream_variants_before_global_cap",
+    },
+    {
+        "allow_mutations": True,
+        "allowed_scopes": ["provider_bloc", "provider_patch"],
+        "required_tests": ["playback", "identity", "variant-coverage"],
+    },
+)
+advisor_encoded = json.dumps(advisor_payload, ensure_ascii=True, separators=(",", ":"))
+assert len(advisor_encoded) <= 7800, len(advisor_encoded)
+assert advisor_payload["context_budget"]["serialized_user_chars"] <= 7600
+assert advisor_payload["context_budget"]["mode"] == "advisor-only"
+assert advisor_payload["mutation_policy"]["allow_mutations"] is False
+assert advisor_payload["mutation_policy"]["allowed_scopes"] == []
+advisor_ctx = advisor_payload["request"]["provider_context"]
+assert advisor_ctx.get("runtime_variant_coverage", {}).get("riskKind") == "variant-coverage-truncation"
+assert advisor_payload["request"]["advisor_only"] is True
