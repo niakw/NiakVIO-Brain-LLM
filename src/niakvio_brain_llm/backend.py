@@ -115,7 +115,11 @@ class LocalOpenAICompatibleBackend:
                 raise RuntimeError(
                     f"llama.cpp fallback HTTP {fallback_exc.code}: {body[:1200]}"
                 ) from fallback_exc
-        return str(value["choices"][0]["message"]["content"])
+        choice = value["choices"][0]
+        finish_reason = str(choice.get("finish_reason") or "").strip().casefold()
+        if finish_reason in {"length", "max_tokens"}:
+            raise RuntimeError("local model completion truncated by max_tokens")
+        return str(choice["message"]["content"])
 
 @dataclass(slots=True)
 class StaticBackend:
