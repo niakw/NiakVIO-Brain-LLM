@@ -137,6 +137,54 @@ REPAIR_PROPOSAL_SCHEMA = {
 }
 
 
+def advisor_schema_for(
+    provider_id: str,
+    causal_prior: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Minimal guidance-only schema.
+
+    Advisor-only runs never own provider mutations, evidence or verification
+    tests. Keeping those production fields out of the wire schema prevents
+    bounded local models from spending their completion budget restating data
+    that deterministic NiakVIO already owns.
+    """
+    prior = causal_prior or {}
+    confidence = float(prior.get("confidence") or 0.0)
+    layer = str(prior.get("target_layer") or "unknown")
+    strategy = str(prior.get("strategy_prior") or "")
+    properties: dict[str, Any] = {
+        "provider_id": {"type": "string", "const": provider_id},
+        "strategy": {"type": "string", "maxLength": 240},
+        "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+        "target_layer": {
+            "type": "string",
+            "enum": ["provider", "core", "harness", "network", "unknown"],
+        },
+        "experiment": deepcopy(EXPERIMENT_SPEC_SCHEMA),
+        "abstain": {"type": "boolean"},
+        "abstain_reason": {"type": "string", "maxLength": 240},
+    }
+    required = [
+        "provider_id", "strategy", "confidence", "target_layer",
+        "experiment", "abstain", "abstain_reason",
+    ]
+    if confidence >= 0.90:
+        if layer in {"provider", "core", "harness", "network"}:
+            properties["target_layer"]["enum"] = [layer]
+        if strategy:
+            properties["strategy"] = {"type": "string", "const": strategy}
+        if layer == "provider":
+            properties["experiment"]["required"] = list(
+                EXPERIMENT_SPEC_SCHEMA["properties"]
+            )
+    return {
+        "type": "object",
+        "additionalProperties": False,
+        "required": required,
+        "properties": properties,
+    }
+
+
 def compact_force_schema_for(
     provider_id: str,
     causal_prior: dict[str, Any] | None = None,
