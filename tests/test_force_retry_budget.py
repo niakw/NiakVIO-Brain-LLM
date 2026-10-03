@@ -72,3 +72,11 @@ assert '{"chain_terminal_gap", "media_extraction_gap"}' in source
 assert 'failure_key == "route_proven_gap"' in source
 assert 'budget_seconds = min(budget_cap, 600)' in source
 assert 'scopes.append("provider_bloc")' in source
+
+# Targeted advisor truncation must be retried once with a bounded larger wire budget.
+assert "def _retryable_advisor_error(" in source
+assert '"completion truncated by max_tokens" in message' in source
+assert "FIELD_BRAIN_ADVISOR_RETRY" in source
+assert "retry_tokens = max(256, min(768, int(args.max_tokens) * 2))" in source
+assert "retry_timeout = max(60, min(180, int(args.timeout_seconds) + 60))" in source
+assert "retry_orchestrator.run(request, compact_force=False)" in source
