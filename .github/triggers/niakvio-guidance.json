@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "4d4c55edb012f8f6d9272dd3ba559aa6824887b0",
-  "reason": "Retry exact HindMoviez sixth deterministic witness after fixing guarded source-loop parsing. Five executed negative mechanisms must remain blocked; deterministic next must be bidirectional_source_frontier_before_global_cap on current NiakVIO 4d4c55ed. Require exact one-provider cohort and later V6 current-byte quality/identity/non-regression proof.",
+  "niakvio_sha": "64ecc3b9946cc44b2cad1e214e5ce69bfbab3920",
+  "reason": "Recompile exact HindMoviez sixth deterministic witness on post-projection-reconcile NiakVIO main 64ecc3b9. Five prior executed negative mechanisms remain blocked. Deterministic next must remain bidirectional_source_frontier_before_global_cap; exact target hindmoviez only; require deterministic force; later V6 sandbox must prove playable completeness gain plus identity/non-regression.",
   "requested_repair_queue": [
     "hindmoviez"
   ],
-  "retry": 30,
+  "retry": 31,
   "require_deterministic_force": true
 }
