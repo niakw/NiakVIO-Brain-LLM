@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "521c7babdc36c73c83e22743d1a31c1f274cccb8",
-  "reason": "Authoritative HindMoviez fifth Force witness on Brain with trigger-only freshness guard. Four prior executed negative mechanisms must be blocked from durable memory; deterministic next must be quality_aware_global_stop. Source NiakVIO 521c7bab. Preserve routes, outer source/deadline bounds and identity; sandbox must prove verified playable quality/completeness gain before publication.",
+  "niakvio_sha": "4d4c55edb012f8f6d9272dd3ba559aa6824887b0",
+  "reason": "Authoritative HindMoviez sixth Force witness after five executed negative completeness mechanisms. Deterministic next must be bidirectional_source_frontier_before_global_cap: keep exact source-count bound, deadline guard, routes, identity, per-source chain and global stream cap; change only source traversal order 0,last,1,last-1,... . Accept later only through V6 current-byte sandbox with verified playable quality/fan-out gain and identity/playback non-regression.",
   "requested_repair_queue": [
     "hindmoviez"
   ],
-  "retry": 28,
+  "retry": 29,
   "require_deterministic_force": true
 }
