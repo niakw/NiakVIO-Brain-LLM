@@ -257,7 +257,9 @@ def build_prompt_payload(
         if key != "required_tests"
     }
     high_confidence = float(prior.get("confidence") or 0.0) >= 0.90
-    advisor_only = bool(data.get("advisor_only"))
+    advisor_only = bool(getattr(request, "advisor_only", False))
+    if not advisor_only:
+        advisor_only = bool(request.to_dict().get("advisor_only"))
     # Advisor-only runs synthesize strategy/experiment guidance. They never own
     # provider bytes, so carrying mutation-sized source blobs wastes context and
     # can prevent the model from seeing the case at all. Keep deterministic
