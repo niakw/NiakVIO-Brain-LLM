@@ -94,7 +94,8 @@ class AdvisorCompactWireTests(unittest.TestCase):
         self.assertEqual(proposal.diagnosis, "advisor-only strategy/experiment guidance")
         self.assertEqual(proposal.mutations, [])
         self.assertEqual(proposal.evidence, [])
-        self.assertEqual(proposal.tests, [])
+        self.assertIn("replay_provider_on_current_bytes", proposal.tests)
+        self.assertIn("validate_playback_identity_and_non_regression", proposal.tests)
         self.assertTrue(proposal.experiment)
 
 
