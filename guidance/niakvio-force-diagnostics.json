@@ -1,0 +1,22 @@
+{
+  "brainLlmSha": "f0a05851bac29ef93b0ca58b96020ec950e8a167",
+  "privateContentRetained": false,
+  "proofAuthority": false,
+  "providerCount": 1,
+  "publicationAuthority": false,
+  "rows": [
+    {
+      "abstain": false,
+      "failureClass": "variant_coverage_gap",
+      "mutationScopes": [
+        "provider_bloc"
+      ],
+      "ok": true,
+      "providerId": "hindmoviez",
+      "scopeTrace": [],
+      "status": "FULL_OK"
+    }
+  ],
+  "schemaVersion": 1,
+  "sourceNiakvioSha": "64ecc3b9946cc44b2cad1e214e5ce69bfbab3920"
+}

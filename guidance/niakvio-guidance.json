@@ -1,0 +1,13 @@
+{
+  "brainLlmSha": "f0a05851bac29ef93b0ca58b96020ec950e8a167",
+  "directMutationAuthority": false,
+  "minConfidence": 0.8,
+  "privateContentRetained": false,
+  "proofAuthority": false,
+  "providerCount": 0,
+  "publicationAuthority": false,
+  "rawMutationContentRetained": false,
+  "rows": [],
+  "schemaVersion": 2,
+  "sourceNiakvioSha": "64ecc3b9946cc44b2cad1e214e5ce69bfbab3920"
+}

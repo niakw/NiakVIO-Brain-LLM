@@ -1,0 +1,23 @@
+{
+  "brainLlmSha": "f0a05851bac29ef93b0ca58b96020ec950e8a167",
+  "complete": true,
+  "completedProviders": [
+    "hindmoviez"
+  ],
+  "cycle": 1,
+  "pageProviders": [
+    "hindmoviez"
+  ],
+  "pageSize": 9,
+  "privateContentRetained": false,
+  "processedCount": 1,
+  "proofAuthority": false,
+  "publicationAuthority": false,
+  "remainingCount": 0,
+  "remainingProviders": [],
+  "requestedProviders": [
+    "hindmoviez"
+  ],
+  "schemaVersion": 1,
+  "sourceNiakvioSha": "64ecc3b9946cc44b2cad1e214e5ce69bfbab3920"
+}
