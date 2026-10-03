@@ -569,8 +569,24 @@ jobs:
           fi
           if [ "$candidate_brain" != "$current_main" ]; then
             if git -C brain merge-base --is-ancestor "$candidate_brain" "$current_main"; then
+              trigger_only_advance=false
+              mapfile -t advanced_paths < <(
+                git -C brain diff --name-only "$candidate_brain..$current_main" -- |
+                  sed '/^$/d'
+              )
+              if [ "${#advanced_paths[@]}" -gt 0 ]; then
+                trigger_only_advance=true
+                for advanced_path in "${advanced_paths[@]}"; do
+                  if [ "$advanced_path" != ".github/triggers/niakvio-guidance.json" ]; then
+                    trigger_only_advance=false
+                    break
+                  fi
+                done
+              fi
               if [ "$same_incomplete_cycle" = "true" ]; then
                 echo "FIELD_NIAKVIO_GUIDANCE_CONTINUATION_PIN allowed=true candidate=$candidate_brain current=$current_main source=$candidate_source"
+              elif [ "$trigger_only_advance" = "true" ]; then
+                echo "FIELD_NIAKVIO_GUIDANCE_TRIGGER_ONLY_ADVANCE allowed=true candidate=$candidate_brain current=$current_main source=$candidate_source"
               else
                 echo "published=false" >> "$GITHUB_OUTPUT"
                 echo "FIELD_NIAKVIO_GUIDANCE_STALE_PUBLISH skipped=true reason=brain_main_advanced candidate=$candidate_brain current=$current_main"

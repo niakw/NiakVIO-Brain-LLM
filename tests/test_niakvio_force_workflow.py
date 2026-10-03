@@ -79,3 +79,7 @@ assert "cancel-in-progress: ${{ github.event_name == 'push' }}" in workflow
 assert 'echo "brain_sha=$brain_sha" >> "$GITHUB_OUTPUT"' in workflow
 assert '-f brain_sha="${{ steps.page.outputs.brain_sha }}"' in workflow
 assert '-f brain_sha="$(git -C brain rev-parse HEAD)"' not in workflow
+
+assert "FIELD_NIAKVIO_GUIDANCE_TRIGGER_ONLY_ADVANCE" in workflow
+assert 'advanced_path" != ".github/triggers/niakvio-guidance.json"' in workflow
+assert 'git -C brain diff --name-only "$candidate_brain..$current_main"' in workflow
