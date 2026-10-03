@@ -2478,7 +2478,8 @@ def _deterministic_bidirectional_source_frontier_mutation(
     outer_loop = re.compile(
         r"for\s*\(\s*(?:var|let)\s+(?P<outer>[A-Za-z_$][A-Za-z0-9_$]*)\s*=\s*0\s*;"
         r"\s*(?P=outer)\s*<\s*(?P<sources>[A-Za-z_$][A-Za-z0-9_$]*)\.length"
-        r"\s*&&\s*(?P=outer)\s*<\s*(?P<source_cap>\d+)(?P<extra>[^;]{0,180}?)\)\s*\{",
+        r"\s*&&\s*(?P=outer)\s*<\s*(?P<source_cap>\d+)(?P<extra>[^;]{0,180}?)"
+        r";\s*(?P=outer)\+\+\s*\)\s*\{",
         re.I,
     )
     global_break = re.compile(
