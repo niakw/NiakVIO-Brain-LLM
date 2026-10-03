@@ -318,6 +318,51 @@ class PlannerTests(unittest.TestCase):
         self.assertNotIn("if(out.length>=4)break", fifth_updated)
         self.assertIn("return out.slice(0,3)", fifth_updated)
 
+        fifth_fp = hashlib.sha256(
+            json.dumps([fifth], ensure_ascii=True, sort_keys=True, separators=(",", ":")).encode("ascii")
+        ).hexdigest()
+        sixth_request = RepairRequest(
+            provider_id="demo",
+            failure_class="variant_coverage_gap",
+            status="FULL_OK",
+            observations=[{
+                "source": "brain-force-sandbox-memory",
+                "value": [
+                    {"mutationFingerprint": first_fp, "consecutiveFailures": 1},
+                    {"mutationFingerprint": second_fp, "consecutiveFailures": 1},
+                    {"mutationFingerprint": third_fp, "consecutiveFailures": 1},
+                    {"mutationFingerprint": fourth_fp, "consecutiveFailures": 1},
+                    {
+                        "mutationFingerprint": fifth_fp,
+                        "consecutiveFailures": 1,
+                        "lastReason": "variant_coverage_no_verified_dimension_gain",
+                        "lastCoverageDelta": {
+                            "maxPlayableHeight": 0,
+                            "announcedVariantCandidates": -13,
+                            "exploredPlayerRequests": -1,
+                        },
+                    },
+                ],
+            }],
+            allowed_mutations=["provider_bloc"],
+            provider_context=context,
+        )
+        self.assertTrue(_force_memory_blocks_mutation(sixth_request, fifth))
+        sixth = _deterministic_variant_coverage_mutation(sixth_request, policy)
+        self.assertIsNotNone(sixth)
+        self.assertEqual(
+            sixth["family"],
+            "bidirectional_source_frontier_before_global_cap",
+        )
+        sixth_updated = source.replace(sixth["find"], sixth["replace"], 1)
+        self.assertIn(
+            "chain(links[(k%2===0)?Math.floor(k/2):(links.length-1-Math.floor(k/2))])",
+            sixth_updated,
+        )
+        self.assertIn("k<8", sixth_updated)
+        self.assertIn("if(out.length>=4)break", sixth_updated)
+        self.assertIn("return out.slice(0,3)", sixth_updated)
+
     def test_deterministic_variant_source_slice_requires_observed_quality_gain(self):
         source = (
             'function files(src){var out=[];return out.slice(0,3)} '

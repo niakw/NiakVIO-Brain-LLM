@@ -2420,6 +2420,169 @@ def _deterministic_quality_aware_global_stop_mutation(
         family="quality_aware_global_stop",
     )
 
+def _deterministic_bidirectional_source_frontier_mutation(
+    request: RepairRequest,
+    mutation_policy: dict[str, Any],
+) -> dict[str, Any] | None:
+    """Explore the bounded source list from both ends before the global stop.
+
+    This is a late negative-memory hypothesis for quality/source completeness
+    debt. It changes only source traversal order: 0,last,1,last-1,... while
+    preserving the exact source count bound, deadline guard, routes, identity,
+    per-source extraction and global stream cap. It is intentionally cheaper and
+    less invasive than adding concurrency when current evidence only proves that
+    later sources may be starved by sequential first-N traversal.
+    """
+    failure = str(request.failure_class or "").strip().casefold().replace("-", "_")
+    if failure not in {"variant_coverage_gap", "variant_coverage_truncation"}:
+        return None
+    observed = _current_observed_quality_heights(request)
+    if len(observed) < 2:
+        return None
+    context = request.provider_context if isinstance(request.provider_context, dict) else {}
+    coverage = context.get("runtime_variant_coverage")
+    if not isinstance(coverage, dict) or coverage.get("riskKind") != "variant-coverage-truncation":
+        return None
+    dimensions = {
+        str(value or "").strip().casefold()
+        for value in coverage.get("dimensions") or []
+        if str(value or "").strip()
+    }
+    if not (dimensions & {"quality", "source"}):
+        return None
+
+    allowed = {
+        str(scope)
+        for scope in mutation_policy.get("allowed_scopes") or request.allowed_mutations or []
+    }
+    source_rows: list[tuple[str, str, str]] = []
+    if "provider_bloc" in allowed:
+        runtime_source = str(
+            context.get("preferredRuntimeMutationSource")
+            or context.get("runtimeMutationSource")
+            or ""
+        )
+        if runtime_source:
+            source_rows.append(("provider_bloc", "", runtime_source))
+    if "provider_patch" in allowed:
+        sources = context.get("registered_patch_sources")
+        if isinstance(sources, dict):
+            source_rows.extend(
+                ("provider_patch", str(path), str(source or ""))
+                for path, source in sources.items()
+                if str(path) and str(source or "")
+            )
+    if not source_rows:
+        return None
+
+    outer_loop = re.compile(
+        r"for\s*\(\s*(?:var|let)\s+(?P<outer>[A-Za-z_$][A-Za-z0-9_$]*)\s*=\s*0\s*;"
+        r"\s*(?P=outer)\s*<\s*(?P<sources>[A-Za-z_$][A-Za-z0-9_$]*)\.length"
+        r"\s*&&\s*(?P=outer)\s*<\s*(?P<source_cap>\d+)(?P<extra>[^)]*)\)\s*\{",
+        re.I,
+    )
+    global_break = re.compile(
+        r"if\s*\(\s*[A-Za-z_$][A-Za-z0-9_$]*\.length\s*>=\s*(?:[2-9]|1[0-6])\s*\)\s*break\s*;?",
+        re.I,
+    )
+
+    candidates: list[tuple[str, str, str, dict[str, Any], str]] = []
+    for scope, path, source in source_rows:
+        for unit in _deterministic_complete_line_function_units(source):
+            if str(unit.get("kind") or "") != "function_unit":
+                continue
+            unit_source = str(unit.get("source") or "")
+            signature = re.match(
+                r"(?s)^\s*(?:async\s+)?function\s+[A-Za-z_$][A-Za-z0-9_$]*"
+                r"\s*\([^)]*\)\s*\{(?P<body>.*)\}\s*$",
+                unit_source,
+            )
+            if not signature:
+                continue
+            body = str(signature.group("body") or "")
+            outers = list(outer_loop.finditer(body))
+            breaks = list(global_break.finditer(body))
+            if len(outers) != 1 or len(breaks) != 1:
+                continue
+            outer = outers[0]
+            breaker = breaks[0]
+            if breaker.start() <= outer.end():
+                continue
+            outer_index = str(outer.group("outer") or "")
+            source_name = str(outer.group("sources") or "")
+            source_cap = int(outer.group("source_cap") or 0)
+            if not outer_index or not source_name or source_cap < 2:
+                continue
+            source_expr = re.compile(
+                rf"(?P<expr>{re.escape(source_name)}\s*\[\s*{re.escape(outer_index)}\s*\])"
+            )
+            call = re.compile(
+                rf"await\s+[A-Za-z_$][A-Za-z0-9_$.]*\s*\([^)]*"
+                rf"(?P<expr>{re.escape(source_name)}\s*\[\s*{re.escape(outer_index)}\s*\])",
+                re.I,
+            ).search(body, outer.end(), breaker.start())
+            if not call:
+                continue
+            if source_expr.search(str(call.group(0) or "")) is None:
+                continue
+            frontier = (
+                f"{source_name}[({outer_index}%2===0)?Math.floor({outer_index}/2):"
+                f"({source_name}.length-1-Math.floor({outer_index}/2))]"
+            )
+            replacement_body = (
+                body[:call.start("expr")]
+                + frontier
+                + body[call.end("expr"):]
+            )
+            if replacement_body != body:
+                candidates.append((scope, path, source, unit, replacement_body))
+
+    if not candidates:
+        return None
+    groups: dict[tuple[str, str], list[tuple[str, str, str, dict[str, Any], str]]] = {}
+    for candidate in candidates:
+        groups.setdefault(
+            (str(candidate[3].get("source") or ""), candidate[4]),
+            [],
+        ).append(candidate)
+    if len(groups) == 1:
+        same = next(iter(groups.values()))
+        candidates = [
+            next(
+                (candidate for candidate in same if candidate[0] == "provider_bloc"),
+                next(
+                    (candidate for candidate in same if candidate[0] == "provider_patch"),
+                    same[0],
+                ),
+            )
+        ]
+    else:
+        bloc_candidates = [candidate for candidate in candidates if candidate[0] == "provider_bloc"]
+        if len(bloc_candidates) == 1:
+            candidates = bloc_candidates
+    if len(candidates) != 1:
+        return None
+
+    scope, path, source, unit, replacement_body = candidates[0]
+    if scope == "provider_patch":
+        mutation = _deterministic_exact_function_mutation(
+            request,
+            path=path,
+            source=source,
+            unit=unit,
+            replacement_body=replacement_body,
+        )
+        mutation["family"] = "bidirectional_source_frontier_before_global_cap"
+        return mutation
+    return _deterministic_exact_bloc_function_mutation(
+        request,
+        source=source,
+        unit=unit,
+        replacement_body=replacement_body,
+        family="bidirectional_source_frontier_before_global_cap",
+    )
+
+
 def _deterministic_variant_coverage_mutation(
     request: RepairRequest,
     mutation_policy: dict[str, Any],
@@ -2739,7 +2902,35 @@ def _deterministic_variant_coverage_mutation(
                         "reason=executed-negative-memory mechanism=quality_aware_global_stop",
                         flush=True,
                     )
-                    return None
+                    frontier = _deterministic_bidirectional_source_frontier_mutation(
+                        request,
+                        mutation_policy,
+                    )
+                    if not isinstance(frontier, dict):
+                        print(
+                            "FIELD_BRAIN_FORCE_DETERMINISTIC_NEXT_MISSING "
+                            f"provider={request.provider_id} "
+                            "mechanism=bidirectional_source_frontier_before_global_cap",
+                            flush=True,
+                        )
+                        return None
+                    if _force_memory_blocks_mutation(request, frontier):
+                        print(
+                            "FIELD_BRAIN_FORCE_DETERMINISTIC_BLOCKED "
+                            f"provider={request.provider_id} scope={frontier.get('scope')} "
+                            "reason=executed-negative-memory "
+                            "mechanism=bidirectional_source_frontier_before_global_cap",
+                            flush=True,
+                        )
+                        return None
+                    print(
+                        "FIELD_BRAIN_FORCE_DETERMINISTIC_NEXT "
+                        f"provider={request.provider_id} "
+                        "mechanism=bidirectional_source_frontier_before_global_cap "
+                        f"observed_qualities={len(_current_observed_quality_heights(request))}",
+                        flush=True,
+                    )
+                    return frontier
                 print(
                     "FIELD_BRAIN_FORCE_DETERMINISTIC_NEXT "
                     f"provider={request.provider_id} mechanism=quality_aware_global_stop "
