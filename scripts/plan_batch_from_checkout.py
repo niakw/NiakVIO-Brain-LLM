@@ -281,6 +281,15 @@ def main() -> int:
             or "jsondecodeerror" in type(exc).__name__.casefold()
         )
 
+    def _retryable_advisor_error(exc: Exception) -> bool:
+        message = str(exc).casefold()
+        return (
+            "jsondecodeerror" in type(exc).__name__.casefold()
+            or "completion truncated by max_tokens" in message
+            or "unterminated string" in message
+            or "expecting property name enclosed in double quotes" in message
+        )
+
     def _force_rejection_reason(exc: Exception) -> str:
         message = str(exc).casefold()
         for needle, code in (
@@ -968,6 +977,39 @@ def main() -> int:
                     break
             return planned
         except Exception as exc:
+            if args.advisor_only and _retryable_advisor_error(exc):
+                retry_tokens = max(256, min(768, int(args.max_tokens) * 2))
+                retry_timeout = max(60, min(180, int(args.timeout_seconds) + 60))
+                print(
+                    "FIELD_BRAIN_ADVISOR_RETRY "
+                    f"provider={provider} reason={type(exc).__name__} "
+                    f"max_tokens={retry_tokens} timeout_seconds={retry_timeout}",
+                    flush=True,
+                )
+                retry_backend = LocalOpenAICompatibleBackend(
+                    base_url=args.endpoint,
+                    model=args.model,
+                    timeout_seconds=retry_timeout,
+                    temperature=0.0,
+                    max_tokens=retry_tokens,
+                    prefill_prompt=False,
+                )
+                retry_orchestrator = BrainOrchestrator(
+                    BrainPlanner(retry_backend, store, documents),
+                    store,
+                )
+                try:
+                    outcome = retry_orchestrator.run(request, compact_force=False)
+                    planned.append(_row(
+                        position,
+                        len(planned) + 1,
+                        provider,
+                        request,
+                        outcome,
+                    ))
+                    return planned
+                except Exception as retry_exc:
+                    exc = retry_exc
             planned.append({
                 "position": position,
                 "hypothesis_index": len(planned) + 1,
