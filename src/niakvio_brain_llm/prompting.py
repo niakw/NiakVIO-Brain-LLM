@@ -446,19 +446,36 @@ def build_prompt_payload(
 
     if encoded_size() > 7600 and advisor_only:
         # Last deterministic reduction: retain the two strongest current
-        # observations and the three causal provider-context contracts with a
-        # tighter scalar bound. This path is intentionally advisor-only; Force
-        # mutation prompts retain their separate exact-source budget.
+        # observations and the three causal provider-context contracts, but
+        # cap both width and depth. Real provider evidence can contain nested
+        # fanout/group maps; scalar clipping alone is insufficient because a
+        # 8x8x8 object can still exceed the wire budget.
+        def tiny(value: Any, depth: int = 0) -> Any:
+            if isinstance(value, dict):
+                if depth >= 2:
+                    return {"keys": [str(key)[:60] for key in list(value)[:4]]}
+                return {
+                    str(key)[:60]: tiny(child, depth + 1)
+                    for key, child in list(value.items())[:4]
+                }
+            if isinstance(value, list):
+                if depth >= 2:
+                    return {"item_count": len(value)}
+                return [tiny(child, depth + 1) for child in value[:4]]
+            if isinstance(value, str):
+                return _clip(value, 80)
+            return value
+
         request_payload = payload["request"]
         ctx = request_payload.get("provider_context") or {}
         request_payload["observations"] = [
-            _compact(row, string_limit=80)
+            tiny(row)
             for row in (request_payload.get("observations") or [])[:2]
         ]
         request_payload["census_prior"] = {}
         request_payload["provider_context"] = {
             key: (
-                _compact(value, string_limit=80)
+                tiny(value)
                 if isinstance(value, (dict, list))
                 else _clip(value, 80)
             )
@@ -471,6 +488,7 @@ def build_prompt_payload(
                 "route_contract",
             }
         }
+        payload["causal_prior"] = tiny(payload.get("causal_prior") or {})
         payload["context_budget"]["essential_current_evidence_tight"] = True
 
     if encoded_size() > 7600:
