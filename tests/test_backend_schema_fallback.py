@@ -95,6 +95,29 @@ class BackendSchemaFallbackTests(unittest.TestCase):
         self.assertTrue(calls[1][0].get("cache_prompt"))
         self.assertLessEqual(calls[1][1], calls[0][1])
 
+    def test_length_finish_reason_is_rejected(self):
+        original = backend_mod.urlopen
+
+        def fake_urlopen(request, timeout=0):
+            return _Response({
+                "choices": [{
+                    "finish_reason": "length",
+                    "message": {"content": '{"provider_id":"coflix",'}
+                }],
+            })
+
+        backend_mod.urlopen = fake_urlopen
+        try:
+            backend = LocalOpenAICompatibleBackend(max_tokens=160)
+            with self.assertRaisesRegex(RuntimeError, "completion truncated by max_tokens"):
+                backend.complete(
+                    system="system",
+                    user="user",
+                    response_schema={"type": "object"},
+                )
+        finally:
+            backend_mod.urlopen = original
+
     def test_non_400_is_not_retried(self):
         calls = []
         original = backend_mod.urlopen
