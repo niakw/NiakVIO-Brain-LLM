@@ -122,7 +122,8 @@ class PlannerTests(unittest.TestCase):
             'return out.slice(0,3)} '
             'function quality(f){var m=/(2160|1080|720|480|360)p/i.exec(f);return m?m[1]+"p":"HD"} '
             'function finals(src){var out=[];if(/[?&]file=/i.test(src))out.push(src);return out.slice(0,4)} '
-            'async function resolve(){var out=[];for(var k=0;k<links.length&&k<8;k++){'
+            'function expired(){return false} '
+            'async function resolve(){var out=[];for(var k=0;k<links.length&&k<8&&!expired();k++){'
             'var z=await chain(links[k]);for(var n=0;n<z.length;n++)out.push(z[n]);'
             'if(out.length>=4)break}return out}'
         )
@@ -359,7 +360,7 @@ class PlannerTests(unittest.TestCase):
             "chain(links[(k%2===0)?Math.floor(k/2):(links.length-1-Math.floor(k/2))])",
             sixth_updated,
         )
-        self.assertIn("k<8", sixth_updated)
+        self.assertIn("k<8&&!expired()", sixth_updated)
         self.assertIn("if(out.length>=4)break", sixth_updated)
         self.assertIn("return out.slice(0,3)", sixth_updated)
 
