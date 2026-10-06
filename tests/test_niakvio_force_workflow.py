@@ -16,6 +16,10 @@ assert "-np 1" in workflow
 assert "private-force-batch.jsonl" in workflow
 assert "plan_deterministic_force_from_checkout.py" in workflow
 assert "FIELD_BRAIN_DETERMINISTIC_FORCE_PREFLIGHT_READY" in workflow
+assert "niakvio-force-deterministic.preflight.json" in workflow
+assert 'executable="$(python -c' in workflow
+assert 'ready=false' in workflow
+assert 'if [ "$executable" -gt 0 ]; then' in workflow
 assert "FIELD_BRAIN_FORCE_MODEL_BYPASS deterministic=true" in workflow
 assert "steps.deterministic_force.outputs.ready != 'true'" in workflow
 assert workflow.count("Compile deterministic Force candidates before model") == 1
