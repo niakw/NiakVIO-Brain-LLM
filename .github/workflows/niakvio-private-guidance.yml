@@ -342,12 +342,25 @@ jobs:
             "${provider_args[@]}" \
             --output private-force-deterministic.jsonl
           count="$(python -c 'from pathlib import Path; p=Path("private-force-deterministic.jsonl"); print(sum(1 for line in p.read_text(encoding="utf-8").splitlines() if line.strip()))')"
+          ready=false
+          executable=0
           if [ "$count" -gt 0 ]; then
-            echo "ready=true" >> "$GITHUB_OUTPUT"
-            echo "FIELD_BRAIN_DETERMINISTIC_FORCE_PREFLIGHT_READY ready=true rows=$count"
-          else
-            echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "FIELD_BRAIN_DETERMINISTIC_FORCE_PREFLIGHT_READY ready=false rows=0"
+            brain_sha="$(git -C brain rev-parse HEAD)"
+            if python brain/scripts/publish_niakvio_force_mutations.py \
+              --input private-force-deterministic.jsonl \
+              --output "$RUNNER_TEMP/niakvio-force-deterministic.preflight.json" \
+              --niakvio-root niakvio \
+              --niakvio-sha "${{ steps.source.outputs.sha }}" \
+              --brain-llm-sha "$brain_sha"; then
+              executable="$(python -c 'import json,sys; print(int(json.load(open(sys.argv[1])).get("providerCount") or 0))' "$RUNNER_TEMP/niakvio-force-deterministic.preflight.json")"
+              if [ "$executable" -gt 0 ]; then
+                ready=true
+              fi
+            fi
+          fi
+          echo "ready=$ready" >> "$GITHUB_OUTPUT"
+          echo "FIELD_BRAIN_DETERMINISTIC_FORCE_PREFLIGHT_READY ready=$ready rows=$count executable=$executable"
+          if [ "$ready" != "true" ]; then
             deterministic_required="$(python - <<'PY'
           import json
           from pathlib import Path
