@@ -1,10 +1,26 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "64ecc3b9946cc44b2cad1e214e5ce69bfbab3920",
-  "reason": "Recompile exact HindMoviez sixth deterministic witness on post-projection-reconcile NiakVIO main 64ecc3b9. Five prior executed negative mechanisms remain blocked. Deterministic next must remain bidirectional_source_frontier_before_global_cap; exact target hindmoviez only; require deterministic force; later V6 sandbox must prove playable completeness gain plus identity/non-regression.",
+  "niakvio_sha": "05506deefb90fadbe67d9ae517ee4ce2a3152847",
+  "reason": "Refresh Brain-LLM guidance on current NiakVIO main after Learning exhausted existing experiment space. Generate new bounded causal hypotheses for the full current repair queue; no publication authority.",
   "requested_repair_queue": [
-    "hindmoviez"
+    "4khdhub",
+    "allanime",
+    "allwish",
+    "anime-ultime",
+    "animekai",
+    "animesalt",
+    "animesama-co",
+    "animesultra",
+    "animevost-fr",
+    "animevostfr",
+    "flemmix",
+    "mallumv",
+    "moviebox",
+    "moviesmod",
+    "uhdmovies",
+    "vidfast",
+    "yflix"
   ],
-  "retry": 31,
-  "require_deterministic_force": true
+  "retry": 32,
+  "require_deterministic_force": false
 }
