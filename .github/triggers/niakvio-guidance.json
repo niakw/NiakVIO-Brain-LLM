@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "niakvio_sha": "05506deefb90fadbe67d9ae517ee4ce2a3152847",
-  "reason": "Refresh Brain-LLM guidance on current NiakVIO main after Learning exhausted existing experiment space. Generate new bounded causal hypotheses for the full current repair queue; no publication authority.",
+  "reason": "Retry full current NiakVIO repair queue after fixing deterministic preflight: Qwen may be bypassed only when sanitizer proves at least one executable deterministic Force mutation.",
   "requested_repair_queue": [
     "4khdhub",
     "allanime",
@@ -21,6 +21,6 @@
     "vidfast",
     "yflix"
   ],
-  "retry": 32,
+  "retry": 33,
   "require_deterministic_force": false
 }
