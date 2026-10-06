@@ -1,26 +1,10 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "05506deefb90fadbe67d9ae517ee4ce2a3152847",
-  "reason": "Retry full current NiakVIO repair queue after fixing deterministic preflight: Qwen may be bypassed only when sanitizer proves at least one executable deterministic Force mutation.",
+  "niakvio_sha": "f1a37c99d2f20f3eba27803517e4759de9a9e626",
+  "reason": "Representative first: generate one fresh executable Brain-LLM repair hypothesis for Moviebox only after deterministic-preflight bypass fix. No provider manual patch; strict movie+tv proof remains required.",
   "requested_repair_queue": [
-    "4khdhub",
-    "allanime",
-    "allwish",
-    "anime-ultime",
-    "animekai",
-    "animesalt",
-    "animesama-co",
-    "animesultra",
-    "animevost-fr",
-    "animevostfr",
-    "flemmix",
-    "mallumv",
-    "moviebox",
-    "moviesmod",
-    "uhdmovies",
-    "vidfast",
-    "yflix"
+    "moviebox"
   ],
-  "retry": 33,
+  "retry": 34,
   "require_deterministic_force": false
 }
