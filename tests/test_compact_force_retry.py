@@ -3,6 +3,7 @@ import unittest
 
 from niakvio_brain_llm.contracts import RepairRequest
 from niakvio_brain_llm.planner import _compact_wire_schema_for
+from niakvio_brain_llm.planner import _force_unit_for_edit
 from niakvio_brain_llm.planner import _deterministic_complete_line_function_units
 from niakvio_brain_llm.planner import _preserve_selected_function_envelope
 from niakvio_brain_llm.prompting import build_force_prompt_payload
@@ -197,6 +198,58 @@ class CompactForceRetryTest(unittest.TestCase):
             _force_window_kwargs_for_request(retry)["max_units"],
             _force_window_kwargs_for_request(initial)["max_units"],
         )
+
+    def test_preferred_runtime_units_identical_in_prompt_schema_and_converter(self):
+        # Regression for AllAnime: the JSON-wire enum previously read only the
+        # stale fallback runtime, while the prompt and converter preferred the
+        # current materialized template. That rejected a perfectly valid model
+        # unit ID as not existing on current source.
+        preferred = (
+            "function searchTitle(query){const route=searchRoute(query);return route;}\\n"
+            "function resolvePlayer(url){const player=fetchPlayer(url);return player;}\\n"
+        ).replace("\\\\n", "\\n")
+        for feedback in (False, True):
+            observations = (
+                [{"stage": "force_validation_feedback", "reason": "invalid_current_unit_id"}]
+                if feedback else []
+            )
+            request = RepairRequest(
+                provider_id="demo",
+                failure_class="route_proven_gap",
+                allowed_mutations=["provider_bloc"],
+                observations=observations,
+                provider_context={
+                    "preferredRuntimeMutationSource": preferred,
+                    # Deliberately absent fallback: older schema had NO IDs.
+                    "runtimeMutationSource": "",
+                    "runtime_template_prior": {"reuseBeforeNovelBloc": True},
+                    "runtimeMutationFilename": "providers/demo.js",
+                },
+            )
+            policy = {"allow_mutations": True, "allowed_scopes": ["provider_bloc"]}
+            prompt = build_force_prompt_payload(request, {}, policy)
+            prompt_units = prompt["new_bloc_target"]["editable_units"]
+            self.assertGreaterEqual(len(prompt_units), 1, prompt)
+            schema = _compact_wire_schema_for(request, policy)
+            variants = [
+                v for v in schema["properties"]["edit"]["anyOf"]
+                if v.get("properties", {}).get("scope", {}).get("enum") == ["provider_bloc"]
+            ]
+            self.assertEqual(len(variants), 1, schema)
+            schema_ids = variants[0]["properties"]["unit_id"]["enum"]
+            self.assertEqual(schema_ids, [str(u["id"]) for u in prompt_units])
+            self.assertEqual(
+                _force_window_kwargs_for_request(request)["max_chars"],
+                900 if feedback else 1100,
+            )
+            for unit in prompt_units:
+                resolved, _ = _force_unit_for_edit(request, preferred, str(unit["id"]))
+                self.assertEqual(resolved["source"], unit["source"])
+                self.assertEqual(resolved["offset"], unit["offset"])
+                self.assertEqual(
+                    preferred[unit["offset"]:unit["offset"] + len(unit["source"])],
+                    unit["source"],
+                )
 
     def test_compact_wire_schema_requires_scope_specific_fields(self):
         patch_request = RepairRequest(
