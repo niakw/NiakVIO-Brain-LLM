@@ -19,13 +19,17 @@ assert "FIELD_BRAIN_DETERMINISTIC_FORCE_PREFLIGHT_READY" in workflow
 assert "niakvio-force-deterministic.preflight.json" in workflow
 assert 'executable="$(python -c' in workflow
 assert 'ready=false' in workflow
-assert 'if [ "$executable" -eq "$count" ]; then' in workflow
+assert 'if [ "$executable" -eq "$page_count" ]; then' in workflow
+assert 'if [ "$executable" -eq "$count" ]; then' not in workflow
 assert 'if [ "$executable" -gt 0 ]; then' not in workflow
-assert "FIELD_BRAIN_DETERMINISTIC_FORCE_PARTIAL page=$count executable=$executable action=run-model" in workflow
+assert "FIELD_BRAIN_DETERMINISTIC_FORCE_PARTIAL page=$page_count generated=$count executable=$executable action=run-model" in workflow
 assert "FIELD_BRAIN_FORCE_MODEL_BYPASS deterministic=true" in workflow
 # The model bypass is all-provider coverage only; a single deterministic
 # success must never starve the other providers in the requested page.
-assert workflow.index('if [ "$executable" -eq "$count" ]; then') < workflow.index('echo "ready=$ready" >> "$GITHUB_OUTPUT"')
+assert workflow.index('if [ "$executable" -eq "$page_count" ]; then') < workflow.index('echo "ready=$ready" >> "$GITHUB_OUTPUT"')
+assert 'page_count="$(wc -l < "$RUNNER_TEMP/niakvio-guidance-page.txt" | tr -d ' in workflow
+assert 'test "$page_count" -gt 0' in workflow
+assert 'page=$page_count rows=$count executable=$executable' in workflow
 assert "FIELD_BRAIN_FORCE_MODEL_BYPASS deterministic=true" in workflow
 assert "steps.deterministic_force.outputs.ready != 'true'" in workflow
 assert workflow.count("Compile deterministic Force candidates before model") == 1
