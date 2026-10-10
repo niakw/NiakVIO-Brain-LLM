@@ -723,6 +723,21 @@ def _force_window_kwargs_for_request(request: RepairRequest) -> dict[str, int]:
         and str(row.get("stage") or "") == "force_validation_feedback"
         for row in (request.observations or [])
     )
+    context = request.provider_context or {}
+    template_prior = context.get("runtime_template_prior")
+    if (
+        isinstance(template_prior, dict)
+        and template_prior.get("reuseBeforeNovelBloc")
+        and context.get("preferredRuntimeMutationSource")
+        and "provider_bloc" in (request.allowed_mutations or [])
+    ):
+        # Same exact unit budget for prompt, constrained-wire enum and
+        # post-generation converter. Otherwise valid model unit IDs drift.
+        return {
+            "max_chars": 900 if feedback else 1100,
+            "max_windows": 1,
+            "max_units": 2,
+        }
     failure = str(request.failure_class or "").strip().casefold()
     # Route-proven gaps are dominated by one route/search dispatcher plus
     # its strongest selector/parser callee. Keep exactly that causal pair on
@@ -1254,15 +1269,6 @@ def build_force_prompt_payload(
         runtime_template_prior.get("reuseBeforeNovelBloc")
         and context.get("preferredRuntimeMutationSource")
     )
-    if exact_runtime_template:
-        # The materialized provider runtime is already the chosen template.
-        # Give the model only the smallest causal pair instead of asking it to
-        # ingest/reconstruct the larger generator/runtime graph.
-        force_window_kwargs = {
-            "max_chars": 900 if validation_feedback is not None else 1100,
-            "max_windows": 1,
-            "max_units": 2,
-        }
     structural_focus_keywords = _force_structural_focus_keywords(request)
     # Editable units are derived from the full bounded causal windows, but the
     # model does not need those same bytes duplicated verbatim as context.
