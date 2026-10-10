@@ -313,6 +313,8 @@ def main() -> int:
             ("remains ambiguous across causal source windows", "ambiguous_window_occurrence"),
             ("does not occur in any current causal source window", "window_mismatch"),
             ("does not occur in selected source window", "window_mismatch"),
+            ("unit_id is not valid for current source", "invalid_current_unit_id"),
+            ("unit_id must come from editable_units", "invalid_current_unit_id"),
             ("outside request scope", "wrong_scope"),
             ("exact source is unavailable", "missing_source"),
         ):
@@ -500,6 +502,13 @@ def main() -> int:
                     "previous find was not present in the chosen causal window; copy the "
                     "smallest exact current-byte find from one provided window and keep the "
                     "same causal intent, or abstain"
+                ),
+                "invalid_current_unit_id": (
+                    "the previous unit_id does not identify any editable unit in the "
+                    "exact current-source request. Copy one unit_id verbatim from "
+                    "editable_units supplied in THIS prompt, retain its exact scope "
+                    "and edit only its bounded current-source body. Never invent or "
+                    "reuse a historical unit_id; abstain if no suitable current unit exists"
                 ),
                 "ambiguous_window_occurrence": (
                     "previous anchor remained structurally ambiguous; choose a smaller exact "
