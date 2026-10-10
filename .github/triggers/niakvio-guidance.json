@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "d06d4cf6bd7b3fc744b0f1f1d6205fe4d1262fd2",
-  "reason": "Full 16-provider page-by-page repair: never stop FORCE at first provider mutation; reserve bounded 4-hypothesis portfolio for every requested provider, route exhausted executed families through Qwen, bypass only on complete-page deterministic coverage, validate bytes and correct terminal playback in NiakVIO.",
+  "niakvio_sha": "5e57590c78e7270fc1c5cfce774d660d6609370e",
+  "reason": "2026-10-10 retry: all 16 current RepairQueue on corrected Brain/Brain-LLM. 9-provider page must require 9 executable deterministic candidates before bypassing Qwen, run each provider's bounded FORCE portfolio, retain source-pinned documentation-safe guidance evidence, correct invalid current editable unit IDs; acceptance only on executed source and identity-correct playable terminal.",
   "requested_repair_queue": [
     "4khdhub",
     "allanime",
@@ -20,6 +20,6 @@
     "vidfast",
     "yflix"
   ],
-  "retry": 38,
+  "retry": 39,
   "require_deterministic_force": false
 }
