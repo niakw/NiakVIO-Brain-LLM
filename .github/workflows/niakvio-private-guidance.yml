@@ -354,8 +354,15 @@ jobs:
               --niakvio-sha "${{ steps.source.outputs.sha }}" \
               --brain-llm-sha "$brain_sha"; then
               executable="$(python -c 'import json,sys; print(int(json.load(open(sys.argv[1])).get("providerCount") or 0))' "$RUNNER_TEMP/niakvio-force-deterministic.preflight.json")"
-              if [ "$executable" -gt 0 ]; then
+              # A single deterministic candidate must not suppress Qwen
+              # for the rest of the page. Skip the model only when ALL exact
+              # requested providers have executable, sanitized candidates.
+              # providerCount is unique and the preflight only receives
+              # providers from niakvio-guidance-page.txt.
+              if [ "$executable" -eq "$count" ]; then
                 ready=true
+              else
+                echo "FIELD_BRAIN_DETERMINISTIC_FORCE_PARTIAL page=$count executable=$executable action=run-model"
               fi
             fi
           fi
