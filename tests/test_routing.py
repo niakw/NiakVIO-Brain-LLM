@@ -204,6 +204,57 @@ class RoutingTests(unittest.TestCase):
         self.assertEqual(decision.strategy, "search_detail_player_terminal_traversal")
         self.assertEqual(decision.allowed_mutations, [])
 
+    def test_executed_advisor_family_debt_escalates_to_model(self):
+        history = [{
+            "profile": "proven_route_terminal_traversal_v1",
+            "llmAdvisorExperimentFingerprint": f"{index:064x}",
+            "consecutiveFailures": 1,
+            "lastOutcome": "rejected",
+            "executionObserved": True,
+        } for index in (1, 2, 3)]
+        request = RepairRequest(
+            provider_id="demo",
+            failure_class="route_proven_gap",
+            status="ROUTE PROVEN",
+            advisor_only=True,
+            provider_context={"advisor_experiment_history": history},
+        )
+        decision = route_request(request)
+        self.assertEqual(decision.mode, "llm_repair")
+        self.assertTrue(decision.requires_llm)
+        self.assertEqual(decision.target_layer, "provider")
+        self.assertEqual(decision.allowed_mutations, [])
+
+    def test_unexecuted_legacy_and_duplicate_experiments_do_not_force_model(self):
+        history = [{
+            "profile": "proven_route_terminal_traversal_v1",
+            "llmAdvisorExperimentFingerprint": "a" * 64,
+            "consecutiveFailures": 3,
+            "lastOutcome": "rejected",
+            "executionObserved": True,
+        }] * 4
+        history.extend([{
+            "profile": "proven_route_terminal_traversal_v1",
+            "llmAdvisorExperimentFingerprint": f"{index:064x}",
+            "consecutiveFailures": 1,
+            "lastOutcome": "rejected",
+            "executionObserved": False,
+        } for index in (2, 3, 4)])
+        history.append({
+            "profile": "chain_terminal_extractor_v1",
+            "llmAdvisorExperimentFingerprint": "f" * 64,
+            "consecutiveFailures": 9,
+            "lastOutcome": "rejected",
+            "executionObserved": True,
+        })
+        decision = route_request(RepairRequest(
+            provider_id="demo", failure_class="route_proven_gap",
+            status="ROUTE PROVEN", advisor_only=True,
+            provider_context={"advisor_experiment_history": history},
+        ))
+        self.assertEqual(decision.mode, "deterministic_advisor")
+        self.assertFalse(decision.requires_llm)
+
     def test_advisor_only_candidate_replay_gets_bounded_experiment(self):
         decision = route_request(
             RepairRequest(
