@@ -223,7 +223,8 @@ jobs:
           brain_sha="$(git -C brain rev-parse HEAD)"
           echo "brain_sha=$brain_sha" >> "$GITHUB_OUTPUT"
           python brain/scripts/select_niakvio_guidance_page.py \
-            --targets "$RUNNER_TEMP/niakvio-guidance-family-wave.txt" \
+            --targets "$RUNNER_TEMP/niakvio-guidance-targets.txt" \
+            --priority-targets "$RUNNER_TEMP/niakvio-guidance-family-wave.txt" \
             "${previous_args[@]}" \
             --source-sha "${{ steps.source.outputs.sha }}" \
             --brain-sha "$brain_sha" \

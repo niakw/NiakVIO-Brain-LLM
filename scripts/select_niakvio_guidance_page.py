@@ -41,6 +41,7 @@ def select(
     source_sha:str,
     brain_sha:str,
     page_size:int,
+    priority:list[str]|None=None,
 )->tuple[list[str],dict[str,Any]]:
     source_sha=source_sha.strip().casefold()
     brain_sha=brain_sha.strip().casefold()
@@ -64,7 +65,19 @@ def select(
     }
     cycle=(previous_cycle+1) if restart_cycle else max(1,previous_cycle or 1)
     remaining=[v for v in requested if v not in completed]
-    page=remaining[:max(1,min(int(page_size or 1),12))]
+    # Prioritize one evidence-rich witness per failure family without shrinking
+    # the authority cohort. Every remaining sibling still receives its own
+    # model hypothesis / observation / playback verification in later pages.
+    remaining_set=set(remaining)
+    prioritized=[]
+    seen_priority=set()
+    for raw in priority or []:
+        p=canon(raw)
+        if p in remaining_set and p not in seen_priority:
+            prioritized.append(p)
+            seen_priority.add(p)
+    ordered=prioritized+[v for v in remaining if v not in seen_priority]
+    page=ordered[:max(1,min(int(page_size or 1),12))]
     completed.update(page)
     remaining_after=[v for v in requested if v not in completed]
     state={
@@ -91,6 +104,7 @@ def main()->int:
     p=argparse.ArgumentParser()
     p.add_argument("--targets",type=Path,required=True)
     p.add_argument("--previous-state",type=Path)
+    p.add_argument("--priority-targets",type=Path,help="Representative IDs to prioritize, never filter the cohort")
     p.add_argument("--source-sha",required=True)
     p.add_argument("--brain-sha",required=True)
     p.add_argument("--page-size",type=int,default=8)
@@ -103,6 +117,7 @@ def main()->int:
         source_sha=a.source_sha,
         brain_sha=a.brain_sha,
         page_size=a.page_size,
+        priority=target_list(a.priority_targets) if a.priority_targets else None,
     )
     a.page_output.parent.mkdir(parents=True,exist_ok=True)
     a.state_output.parent.mkdir(parents=True,exist_ok=True)

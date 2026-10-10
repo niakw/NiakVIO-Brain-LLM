@@ -14,6 +14,10 @@ def load_module(name,path):
 
 
 page=load_module("page",Path("scripts/select_niakvio_guidance_page.py"))
+WORKFLOW=(ROOT/".github/workflows/niakvio-private-guidance.yml").read_text(encoding="utf-8")
+page_step=WORKFLOW.split("      - name: Select fair bounded guidance page",1)[1].split("      - name:",1)[0]
+assert '--targets "$RUNNER_TEMP/niakvio-guidance-targets.txt"' in page_step, "full cohort cannot be reduced to representatives"
+assert '--priority-targets "$RUNNER_TEMP/niakvio-guidance-family-wave.txt"' in page_step
 merge=load_module("merge",Path("scripts/merge_niakvio_guidance_page.py"))
 
 
@@ -54,6 +58,46 @@ class GuidancePagingTests(unittest.TestCase):
         self.assertTrue(state["complete"])
         self.assertEqual(state["processedCount"],250)
         self.assertEqual(state["remainingProviders"],[])
+
+    def test_family_representatives_are_priority_not_an_exclusion_filter(self):
+        requested=[f"p{i:02d}" for i in range(17)]
+        witness=["p08","p14","p03","p01"]
+        first,state=page.select(
+            requested,{},source_sha="a"*40,brain_sha="b"*40,
+            page_size=9,priority=witness,
+        )
+        self.assertEqual(first[:4],witness)
+        self.assertEqual(len(first),9)
+        self.assertEqual(state["requestedProviders"],requested)
+        self.assertEqual(state["remainingCount"],8)
+        self.assertFalse(state["complete"])
+        second,state=page.select(
+            requested,state,source_sha="a"*40,brain_sha="b"*40,
+            page_size=9,priority=["p02","p03","p08"],
+        )
+        self.assertEqual(len(second),8)
+        self.assertEqual(set(first+second),set(requested))
+        self.assertEqual(len(set(first+second)),17)
+        self.assertTrue(state["complete"])
+        self.assertEqual(state["remainingProviders"],[])
+
+    def test_priority_cannot_add_out_of_cohort_and_keeps_large_scale(self):
+        requested=[f"provider-{i:04d}" for i in range(800)]
+        pri=["outside-cohort","provider-0799","provider-0001"]
+        state={}
+        visited=[]
+        for _ in range(67):
+            batch,state=page.select(
+                requested,state,source_sha="a"*40,brain_sha="b"*40,
+                page_size=12,priority=pri,
+            )
+            visited.extend(batch)
+            if state["complete"]:
+                break
+        self.assertEqual(visited[:2],["provider-0799","provider-0001"])
+        self.assertEqual(len(visited),800)
+        self.assertEqual(len(set(visited)),800)
+        self.assertTrue(state["complete"])
 
     def test_completed_explicit_cohort_starts_new_cycle(self):
         requested=["a","b","c"]
