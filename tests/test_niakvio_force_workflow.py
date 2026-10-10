@@ -95,3 +95,25 @@ assert '-f brain_sha="$(git -C brain rev-parse HEAD)"' not in workflow
 assert "FIELD_NIAKVIO_GUIDANCE_TRIGGER_ONLY_ADVANCE" in workflow
 assert 'advanced_path" != ".github/triggers/niakvio-guidance.json"' in workflow
 assert 'git -C brain diff --name-only "$candidate_brain..$current_main"' in workflow
+
+
+import subprocess
+
+guard_start = workflow.index('if [ "$advanced_path" != ".github/triggers/niakvio-guidance.json" ]')
+guard_end = workflow.index("\n                  fi", guard_start) + len("\n                  fi")
+guard = workflow[guard_start:guard_end]
+for advanced_path, expected in (
+    ("MEMORY.md", "true"),
+    ("docs/LLM_ROUTING.md", "true"),
+    (".github/triggers/niakvio-guidance.json", "true"),
+    ("src/niakvio_brain_llm/routing.py", "false"),
+    (".github/workflows/niakvio-private-guidance.yml", "false"),
+    ("tests/test_routing.py", "false"),
+    ("config/model.json", "false"),
+):
+    output = subprocess.run(
+        ["bash", "-c", 'advanced_path="$1"; trigger_only_advance=true; '
+         + guard + '; printf "%s" "$trigger_only_advance"', "bash", advanced_path],
+        capture_output=True, text=True, check=True, timeout=5,
+    )
+    assert output.stdout == expected, (advanced_path, output.stdout, output.stderr)
