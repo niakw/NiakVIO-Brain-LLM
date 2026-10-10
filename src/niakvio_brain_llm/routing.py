@@ -95,7 +95,7 @@ def _exhausted_executed_advisor_family(request: RepairRequest, strategy: str) ->
         if _canon(row.get("lastOutcome")) in {"accepted", "verified", "success"}:
             continue
         fingerprint = str(row.get("llmAdvisorExperimentFingerprint") or "").strip().casefold()
-        if len(fingerprint) == 64 and all(c in "0123456789abcdef" for c in fingerprint):
+        if len(fingerprint) == 64 and all(c.isdigit() or c in "abcdef" for c in fingerprint):
             fingerprints.add(fingerprint)
             if len(fingerprints) >= 3:
                 return True
