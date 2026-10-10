@@ -98,6 +98,52 @@ class OrchestratorTests(unittest.TestCase):
         self.assertNotEqual(experiment_fingerprint(outcome.proposal.experiment), first_fp)
         self.assertTrue(outcome.proposal.experiment["session_bootstrap"])
 
+    def test_exhausted_advisor_calls_model_without_provider_mutation(self):
+        from niakvio_brain_llm.advisor_experiments import next_advisor_experiment
+        initial = RepairRequest(
+            provider_id="demo", failure_class="route_proven_gap",
+            status="ROUTE PROVEN", advisor_only=True,
+        )
+        experiment = next_advisor_experiment(
+            initial, "search_detail_player_terminal_traversal"
+        )
+        # Real recorded failures from three distinct executed advisor hypotheses.
+        history = [{
+            "profile": "proven_route_terminal_traversal_v1",
+            "llmAdvisorExperimentFingerprint": f"{index:064x}",
+            "consecutiveFailures": 1,
+            "lastOutcome": "rejected",
+            "executionObserved": True,
+        } for index in (1, 2, 3)]
+        class TracedModel:
+            calls = 0
+            def complete(self, **kwargs):
+                self.calls += 1
+                assert "response_schema" in kwargs
+                return json.dumps({
+                    "provider_id": "demo",
+                    "strategy": "search_detail_player_terminal_traversal",
+                    "confidence": 0.96,
+                    "target_layer": "provider",
+                    "experiment": experiment,
+                    "abstain": False,
+                    "abstain_reason": "",
+                })
+
+        backend = TracedModel()
+        outcome = BrainOrchestrator(BrainPlanner(backend)).run(RepairRequest(
+            provider_id="demo", failure_class="route_proven_gap",
+            status="ROUTE PROVEN", advisor_only=True,
+            allowed_mutations=["provider_patch"],
+            provider_context={"advisor_experiment_history": history},
+        ))
+        self.assertEqual(outcome.routing.mode, "llm_repair")
+        self.assertEqual(backend.calls, 1)
+        self.assertIsNotNone(outcome.proposal)
+        self.assertEqual(outcome.proposal.provider_id, "demo")
+        self.assertEqual(outcome.proposal.mutations, [])
+        self.assertEqual(outcome.proposal.experiment, experiment)
+
     def test_family_replay_recompiles_without_llm(self):
         runtime = r'''function classBlocks(html,cls){var esc=cls,re=new RegExp("<div\\b[^>]*class=[\"'][^\"']*\\b"+esc+"\\b[^\"']*[\"'][^>]*>","gi"),starts=[],m;while((m=re.exec(html||""))!==null)starts.push({at:m.index,tag:m[0]});var out=[];for(var i=0;i<starts.length;i++){var end=i+1<starts.length?starts[i+1].at:Math.min(String(html||"").length,starts[i].at+12000);out.push({html:String(html||"").slice(starts[i].at,end),tag:starts[i].tag})}return out}'''
         source = (
