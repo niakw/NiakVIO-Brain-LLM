@@ -599,7 +599,13 @@ jobs:
               if [ "${#advanced_paths[@]}" -gt 0 ]; then
                 trigger_only_advance=true
                 for advanced_path in "${advanced_paths[@]}"; do
-                  if [ "$advanced_path" != ".github/triggers/niakvio-guidance.json" ]; then
+                  # Long Qwen pages are still source-pinned. Documentation
+                  # advances cannot change compiled Brain behavior, and must
+                  # not discard hours of sandbox-negative evidence. Any
+                  # executable/workflow/config/test change still fails closed.
+                  if [ "$advanced_path" != ".github/triggers/niakvio-guidance.json" ] \
+                     && [ "$advanced_path" != "MEMORY.md" ] \
+                     && [[ "$advanced_path" != docs/* ]]; then
                     trigger_only_advance=false
                     break
                   fi
