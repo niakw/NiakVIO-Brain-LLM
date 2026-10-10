@@ -24,6 +24,14 @@ Invoke the local model only when reasoning adds value:
 - historical experiences disagree or only partially transfer;
 - the previous verified attempt failed and a genuinely new hypothesis is required.
 
+## Executed-negative exhaustion and cohort-wide model access (October 2026)
+
+Known high-confidence taxonomy remains a useful initial deterministic route, but it is **not a licence to try every combination of abstract knobs indefinitely**. For `advisor_only` requests, three *distinct* failed experiment fingerprints with `executionObserved=true`, `consecutiveFailures>0` and the **same executor profile** route to `llm_repair` instead of additional generic permutations. Legacy unexecuted rows, duplicates, successes and other profiles never count towards the threshold. The model still has `allowed_mutations=[]` in advisor mode; it supplies hypotheses, not directly publishable code or proof.
+
+Private guidance's deterministic FORCE preflight may bypass Qwen **only when all providers on the current exact guidance page have sanitized executable candidates** (`executable == page_count`). A partial page must continue through the model path for unresolved work; otherwise one deterministic candidate would starve all its siblings. Selection of one representative per failure family is prioritization, not filtering: all requested providers remain tracked across pages and source/Brain SHAs.
+
+These routing improvements are tested in the Brain-LLM CI (264 tests, privacy audit) and are **not** a claim of provider functionality. Acceptance requires NiakVIO to compile/validate the generated program, apply it to the exact current source, rematerialize and inspect executed bytes, replay the correct title/episode to terminal playable media, run non-regression and persist outcome fingerprints.
+
 ## Expected scaling
 
 For hundreds of providers:
