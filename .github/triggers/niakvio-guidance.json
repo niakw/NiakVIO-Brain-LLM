@@ -1,10 +1,26 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "f1a37c99d2f20f3eba27803517e4759de9a9e626",
-  "reason": "Representative first: generate one fresh executable Brain-LLM repair hypothesis for Moviebox only after deterministic-preflight bypass fix. No provider manual patch; strict movie+tv proof remains required.",
+  "niakvio_sha": "15cada89cc1191a4744ccb3fda6651051cfd118e",
+  "reason": "2026-10-10 whole 17 RepairQueue Brain-LLM escalation: all causal failure families, no single-provider guidance starvation; generate executable hypotheses as non-authoritative priors; current-byte playback proof required before any publication.",
   "requested_repair_queue": [
-    "moviebox"
+    "4khdhub",
+    "allanime",
+    "allwish",
+    "anime-ultime",
+    "animekai",
+    "animesalt",
+    "animesama-co",
+    "animesultra",
+    "animevost-fr",
+    "animevostfr",
+    "flemmix",
+    "mallumv",
+    "moviebox",
+    "moviesmod",
+    "uhdmovies",
+    "vidfast",
+    "yflix"
   ],
-  "retry": 34,
+  "retry": 35,
   "require_deterministic_force": false
 }
