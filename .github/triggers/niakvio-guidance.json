@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "24f7a92aa9dc0cc87737e06eff31adfc202533c4",
-  "reason": "2026-10-10 current exact 16 repairQueue, novelty-aware Qwen advisor after three executed negatives, deterministic FORCE bypass only on full-page coverage; do not count generated advice as repair without compiled/applied playable identity proof.",
+  "niakvio_sha": "d06d4cf6bd7b3fc744b0f1f1d6205fe4d1262fd2",
+  "reason": "Full 16-provider page-by-page repair: never stop FORCE at first provider mutation; reserve bounded 4-hypothesis portfolio for every requested provider, route exhausted executed families through Qwen, bypass only on complete-page deterministic coverage, validate bytes and correct terminal playback in NiakVIO.",
   "requested_repair_queue": [
     "4khdhub",
     "allanime",
@@ -20,6 +20,6 @@
     "vidfast",
     "yflix"
   ],
-  "retry": 37,
+  "retry": 38,
   "require_deterministic_force": false
 }
