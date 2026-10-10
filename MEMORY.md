@@ -1,3 +1,10 @@
+## 2026-10-10 — Real advisor exhaustion must reach Qwen, not 24 more knob rotations
+
+- In NiakVIO Learning `38064727894` (pinned advisor `2ac7ed09`), the model routing summary reported **11 deterministic advisors and 0 LLM calls**, even though the live repair memory already holds three or more distinct failed executed fingerprints for multiple provider/strategy families. `routing.py` kept selecting another combinatorial experiment from `advisor_experiments._generic_variants` (24 permutations). This was a Brain-LLM routing inefficiency, not a directly proven provider-specific code problem.
+- Brain-only commit `f3036a03` adds a per-strategy, provider-local *executed-evidence* exhaustion gate: after >=3 distinct SHA256 advisor experiment fingerprints from failed, `executionObserved=true` samples on the same known executor profile, escalate `advisor_only` to `llm_repair`, with `allowed_mutations=[]` (advisory only). Historical, unexecuted, duplicate or unrelated-profile negatives do not count, and healthy/NO PROOF/harness precedence remains intact. This is not automatic provider publication.
+- Commit `4dba0502` tests both true exhaustion and negative counterexamples. First CI `38067942482` ran **261 tests green** but failed on the public privacy scanner's ten-consecutive-digit false positive in a hardcoded hex alphabet. Commit `6289f203` uses `c.isdigit() or c in "abcdef"` (same validation) to avoid this privacy false positive. **Brain LLM CI `38068006729` on `6289f203`: SUCCESS; 263 tests, privacy audit OK.**
+- Existing full-16 FORCE `38066889059` was already started on NiakVIO SHA `64ed44fd` and pinned the **older** advisor revision before this new commit; its result must never be attributed to `6289f203`. Next fresh Learning/Repair must resolve and pin new Brain LLM main SHA and prove model-call route, genuinely novel executable strategy, compilation, application, exact bytes, correct title/episode terminal playback and persistent negative/positive memory.
+
 # NiakVIO Brain LLM — Durable Memory
 
 ## 2026-10-10 — Recover all-17 model guidance and non-starving family-first pages
