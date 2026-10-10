@@ -1,0 +1,163 @@
+{
+  "brainLlmSha": "2ac7ed09206fa880b73fec140ff3f03f2e85975a",
+  "privateContentRetained": false,
+  "proofAuthority": false,
+  "providerCount": 9,
+  "publicationAuthority": false,
+  "rows": [
+    {
+      "abstain": true,
+      "failureClass": "route_proven_gap",
+      "mutationScopes": [],
+      "ok": false,
+      "providerId": "4khdhub",
+      "scopeTrace": [
+        {
+          "errorType": "TimeoutError",
+          "outcome": "rejected",
+          "reason": "timeouterror",
+          "scope": "provider_bloc"
+        }
+      ],
+      "status": "ROUTE_PROVEN"
+    },
+    {
+      "abstain": true,
+      "failureClass": "chain_terminal_gap",
+      "mutationScopes": [],
+      "ok": false,
+      "providerId": "allanime",
+      "scopeTrace": [
+        {
+          "errorType": "TimeoutError",
+          "outcome": "rejected",
+          "reason": "timeouterror",
+          "scope": "provider_bloc"
+        }
+      ],
+      "status": "CHAIN_REACHED"
+    },
+    {
+      "abstain": true,
+      "failureClass": "provider_transport_gap",
+      "mutationScopes": [],
+      "ok": true,
+      "providerId": "allwish",
+      "scopeTrace": [
+        {
+          "outcome": "abstain",
+          "reason": "unspecified",
+          "scope": "provider_patch"
+        },
+        {
+          "outcome": "abstain",
+          "reason": "unspecified",
+          "scope": "provider_bloc"
+        }
+      ],
+      "status": "NO_PROOF"
+    },
+    {
+      "abstain": true,
+      "failureClass": "candidate_replay_gap",
+      "mutationScopes": [],
+      "ok": true,
+      "providerId": "animesama-co",
+      "scopeTrace": [
+        {
+          "outcome": "abstain",
+          "reason": "unspecified",
+          "scope": "provider_patch"
+        },
+        {
+          "outcome": "abstain",
+          "reason": "unspecified",
+          "scope": "provider_bloc"
+        }
+      ],
+      "status": "CANDIDATE_OK"
+    },
+    {
+      "abstain": true,
+      "failureClass": "variant_coverage_gap",
+      "mutationScopes": [],
+      "ok": false,
+      "providerId": "animevostfr",
+      "scopeTrace": [
+        {
+          "errorType": "TimeoutError",
+          "outcome": "rejected",
+          "reason": "timeouterror",
+          "scope": "provider_bloc"
+        }
+      ],
+      "status": "CANDIDATE_OK"
+    },
+    {
+      "abstain": true,
+      "failureClass": "route_proven_gap",
+      "mutationScopes": [],
+      "ok": false,
+      "providerId": "flemmix",
+      "scopeTrace": [
+        {
+          "errorType": "TimeoutError",
+          "outcome": "rejected",
+          "reason": "timeouterror",
+          "scope": "provider_bloc"
+        }
+      ],
+      "status": "ROUTE_PROVEN"
+    },
+    {
+      "abstain": true,
+      "failureClass": "chain_terminal_gap",
+      "mutationScopes": [],
+      "ok": false,
+      "providerId": "mallumv",
+      "scopeTrace": [
+        {
+          "errorType": "TimeoutError",
+          "outcome": "rejected",
+          "reason": "timeouterror",
+          "scope": "provider_bloc"
+        }
+      ],
+      "status": "CHAIN_REACHED"
+    },
+    {
+      "abstain": true,
+      "failureClass": "route_proven_gap",
+      "mutationScopes": [],
+      "ok": false,
+      "providerId": "moviebox",
+      "scopeTrace": [
+        {
+          "errorType": "ValueError",
+          "outcome": "rejected",
+          "reason": "no_op",
+          "scope": "provider_bloc"
+        }
+      ],
+      "status": "ROUTE_PROVEN"
+    },
+    {
+      "abstain": true,
+      "failureClass": "route_proven_gap",
+      "mutationScopes": [],
+      "ok": false,
+      "providerId": "moviesmod",
+      "scopeTrace": [
+        {
+          "errorType": "ValueError",
+          "outcome": "rejected",
+          "reason": "no_op",
+          "scope": "provider_bloc"
+        }
+      ],
+      "status": "ROUTE_PROVEN"
+    }
+  ],
+  "schemaVersion": 1,
+  "sourceNiakvioSha": "a7de44a703d3a95cb279acb0dc9e488d89ea0b5a"
+}
