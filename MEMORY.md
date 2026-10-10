@@ -1,3 +1,8 @@
+## 2026-10-10 — End-to-end model-call regression for exhausted advisor
+
+- Commit `63d92f83` adds `test_exhausted_advisor_calls_model_without_provider_mutation`: a same-executor three-distinct-executed-negative history routes to `llm_repair`, invokes the backend exactly once through `BrainOrchestrator.run`, retains exact strategy/provider identity, and returns **zero mutations** even when the request nominally lists provider_patch. This validates routing-to-actual-model invocation rather than only inspecting a routing flag.
+- **Brain LLM CI `38068191061` SUCCESS on `63d92f83`**, with **264 unittest successes** and public-repository privacy audit **OK**. This is a model-call integration test using a stubbed backend; not yet a live Qwen generation or provider-playback proof. Preserve the distinction from existing Learning `38066889059` started on older Brain-LLM revision.
+
 ## 2026-10-10 — Real advisor exhaustion must reach Qwen, not 24 more knob rotations
 
 - In NiakVIO Learning `38064727894` (pinned advisor `2ac7ed09`), the model routing summary reported **11 deterministic advisors and 0 LLM calls**, even though the live repair memory already holds three or more distinct failed executed fingerprints for multiple provider/strategy families. `routing.py` kept selecting another combinatorial experiment from `advisor_experiments._generic_variants` (24 permutations). This was a Brain-LLM routing inefficiency, not a directly proven provider-specific code problem.
