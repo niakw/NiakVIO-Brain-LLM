@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "15cada89cc1191a4744ccb3fda6651051cfd118e",
-  "reason": "2026-10-10 whole 17 RepairQueue Brain-LLM escalation: all causal failure families, no single-provider guidance starvation; generate executable hypotheses as non-authoritative priors; current-byte playback proof required before any publication.",
+  "niakvio_sha": "a7de44a703d3a95cb279acb0dc9e488d89ea0b5a",
+  "reason": "2026-10-10 exact current 17 RepairQueue full-cohort pages with one causal-family witness prioritized but NO sibling dropped; Brain generated evidence only, current-byte playable proof required before accepting repair.",
   "requested_repair_queue": [
     "4khdhub",
     "allanime",
@@ -21,6 +21,6 @@
     "vidfast",
     "yflix"
   ],
-  "retry": 35,
+  "retry": 36,
   "require_deterministic_force": false
 }
