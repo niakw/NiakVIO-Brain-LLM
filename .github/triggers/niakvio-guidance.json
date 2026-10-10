@@ -1,12 +1,11 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "a7de44a703d3a95cb279acb0dc9e488d89ea0b5a",
-  "reason": "2026-10-10 exact current 17 RepairQueue full-cohort pages with one causal-family witness prioritized but NO sibling dropped; Brain generated evidence only, current-byte playable proof required before accepting repair.",
+  "niakvio_sha": "24f7a92aa9dc0cc87737e06eff31adfc202533c4",
+  "reason": "2026-10-10 current exact 16 repairQueue, novelty-aware Qwen advisor after three executed negatives, deterministic FORCE bypass only on full-page coverage; do not count generated advice as repair without compiled/applied playable identity proof.",
   "requested_repair_queue": [
     "4khdhub",
     "allanime",
     "allwish",
-    "anime-ultime",
     "animekai",
     "animesalt",
     "animesama-co",
@@ -21,6 +20,6 @@
     "vidfast",
     "yflix"
   ],
-  "retry": 36,
+  "retry": 37,
   "require_deterministic_force": false
 }
