@@ -80,3 +80,39 @@ assert "FIELD_BRAIN_ADVISOR_RETRY" in source
 assert "retry_tokens = max(256, min(768, int(args.max_tokens) * 2))" in source
 assert "retry_timeout = max(60, min(180, int(args.timeout_seconds) + 60))" in source
 assert "retry_orchestrator.run(request, compact_force=False)" in source
+
+
+# The exact observed AllAnime failure must be classified as a retryable,
+# current-byte unit selection error rather than an opaque ValueError. Execute
+# the actual helper's AST without running the CLI or requiring a model.
+import ast
+from pathlib import Path
+import copy
+
+_source_tree = ast.parse(source)
+_reject_helper = next(
+    node for node in ast.walk(_source_tree)
+    if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+    and node.name == "_force_rejection_reason"
+)
+_helper_ns = {}
+exec(
+    compile(
+        ast.fix_missing_locations(ast.Module(
+            body=[copy.deepcopy(_reject_helper)],
+            type_ignores=[],
+        )),
+        "<isolated-force-rejection-reason>",
+        "exec",
+    ),
+    _helper_ns,
+)
+assert _helper_ns["_force_rejection_reason"](
+    ValueError("compact Force unit_id is not valid for current source")
+) == "invalid_current_unit_id"
+assert _helper_ns["_force_rejection_reason"](
+    ValueError("compact Force unit_id must come from editable_units")
+) == "invalid_current_unit_id"
+assert '"invalid_current_unit_id": (' in source
+assert "Copy one unit_id verbatim from " in source
+assert "Never invent or " in source
