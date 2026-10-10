@@ -729,7 +729,6 @@ def _force_window_kwargs_for_request(request: RepairRequest) -> dict[str, int]:
         isinstance(template_prior, dict)
         and template_prior.get("reuseBeforeNovelBloc")
         and context.get("preferredRuntimeMutationSource")
-        and "provider_bloc" in (request.allowed_mutations or [])
     ):
         # Same exact unit budget for prompt, constrained-wire enum and
         # post-generation converter. Otherwise valid model unit IDs drift.
