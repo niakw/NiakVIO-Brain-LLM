@@ -1,5 +1,9 @@
 # Architecture
 
+## Family-first prioritization without cohort truncation
+
+For hundreds of hub providers, the Brain-LLM guidance request has **two distinct scopes**: (a) the authoritative full list of current RepairQueue/variant-debt providers, and (b) a prioritized witness from each unresolved causal family. The witness list changes **order** only; it never filters the authoritative request set. `select_niakvio_guidance_page.py` tracks all requested providers across exact NiakVIO/Brain SHAs, with bounded 1–12 provider pages and automatic continuation. Even an unadvised/abstained provider must remain visible as processed but unvalidated. A validated family pattern can be proposed across siblings, but every sibling still needs its own current-byte playback/identity proof. External guidance is explicitly prior-only; it cannot publish a provider or upgrade the census.
+
 ## Ownership
 
 ### NiakVIO
