@@ -30,6 +30,8 @@ Known high-confidence taxonomy remains a useful initial deterministic route, but
 
 Private guidance's deterministic FORCE preflight may bypass Qwen **only when all providers on the current exact guidance page have sanitized executable candidates** (`executable == page_count`). A partial page must continue through the model path for unresolved work; otherwise one deterministic candidate would starve all its siblings. Selection of one representative per failure family is prioritization, not filtering: all requested providers remain tracked across pages and source/Brain SHAs.
 
+The FORCE generator's `--stop-after-first-mutation` switch is a **whole-batch early exit**. It is prohibited in full-cohort `niakvio-private-guidance.yml`, which must iterate every selected provider in every guidance page with bounded per-provider portfolios. The switch remains opt-in for explicitly quick/single-result experiments only. Otherwise, one provider's first candidate would defer all siblings without ever invoking their Brain synthesis.
+
 These routing improvements are tested in the Brain-LLM CI (264 tests, privacy audit) and are **not** a claim of provider functionality. Acceptance requires NiakVIO to compile/validate the generated program, apply it to the exact current source, rematerialize and inspect executed bytes, replay the correct title/episode to terminal playable media, run non-regression and persist outcome fingerprints.
 
 ## Expected scaling
