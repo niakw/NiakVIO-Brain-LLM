@@ -62,7 +62,9 @@ assert "An explicit manual input or trigger cohort is exact" in workflow
 assert "neither current repairQueue nor static/dynamic variant coverage debt" in workflow
 assert '"${provider_args[@]}"' in workflow
 assert "FIELD_NIAKVIO_FORCE_MUTATIONS_READY ready=false" in workflow
-force_command = workflow.index("--mode repair \\\n            --max-hypotheses 4 \\\n            --stop-after-first-mutation \\\n            \"${provider_args[@]}\" \\\n            --endpoint")
+force_command = workflow.index("--mode repair \\\n            --max-hypotheses 4 \\\n            \"${provider_args[@]}\" \\\n            --endpoint")
+assert '--stop-after-first-mutation \\' not in workflow, "multi-provider FORCE would silently stop after first candidate"
+assert "Each provider retains its independent bounded FORCE budget." in workflow
 advisor_command = workflow.index("--mode brain \\\n            \"${provider_args[@]}\" \\\n            --endpoint")
 assert force_command < advisor_command
 
