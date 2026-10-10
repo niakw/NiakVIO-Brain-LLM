@@ -63,6 +63,45 @@ def _validated_family_mechanism(request: RepairRequest, experiences: list[dict[s
 
 
 
+# An executor that has failed three DISTINCT, observed advisor experiments
+# needs new model reasoning, not another combinatorial knob rotation. Count
+# only same-executor failed fingerprints: historical or unexecuted proposals
+# have no authority to exhaust deterministic hypothesis space.
+_ADVISOR_PROFILE_BY_STRATEGY = {
+    "provider-owned-origin-header-and-domain-replay": "provider_origin_failover_v1",
+    "search-detail-player-terminal-traversal": "proven_route_terminal_traversal_v1",
+    "terminal-media-extractor-with-playback-validation": "chain_terminal_extractor_v1",
+    "same-provider-candidate-program-replay": "retained_candidate_replay_v1",
+    "proven-request-program-and-terminal-extraction": "player_media_extractor_v1",
+    "discover-api-from-current-page-and-bundles": "search_contract_inference_v1",
+}
+
+
+def _exhausted_executed_advisor_family(request: RepairRequest, strategy: str) -> bool:
+    profile = _ADVISOR_PROFILE_BY_STRATEGY.get(_canon(strategy))
+    history = (request.provider_context or {}).get("advisor_experiment_history")
+    if not profile or not isinstance(history, list):
+        return False
+    fingerprints: set[str] = set()
+    for row in history:
+        if not isinstance(row, dict):
+            continue
+        if _canon(row.get("profile")) != profile.replace("_", "-"):
+            continue
+        if row.get("executionObserved") is not True:
+            continue
+        if int(row.get("consecutiveFailures") or 0) <= 0:
+            continue
+        if _canon(row.get("lastOutcome")) in {"accepted", "verified", "success"}:
+            continue
+        fingerprint = str(row.get("llmAdvisorExperimentFingerprint") or "").strip().casefold()
+        if len(fingerprint) == 64 and all(c in "0123456789abcdef" for c in fingerprint):
+            fingerprints.add(fingerprint)
+            if len(fingerprints) >= 3:
+                return True
+    return False
+
+
 def route_request(
     request: RepairRequest,
     store: ExperienceStore | None = None,
@@ -174,6 +213,17 @@ def route_request(
     # provider-local negative memory; invoke Qwen only after that bounded
     # experiment space is exhausted or causality itself is ambiguous.
     if request.advisor_only and confidence >= 0.90 and strategy:
+        if _exhausted_executed_advisor_family(request, strategy):
+            return RoutingDecision(
+                mode="llm_repair",
+                reason="three distinct current-executor experiments failed in real replay; generate a new causal hypothesis",
+                target_layer=layer,
+                strategy=strategy,
+                prior_confidence=confidence,
+                requires_llm=True,
+                allowed_mutations=[],
+                next_actions=["synthesize new evidence-driven advisor experiment", "retain exact failed fingerprints"],
+            )
         experiment = next_advisor_experiment(request, strategy)
         if experiment:
             return RoutingDecision(
