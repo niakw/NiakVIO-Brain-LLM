@@ -3284,10 +3284,17 @@ def _compact_wire_schema_for(
     variants: list[dict[str, Any]] = []
     for scope in allowed:
         if scope == "provider_bloc":
-            source = str(context.get("runtimeMutationSource") or "")
+            # Match build_force_prompt_payload and _compact_edit_to_mutation:
+            # the preferred runtime template can differ from the fallback.
+            source = str(
+                context.get("preferredRuntimeMutationSource")
+                or context.get("runtimeMutationSource")
+                or ""
+            )
             units = _force_edit_units(
                 source,
                 request.failure_class,
+                focus_keywords=_force_structural_focus_keywords(request),
                 **_force_window_kwargs_for_request(request),
             )
             unit_ids = [str(row.get("id")) for row in units if str(row.get("id") or "")]
@@ -3325,6 +3332,7 @@ def _compact_wire_schema_for(
             units = _force_edit_units(
                 source,
                 request.failure_class,
+                focus_keywords=_force_structural_focus_keywords(request),
                 **_force_window_kwargs_for_request(request),
             )
             unit_ids = [str(row.get("id")) for row in units if str(row.get("id") or "")]
