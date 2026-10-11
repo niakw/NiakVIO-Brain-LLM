@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "5e57590c78e7270fc1c5cfce774d660d6609370e",
-  "reason": "2026-10-10 retry: all 16 current RepairQueue on corrected Brain/Brain-LLM. 9-provider page must require 9 executable deterministic candidates before bypassing Qwen, run each provider's bounded FORCE portfolio, retain source-pinned documentation-safe guidance evidence, correct invalid current editable unit IDs; acceptance only on executed source and identity-correct playable terminal.",
+  "niakvio_sha": "8ae991de70f532a9cc9d47fd5afbad3dc167ef5c",
+  "reason": "Full 16 current RepairQueue on validated Brain anti-clone gate and Brain-LLM unified current-byte unit IDs (prompt/schema/converter). Distinct executable hypotheses per provider, apply only after exact-source compilation, materialization, identity-safe terminal playback and nonregression; persist negative evidence. No manual provider repair.",
   "requested_repair_queue": [
     "4khdhub",
     "allanime",
@@ -20,6 +20,6 @@
     "vidfast",
     "yflix"
   ],
-  "retry": 39,
+  "retry": 40,
   "require_deterministic_force": false
 }
