@@ -1450,7 +1450,7 @@ def build_force_prompt_payload(
             })
     portfolio_reservations = portfolio_reservations[:4]
     census = {}
-    return {
+    payload = {
         "provider_id": request.provider_id,
         "failure_class": request.failure_class,
         "status": request.status,
@@ -1527,3 +1527,42 @@ def build_force_prompt_payload(
             "validation_retry_context": "focused" if validation_feedback is not None else "compact_initial",
         },
     }
+
+    # CPU-only 7B generation repeatedly exhausted its 180s request budget on
+    # 9-14k-character prompts, although FORCE only needs one exact current unit.
+    # Prefer real failure evidence to duplicated presentation/context. Do NOT
+    # trim editable_units: prompt, constrained schema and converter must agree.
+    import json
+
+    def prompt_chars() -> int:
+        return len(json.dumps(payload, ensure_ascii=True, separators=(",", ":")))
+
+    soft_limit = 5600
+    if prompt_chars() > soft_limit:
+        # Immutable policy is already enforced by the system prompt and Brain.
+        for key in ("field_evidence_policy", "reference_policy",
+                    "runtime_template_policy", "output_contract"):
+            payload.pop(key, None)
+    if prompt_chars() > soft_limit:
+        # editable_units contain exact source fragments; never send them twice.
+        for key in ("mutation_target", "new_bloc_target"):
+            target_data = payload.get(key)
+            if isinstance(target_data, dict) and target_data.get("editable_units"):
+                target_data.pop("source_windows", None)
+    if prompt_chars() > soft_limit:
+        payload["validated_reference_patterns"] = []
+        payload["provider_field_evidence"] = [
+            {**row, "text": _clip(row.get("text"), 240)}
+            for row in payload.get("provider_field_evidence") or []
+        ][:1]
+        payload["current_observations"] = payload["current_observations"][:2]
+    if prompt_chars() > soft_limit:
+        payload["prior_force_sandbox_failures"] = payload["prior_force_sandbox_failures"][:1]
+        payload["force_portfolio_reservations"] = payload["force_portfolio_reservations"][:1]
+        for field in ("runtime_variant_coverage", "current_route_contract",
+                      "current_provider_structure", "runtime_template_prior"):
+            value = payload.get(field)
+            if value:
+                payload[field] = {"summary": _clip(json.dumps(value, ensure_ascii=True), 450)}
+    return payload
+
