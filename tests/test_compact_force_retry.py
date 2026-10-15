@@ -1,7 +1,11 @@
 from pathlib import Path
 import unittest
+from unittest.mock import patch
+import json
 
 from niakvio_brain_llm.contracts import RepairRequest
+from niakvio_brain_llm.backend import StaticBackend
+from niakvio_brain_llm.planner import BrainPlanner
 from niakvio_brain_llm.planner import _compact_wire_schema_for
 from niakvio_brain_llm.planner import _force_unit_for_edit
 from niakvio_brain_llm.planner import _deterministic_complete_line_function_units
@@ -109,6 +113,45 @@ class CompactForceRetryTest(unittest.TestCase):
         self.assertTrue(failures[0]["executionObserved"])
         self.assertEqual(failures[0]["rejectedMechanisms"][0]["family"], "resolve_urls")
         self.assertNotIn("mutationFingerprint", failures[0])
+
+    def test_force_skips_unused_oversized_generic_advisor_prompt(self):
+        # Observed in 2026-10-11 full cohort: MalluMV and UHDMovies
+        # were rejected with "advisor prompt payload exceeded bounded context
+        # budget" BEFORE the compact FORCE prompt reached the model.
+        # The generic advisor prompt is irrelevant in FORCE mode; its
+        # independent budget must not suppress current-byte generation.
+        request = RepairRequest(
+            provider_id="demo",
+            failure_class="chain_terminal_gap",
+            status="CHAIN REACHED",
+            allowed_mutations=["provider_bloc"],
+            provider_context={
+                "runtimeMutationSource": "function resolve(){return oldPlayer();}",
+                "runtimeMutationFilename": "providers/demo.js",
+                "current_structure_evidence": {
+                    "manyCurrentFacts": ["player-chain"] * 5000,
+                },
+            },
+        )
+        planner = BrainPlanner(StaticBackend(json.dumps({
+            "edit": None,
+            "abstain_reason": "test-contract-only",
+        })))
+        with patch(
+            "niakvio_brain_llm.planner.build_prompt_payload",
+            side_effect=ValueError("advisor prompt payload exceeded bounded context budget"),
+        ) as generic_advisor:
+            result, causal_prior, policy = planner._generate(
+                request, constrained=True, compact_force=True,
+            )
+            self.assertTrue(result.abstain)
+            self.assertEqual(result.abstain_reason, "test-contract-only")
+            generic_advisor.assert_not_called()
+            self.assertEqual(causal_prior["target_layer"], "provider")
+            self.assertIn("allowed_scopes", policy)
+            with self.assertRaisesRegex(ValueError, "advisor prompt payload"):
+                planner._prepare(request)
+            generic_advisor.assert_called_once()
 
     def test_timeout_retry_uses_compact_planner(self):
         script = (ROOT / "scripts" / "plan_batch_from_checkout.py").read_text(encoding="utf-8")
