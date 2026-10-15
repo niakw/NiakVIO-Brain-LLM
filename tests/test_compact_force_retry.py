@@ -278,6 +278,32 @@ class CompactForceRetryTest(unittest.TestCase):
         self.assertNotIn("1280", script)
 
 
+    def test_noop_force_corrections_diversify_only_after_validation(self):
+        import importlib.util
+        script = ROOT / "scripts" / "plan_batch_from_checkout.py"
+        spec = importlib.util.spec_from_file_location("force_batch_retry", script)
+        self.assertIsNotNone(spec)
+        assert spec and spec.loader
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        base = RepairRequest(provider_id="demo", failure_class="chain_terminal_gap")
+        self.assertEqual(module.force_feedback_temperature(base), 0.0)
+        for reason in ("no_op", "causally_empty_deletion", "helper_collision"):
+            request = RepairRequest(
+                provider_id="demo",
+                failure_class="chain_terminal_gap",
+                observations=[{"stage": "force_validation_feedback", "reason": reason}],
+            )
+            self.assertEqual(module.force_feedback_temperature(request), 0.2)
+        for reason in ("syntax_error", "window_mismatch", "placeholder_or_synthetic"):
+            request = RepairRequest(
+                provider_id="demo",
+                failure_class="chain_terminal_gap",
+                observations=[{"stage": "force_validation_feedback", "reason": reason}],
+            )
+            self.assertEqual(module.force_feedback_temperature(request), 0.0)
+        self.assertIn("temperature=force_feedback_temperature(request)", script.read_text())
+
     def test_force_edit_unit_budget_is_tighter_on_validation_retry(self):
         initial = RepairRequest(
             provider_id="demo",
