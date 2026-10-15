@@ -153,6 +153,60 @@ class CompactForceRetryTest(unittest.TestCase):
                 planner._prepare(request)
             generic_advisor.assert_called_once()
 
+    def test_force_prefill_budget_preserves_unit_ids_under_dense_fanout(self):
+        # Production 7B samples sent 9k-14k chars for a single edit and hit
+        # the 180s deadline. Clip duplicated context, NEVER the source-backed
+        # IDs that the constrained grammar and current-byte converter use.
+        source = (
+            "function searchTitle(query){return searchRoute(query);}\n"
+            "function resolvePlayer(url){return fetchPlayer(url);}\n"
+        )
+        request = RepairRequest(
+            provider_id="demo",
+            failure_class="route_proven_gap",
+            status="ROUTE PROVEN",
+            allowed_mutations=["provider_bloc"],
+            provider_context={
+                "runtimeMutationFilename": "providers/demo.js",
+                "runtimeMutationSource": source,
+                "current_structure_evidence": {
+                    "fanout": {f"lane-{idx}": ["structural-observation-" * 50] * 10
+                               for idx in range(20)},
+                },
+                "route_contract": {
+                    "evidence": ["route-identity-metadata-" * 80] * 20,
+                },
+                "runtime_variant_coverage": {
+                    "variants": ["codec-language-quality-" * 50] * 20,
+                },
+            },
+            observations=[
+                {"source": "current-provider-structure",
+                 "value": {"lanes": ["a-very-long-structural-signal-" * 80] * 10}},
+                {"source": "targeted-regression-current",
+                 "value": {"structureHints": ["movie-card-detail-player-" * 70] * 10}},
+            ],
+        )
+        policy = {"allow_mutations": True, "allowed_scopes": ["provider_bloc"]}
+        prompt = build_force_prompt_payload(request, {}, policy)
+        wire = _compact_wire_schema_for(request, policy)
+        variants = [
+            v for v in wire["properties"]["edit"]["anyOf"]
+            if v.get("properties", {}).get("scope", {}).get("enum") == ["provider_bloc"]
+        ]
+        self.assertEqual(len(variants), 1)
+        self.assertEqual(
+            [u["id"] for u in prompt["new_bloc_target"]["editable_units"]],
+            variants[0]["properties"]["unit_id"]["enum"],
+        )
+        self.assertTrue(prompt["new_bloc_target"]["editable_units"])
+        self.assertNotIn("source_windows", prompt["new_bloc_target"])
+        self.assertLessEqual(
+            len(json.dumps(prompt, ensure_ascii=True, separators=(",", ":"))),
+            6500,
+            "one-edit CPU prompt should not carry unbounded duplicated evidence",
+        )
+
     def test_timeout_retry_uses_compact_planner(self):
         script = (ROOT / "scripts" / "plan_batch_from_checkout.py").read_text(encoding="utf-8")
         planner = (ROOT / "src" / "niakvio_brain_llm" / "planner.py").read_text(encoding="utf-8")
