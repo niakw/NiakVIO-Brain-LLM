@@ -1564,5 +1564,18 @@ def build_force_prompt_payload(
             value = payload.get(field)
             if value:
                 payload[field] = {"summary": _clip(json.dumps(value, ensure_ascii=True), 450)}
+    if prompt_chars() > soft_limit:
+        # Targeted regression details can contain arbitrarily deep response
+        # shapes. Keep the failure/source/stage, but bound nested fanout.
+        payload["current_observations"] = [
+            {
+                "source": _clip(row.get("source"), 80),
+                "stage": _clip(row.get("stage"), 80),
+                "reason": _clip(row.get("reason"), 140),
+                "instruction": _clip(row.get("instruction"), 260),
+                "value": _clip(json.dumps(row.get("value") or {}, ensure_ascii=True), 520),
+            }
+            for row in payload["current_observations"][:2]
+        ]
     return payload
 
