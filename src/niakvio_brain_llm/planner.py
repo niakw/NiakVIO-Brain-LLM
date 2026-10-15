@@ -3446,6 +3446,8 @@ class BrainPlanner:
     def _prepare(
         self,
         request: RepairRequest,
+        *,
+        compact_force: bool = False,
     ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, Any], dict[str, Any], str]:
         query = request.to_dict()
         experiences = self.store.search(query, limit=6)
@@ -3459,6 +3461,13 @@ class BrainPlanner:
             target_layer=layer,
             mutation_policy=mutation_policy,
         )
+        # Compact FORCE has its own purpose-built, source-window-bound prompt.
+        # Building the generic advisor prompt here first is both unnecessary
+        # (it gets thrown away in _generate) and dangerous: its 7600-character
+        # cap rejects large current-provider structures before FORCE can run.
+        # Retain RAG, prior and mutation policy; skip only the unused prompt.
+        if compact_force:
+            return experiences, documents, causal_prior, mutation_policy, ""
         user = json.dumps(
             build_prompt_payload(
                 request,
@@ -3479,7 +3488,9 @@ class BrainPlanner:
         constrained: bool,
         compact_force: bool = False,
     ) -> tuple[RepairProposal, dict[str, Any], dict[str, Any]]:
-        _, documents, causal_prior, mutation_policy, user = self._prepare(request)
+        _, documents, causal_prior, mutation_policy, user = self._prepare(
+            request, compact_force=compact_force,
+        )
         if compact_force:
             try:
                 deterministic_mutation = _deterministic_variant_coverage_mutation(
