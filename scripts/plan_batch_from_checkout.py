@@ -23,6 +23,24 @@ from niakvio_brain_llm.retrieval import ExperienceStore
 from niakvio_brain_llm.repair_family import repair_family_descriptor, select_family_wave
 from niakvio_brain_llm.routing import REPLAYABLE_FAMILY_MECHANISMS
 
+def force_feedback_temperature(request) -> float:
+    """Diversify only AFTER an actual validated model edit is rejected.
+
+    A deterministic Qwen retry after a no-op often returned the same unchanged
+    function repeatedly. Keep the first synthesis at temperature zero and
+    preserve all deterministic post-generation syntax/current-byte gates.
+    """
+    for observation in request.observations or []:
+        if not isinstance(observation, dict):
+            continue
+        if str(observation.get("stage") or "") != "force_validation_feedback":
+            continue
+        reason = str(observation.get("reason") or "").strip().casefold()
+        if reason in {"no_op", "causally_empty_deletion", "helper_collision"}:
+            return 0.2
+    return 0.0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--niakvio-root", required=True)
@@ -470,7 +488,7 @@ def main() -> int:
                 base_url=args.endpoint,
                 model=args.model,
                 timeout_seconds=bounded_timeout,
-                temperature=0.0,
+                temperature=force_feedback_temperature(request),
                 max_tokens=max_tokens,
                 # cache_prompt on the real constrained request already persists
                 # the evaluated prefix for identical retries. An explicit
