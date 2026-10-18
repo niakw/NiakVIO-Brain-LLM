@@ -13,7 +13,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 from niakvio_brain_llm.advisor_experiments import experiment_fingerprint
-from niakvio_brain_llm.backend import LocalOpenAICompatibleBackend
+from niakvio_brain_llm.backend import HostedResponsesBackend, LocalOpenAICompatibleBackend
 from niakvio_brain_llm.batch import batch_summary, load_census, select_batch_targets
 from niakvio_brain_llm.document_memory import DocumentStore
 from niakvio_brain_llm.niakvio_adapter import request_from_checkout
@@ -83,6 +83,7 @@ def main() -> int:
         action="store_true",
         help="In sequential Force mode, publish the first executable mutation immediately instead of waiting for later providers.",
     )
+    parser.add_argument("--backend", choices=("local", "hosted"), default="local")
     parser.add_argument(
         "--endpoint",
         default=os.environ.get("NIAKVIO_LLM_ENDPOINT", "http://127.0.0.1:8080"),
@@ -102,11 +103,28 @@ def main() -> int:
     if args.limit > 0:
         selected = selected[: args.limit]
 
-    backend = LocalOpenAICompatibleBackend(
-        base_url=args.endpoint,
-        model=args.model,
+    def make_backend(timeout_seconds: int, max_tokens: int, *, temperature: float = 0.0, prefill_prompt: bool = False):
+        if args.backend == "hosted":
+            api_key = os.environ.get("OPENAI_API_KEY", "")
+            if not api_key:
+                raise RuntimeError("hosted backend requires OPENAI_API_KEY secret")
+            return HostedResponsesBackend(
+                api_key=api_key,
+                model=args.model,
+                timeout_seconds=timeout_seconds,
+                max_tokens=max_tokens,
+            )
+        return LocalOpenAICompatibleBackend(
+            base_url=args.endpoint,
+            model=args.model,
+            timeout_seconds=timeout_seconds,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            prefill_prompt=prefill_prompt,
+        )
+
+    backend = make_backend(
         timeout_seconds=max(30, min(int(args.timeout_seconds), 240)),
-        temperature=0.0,
         max_tokens=max(128, min(int(args.max_tokens), 2048)),
         prefill_prompt=(args.mode == "repair" and not args.advisor_only),
     )
@@ -484,15 +502,10 @@ def main() -> int:
 
         def _run_once(request, *, timeout_seconds: int, max_tokens: int):
             bounded_timeout = _remaining_timeout(timeout_seconds)
-            retry_backend = LocalOpenAICompatibleBackend(
-                base_url=args.endpoint,
-                model=args.model,
+            retry_backend = make_backend(
                 timeout_seconds=bounded_timeout,
-                temperature=force_feedback_temperature(request),
                 max_tokens=max_tokens,
-                # cache_prompt on the real constrained request already persists
-                # the evaluated prefix for identical retries. An explicit
-                # one-token prefill only adds another request on CPU runners.
+                temperature=force_feedback_temperature(request),
                 prefill_prompt=False,
             )
             return BrainOrchestrator(
@@ -1013,12 +1026,10 @@ def main() -> int:
                     f"max_tokens={retry_tokens} timeout_seconds={retry_timeout}",
                     flush=True,
                 )
-                retry_backend = LocalOpenAICompatibleBackend(
-                    base_url=args.endpoint,
-                    model=args.model,
+                retry_backend = make_backend(
                     timeout_seconds=retry_timeout,
-                    temperature=0.0,
                     max_tokens=retry_tokens,
+                    temperature=0.0,
                     prefill_prompt=False,
                 )
                 retry_orchestrator = BrainOrchestrator(
