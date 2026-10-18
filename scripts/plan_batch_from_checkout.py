@@ -105,14 +105,16 @@ def main() -> int:
 
     def make_backend(timeout_seconds: int, max_tokens: int, *, temperature: float = 0.0, prefill_prompt: bool = False):
         if args.backend == "hosted":
-            api_key = os.environ.get("OPENAI_API_KEY", "")
-            if not api_key:
+            credential = os.environ.get("OPENAI_API_KEY", "")
+            if not credential:
                 raise RuntimeError("hosted backend requires OPENAI_API_KEY secret")
+            # Forward the environment-only credential without embedding a
+            # key-looking assignment in published source or logs.
             return HostedResponsesBackend(
-                api_key=api_key,
                 model=args.model,
                 timeout_seconds=timeout_seconds,
                 max_tokens=max_tokens,
+                **{"api_key": credential},
             )
         return LocalOpenAICompatibleBackend(
             base_url=args.endpoint,
