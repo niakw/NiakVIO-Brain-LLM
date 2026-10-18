@@ -122,6 +122,82 @@ class LocalOpenAICompatibleBackend:
         return str(choice["message"]["content"])
 
 @dataclass(slots=True)
+class HostedResponsesBackend:
+    """Opt-in hosted model using the OpenAI Responses API.
+
+    Never automatically selected from a public guidance trigger. Callers must
+    explicitly provision an API key and enforce their private-data boundary.
+    No server-side response retention or tools are requested.
+    """
+
+    api_key: str
+    model: str = "gpt-6.1-sol"
+    timeout_seconds: int = 120
+    max_tokens: int = 2048
+    reasoning_effort: str = "medium"
+
+    def complete(
+        self,
+        *,
+        system: str,
+        user: str,
+        response_schema: dict[str, Any] | None = None,
+    ) -> str:
+        if not self.api_key or not self.api_key.strip():
+            raise RuntimeError("hosted backend requires an API key")
+        if self.model not in {"gpt-6.1-sol", "gpt-6-astra"}:
+            raise ValueError("unapproved hosted model identifier")
+        if self.reasoning_effort not in {"low", "medium", "high"}:
+            raise ValueError("unsupported bounded hosted reasoning effort")
+        payload: dict[str, Any] = {
+            "model": self.model,
+            "instructions": system,
+            "input": user,
+            "store": False,
+            "reasoning": {"effort": self.reasoning_effort},
+            "max_output_tokens": max(1024, min(8192, int(self.max_tokens))),
+        }
+        if response_schema is not None:
+            payload["text"] = {
+                "format": {
+                    "type": "json_schema",
+                    "name": "niakvio_force_response",
+                    "strict": True,
+                    "schema": response_schema,
+                },
+            }
+        request = Request(
+            "https://api.openai.com/v1/responses",
+            data=json.dumps(payload).encode("utf-8"),
+            headers={
+                "Authorization": "Bearer " + self.api_key,
+                "Content-Type": "application/json",
+            },
+            method="POST",
+        )
+        # Fail closed: HTTP/auth/schema errors must not trigger an unguarded
+        # provider-code fallback or include secret request headers in logs.
+        try:
+            with urlopen(request, timeout=max(10, min(300, int(self.timeout_seconds)))) as response:
+                result = json.loads(response.read().decode("utf-8"))
+        except HTTPError as exc:
+            raise RuntimeError(f"hosted model HTTP {exc.code}") from None
+        if result.get("status") != "completed":
+            raise RuntimeError("hosted model returned an incomplete response")
+        chunks: list[str] = []
+        for output in result.get("output") or []:
+            if not isinstance(output, dict) or output.get("type") != "message":
+                continue
+            for part in output.get("content") or []:
+                if isinstance(part, dict) and part.get("type") == "output_text":
+                    chunks.append(str(part.get("text") or ""))
+        content = "".join(chunks)
+        if not content.strip():
+            raise RuntimeError("hosted model returned no visible text")
+        return content
+
+
+@dataclass(slots=True)
 class StaticBackend:
     response: str
 
