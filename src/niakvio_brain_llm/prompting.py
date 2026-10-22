@@ -1125,6 +1125,8 @@ def _force_edit_units(
             if re.sub(r"[^a-z0-9_$]+", "", keyword.casefold())
         }
         role_tokens.update({"find", "link", "server", "tab"})
+        if family_key in {"chain_terminal_gap", "media_extraction_gap"}:
+            role_tokens.update({"playable", "extract"})
         neighbors: dict[tuple[int, int], tuple[tuple[int, ...], dict[str, Any]]] = {}
         frontier = [(index, row, 0) for index, row in enumerate(list(selected))]
         seen_frontier: set[tuple[int, int, int]] = set()

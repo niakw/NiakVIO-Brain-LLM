@@ -35,10 +35,11 @@ class ForceExecutionFeedbackTests(unittest.TestCase):
             'function s(v){return String(v||"");}'
             'function decodeSource(row){return s(row.sourceUrl);}'
             'async function clockLinks(path){return fetch(path).then(r=>r.json());}'
+            'function isDirect(url){return /m3u8/.test(url);}'
             'async function directPlayable(url){return fetch(url).then(r=>r.url);}'
             'async function resolveRows(rows){var out=[];for(var row of rows){'
             'var url=decodeSource(row);var links=await clockLinks(url);'
-            'out.push(await directPlayable(links[0]));}return out;}'
+            'if(isDirect(links[0]))out.push(await directPlayable(links[0]));}return out;}'
         )
         request = RepairRequest(
             provider_id="demo", failure_class="chain_terminal_gap",
