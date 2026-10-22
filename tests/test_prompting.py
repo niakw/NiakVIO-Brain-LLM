@@ -266,7 +266,7 @@ class PromptingTests(unittest.TestCase):
             "/?s={query}",
         )
 
-    def test_exact_runtime_template_compacts_chain_force_to_causal_pair(self):
+    def test_exact_runtime_template_keeps_bounded_chain_callees(self):
         source = (
             "function search(q){return q;} "
             "function detail(q){return q.detail;} "
@@ -299,7 +299,7 @@ class PromptingTests(unittest.TestCase):
             sum(len(row["source"]) for row in target["source_windows"]),
             550,
         )
-        self.assertLessEqual(len(target["editable_units"]), 2)
+        self.assertLessEqual(len(target["editable_units"]), 4)
         self.assertTrue(
             payload["runtime_template_policy"]["exact_materialized_runtime_bloc_first"]
         )

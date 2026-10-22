@@ -37,9 +37,9 @@ class TerminalFocusPrecedenceTests(unittest.TestCase):
         units = build_force_prompt_payload(request)["new_bloc_target"]["editable_units"]
         joined = "\n".join(row["source"] for row in units)
         self.assertIn("function resolveRows(", joined)
-        self.assertNotIn("function hexBytes(", joined)
+        self.assertTrue(units[0]["source"].startswith("async function resolveRows("))
         self.assertNotIn("out.length", _force_structural_focus_keywords(request))
-        self.assertLessEqual(len(units), 2)
+        self.assertLessEqual(len(units), 4)
 
     def test_zero_stream_fanout_keeps_terminal_failure_causality(self):
         request = self.request()

@@ -569,6 +569,22 @@ def _provider_negative_memory(payload: Any, provider_id: str) -> list[dict[str, 
         })
     return out
 
+def _safe_execution_coverage(value: Any) -> dict[str, int]:
+    if not isinstance(value, dict):
+        return {}
+    keys = {
+        "streamsReturned", "streamsPlayable", "identityContradictions",
+        "announcedPlayerCandidates", "announcedVariantCandidates",
+        "exploredPlayerRequests", "reachableHostCount", "maxPlayableHeight",
+        "qualityHeightCount",
+    }
+    return {
+        key: max(-100000, min(100000, raw))
+        for key, raw in value.items()
+        if key in keys and isinstance(raw, int) and not isinstance(raw, bool)
+    }
+
+
 def _provider_force_negative_memory(payload: Any, provider_id: str) -> list[dict[str, Any]]:
     """Return safe rejected Force execution outcomes without mutation/source text."""
     if not isinstance(payload, dict):
@@ -592,6 +608,11 @@ def _provider_force_negative_memory(payload: Any, provider_id: str) -> list[dict
             "successes": successes,
             "lastOutcome": str(value.get("lastOutcome") or "")[:80],
             "lastReason": str(value.get("lastReason") or "")[:240],
+            **{
+                key: _safe_execution_coverage(value[key])
+                for key in ("lastBaselineCoverage", "lastCandidateCoverage", "lastCoverageDelta")
+                if _safe_execution_coverage(value.get(key))
+            },
             "lastMutationSummary": [
                 {
                     "scope": str(item.get("scope") or "")[:40],

@@ -740,6 +740,12 @@ def _force_window_kwargs_for_request(request: RepairRequest) -> dict[str, int]:
     ):
         # Same exact unit budget for prompt, constrained-wire enum and
         # post-generation converter. Otherwise valid model unit IDs drift.
+        if str(request.failure_class or "").strip().casefold() in {"chain_terminal_gap", "media_extraction_gap"}:
+            return {
+                "max_chars": 1600 if feedback else 2000,
+                "max_windows": 2,
+                "max_units": 3 if feedback else 4,
+            }
         return {
             "max_chars": 900 if feedback else 1100,
             "max_windows": 1,
@@ -1205,6 +1211,8 @@ def _force_edit_units(
             for row in ordered_neighbors:
                 if row.get("reason") != "causal_call_neighbor_depth2":
                     continue
+                if not any(keyword in str(row.get("source") or "").casefold() for keyword in family_keywords):
+                    continue
                 key = (int(row.get("offset") or 0), int(row.get("end_offset") or 0))
                 if key in selected_keys:
                     continue
@@ -1421,6 +1429,11 @@ def build_force_prompt_payload(
             "lastOutcome": _clip(row.get("lastOutcome"), 60),
             "consecutiveFailures": int(row.get("consecutiveFailures") or 0),
             "executionObserved": row.get("executionObserved") is True,
+            **{
+                key: row[key]
+                for key in ("lastBaselineCoverage", "lastCandidateCoverage", "lastCoverageDelta")
+                if isinstance(row.get(key), dict)
+            },
             "rejectedMechanisms": [
                 {
                     "scope": _clip(item.get("scope"), 40),

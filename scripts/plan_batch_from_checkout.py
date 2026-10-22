@@ -143,7 +143,10 @@ def main() -> int:
             return HostedResponsesBackend.from_environment(
                 model=args.model,
                 timeout_seconds=timeout_seconds,
-                max_tokens=max_tokens,
+                # Responses counts reasoning tokens in the same output budget.
+                # The per-scope Qwen text caps must not shrink the explicitly
+                # requested hosted budget.
+                max_tokens=max(128, min(int(args.max_tokens), 8192)),
             )
         return LocalOpenAICompatibleBackend(
             base_url=args.endpoint,
