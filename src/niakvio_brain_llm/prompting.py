@@ -504,6 +504,7 @@ def _force_structural_focus_keywords(request: RepairRequest) -> tuple[str, ...]:
     """Derive bounded source-focus tokens from current structural evidence."""
     class_tokens: list[str] = []
     focus: list[str] = []
+    variant_failure = str(request.failure_class or "").strip().casefold().replace("-", "_") == "variant_coverage_gap"
 
     def record_token(raw: object) -> None:
         token = str(raw or "").strip().casefold()
@@ -540,6 +541,10 @@ def _force_structural_focus_keywords(request: RepairRequest) -> tuple[str, ...]:
             state = str(lane_row.get("state") or "").strip().casefold()
             if announced < 2:
                 continue
+            # No terminal output is a traversal/extraction failure first. Do
+            # not replace that causal focus with generic output-limit tokens.
+            if returned <= 0 and not variant_failure:
+                continue
             if state in {"announced-not-explored", "explored-not-resolved", "returned-subset", "quality-gap"} or returned < announced:
                 focus.extend((
                     "out.length", "maxstreams", "targetstreams", "break", "return out", "slice(",
@@ -561,7 +566,10 @@ def _force_structural_focus_keywords(request: RepairRequest) -> tuple[str, ...]:
 
     context = request.provider_context if isinstance(request.provider_context, dict) else {}
     coverage = context.get("runtime_variant_coverage")
-    if isinstance(coverage, dict) and coverage.get("riskKind") == "variant-coverage-truncation":
+    # Static limit detection is a hypothesis, not current variant-loss proof.
+    # In a terminal gap, out.length may belong to a byte decoder and can hide
+    # the real extractor from the entire two-unit template prompt.
+    if variant_failure and isinstance(coverage, dict) and coverage.get("riskKind") == "variant-coverage-truncation":
         focus.extend(("out.length", "maxstreams", "targetstreams", "break", "return out", "slice("))
         dimensions = {str(value).strip().casefold() for value in coverage.get("dimensions") or []}
         if "quality" in dimensions:

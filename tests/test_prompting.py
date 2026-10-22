@@ -42,7 +42,7 @@ class PromptingTests(unittest.TestCase):
         }
         request = RepairRequest(
             provider_id="demo",
-            failure_class="chain_terminal_gap",
+            failure_class="variant_coverage_gap",
             provider_context={
                 "runtimeMutationFilename": "providers/demo.js",
                 "runtimeMutationSource": source,
