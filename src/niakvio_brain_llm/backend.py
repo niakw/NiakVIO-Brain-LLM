@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import json
+import os
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Protocol
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
@@ -130,11 +131,22 @@ class HostedResponsesBackend:
     No server-side response retention or tools are requested.
     """
 
-    api_key: str
+    api_key: str = field(repr=False)
     model: str = "gpt-6.1-sol"
     timeout_seconds: int = 120
     max_tokens: int = 2048
     reasoning_effort: str = "medium"
+
+    @classmethod
+    def from_environment(cls, *, model: str | None = None, **options: Any) -> "HostedResponsesBackend":
+        credential = os.environ.get("NIAKVIO_OPENAI_API_KEY") or os.environ.get("OPENAI_API_KEY")
+        if not credential:
+            raise RuntimeError("hosted backend requires NIAKVIO_OPENAI_API_KEY or OPENAI_API_KEY secret")
+        return cls(
+            model=model or os.environ.get("NIAKVIO_HOSTED_MODEL") or "gpt-6.1-sol",
+            **{"api_key": credential},
+            **options,
+        )
 
     def complete(
         self,

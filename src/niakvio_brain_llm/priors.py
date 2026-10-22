@@ -189,6 +189,12 @@ def taxonomy_layer(failure_class: object) -> str | None:
     prior = taxonomy_prior(failure_class)
     return str(prior["target_layer"]) if prior else None
 
+def _can_supply_positive_prior(row: dict[str, Any]) -> bool:
+    # Legacy curated historical cases predate the result field. Keep that
+    # contract, but never turn an explicitly unsuccessful hypothesis into a
+    # high-confidence strategy that the model is then required to repeat.
+    return str(row.get("result") or "").strip().casefold() in {"", "validated"}
+
 def build_causal_prior(
     request: RepairRequest,
     experiences: list[dict[str, Any]],
@@ -245,6 +251,7 @@ def build_causal_prior(
         exact = next((
             row for row in experiences
             if _canon(row.get("failure_class") or row.get("failureClass")) == failure
+            and _can_supply_positive_prior(row)
         ), None)
         if exact:
             prior["experience_id"] = exact.get("experience_id")
@@ -256,6 +263,7 @@ def build_causal_prior(
     exact = [
         row for row in experiences
         if _canon(row.get("failure_class") or row.get("failureClass")) == failure
+        and _can_supply_positive_prior(row)
     ]
     if exact:
         row = exact[0]

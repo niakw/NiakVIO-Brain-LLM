@@ -62,6 +62,21 @@ Other tracked candidates:
 
 Official Qwen family authority: the QwenLM GitHub organization.
 
+### Optional OpenAI API generation
+
+`plan_batch_from_checkout.py --backend hosted` explicitly selects the OpenAI
+Responses API instead of the local runtime. Provision `NIAKVIO_OPENAI_API_KEY`
+in the environment; `OPENAI_API_KEY` is a fallback. The default hosted model is
+`gpt-6.1-sol`; use `NIAKVIO_HOSTED_MODEL` or `--model` to select the approved
+`gpt-6-astra` alternative. Local `NIAKVIO_LLM_MODEL` settings do not override the
+hosted default. All other batch arguments remain required as usual.
+
+The hosted request disables response retention (`store=false`) and requests no
+tools. API output still passes the same local mutation, sandbox, identity and
+playback gates. Authentication failure stops generation without falling back to
+an unverified provider edit. API generation does not itself train model weights;
+only NiakVIO-verified outcomes qualify for positive learning.
+
 ## Scaling model
 
 The Brain does not load or call the LLM for every provider.

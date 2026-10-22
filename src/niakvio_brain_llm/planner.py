@@ -886,6 +886,13 @@ def _force_memory_blocks_mutation(
     request: RepairRequest,
     mutation: dict[str, Any],
 ) -> bool:
+    return _force_memory_blocks_mutations(request, [mutation])
+
+
+def _force_memory_blocks_mutations(
+    request: RepairRequest,
+    mutations: list[dict[str, Any]],
+) -> bool:
     """Reject an exact already-executed negative mutation on this provider.
 
     provider_patch remains byte-context-sensitive because the mutation targets an
@@ -894,24 +901,25 @@ def _force_memory_blocks_mutation(
     that identical Bloc edit was executed and rejected, a Core/release/version
     drift must not make Brain publish it again unchanged.
     """
-    scope = str(mutation.get("scope") or "")
-    if scope not in {"provider_patch", "provider_bloc"}:
+    scopes = {str(mutation.get("scope") or "") for mutation in mutations}
+    if not scopes or not scopes.issubset({"provider_patch", "provider_bloc"}):
         return False
 
-    mutation_fp = _force_stable_fingerprint([mutation])
+    mutation_fp = _force_stable_fingerprint(mutations)
     context_fp = ""
-    if scope == "provider_patch":
-        path = str(mutation.get("path") or "")
+    if "provider_bloc" not in scopes:
         context = request.provider_context or {}
         digests = context.get("registered_patch_sha256")
-        if not path or not isinstance(digests, dict):
+        if not isinstance(digests, dict):
             return False
-        digest = str(digests.get(path) or "").strip().casefold()
-        if not re.fullmatch(r"[0-9a-f]{64}", digest):
-            return False
-        context_fp = _force_stable_fingerprint([
-            {"scope": "provider_patch", "path": path, "sha256": digest}
-        ])
+        surfaces = []
+        for mutation in mutations:
+            path = str(mutation.get("path") or "")
+            digest = str(digests.get(path) or "").strip().casefold()
+            if not path or not re.fullmatch(r"[0-9a-f]{64}", digest):
+                return False
+            surfaces.append({"scope": "provider_patch", "path": path, "sha256": digest})
+        context_fp = _force_stable_fingerprint(surfaces)
 
     for observation in request.observations or []:
         if not isinstance(observation, dict):
@@ -933,7 +941,14 @@ def _force_memory_blocks_mutation(
                 return True
             if int(row.get("consecutiveFailures") or 0) <= 0:
                 continue
-            if scope == "provider_bloc":
+            if row.get("executionObserved") is False:
+                continue
+            if (
+                str(row.get("lastOutcome") or "").strip().casefold() == "profile_unavailable"
+                and row.get("executionObserved") is not True
+            ):
+                continue
+            if "provider_bloc" in scopes:
                 return True
             if str(row.get("mutationContextFingerprint") or "").strip().casefold() == context_fp:
                 return True
@@ -3721,6 +3736,8 @@ class BrainPlanner:
                     if str(value).strip()
                 ),
             )
+            if _force_memory_blocks_mutations(request, proposal.mutations):
+                raise ValueError("model repeated a candidate blocked by executed negative memory")
 
         if mutation_policy.get("force_abstain") and not proposal.abstain:
             raise ValueError("model must abstain under current evidence policy")

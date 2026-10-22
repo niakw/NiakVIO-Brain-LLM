@@ -90,7 +90,26 @@ def experiment_fingerprint(experiment: dict[str, Any]) -> str:
     return hashlib.sha256(payload).hexdigest()
 
 
-def _failed_fingerprints(request: RepairRequest) -> set[str]:
+def blocks_advisor_experiment(row: dict[str, Any]) -> bool:
+    """Exclude failed executions and reservations, preserving legacy evidence.
+
+    Missing execution flags on old rejected runs remain usable; an explicitly
+    unexecuted or unavailable profile is infrastructure evidence, not a failed
+    experiment. Reservations only prevent duplicates inside the current batch.
+    """
+    if row.get("executionObserved") is False:
+        return False
+    outcome = canon(row.get("lastOutcome"))
+    if outcome in {"profile-unavailable", "not-generated"} and row.get("executionObserved") is not True:
+        return False
+    try:
+        failures = int(row.get("consecutiveFailures") or 0)
+    except (TypeError, ValueError):
+        return False
+    return failures > 0 and outcome not in {"accepted", "verified", "success"}
+
+
+def failed_advisor_fingerprints(request: RepairRequest) -> set[str]:
     history = (request.provider_context or {}).get("advisor_experiment_history")
     if not isinstance(history, list):
         return set()
@@ -101,12 +120,14 @@ def _failed_fingerprints(request: RepairRequest) -> set[str]:
         fp = str(row.get("llmAdvisorExperimentFingerprint") or "").strip().casefold()
         if len(fp) != 64 or any(not (ch.isdigit() or ch in "abcdef") for ch in fp):
             continue
-        if int(row.get("consecutiveFailures") or 0) <= 0:
-            continue
-        if str(row.get("lastOutcome") or "").strip().casefold() in {"accepted", "verified", "success"}:
+        if not blocks_advisor_experiment(row):
             continue
         out.add(fp)
     return out
+
+
+# Keep the original private selector entry point for existing integrations.
+_failed_fingerprints = failed_advisor_fingerprints
 
 
 def _issue_text(request: RepairRequest) -> str:
@@ -201,7 +222,7 @@ def next_advisor_experiment(request: RepairRequest, strategy: str) -> dict[str, 
     if not base:
         return {}
     base = {**base, "role_order": list(base["role_order"])}
-    blocked = _failed_fingerprints(request)
+    blocked = failed_advisor_fingerprints(request)
     issue = _issue_text(request)
     candidates = [base, *_targeted_variants(base, issue), *_generic_variants(base)]
     seen: set[str] = set()

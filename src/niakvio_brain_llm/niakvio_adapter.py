@@ -535,7 +535,12 @@ def _provider_refined_groups(payload: Any, provider_id: str, *, census_run_id: s
     return out[:4]
 
 def _provider_negative_memory(payload: Any, provider_id: str) -> list[dict[str, Any]]:
-    """Return bounded provider-local failed experiment memory from current NiakVIO state."""
+    """Keep the provider's sanitized ledger intact for deterministic exclusions.
+
+    The source ledger has NiakVIO's global retention bound. Prompt construction
+    separately bounds the narrative history; truncating here makes the selector
+    forget failed fingerprints before the publication guard checks them.
+    """
     if not isinstance(payload, dict):
         return []
     wanted = _canon(provider_id)
@@ -557,9 +562,12 @@ def _provider_negative_memory(payload: Any, provider_id: str) -> list[dict[str, 
             "successes": int(value.get("successes") or 0),
             "lastOutcome": str(value.get("lastOutcome") or "")[:120],
             "lastReason": str(value.get("lastReason") or "")[:240],
-            "executionObserved": value.get("executionObserved") is True,
+            **(
+                {"executionObserved": value.get("executionObserved") is True}
+                if "executionObserved" in value else {}
+            ),
         })
-    return out[:32]
+    return out
 
 def _provider_force_negative_memory(payload: Any, provider_id: str) -> list[dict[str, Any]]:
     """Return safe rejected Force execution outcomes without mutation/source text."""
@@ -599,14 +607,19 @@ def _provider_force_negative_memory(payload: Any, provider_id: str) -> list[dict
             "lastCurrentSha": str(value.get("lastCurrentSha") or "")[:40],
             "sourceNiakvioSha": str(value.get("sourceNiakvioSha") or "")[:40],
             "sourceBrainLlmSha": str(value.get("sourceBrainLlmSha") or "")[:40],
-            "executionObserved": True,
+            # Legacy FORCE sandbox records predate the execution flag. Keep
+            # their execution semantics, but never overwrite explicit false
+            # or infer execution from an unavailable/not-generated profile.
+            "executionObserved": (
+                value.get("executionObserved") is True
+                if "executionObserved" in value
+                else _canon(value.get("lastOutcome")) not in {"profile unavailable", "not generated"}
+            ),
         })
 
-    # Force memory is append-oriented. Current repair decisions must see the
-    # newest executed negatives first: request_from_checkout deliberately puts
-    # only a bounded prefix into observations. De-duplicate identical execution
-    # keys while walking backwards so a repeated stale entry cannot crowd out
-    # the latest provider_bloc verdict.
+    # Keep every execution key for deterministic replay exclusions, newest
+    # verdict first. Prompts independently select only recent narrative rows.
+    # De-duplicate keys so the newest verdict supersedes any older outcome.
     recent: list[dict[str, Any]] = []
     seen: set[tuple[str, str]] = set()
     for row in reversed(out):
@@ -618,8 +631,6 @@ def _provider_force_negative_memory(payload: Any, provider_id: str) -> list[dict
             continue
         seen.add(key)
         recent.append(row)
-        if len(recent) >= 8:
-            break
     return recent
 
 def classify_census_failure(row: dict[str, Any]) -> str:
@@ -975,8 +986,10 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
     provider_context["route_contract"] = route_contract
     provider_context["advisor_experiment_history"] = [
         *negative_memory,
-        *force_negative_memory,
-    ][-32:]
+        # FORCE ingestion returns newest first, whereas prompt history keeps
+        # a recent suffix. Store chronological order consistently here.
+        *reversed(force_negative_memory),
+    ]
     references = build_validated_reference_patterns(
         root,
         provider_id,
@@ -1021,9 +1034,9 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
                 if refined_groups else []
             ),
             {"source": "brain-repair-experience", "value": provider_experience[:4]},
-            {"source": "brain-repair-memory", "value": negative_memory[:4]},
+            {"source": "brain-repair-memory", "value": list(reversed(negative_memory[-4:]))},
             *(
-                [{"source": "brain-force-sandbox-memory", "value": force_negative_memory[:8]}]
+                [{"source": "brain-force-sandbox-memory", "value": force_negative_memory}]
                 if force_negative_memory else []
             ),
         ],

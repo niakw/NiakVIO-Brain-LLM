@@ -1427,7 +1427,8 @@ def build_force_prompt_payload(
         for row in (context.get("advisor_experiment_history") or [])
         if isinstance(row, dict)
         and str(row.get("memoryRole") or "") == "force_sandbox_execution"
-    ][:3]
+    ]
+    force_failures = list(reversed(force_failures[-3:]))
     portfolio_reservations = []
     for observation in request.observations or []:
         if not isinstance(observation, dict) or str(observation.get("source") or "") != "brain-force-portfolio-reservation":

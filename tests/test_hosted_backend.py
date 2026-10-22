@@ -1,7 +1,13 @@
 from __future__ import annotations
 
 import json
+import contextlib
+import importlib.util
+import io
+import sys
+import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 from urllib.error import HTTPError
 
@@ -81,6 +87,56 @@ class HostedBackendTests(unittest.TestCase):
         model = HostedResponsesBackend(api_key="test-only", model="unverified-model")
         with self.assertRaisesRegex(ValueError, "unapproved hosted model"):
             model.complete(system="s", user="u")
+
+    def test_niakvio_environment_key_and_hosted_default_ignore_local_model(self):
+        with patch.dict("os.environ", {
+            "NIAKVIO_OPENAI_API_KEY": "test-niakvio-only",
+            "OPENAI_API_KEY": "test-other-key",
+            "NIAKVIO_LLM_MODEL": "qwen-local-only",
+        }, clear=True):
+            model = HostedResponsesBackend.from_environment()
+        self.assertEqual(model.api_key, "test-niakvio-only")
+        self.assertEqual(model.model, "gpt-6.1-sol")
+        self.assertNotIn("test-niakvio-only", repr(model))
+
+    def test_hosted_environment_override_and_generic_key_fallback(self):
+        with patch.dict("os.environ", {
+            "OPENAI_API_KEY": "test-generic-only",
+            "NIAKVIO_HOSTED_MODEL": "gpt-6-astra",
+        }, clear=True):
+            model = HostedResponsesBackend.from_environment(max_tokens=4096)
+            explicit = HostedResponsesBackend.from_environment(model="gpt-6.1-sol")
+        self.assertEqual(model.api_key, "test-generic-only")
+        self.assertEqual(model.model, "gpt-6-astra")
+        self.assertEqual(model.max_tokens, 4096)
+        self.assertEqual(explicit.model, "gpt-6.1-sol")
+
+    def test_environment_missing_key_has_no_request(self):
+        with patch.dict("os.environ", {}, clear=True), patch("niakvio_brain_llm.backend.urlopen") as send:
+            with self.assertRaisesRegex(RuntimeError, "NIAKVIO_OPENAI_API_KEY or OPENAI_API_KEY"):
+                HostedResponsesBackend.from_environment()
+            send.assert_not_called()
+
+    def test_hosted_cli_uses_niakvio_environment_without_model_argument(self):
+        script = Path(__file__).resolve().parents[1] / "scripts" / "plan_batch_from_checkout.py"
+        spec = importlib.util.spec_from_file_location("hosted_batch_cli", script)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "automation").mkdir()
+            (root / "automation" / "provider-census-status.json").write_text('{"providers":[]}', encoding="utf-8")
+            argv = [str(script), "--niakvio-root", str(root), "--experience", str(root / "experience.jsonl"),
+                    "--documents", str(root / "documents.jsonl"), "--output", str(root / "out.jsonl"),
+                    "--backend", "hosted"]
+            with patch.dict("os.environ", {"NIAKVIO_OPENAI_API_KEY": "test-cli-only"}, clear=True), \
+                    patch.object(sys, "argv", argv), \
+                    patch.object(HostedResponsesBackend, "from_environment", wraps=HostedResponsesBackend.from_environment) as factory, \
+                    patch("niakvio_brain_llm.backend.urlopen") as send, \
+                    contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(module.main(), 0)
+            factory.assert_called_once_with(model=None, timeout_seconds=90, max_tokens=768)
+            send.assert_not_called()
 
 
 if __name__ == "__main__":

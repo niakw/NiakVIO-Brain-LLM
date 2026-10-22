@@ -4,6 +4,44 @@ from niakvio_brain_llm.contracts import RepairRequest
 from niakvio_brain_llm.priors import build_causal_prior, taxonomy_layer
 
 class PriorTests(unittest.TestCase):
+    def test_negative_history_cannot_supply_taxonomy_strategy(self):
+        for result in ("failed", "inconclusive", "abstained", "no_progress"):
+            with self.subTest(result=result):
+                prior = build_causal_prior(
+                    RepairRequest(provider_id="demo", failure_class="provider_transport_gap"),
+                    [{
+                        "failure_class": "provider_transport_gap",
+                        "providers": ["demo"],
+                        "strategy": "already_unsuccessful",
+                        "result": result,
+                    }],
+                )
+                self.assertEqual(prior["target_layer"], "provider")
+                self.assertNotIn("strategy_prior", prior)
+
+    def test_negative_history_cannot_establish_unknown_causality(self):
+        prior = build_causal_prior(
+            RepairRequest(provider_id="demo", failure_class="unclassified_gap"),
+            [{
+                "failure_class": "unclassified_gap",
+                "providers": ["demo"],
+                "strategy": "unsuccessful_guess",
+                "result": "failed",
+            }],
+        )
+        self.assertEqual(prior["target_layer"], "unknown")
+        self.assertLess(prior["confidence"], 0.8)
+
+    def test_validated_history_survives_a_higher_ranked_failure(self):
+        prior = build_causal_prior(
+            RepairRequest(provider_id="demo", failure_class="provider_transport_gap"),
+            [
+                {"failure_class": "provider_transport_gap", "strategy": "failed_guess", "result": "failed"},
+                {"failure_class": "provider_transport_gap", "strategy": "verified_strategy", "result": "validated"},
+            ],
+        )
+        self.assertEqual(prior["strategy_prior"], "verified_strategy")
+
     def test_exact_provider_history_becomes_provider_prior(self):
         prior = build_causal_prior(
             RepairRequest(provider_id="movix", failure_class="provider_specific_gap"),

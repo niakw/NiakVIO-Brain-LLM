@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse, hashlib, json, re
 from pathlib import Path
 from typing import Any
+from niakvio_brain_llm.advisor_experiments import blocks_advisor_experiment
 
 STRATEGY_TO_PROFILE={
  "provider-owned-origin-header-and-domain-replay":"provider_origin_failover_v1",
@@ -75,10 +76,7 @@ def load_blocked_fingerprints(root:Path|None)->dict[str,set[str]]:
   if not isinstance(row,dict):continue
   provider=canon(row.get("providerId"));fp=str(row.get("llmAdvisorExperimentFingerprint") or "").strip().casefold()
   if not provider or not re.fullmatch(r"[0-9a-f]{64}",fp):continue
-  try:failures=int(row.get("consecutiveFailures") or 0)
-  except (TypeError,ValueError):failures=0
-  outcome=canon(row.get("lastOutcome"))
-  if failures<=0 or outcome in {"accepted","verified","success"}:continue
+  if not blocks_advisor_experiment(row):continue
   out.setdefault(provider,set()).add(fp)
  return out
 def sanitize(rows,*,niakvio_sha,brain_llm_sha,min_confidence=.80,blocked_fingerprints:dict[str,set[str]]|None=None):

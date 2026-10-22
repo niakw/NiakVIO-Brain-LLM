@@ -12,7 +12,7 @@ from collections import Counter
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
-from niakvio_brain_llm.advisor_experiments import experiment_fingerprint
+from niakvio_brain_llm.advisor_experiments import experiment_fingerprint, failed_advisor_fingerprints
 from niakvio_brain_llm.backend import HostedResponsesBackend, LocalOpenAICompatibleBackend
 from niakvio_brain_llm.batch import batch_summary, load_census, select_batch_targets
 from niakvio_brain_llm.document_memory import DocumentStore
@@ -39,6 +39,38 @@ def force_feedback_temperature(request) -> float:
         if reason in {"no_op", "causally_empty_deletion", "helper_collision"}:
             return 0.2
     return 0.0
+
+
+def _reserve_advisor_experiment(request, outcome) -> bool:
+    proposal = outcome.proposal
+    if proposal is None or not isinstance(proposal.experiment, dict) or not proposal.experiment:
+        return False
+    try:
+        fp = experiment_fingerprint(proposal.experiment)
+    except Exception:
+        return False
+    context = copy.deepcopy(request.provider_context or {})
+    history = [
+        copy.deepcopy(value)
+        for value in context.get("advisor_experiment_history") or []
+        if isinstance(value, dict)
+    ]
+    if fp in failed_advisor_fingerprints(request):
+        return False
+    history.append({
+        "llmAdvisorExperimentFingerprint": fp,
+        "consecutiveFailures": 1,
+        "failures": 1,
+        "successes": 0,
+        "lastOutcome": "candidate_reserved",
+        "lastReason": "reserve distinct hypothesis inside current advisor batch",
+        "failureClass": request.failure_class,
+    })
+    # The prompt clips its display; selection must keep the entire bounded
+    # provider ledger, including failures older than this batch.
+    context["advisor_experiment_history"] = history
+    request.provider_context = context
+    return True
 
 
 def main() -> int:
@@ -90,7 +122,8 @@ def main() -> int:
     )
     parser.add_argument(
         "--model",
-        default=os.environ.get("NIAKVIO_LLM_MODEL", "niakvio-local"),
+        default=None,
+        help="Model override; otherwise use the selected backend's environment setting and default.",
     )
     args = parser.parse_args()
 
@@ -105,20 +138,16 @@ def main() -> int:
 
     def make_backend(timeout_seconds: int, max_tokens: int, *, temperature: float = 0.0, prefill_prompt: bool = False):
         if args.backend == "hosted":
-            credential = os.environ.get("OPENAI_API_KEY", "")
-            if not credential:
-                raise RuntimeError("hosted backend requires OPENAI_API_KEY secret")
             # Forward the environment-only credential without embedding a
             # key-looking assignment in published source or logs.
-            return HostedResponsesBackend(
+            return HostedResponsesBackend.from_environment(
                 model=args.model,
                 timeout_seconds=timeout_seconds,
                 max_tokens=max_tokens,
-                **{"api_key": credential},
             )
         return LocalOpenAICompatibleBackend(
             base_url=args.endpoint,
-            model=args.model,
+            model=args.model or os.environ.get("NIAKVIO_LLM_MODEL") or "niakvio-local",
             timeout_seconds=timeout_seconds,
             temperature=temperature,
             max_tokens=max_tokens,
@@ -226,38 +255,6 @@ def main() -> int:
             "proposal": outcome.proposal.to_dict() if outcome.proposal else None,
         }
 
-    def _reserve_advisor_experiment(request, outcome) -> bool:
-        proposal = outcome.proposal
-        if proposal is None or not isinstance(proposal.experiment, dict) or not proposal.experiment:
-            return False
-        try:
-            fp = experiment_fingerprint(proposal.experiment)
-        except Exception:
-            return False
-        context = copy.deepcopy(request.provider_context or {})
-        history = [
-            copy.deepcopy(value)
-            for value in context.get("advisor_experiment_history") or []
-            if isinstance(value, dict)
-        ]
-        if any(
-            str(value.get("llmAdvisorExperimentFingerprint") or "").strip().casefold() == fp
-            for value in history
-        ):
-            return False
-        history.append({
-            "llmAdvisorExperimentFingerprint": fp,
-            "consecutiveFailures": 1,
-            "failures": 1,
-            "successes": 0,
-            "lastOutcome": "candidate_reserved",
-            "lastReason": "reserve distinct hypothesis inside current advisor batch",
-            "failureClass": request.failure_class,
-        })
-        context["advisor_experiment_history"] = history[-32:]
-        request.provider_context = context
-        return True
-
     def _reserve_force_portfolio_candidate(request, row: dict) -> str:
         proposal = row.get("proposal") if isinstance(row, dict) else None
         mutations = proposal.get("mutations") if isinstance(proposal, dict) else None
@@ -331,6 +328,7 @@ def main() -> int:
     def _force_rejection_reason(exc: Exception) -> str:
         message = str(exc).casefold()
         for needle, code in (
+            ("blocked by executed negative memory", "executed_negative_memory"),
             ("missing or oversized", "missing_or_oversized"),
             ("placeholder or synthetic", "placeholder_or_synthetic"),
             ("synthetic or non-provider network endpoint", "placeholder_or_synthetic"),
@@ -526,6 +524,12 @@ def main() -> int:
             reason = _force_rejection_reason(exc)
             retry_request = copy.deepcopy(request)
             instructions = {
+                "executed_negative_memory": (
+                    "this exact candidate was already executed and rejected, or reserved earlier "
+                    "in this portfolio; use the negative memory to change the causal mechanism "
+                    "and produce a materially different current-byte edit, or abstain. Renaming "
+                    "the diagnosis or changing confidence does not create a new candidate"
+                ),
                 "syntax_error": (
                     "previous edit broke syntax; change only one complete expression "
                     "or statement copied from the selected window, preserve surrounding "
