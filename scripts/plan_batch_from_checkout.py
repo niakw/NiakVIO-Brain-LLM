@@ -97,6 +97,7 @@ def main() -> int:
     )
     parser.add_argument("--output", required=True)
     parser.add_argument("--strict", action="store_true")
+    parser.add_argument("--live-evidence", type=Path, help="Exact-current-SHA provider execution context")
     parser.add_argument("--max-tokens", type=int, default=768)
     parser.add_argument("--timeout-seconds", type=int, default=90)
     parser.add_argument(
@@ -126,6 +127,12 @@ def main() -> int:
         help="Model override; otherwise use the selected backend's environment setting and default.",
     )
     args = parser.parse_args()
+    live_evidence = json.loads(args.live_evidence.read_text()) if args.live_evidence else None
+    if live_evidence is not None:
+        import subprocess
+        actual_sha = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=args.niakvio_root, text=True).strip()
+        if not isinstance(live_evidence, dict) or live_evidence.get("sourceSha") != actual_sha:
+            raise ValueError("live evidence does not match current source SHA")
 
     census = load_census(args.niakvio_root)
     selected = select_batch_targets(
@@ -715,6 +722,11 @@ def main() -> int:
     def plan_one(position: int, census_row: dict) -> list[dict]:
         provider = str(census_row["provider"])
         request = request_cache.get(provider) or request_from_checkout(args.niakvio_root, provider)
+        if live_evidence is not None and live_evidence.get("provider") == provider:
+            request.provider_context["live_runtime_evidence"] = {
+                "active_functions": [str(name) for name in live_evidence.get("active_functions", [])[:6]
+                                     if re.fullmatch(r"[A-Za-z_$][\w$]{0,63}", str(name))],
+            }
         request.advisor_only = bool(args.advisor_only)
         max_hypotheses = max(
             1,

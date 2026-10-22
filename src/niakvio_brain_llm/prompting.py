@@ -5,6 +5,7 @@ import re
 from typing import Any
 
 from .contracts import RepairRequest
+from .source_units import javascript_function_end
 
 def _clip(value: Any, limit: int) -> str:
     text = str(value or "")
@@ -504,6 +505,9 @@ def _force_structural_focus_keywords(request: RepairRequest) -> tuple[str, ...]:
     """Derive bounded source-focus tokens from current structural evidence."""
     class_tokens: list[str] = []
     focus: list[str] = []
+    live = (request.provider_context or {}).get("live_runtime_evidence") or {}
+    focus.extend("function:" + name for name in live.get("active_functions", [])[:6]
+                 if isinstance(name, str) and re.fullmatch(r"[A-Za-z_$][\w$]{0,63}", name))
     variant_failure = str(request.failure_class or "").strip().casefold().replace("-", "_") == "variant_coverage_gap"
 
     def record_token(raw: object) -> None:
@@ -892,32 +896,7 @@ def _force_edit_units(
             brace = source.find("{", match.start(), match.end() + 1)
             if brace < 0:
                 continue
-            quote = ""
-            escaped = False
-            depth = 0
-            end = -1
-            for cursor in range(brace, len(source)):
-                char = source[cursor]
-                if quote:
-                    if escaped:
-                        escaped = False
-                        continue
-                    if char == "\\":
-                        escaped = True
-                        continue
-                    if char == quote:
-                        quote = ""
-                    continue
-                if char in {'"', "'", "`"}:
-                    quote = char
-                    continue
-                if char == "{":
-                    depth += 1
-                elif char == "}":
-                    depth -= 1
-                    if depth == 0:
-                        end = cursor + 1
-                        break
+            end = javascript_function_end(source, match.start())
             if end < 0:
                 continue
             fragment = source[match.start():end]
@@ -985,32 +964,7 @@ def _force_edit_units(
         brace = text.find("{", match.start(), match.end() + 1)
         if brace < 0:
             continue
-        quote = ""
-        escaped = False
-        depth = 0
-        end = -1
-        for cursor in range(brace, len(text)):
-            char = text[cursor]
-            if quote:
-                if escaped:
-                    escaped = False
-                    continue
-                if char == "\\":
-                    escaped = True
-                    continue
-                if char == quote:
-                    quote = ""
-                continue
-            if char in {'"', "\'", "`"}:
-                quote = char
-                continue
-            if char == "{":
-                depth += 1
-            elif char == "}":
-                depth -= 1
-                if depth == 0:
-                    end = cursor + 1
-                    break
+        end = javascript_function_end(text, match.start())
         if end < 0:
             continue
         fragment = text[match.start():end]
@@ -1079,6 +1033,7 @@ def _force_edit_units(
     structural_focus_name_tokens = [
         re.sub(r"[^a-z0-9_$]+", "", str(token or "").casefold())
         for token in focus_keywords
+        if not str(token).startswith("function:")
         if re.sub(r"[^a-z0-9_$]+", "", str(token or "").casefold())
         not in {"selector", "class"}
     ][:4]
@@ -1109,6 +1064,16 @@ def _force_edit_units(
                     function_by_name[match.group(1)] = row
 
     structural_gap = family_key in {"route_proven_gap", "chain_terminal_gap", "media_extraction_gap"}
+    active_names = [str(token).split(":", 1)[1].casefold() for token in focus_keywords
+                    if str(token).startswith("function:")]
+    if active_names:
+        # Current network call stacks select the executed branch. Keep the full
+        # callee map so a parser without its own fetch remains editable too.
+        function_rows.sort(key=lambda row: next((
+            index for index, name in enumerate(active_names)
+            if re.match(r"\s*(?:async\s+)?function\s+" + re.escape(name) + r"\s*\(",
+                        str(row.get("source") or ""), re.I)
+        ), len(active_names)))
     # On structural gaps, reserve one strongest causal root and spend the remaining
     # budget following its local call graph. Reserving an unrelated generic helper
     # as slot two can hide the parser/terminal helper two calls downstream.
