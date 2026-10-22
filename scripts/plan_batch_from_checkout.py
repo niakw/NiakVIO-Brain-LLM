@@ -726,6 +726,12 @@ def main() -> int:
             request.provider_context["live_runtime_evidence"] = {
                 "active_functions": [str(name) for name in live_evidence.get("active_functions", [])[:6]
                                      if re.fullmatch(r"[A-Za-z_$][\w$]{0,63}", str(name))],
+                "previous_executed_edits": [
+                    {key: str(value)[:1200] for key, value in row.items()
+                     if key in {"scope", "family", "find", "replace", "diff"}}
+                    for row in live_evidence.get("previous_executed_edits", [])[-2:]
+                    if isinstance(row, dict)
+                ],
             }
         request.advisor_only = bool(args.advisor_only)
         max_hypotheses = max(

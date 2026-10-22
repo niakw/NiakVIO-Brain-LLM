@@ -1484,6 +1484,10 @@ def build_force_prompt_payload(
             "extract_repeated_protocol_into_family_renderer": True,
         },
         "prior_force_sandbox_failures": force_failures,
+        "previous_executed_edits": _compact(
+            (context.get("live_runtime_evidence") or {}).get("previous_executed_edits") or [],
+            string_limit=1200,
+        ),
         "force_portfolio_reservations": portfolio_reservations,
         "census_prior": census,
         "validated_reference_patterns": references,
