@@ -78,13 +78,17 @@ def network_evidence(values):
 
 
 def fixture_evidence(values):
-    return [{
+    result = [{
         'fixture': re.sub(r'[\x00-\x1f\x7f]', '', str(row.get('fixture') or ''))[:120],
         'category': row.get('category') if row.get('category') in {'movie', 'tv', 'anime'} else '',
         'status': re.sub(r'[^a-z_]', '', str(row.get('status') or ''))[:64],
         'streamsPlayable': count(row.get('streamsPlayable')),
         'streamsReturned': count(row.get('streamsReturned')),
     } for row in rows(values, 8) if isinstance(row, dict)]
+    for output, row in zip(result, [row for row in rows(values, 8) if isinstance(row, dict)]):
+        if type(row.get('expectedDurationSeconds')) is int and 0 < row['expectedDurationSeconds'] <= 1209600:
+            output['expectedDurationSeconds'] = row['expectedDurationSeconds']
+    return result
 
 
 def verification_feedback(value):

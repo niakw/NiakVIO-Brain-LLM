@@ -1575,7 +1575,9 @@ def build_force_prompt_payload(
             "A sampled media signature proves bytes reached the terminal probe, not playback or identity. "
             "If that fixture still returns no streams, inspect post-extraction validation, duration and "
             "request/stream metadata instead of assuming HTML extraction failed. Read/cancel errors are "
-            "inconclusive. Never disable, bypass or weaken media or identity validation to retain a stream."
+            "inconclusive. A very short MP4 compared with the expected fixture duration is a failed source: "
+            "seek a different player correlated to the same episode, or abstain when none is evidenced. "
+            "Never disable, bypass or weaken media or identity validation to retain a stream."
         ),
         "executed_helper_context": executed_helper_context(str(runtime_source or ''), context.get('live_runtime_evidence') or {}),
         "previous_verification": verification_feedback((context.get("live_runtime_evidence") or {}).get("previous_verification")),

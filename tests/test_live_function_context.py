@@ -2,7 +2,7 @@ import unittest
 from niakvio_brain_llm.contracts import RepairRequest
 from niakvio_brain_llm.prompting import build_force_prompt_payload
 from niakvio_brain_llm.source_units import javascript_function_end
-from niakvio_brain_llm.live_evidence import network_evidence, verification_feedback, non_improving_functions, observed_failure_class, executed_runtime_source
+from niakvio_brain_llm.live_evidence import network_evidence, verification_feedback, non_improving_functions, observed_failure_class, executed_runtime_source, fixture_evidence
 
 class LiveFunctionContextTests(unittest.TestCase):
     def test_terminal_media_evidence_is_bounded_and_contains_no_payload(self):
@@ -18,6 +18,9 @@ class LiveFunctionContextTests(unittest.TestCase):
         self.assertEqual(network_evidence(rows), rows)
         live[0]['media_observation'].update(signature='PRIVATE', readState='PRIVATE', durationSeconds='PRIVATE')
         self.assertNotIn('PRIVATE', str(network_evidence(live)))
+        fixtures = fixture_evidence([{'fixture': 'Missing', 'expectedDurationSeconds': 1440, 'body': 'PRIVATE'}])
+        self.assertEqual(fixtures[0]['expectedDurationSeconds'], 1440)
+        self.assertNotIn('PRIVATE', str(fixtures))
 
     def test_executed_long_provider_helper_is_visible_without_exposing_core(self):
         native = 'async function resolve(){return terminalCrawl();}'
