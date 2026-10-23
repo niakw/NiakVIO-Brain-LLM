@@ -62,7 +62,7 @@ def network_evidence(values):
 
 
 def verification_feedback(value):
-    if not isinstance(value, dict):
+    if not isinstance(value, dict) or not value:
         return {}
     result = {"reason": re.sub(r"[^a-zA-Z0-9._:-]", "_", str(value.get("reason") or ""))[:160]}
     for phase in ("baseline", "candidate"):

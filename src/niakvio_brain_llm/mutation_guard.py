@@ -17,7 +17,7 @@ BLOC_RESERVED_FAMILIES = {
     "provider_fix",
 }
 DANGEROUS_RUNTIME_TOKEN = re.compile(
-    r"(?i)(?:\beval\s*\(|\bFunction\s*\(|\bprocess\.|\brequire\s*\(|"
+    r"(?:\beval\s*\(|\bFunction\s*\(|\bprocess\.|\brequire\s*\(|"
     r"\bchild_process\b|\bDeno\.|\bBun\.|\bimport\s*\()"
 )
 

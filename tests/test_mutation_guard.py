@@ -3,6 +3,15 @@ import unittest
 from niakvio_brain_llm.mutation_guard import validate_mutation
 
 class MutationGuardTests(unittest.TestCase):
+    def test_callbacks_are_valid_but_dynamic_function_and_eval_are_rejected(self):
+        mutation = {'scope': 'provider_bloc', 'operation': 'upsert',
+                    'family': 'terminal_resolution', 'find': 'return oldResolver();'}
+        validate_mutation('demo', {**mutation,
+            'replace': 'return rows.map(function(row){return row.url;});'})
+        for expression in ('Function("return 1")()', 'new Function("return 1")()', 'eval(script)', 'process.env'):
+            with self.subTest(expression=expression), self.assertRaisesRegex(ValueError, 'forbidden runtime capability'):
+                validate_mutation('demo', {**mutation, 'replace': 'return ' + expression + ';'})
+
     def test_generated_bloc_rejects_contract_placeholder_family(self):
         mutation = {
             "scope": "provider_bloc",
