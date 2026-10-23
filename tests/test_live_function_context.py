@@ -2,9 +2,34 @@ import unittest
 from niakvio_brain_llm.contracts import RepairRequest
 from niakvio_brain_llm.prompting import build_force_prompt_payload
 from niakvio_brain_llm.source_units import javascript_function_end
-from niakvio_brain_llm.live_evidence import network_evidence, verification_feedback
+from niakvio_brain_llm.live_evidence import network_evidence, verification_feedback, non_improving_functions
 
 class LiveFunctionContextTests(unittest.TestCase):
+    def test_measured_no_gain_rotates_away_from_dispatcher_but_keeps_its_callees(self):
+        source = ('function playerRows(html){return html.match(/iframe/g)||[];}'
+                  'async function externalPlayer(url){return fetch(url).then(r=>r.text());}'
+                  'async function resolve(html){var rows=playerRows(html);return externalPlayer(rows[0]);}')
+        live = {'active_functions': ['resolve'], 'previous_executed_edits': [
+            {'find': 'var rows=playerRows(html);return externalPlayer(rows[0]);', 'replace': 'return [];'}],
+            'previous_verification': {'executionObserved': True, 'materializedMutationObserved': True,
+                'reason': 'insufficient_playable_stream_proof',
+                'baseline': {'streamsPlayable': 1, 'streamsReturned': 1},
+                'candidate': {'streamsPlayable': 1, 'streamsReturned': 1}}}
+        self.assertEqual(non_improving_functions(source, live), ['resolve'])
+        request = RepairRequest(provider_id='demo', failure_class='chain_terminal_gap',
+            allowed_mutations=['provider_bloc'], provider_context={
+                'preferredRuntimeMutationSource': source,
+                'runtime_template_prior': {'reuseBeforeNovelBloc': True}, 'live_runtime_evidence': live})
+        units = build_force_prompt_payload(request)['new_bloc_target']['editable_units']
+        self.assertTrue(units)
+        self.assertTrue(any('function playerRows(' in row['source'] for row in units))
+        self.assertFalse(any(row['source'].startswith('async function resolve(') for row in units))
+        live['previous_verification']['materializedMutationObserved'] = False
+        self.assertEqual(non_improving_functions(source, live), [])
+        live['previous_verification']['materializedMutationObserved'] = True
+        live['previous_verification']['candidate']['streamsPlayable'] = 2
+        self.assertEqual(non_improving_functions(source, live), [])
+
     def test_schema_evidence_has_no_response_values_or_credential_fields(self):
         rows = network_evidence([{'host': 'example.test', 'status': 200, 'stage': 'player',
             'response_body': 'PRIVATE', 'response_structure': {'kind': 'json', 'fields': [

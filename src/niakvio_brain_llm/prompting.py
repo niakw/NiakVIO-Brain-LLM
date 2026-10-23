@@ -6,7 +6,7 @@ from typing import Any
 
 from .contracts import RepairRequest
 from .source_units import javascript_function_end
-from .live_evidence import network_evidence, verification_feedback
+from .live_evidence import network_evidence, verification_feedback, non_improving_functions, fixture_evidence
 
 def _clip(value: Any, limit: int) -> str:
     text = str(value or "")
@@ -507,6 +507,9 @@ def _force_structural_focus_keywords(request: RepairRequest) -> tuple[str, ...]:
     class_tokens: list[str] = []
     focus: list[str] = []
     live = (request.provider_context or {}).get("live_runtime_evidence") or {}
+    context = request.provider_context or {}
+    source = context.get('preferredRuntimeMutationSource') or context.get('runtimeMutationSource') or ''
+    focus.extend('avoid_function:' + name for name in non_improving_functions(source, live))
     focus.extend("function:" + name for name in live.get("active_functions", [])[:6]
                  if isinstance(name, str) and re.fullmatch(r"[A-Za-z_$][\w$]{0,63}", name))
     variant_failure = str(request.failure_class or "").strip().casefold().replace("-", "_") == "variant_coverage_gap"
@@ -743,6 +746,10 @@ def _force_window_kwargs_for_request(request: RepairRequest) -> dict[str, int]:
         and template_prior.get("reuseBeforeNovelBloc")
         and context.get("preferredRuntimeMutationSource")
     ):
+        if str(request.failure_class or '').casefold() == 'variant_coverage_gap' and non_improving_functions(
+            context.get('preferredRuntimeMutationSource'), context.get('live_runtime_evidence') or {}
+        ):
+            return {'max_chars': 2000, 'max_windows': 2, 'max_units': 4}
         # Same exact unit budget for prompt, constrained-wire enum and
         # post-generation converter. Otherwise valid model unit IDs drift.
         if str(request.failure_class or "").strip().casefold() in {"chain_terminal_gap", "media_extraction_gap"}:
@@ -1034,7 +1041,7 @@ def _force_edit_units(
     structural_focus_name_tokens = [
         re.sub(r"[^a-z0-9_$]+", "", str(token or "").casefold())
         for token in focus_keywords
-        if not str(token).startswith("function:")
+        if not str(token).startswith(("function:", "avoid_function:"))
         if re.sub(r"[^a-z0-9_$]+", "", str(token or "").casefold())
         not in {"selector", "class"}
     ][:4]
@@ -1084,6 +1091,7 @@ def _force_edit_units(
         selected.append(row)
         selected_keys.add(key)
 
+    ordered_neighbors = []
     if len(selected) < max_units and function_by_name:
         role_tokens = {
             re.sub(r"[^a-z0-9_$]+", "", keyword.casefold())
@@ -1201,6 +1209,30 @@ def _force_edit_units(
             break
         key = (int(row.get("offset") or 0), int(row.get("end_offset") or 0))
         if key in selected_keys:
+            continue
+        selected.append(row)
+        selected_keys.add(key)
+
+    # Keep the executed root for call-graph traversal, then rotate the offered
+    # edit surface away from functions whose last proved mutation gained nothing.
+    avoided = [str(token).split(':', 1)[1] for token in focus_keywords
+               if str(token).startswith('avoid_function:')]
+    spans = []
+    for name in avoided:
+        for match in re.finditer(r'\b(?:async\s+)?function\s+' + re.escape(name) + r'\s*\(', text):
+            end = javascript_function_end(text, match.start())
+            if end is not None and end >= 0:
+                spans.append((match.start(), end))
+    selected = [row for row in selected if not any(
+        start <= int(row.get('offset') or 0) and int(row.get('end_offset') or 0) <= end
+        for start, end in spans
+    )]
+    selected_keys = {(int(row.get('offset') or 0), int(row.get('end_offset') or 0)) for row in selected}
+    for row in ([*ordered_neighbors, *function_rows] if spans else []):
+        if len(selected) >= max_units:
+            break
+        key = (int(row.get('offset') or 0), int(row.get('end_offset') or 0))
+        if key in selected_keys or any(start <= key[0] and key[1] <= end for start, end in spans):
             continue
         selected.append(row)
         selected_keys.add(key)
@@ -1491,6 +1523,7 @@ def build_force_prompt_payload(
             string_limit=1200,
         ),
         "current_network_evidence": network_evidence((context.get("live_runtime_evidence") or {}).get("network_evidence")),
+        "current_fixture_evidence": fixture_evidence((context.get("live_runtime_evidence") or {}).get("fixture_evidence")),
         "previous_verification": verification_feedback((context.get("live_runtime_evidence") or {}).get("previous_verification")),
         "force_portfolio_reservations": portfolio_reservations,
         "census_prior": census,

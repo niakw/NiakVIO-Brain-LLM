@@ -1,5 +1,6 @@
 """Bound live diagnostics to structural facts, never response scalar values."""
 import re
+from .source_units import javascript_function_end
 
 IDENTIFIER = re.compile(r"[A-Za-z_$][\w$-]{0,47}")
 SENSITIVE = re.compile(r"key|token|auth|signature|secret|password|cookie|session|nonce", re.I)
@@ -51,6 +52,7 @@ def network_evidence(values):
         stage = str(row.get("stage") or "")
         status = row.get("status")
         result.append({
+            "fixture": re.sub(r'[\x00-\x1f\x7f]', '', str(row.get('fixture') or ''))[:120],
             "host": host if re.fullmatch(r"[a-z0-9.-]{1,160}", host) else "",
             "stage": stage if re.fullmatch(r"[a-z_]{1,40}", stage) else "",
             "status": status if type(status) is int and 100 <= status <= 599 else None,
@@ -61,13 +63,59 @@ def network_evidence(values):
     return result
 
 
+def fixture_evidence(values):
+    return [{
+        'fixture': re.sub(r'[\x00-\x1f\x7f]', '', str(row.get('fixture') or ''))[:120],
+        'category': row.get('category') if row.get('category') in {'movie', 'tv', 'anime'} else '',
+        'status': re.sub(r'[^a-z_]', '', str(row.get('status') or ''))[:64],
+        'streamsPlayable': count(row.get('streamsPlayable')),
+        'streamsReturned': count(row.get('streamsReturned')),
+    } for row in rows(values, 8) if isinstance(row, dict)]
+
+
 def verification_feedback(value):
     if not isinstance(value, dict) or not value:
         return {}
     result = {"reason": re.sub(r"[^a-zA-Z0-9._:-]", "_", str(value.get("reason") or ""))[:160]}
+    result['executionObserved'] = value.get('executionObserved') is True
+    result['materializedMutationObserved'] = value.get('materializedMutationObserved') is True
     for phase in ("baseline", "candidate"):
         row = value.get(phase) if isinstance(value.get(phase), dict) else {}
         result[phase] = {key: count(row.get(key))
                          for key in ("streamsPlayable", "streamsReturned", "identityContradictions")}
+        result[phase]['fixtureCoverage'] = fixture_evidence(row.get('fixtureCoverage'))
     result["candidate_network"] = network_evidence(value.get("candidate_network"))
     return result
+
+
+def non_improving_functions(source, live):
+    """Rotate edit locality after a proved, rejected experiment with no gain.
+
+    This is temporary prompt selection, not a permanent function blacklist.
+    The current call graph remains available to select neighboring helpers.
+    """
+    feedback = verification_feedback(live.get('previous_verification'))
+    if not feedback.get('executionObserved') or not feedback.get('materializedMutationObserved'):
+        return []
+    if feedback.get('reason') not in {'insufficient_playable_stream_proof', 'no_strict_runtime_improvement',
+                                     'variant_coverage_no_verified_dimension_gain'}:
+        return []
+    if feedback.get('baseline') != feedback.get('candidate'):
+        return []
+
+    def normalize(text):
+        return re.sub(r'\bconsole\s*\.\s*(?:error|log|warn|info|debug|trace|dir)\b',
+                      '__nuvioProviderSilentLog', text)
+
+    finds = [normalize(str(row.get('find') or '')) for row in rows(live.get('previous_executed_edits'), 2)
+             if isinstance(row, dict) and len(str(row.get('find') or '')) >= 8]
+    names = []
+    source = str(source or '')
+    for match in re.finditer(r'\b(?:async\s+)?function\s+([A-Za-z_$][\w$]*)\s*\(', source):
+        end = javascript_function_end(source, match.start())
+        if end is None or end < 0:
+            continue
+        body = normalize(source[match.start():end])
+        if any(find in body for find in finds) and match.group(1) not in names:
+            names.append(match.group(1))
+    return names[:4]

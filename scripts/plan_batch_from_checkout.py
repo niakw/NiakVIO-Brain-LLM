@@ -723,14 +723,15 @@ def main() -> int:
         provider = str(census_row["provider"])
         request = request_cache.get(provider) or request_from_checkout(args.niakvio_root, provider)
         if live_evidence is not None and live_evidence.get("provider") == provider:
-            from niakvio_brain_llm.live_evidence import network_evidence, verification_feedback
+            from niakvio_brain_llm.live_evidence import network_evidence, verification_feedback, fixture_evidence
             request.provider_context["live_runtime_evidence"] = {
                 "network_evidence": network_evidence(live_evidence.get("network_evidence")),
+                "fixture_evidence": fixture_evidence(live_evidence.get("fixture_evidence")),
                 "previous_verification": verification_feedback(live_evidence.get("previous_verification")),
                 "active_functions": [str(name) for name in live_evidence.get("active_functions", [])[:6]
                                      if re.fullmatch(r"[A-Za-z_$][\w$]{0,63}", str(name))],
                 "previous_executed_edits": [
-                    {key: str(value)[:1200] for key, value in row.items()
+                    {key: str(value)[:1800] for key, value in row.items()
                      if key in {"scope", "family", "find", "replace", "diff"}}
                     for row in live_evidence.get("previous_executed_edits", [])[-2:]
                     if isinstance(row, dict)

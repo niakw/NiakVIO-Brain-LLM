@@ -65,6 +65,7 @@ For kind=function_unit, replace is the NEW FUNCTION BODY ONLY. Never emit or ren
 Existing-file replace <=640 chars unless function_unit; provider_bloc replace <=1200 chars.
 Prefer runtime_template_prior/current runtime reuse before a novel Bloc. A new provider-local mechanism is allowed when current evidence supports it.
 Never cosmetically repeat prior_force_sandbox_failures. force_portfolio_reservations are same-run candidates already reserved for sandbox; do not repeat them. force_validation_feedback requires a materially different valid edit or abstention.
+An avoid_function focus marks a previously tested edit locality with no verified gain; repair an offered neighboring helper instead of rewriting that dispatcher again.
 Abstain only when required current network facts are absent or no complete syntax-safe unit can carry the repair."""
 
 
