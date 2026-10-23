@@ -5,6 +5,20 @@ from niakvio_brain_llm.source_units import javascript_function_end
 from niakvio_brain_llm.live_evidence import network_evidence, verification_feedback, non_improving_functions, observed_failure_class, executed_runtime_source
 
 class LiveFunctionContextTests(unittest.TestCase):
+    def test_terminal_media_evidence_is_bounded_and_contains_no_payload(self):
+        live = [{'fixture': 'Missing', 'stage': 'media', 'media_observation': {
+            'signature': 'mp4', 'durationSeconds': 35, 'bytesSampled': 999999,
+            'readState': 'data', 'cancelState': 'complete', 'body': 'PRIVATE', 'url': 'PRIVATE',
+        }}]
+        rows = network_evidence(live)
+        media = rows[0]['media_observation']
+        self.assertEqual(media['durationSeconds'], 35)
+        self.assertEqual(media['bytesSampled'], 65536)
+        self.assertNotIn('PRIVATE', str(rows))
+        self.assertEqual(network_evidence(rows), rows)
+        live[0]['media_observation'].update(signature='PRIVATE', readState='PRIVATE', durationSeconds='PRIVATE')
+        self.assertNotIn('PRIVATE', str(network_evidence(live)))
+
     def test_executed_long_provider_helper_is_visible_without_exposing_core(self):
         native = 'async function resolve(){return terminalCrawl();}'
         helper = 'async function terminalCrawl(){var out=[];' + ''.join(f'out.push({i});' for i in range(170)) + 'return out;}'

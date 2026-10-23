@@ -51,7 +51,7 @@ def network_evidence(values):
         host = str(row.get("host") or "").lower()
         stage = str(row.get("stage") or "")
         status = row.get("status")
-        result.append({
+        item = {
             "fixture": re.sub(r'[\x00-\x1f\x7f]', '', str(row.get('fixture') or ''))[:120],
             "host": host if re.fullmatch(r"[a-z0-9.-]{1,160}", host) else "",
             "stage": stage if re.fullmatch(r"[a-z_]{1,40}", stage) else "",
@@ -59,7 +59,21 @@ def network_evidence(values):
             "functions": identifiers(row.get("functions"), 8),
             "response_structure": response_structure(row.get("response_structure")),
             "announced_players": count(row.get("announced_players"), 256),
-        })
+        }
+        media = row.get('media_observation')
+        if isinstance(media, dict):
+            item['media_observation'] = {
+                'signature': media.get('signature') if media.get('signature') in
+                    {'unknown', 'mp4', 'ebml', 'mpegts', 'hls', 'html'} else 'unknown',
+                'durationSeconds': count(media.get('durationSeconds'), 1209600)
+                    if type(media.get('durationSeconds')) is int else None,
+                'bytesSampled': count(media.get('bytesSampled'), 65536),
+                'readState': media.get('readState') if media.get('readState') in
+                    {'not_read', 'data', 'empty', 'complete', 'error'} else 'not_read',
+                'cancelState': media.get('cancelState') if media.get('cancelState') in
+                    {'not_requested', 'requested', 'complete', 'error'} else 'not_requested',
+            }
+        result.append(item)
     return result
 
 

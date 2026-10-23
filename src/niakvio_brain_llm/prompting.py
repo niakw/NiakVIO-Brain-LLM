@@ -1571,6 +1571,12 @@ def build_force_prompt_payload(
         ),
         "current_network_evidence": network_evidence((context.get("live_runtime_evidence") or {}).get("network_evidence")),
         "current_fixture_evidence": fixture_evidence((context.get("live_runtime_evidence") or {}).get("fixture_evidence")),
+        "terminal_evidence_policy": (
+            "A sampled media signature proves bytes reached the terminal probe, not playback or identity. "
+            "If that fixture still returns no streams, inspect post-extraction validation, duration and "
+            "request/stream metadata instead of assuming HTML extraction failed. Read/cancel errors are "
+            "inconclusive. Never disable, bypass or weaken media or identity validation to retain a stream."
+        ),
         "executed_helper_context": executed_helper_context(str(runtime_source or ''), context.get('live_runtime_evidence') or {}),
         "previous_verification": verification_feedback((context.get("live_runtime_evidence") or {}).get("previous_verification")),
         "force_portfolio_reservations": portfolio_reservations,
