@@ -23,7 +23,7 @@ def response_structure(value):
     kind = value.get("kind")
     if kind == "json":
         fields = []
-        for row in rows(value.get("fields"), 48):
+        for row in rows(value.get("fields"), 16):
             if not isinstance(row, dict):
                 continue
             path = str(row.get("path") or "")[:160]
@@ -44,7 +44,7 @@ def response_structure(value):
 
 def network_evidence(values):
     result = []
-    for row in rows(values, 12):
+    for row in rows(values, 8):
         if not isinstance(row, dict):
             continue
         host = str(row.get("host") or "").lower()
