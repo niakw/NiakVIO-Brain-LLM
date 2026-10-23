@@ -723,7 +723,10 @@ def main() -> int:
         provider = str(census_row["provider"])
         request = request_cache.get(provider) or request_from_checkout(args.niakvio_root, provider)
         if live_evidence is not None and live_evidence.get("provider") == provider:
+            from niakvio_brain_llm.live_evidence import network_evidence, verification_feedback
             request.provider_context["live_runtime_evidence"] = {
+                "network_evidence": network_evidence(live_evidence.get("network_evidence")),
+                "previous_verification": verification_feedback(live_evidence.get("previous_verification")),
                 "active_functions": [str(name) for name in live_evidence.get("active_functions", [])[:6]
                                      if re.fullmatch(r"[A-Za-z_$][\w$]{0,63}", str(name))],
                 "previous_executed_edits": [

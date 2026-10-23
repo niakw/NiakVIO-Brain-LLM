@@ -6,6 +6,7 @@ from typing import Any
 
 from .contracts import RepairRequest
 from .source_units import javascript_function_end
+from .live_evidence import network_evidence, verification_feedback
 
 def _clip(value: Any, limit: int) -> str:
     text = str(value or "")
@@ -1488,6 +1489,8 @@ def build_force_prompt_payload(
             (context.get("live_runtime_evidence") or {}).get("previous_executed_edits") or [],
             string_limit=1200,
         ),
+        "current_network_evidence": network_evidence((context.get("live_runtime_evidence") or {}).get("network_evidence")),
+        "previous_verification": verification_feedback((context.get("live_runtime_evidence") or {}).get("previous_verification")),
         "force_portfolio_reservations": portfolio_reservations,
         "census_prior": census,
         "validated_reference_patterns": references,
