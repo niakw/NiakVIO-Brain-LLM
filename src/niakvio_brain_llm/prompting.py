@@ -6,7 +6,7 @@ from typing import Any
 
 from .contracts import RepairRequest
 from .source_units import javascript_function_end
-from .live_evidence import network_evidence, verification_feedback, non_improving_functions, fixture_evidence
+from .live_evidence import network_evidence, verification_feedback, non_improving_functions, fixture_evidence, executed_helper_context
 
 def _clip(value: Any, limit: int) -> str:
     text = str(value or "")
@@ -639,17 +639,43 @@ def _force_source_windows(
         *base_keywords,
     ]))
     minimum_code_offset = min(1000, max(0, len(text) // 8))
+    expanded_keywords = []
+    for keyword in keywords:
+        expanded_keywords.append(keyword)
+        if keyword.startswith('function:'):
+            name = keyword.split(':', 1)[1]
+            match = re.search(r'\b(?:async\s+)?function\s+' + re.escape(name) + r'\s*\(', text, re.I)
+            end = javascript_function_end(text, match.start()) if match else -1
+            if match and end is not None and end - match.start() > 1800:
+                expanded_keywords.append(keyword + '#tail')
+    keywords = tuple(expanded_keywords)
+
+    def keyword_positions(keyword):
+        if keyword.startswith('avoid_function:'):
+            return []
+        if keyword.startswith('function:'):
+            name = keyword.split(':', 1)[1].split('#', 1)[0]
+            positions = []
+            for match in re.finditer(r'\b(?:async\s+)?function\s+' + re.escape(name) + r'\s*\(', text, re.I):
+                end = javascript_function_end(text, match.start())
+                if end is not None and end >= match.start():
+                    size = end - match.start()
+                    offset = (size * (2 if keyword.endswith('#tail') else 1) // 3) if size > 1800 else size // 2
+                    positions.append(match.start() + offset)
+            return positions[:12]
+        positions = []
+        cursor = 0
+        while len(positions) < 12:
+            position = lowered.find(keyword.casefold(), cursor)
+            if position < 0:
+                break
+            positions.append(position)
+            cursor = position + max(1, len(keyword))
+        return positions
 
     def _focus_position() -> tuple[int, str]:
         for keyword in keywords:
-            positions: list[int] = []
-            cursor = 0
-            while len(positions) < 12:
-                position = lowered.find(keyword.casefold(), cursor)
-                if position < 0:
-                    break
-                positions.append(position)
-                cursor = position + max(1, len(keyword))
+            positions = keyword_positions(keyword)
             if not positions:
                 continue
             chosen = next(
@@ -672,14 +698,7 @@ def _force_source_windows(
 
     intervals: list[tuple[int, int, str, int]] = []
     for keyword in keywords:
-        positions: list[int] = []
-        cursor = 0
-        while len(positions) < 12:
-            position = lowered.find(keyword.casefold(), cursor)
-            if position < 0:
-                break
-            positions.append(position)
-            cursor = position + max(1, len(keyword))
+        positions = keyword_positions(keyword)
         if not positions:
             continue
         position = next(
@@ -1082,11 +1101,37 @@ def _force_edit_units(
             if re.match(r"\s*(?:async\s+)?function\s+" + re.escape(name) + r"\s*\(",
                         str(row.get("source") or ""), re.I)
         ), len(active_names)))
+        # A measured terminal helper can exceed the complete-function ceiling.
+        # Reserve a bounded exact statement in that helper instead of silently
+        # replacing it with an editable but unrelated dispatcher.
+        for name in active_names:
+            reserved = False
+            reserved_spans = []
+            for match in re.finditer(r'\b(?:async\s+)?function\s+' + re.escape(name) + r'\s*\(', text, re.I):
+                end = javascript_function_end(text, match.start())
+                if end is None or end - match.start() <= 1800:
+                    continue
+                for _, row in ranked:
+                    key = (int(row.get('offset') or 0), int(row.get('end_offset') or 0))
+                    if (match.start() < key[0] and key[1] < end and row.get('kind') != 'function_unit'
+                            and not any(key[0] < right and key[1] > left for left, right in reserved_spans)):
+                        selected.append(row)
+                        selected_keys.add(key)
+                        reserved_spans.append(key)
+                        reserved = True
+                        if len(reserved_spans) >= min(2, max_units):
+                            break
+                if reserved:
+                    break
+            if reserved:
+                break
     # On structural gaps, reserve one strongest causal root and spend the remaining
     # budget following its local call graph. Reserving an unrelated generic helper
     # as slot two can hide the parser/terminal helper two calls downstream.
     initial_function_slots = 1 if structural_gap and max_units >= 2 else min(2, max_units)
     for row in function_rows[:initial_function_slots]:
+        if len(selected) >= max_units:
+            break
         key = (int(row.get("offset") or 0), int(row.get("end_offset") or 0))
         selected.append(row)
         selected_keys.add(key)
@@ -1196,6 +1241,8 @@ def _force_edit_units(
                 selected_keys.add(key)
                 break
         for row in ordered_neighbors:
+            if len(selected) >= max_units:
+                break
             key = (int(row.get("offset") or 0), int(row.get("end_offset") or 0))
             if key in selected_keys:
                 continue
@@ -1524,6 +1571,7 @@ def build_force_prompt_payload(
         ),
         "current_network_evidence": network_evidence((context.get("live_runtime_evidence") or {}).get("network_evidence")),
         "current_fixture_evidence": fixture_evidence((context.get("live_runtime_evidence") or {}).get("fixture_evidence")),
+        "executed_helper_context": executed_helper_context(str(runtime_source or ''), context.get('live_runtime_evidence') or {}),
         "previous_verification": verification_feedback((context.get("live_runtime_evidence") or {}).get("previous_verification")),
         "force_portfolio_reservations": portfolio_reservations,
         "census_prior": census,

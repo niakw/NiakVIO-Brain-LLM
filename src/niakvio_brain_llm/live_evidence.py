@@ -119,3 +119,42 @@ def non_improving_functions(source, live):
         if any(find in body for find in finds) and match.group(1) not in names:
             names.append(match.group(1))
     return names[:4]
+
+
+def observed_failure_class(current, live):
+    """Current failed titles take precedence over a stale variant-risk label."""
+    if current != 'variant_coverage_gap':
+        return current
+    failed = {row['fixture'] for row in fixture_evidence(live.get('fixture_evidence'))
+              if row['streamsReturned'] == 0}
+    if not failed:
+        return current
+    observations = [row for row in network_evidence(live.get('network_evidence'))
+                    if row['fixture'] in failed]
+    if not observations:
+        return current
+    return 'chain_terminal_gap' if any(row['stage'] in {'player', 'source', 'media'}
+                                      for row in observations) else 'route_proven_gap'
+
+
+def executed_runtime_source(context, live):
+    preferred = str(context.get('preferredRuntimeMutationSource') or '')
+    source = str(context.get('runtimeMutationSource') or '')
+    # Runtime source is the published provider-owned prefix. Keep the boundary
+    # explicit even for callers supplying their own RepairRequest context.
+    for marker in ('/* STARTFIX:CORE.', '/* NUVIO_GLOBAL_CORE_START_BOUNDARY_V1 */'):
+        source = source.split(marker, 1)[0]
+    for name in identifiers(live.get('active_functions'), 6):
+        pattern = r'\b(?:async\s+)?function\s+' + re.escape(name) + r'\s*\('
+        if re.search(pattern, source) and not re.search(pattern, preferred):
+            return source
+    return preferred
+
+
+def executed_helper_context(source, live):
+    for name in identifiers(live.get('active_functions'), 6):
+        for match in re.finditer(r'\b(?:async\s+)?function\s+' + re.escape(name) + r'\s*\(', source):
+            end = javascript_function_end(source, match.start())
+            if end is not None and 1800 < end - match.start() <= 8000:
+                return [{'name': name, 'source': source[match.start():end], 'read_only': True}]
+    return []

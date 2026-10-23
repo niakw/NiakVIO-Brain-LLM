@@ -2,9 +2,42 @@ import unittest
 from niakvio_brain_llm.contracts import RepairRequest
 from niakvio_brain_llm.prompting import build_force_prompt_payload
 from niakvio_brain_llm.source_units import javascript_function_end
-from niakvio_brain_llm.live_evidence import network_evidence, verification_feedback, non_improving_functions
+from niakvio_brain_llm.live_evidence import network_evidence, verification_feedback, non_improving_functions, observed_failure_class, executed_runtime_source
 
 class LiveFunctionContextTests(unittest.TestCase):
+    def test_executed_long_provider_helper_is_visible_without_exposing_core(self):
+        native = 'async function resolve(){return terminalCrawl();}'
+        helper = 'async function terminalCrawl(){var out=[];' + ''.join(f'out.push({i});' for i in range(170)) + 'return out;}'
+        full = helper + native + '/* STARTFIX:CORE.TEST */function coreSecret(){return 1;}'
+        context = {'preferredRuntimeMutationSource': native, 'runtimeMutationSource': full,
+                   'runtime_template_prior': {'reuseBeforeNovelBloc': True}}
+        live = {'active_functions': ['terminalCrawl']}
+        context['preferredRuntimeMutationSource'] = executed_runtime_source(context, live)
+        context['live_runtime_evidence'] = live
+        self.assertNotIn('coreSecret', context['preferredRuntimeMutationSource'])
+        q = RepairRequest(provider_id='demo', failure_class='chain_terminal_gap',
+                          allowed_mutations=['provider_bloc'], provider_context=context)
+        payload = build_force_prompt_payload(q)
+        self.assertEqual(payload['executed_helper_context'][0]['source'], helper)
+        first = payload['new_bloc_target']['editable_units'][0]
+        self.assertLessEqual(len(payload['new_bloc_target']['editable_units']), 4)
+        self.assertNotEqual(first['kind'], 'function_unit')
+        self.assertIn(first['source'], helper)
+        self.assertEqual(executed_runtime_source({'preferredRuntimeMutationSource': native,
+            'runtimeMutationSource': full}, {'active_functions': ['coreSecret']}), native)
+
+    def test_current_missing_title_supersedes_stale_variant_risk(self):
+        live = {'fixture_evidence': [
+            {'fixture': 'Working', 'streamsPlayable': 1, 'streamsReturned': 1},
+            {'fixture': 'Missing', 'streamsPlayable': 0, 'streamsReturned': 0}],
+            'network_evidence': [{'fixture': 'Missing', 'stage': 'content_lookup'}]}
+        self.assertEqual(observed_failure_class('variant_coverage_gap', live), 'route_proven_gap')
+        live['network_evidence'][0]['stage'] = 'player'
+        self.assertEqual(observed_failure_class('variant_coverage_gap', live), 'chain_terminal_gap')
+        self.assertEqual(observed_failure_class('provider_network_blocked', live), 'provider_network_blocked')
+        live['fixture_evidence'][1]['streamsReturned'] = 2
+        self.assertEqual(observed_failure_class('variant_coverage_gap', live), 'variant_coverage_gap')
+
     def test_measured_no_gain_rotates_away_from_dispatcher_but_keeps_its_callees(self):
         source = ('function playerRows(html){return html.match(/iframe/g)||[];}'
                   'async function externalPlayer(url){return fetch(url).then(r=>r.text());}'

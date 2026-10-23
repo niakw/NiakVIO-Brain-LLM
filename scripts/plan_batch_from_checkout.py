@@ -723,7 +723,7 @@ def main() -> int:
         provider = str(census_row["provider"])
         request = request_cache.get(provider) or request_from_checkout(args.niakvio_root, provider)
         if live_evidence is not None and live_evidence.get("provider") == provider:
-            from niakvio_brain_llm.live_evidence import network_evidence, verification_feedback, fixture_evidence
+            from niakvio_brain_llm.live_evidence import network_evidence, verification_feedback, fixture_evidence, observed_failure_class, executed_runtime_source
             request.provider_context["live_runtime_evidence"] = {
                 "network_evidence": network_evidence(live_evidence.get("network_evidence")),
                 "fixture_evidence": fixture_evidence(live_evidence.get("fixture_evidence")),
@@ -737,6 +737,11 @@ def main() -> int:
                     if isinstance(row, dict)
                 ],
             }
+            request.failure_class = observed_failure_class(request.failure_class,
+                                                          request.provider_context['live_runtime_evidence'])
+            source = executed_runtime_source(request.provider_context, request.provider_context['live_runtime_evidence'])
+            if source:
+                request.provider_context['preferredRuntimeMutationSource'] = source
         request.advisor_only = bool(args.advisor_only)
         max_hypotheses = max(
             1,
