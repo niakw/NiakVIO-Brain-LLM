@@ -267,6 +267,56 @@ class ProviderContextTests(unittest.TestCase):
             self.assertNotIn("/title/123", refs[0]["snippet"])
             self.assertNotIn("cdn.peer.example", refs[0]["snippet"])
 
+    def test_provider_context_rejects_traversal_and_symlink_sources(self):
+        from niakvio_brain_llm.provider_context import (
+            audit_registered_runtime_variant_coverage,
+        )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "scripts" / "provider_patches").mkdir(parents=True)
+            (root / "engine_v2" / "providers").mkdir(parents=True)
+            (root / "providers").mkdir()
+            secret = root / "secret_runtime_v1.py"
+            secret.write_text("SECRET_SENTINEL = 'must-not-read'\\n", encoding="utf-8")
+            (root / "secret.js").write_text("SECRET_SENTINEL", encoding="utf-8")
+            (root / "secret.mjs").write_text("SECRET_SENTINEL", encoding="utf-8")
+            valid = root / "scripts" / "provider_patches" / "valid_runtime_v1.py"
+            valid.write_text("WRAPPER = 'async function resolve(){return []}'\\n", encoding="utf-8")
+            (root / "scripts" / "provider_patches" / "leak_runtime_v1.py").symlink_to(secret)
+            (root / "provider-overrides.json").write_text(json.dumps({
+                "provider_patches": {
+                    "demo": {"patch_scripts": [
+                        "scripts/provider_patches/../../secret_runtime_v1.py",
+                        "scripts/provider_patches/leak_runtime_v1.py",
+                        "scripts/provider_patches/valid_runtime_v1.py",
+                    ]},
+                }
+            }), encoding="utf-8")
+            (root / "provider-hubs.json").write_text("{}", encoding="utf-8")
+            (root / "manifest.json").write_text(json.dumps({
+                "scrapers": [{
+                    "id": "demo",
+                    "filename": "providers/../secret.js",
+                }]
+            }), encoding="utf-8")
+
+            context = build_provider_context(root, "demo")
+            self.assertNotIn("published_bundle", context)
+            self.assertNotIn("SECRET_SENTINEL", json.dumps(context))
+            self.assertEqual(
+                list(context.get("registered_patch_sources") or {}),
+                ["scripts/provider_patches/valid_runtime_v1.py"],
+            )
+            static = audit_registered_runtime_variant_coverage(root)
+            self.assertEqual(static["registeredRuntimeScriptCount"], 1)
+            self.assertEqual(static["providerCount"], 1)
+
+            # The authored module path must not accept provider-id traversal.
+            escaped = build_provider_context(root, "../../secret")
+            self.assertNotIn("authored_module", escaped)
+            self.assertNotIn("SECRET_SENTINEL", json.dumps(escaped))
+
     def test_hyphenated_provider_reads_published_bloc(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
