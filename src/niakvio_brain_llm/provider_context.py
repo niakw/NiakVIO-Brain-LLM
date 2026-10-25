@@ -134,6 +134,38 @@ def runtime_variant_coverage_signals(sources: dict[str, str] | None) -> dict[str
 
 
 
+def _owned_checkout_file(
+    root: Path,
+    relative: str,
+    *,
+    prefixes: tuple[str, ...],
+) -> Path | None:
+    """Read only regular files confined to their declared NiakVIO source tree.
+
+    Prefix matching alone permits ../ traversal or symlink escapes from a
+    provider override/manifest. Never send those bytes to a model or scanner.
+    """
+    raw = str(relative or "").strip()
+    if not raw or "\\" in raw or "\x00" in raw or raw.startswith("/"):
+        return None
+    parts = raw.split("/")
+    if any(part in ("", ".", "..") for part in parts):
+        return None
+    if not any(raw.startswith(prefix) for prefix in prefixes):
+        return None
+    base = root.resolve()
+    path = (base / raw).resolve()
+    if not path.is_relative_to(base):
+        return None
+    for prefix in prefixes:
+        if not raw.startswith(prefix):
+            continue
+        owned = (base / prefix.rstrip("/")).resolve()
+        if owned.is_relative_to(base) and path.is_relative_to(owned) and path.is_file():
+            return path
+    return None
+
+
 def audit_registered_runtime_variant_coverage(root: str | Path) -> dict[str, Any]:
     """Audit every runtime currently registered by provider-overrides.
 
@@ -170,8 +202,10 @@ def audit_registered_runtime_variant_coverage(root: str | Path) -> dict[str, Any
             continue
         sources: dict[str, str] = {}
         for relative in scripts:
-            path = root / relative
-            if path.is_file():
+            path = _owned_checkout_file(
+                root, relative, prefixes=("scripts/provider_patches/",)
+            )
+            if path is not None:
                 sources[relative] = sanitize_exact_source(
                     path.read_text(encoding="utf-8", errors="replace")
                 )
@@ -631,10 +665,10 @@ def _published_provider_context(root: Path, provider_id: str) -> dict[str, Any] 
     if not isinstance(row, dict):
         return None
     filename = str(row.get("filename") or "").strip()
-    if not filename.startswith(("providers/", "provider-disabled/")):
-        return None
-    path = root / filename
-    if not path.is_file():
+    path = _owned_checkout_file(
+        root, filename, prefixes=("providers/", "provider-disabled/")
+    )
+    if path is None:
         return None
     source = path.read_text(encoding="utf-8", errors="replace")
     runtime_mutation_source = ""
@@ -793,8 +827,12 @@ def build_provider_context(root: str | Path, provider_id: str) -> dict[str, Any]
             context["runtimeMutationFilename"] = published.get("runtimeMutationFilename")
             context["runtimeMutationSource"] = published.get("runtimeMutationSource")
 
-    authored = root / "engine_v2" / "providers" / f"{provider_id}.mjs"
-    if authored.exists():
+    authored = _owned_checkout_file(
+        root,
+        f"engine_v2/providers/{provider_id}.mjs",
+        prefixes=("engine_v2/providers/",),
+    )
+    if authored is not None:
         context["authored_module"] = sanitize_source(
             authored.read_text(encoding="utf-8", errors="replace"),
             limit=5000,
@@ -835,8 +873,10 @@ def build_provider_context(root: str | Path, provider_id: str) -> dict[str, Any]
             sources: dict[str, str] = {}
             source_sha256: dict[str, str] = {}
             for relative in scripts[:4]:
-                path = root / relative
-                if path.is_file():
+                path = _owned_checkout_file(
+                    root, relative, prefixes=("scripts/provider_patches/",)
+                )
+                if path is not None:
                     # Keep the exact sanitized Bloc internally. Prompting owns
                     # context clipping; compact Force find/replace validation must
                     # compare against real source rather than a synthetic clipped
