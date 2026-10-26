@@ -267,6 +267,58 @@ class ProviderContextTests(unittest.TestCase):
             self.assertNotIn("/title/123", refs[0]["snippet"])
             self.assertNotIn("cdn.peer.example", refs[0]["snippet"])
 
+    def test_peer_reference_strips_short_credential_literals(self):
+        from niakvio_brain_llm.provider_context import _sanitize_reference_source
+
+        source = (
+            'const headers = {Authorization: "Bearer fixture-only-value", '
+            '"Cookie": "session=fixture-cookie", '
+            '"X-API-Key": "fixture-key", Referer: "/watch/123"}; '
+            "const token = 'fixture-token'; "
+            "const dynamicToken = readToken();"
+        )
+        result = _sanitize_reference_source(source, "peer")
+        for sensitive in (
+            "fixture-only-value", "fixture-cookie", "fixture-key", "fixture-token",
+            "/watch/123",
+        ):
+            self.assertNotIn(sensitive, result)
+        self.assertIn("<credential-omitted>", result)
+        self.assertIn("readToken()", result)
+
+    def test_peer_reference_requires_exact_full_ok_status(self):
+        from niakvio_brain_llm.provider_context import build_validated_reference_patterns
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "engine_v2" / "providers").mkdir(parents=True)
+            (root / "engine_v2" / "providers" / "peer.mjs").write_text(
+                "async function resolve(){return await fetch('/player');}",
+                encoding="utf-8",
+            )
+            (root / "manifest.json").write_text(
+                json.dumps({"scrapers": []}), encoding="utf-8",
+            )
+            (root / "provider-overrides.json").write_text("{}", encoding="utf-8")
+            (root / "provider-hubs.json").write_text("{}", encoding="utf-8")
+            census = {"providers": [
+                {"provider": "peer", "status": "NOT FULL OK"},
+                {"provider": "demo", "status": "CHAIN REACHED"},
+            ]}
+            refs = build_validated_reference_patterns(
+                root, "demo", "chain_terminal_gap", census,
+                target_context={"runtimeMutationSource": "function resolve(){return null;}"},
+            )
+            self.assertEqual(refs, [])
+            census["providers"][0]["status"] = "FULL OK"
+            refs = build_validated_reference_patterns(
+                root, "demo", "chain_terminal_gap", census,
+                target_context={"runtimeMutationSource": "function resolve(){return null;}"},
+            )
+            self.assertEqual(len(refs), 1)
+            self.assertFalse(refs[0]["proof_authority"])
+            self.assertTrue(refs[0]["novelty_allowed"])
+
     def test_provider_context_rejects_traversal_and_symlink_sources(self):
         from niakvio_brain_llm.provider_context import (
             audit_registered_runtime_variant_coverage,
