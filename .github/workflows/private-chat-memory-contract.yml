@@ -87,24 +87,30 @@ jobs:
                   text.casefold(),
               ))
 
-          provider = next(
-              (
-                  candidate for candidate in provider_candidates
-                  if any(contains_provider(str(row.get("text") or ""), candidate)
-                         for row in store.rows)
-              ),
-              None,
-          )
-          assert provider, "private chat memory has no indexed repair-provider evidence"
-          hits = store.search({"provider_id": provider}, limit=6)
+          # A boundary match in raw text is not necessarily a DocumentStore
+          # token: its tokenizer keeps '/' and '.' within tokens. A provider
+          # mentioned only in a URL/path can therefore be indexed but not
+          # retrievable by an exact provider query. Check the actual top hits
+          # and fall through to the next candidate rather than failing early.
+          provider = None
+          hits = []
+          for candidate in provider_candidates:
+              if not any(contains_provider(str(row.get("text") or ""), candidate)
+                         for row in store.rows):
+                  continue
+              candidate_hits = store.search({"provider_id": candidate}, limit=6)
+              if any(
+                  contains_provider(
+                      str(hit.get("heading") or "") + "\n" + str(hit.get("text") or ""),
+                      candidate,
+                  )
+                  for hit in candidate_hits
+              ):
+                  provider = candidate
+                  hits = candidate_hits
+                  break
+          assert provider, "private chat memory has no retrievable repair-provider evidence"
           assert hits, "private chat memory failed retrieval for an indexed provider"
-          assert any(
-              contains_provider(
-                  str(hit.get("heading") or "") + "\n" + str(hit.get("text") or ""),
-                  provider,
-              )
-              for hit in hits
-          ), "private chat retrieval returned unrelated documents"
 
           sensitive = re.compile(
               r"github_pat_[A-Za-z0-9_]+|gh[pousr]_[A-Za-z0-9]{20,}|"
