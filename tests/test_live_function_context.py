@@ -164,6 +164,40 @@ class LiveFunctionContextTests(unittest.TestCase):
         live['fixture_evidence'][1]['streamsReturned'] = 2
         self.assertEqual(observed_failure_class('variant_coverage_gap', live), 'variant_coverage_gap')
 
+    def test_replay_label_requires_complete_short_media_proof_before_refinement(self):
+        _, live = self.short_source_example()
+        self.assertEqual(observed_failure_class('candidate_replay_gap', live), 'chain_terminal_gap')
+        for key, value in [('durationSeconds', None), ('durationSeconds', 1440),
+                           ('bytesSampled', 4), ('readState', 'error'), ('cancelState', 'requested')]:
+            invalid = copy.deepcopy(live)
+            invalid['network_evidence'][0]['media_observation'][key] = value
+            self.assertEqual(observed_failure_class('candidate_replay_gap', invalid), 'candidate_replay_gap')
+        invalid = copy.deepcopy(live)
+        invalid['network_evidence'][0]['fixture'] = 'Other'
+        self.assertEqual(observed_failure_class('candidate_replay_gap', invalid), 'candidate_replay_gap')
+        invalid = copy.deepcopy(live)
+        invalid['fixture_evidence'][0]['streamsReturned'] = 1
+        self.assertEqual(observed_failure_class('candidate_replay_gap', invalid), 'candidate_replay_gap')
+        self.assertEqual(observed_failure_class('candidate_replay_gap', {}), 'candidate_replay_gap')
+        self.assertEqual(observed_failure_class('provider_network_blocked', live), 'provider_network_blocked')
+
+    def test_current_short_media_refines_replay_without_bypassing_policy_evidence(self):
+        from niakvio_brain_llm.priors import build_causal_prior
+        from niakvio_brain_llm.policy import build_mutation_policy
+        _, live = self.short_source_example()
+        request = RepairRequest(provider_id='demo', failure_class='candidate_replay_gap', status='CANDIDATE OK',
+            allowed_mutations=['provider_bloc'], provider_context={'runtimeMutationSource': 'function resolve(){return [];}'},
+            observations=[{'source': 'census_current', 'value': {
+                'testedThisRun': True, 'candidateProof': ['same-provider candidate'],
+            }}])
+        self.assertFalse(build_mutation_policy(request, build_causal_prior(request, []))['allow_mutations'])
+        request.failure_class = observed_failure_class(request.failure_class, live)
+        prior = build_causal_prior(request, [])
+        self.assertEqual(prior['strategy_prior'], 'terminal_media_extractor_with_playback_validation')
+        self.assertTrue(build_mutation_policy(request, prior)['allow_mutations'])
+        request.observations[0]['value']['testedThisRun'] = False
+        self.assertFalse(build_mutation_policy(request, prior)['allow_mutations'])
+
     def test_measured_no_gain_rotates_away_from_dispatcher_but_keeps_its_callees(self):
         source = ('function playerRows(html){return html.match(/iframe/g)||[];}'
                   'async function externalPlayer(url){return fetch(url).then(r=>r.text());}'

@@ -159,16 +159,11 @@ def verification_feedback(value):
     return result
 
 
-def short_media_source_focus(source, live):
-    """Expose upstream selectors when a measured terminal source is too short.
-
-    This only chooses model edit surfaces. It neither accepts a source nor
-    changes media/identity validation, and requires the same failed fixture.
-    """
+def _short_media_fixtures(live, observations):
+    """Same-fixture evidence of a completely observed short terminal prefix."""
     expected = {row['fixture']: row['expectedDurationSeconds']
                 for row in fixture_evidence(live.get('fixture_evidence'))
                 if row['streamsReturned'] == 0 and row.get('expectedDurationSeconds', 0) >= 600}
-    observations = network_evidence(live.get('network_evidence'))
     failed = {}
     for row in observations:
         media = row.get('media_observation') or {}
@@ -178,6 +173,15 @@ def short_media_source_focus(source, live):
                 and media.get('bytesSampled', 0) >= 40 and media.get('readState') in {'data', 'complete'}
                 and (media.get('cancelState') == 'complete' or media.get('readState') == 'complete')):
             failed[row['fixture']] = duration
+    return [{'fixture': name, 'sampledDurationSeconds': duration,
+             'expectedDurationSeconds': expected[name]} for name, duration in failed.items()]
+
+
+def short_media_source_focus(source, live):
+    """Choose edit surfaces from short media evidence without changing acceptance."""
+    observations = network_evidence(live.get('network_evidence'))
+    fixtures = _short_media_fixtures(live, observations)
+    failed = {row['fixture'] for row in fixtures}
     if not failed:
         return {}
     source = str(source or '')
@@ -220,10 +224,7 @@ def short_media_source_focus(source, live):
     if not selectors:
         return {}
     return {'reason': 'short_terminal_media_source', 'selector_functions': selectors[:3],
-            'terminal_functions': terminal[:2], 'fixtures': [
-                {'fixture': name, 'sampledDurationSeconds': duration,
-                 'expectedDurationSeconds': expected[name]} for name, duration in failed.items()
-            ][:4]}
+            'terminal_functions': terminal[:2], 'fixtures': fixtures[:4]}
 
 
 def non_improving_functions(source, live):
@@ -260,8 +261,8 @@ def non_improving_functions(source, live):
 
 
 def observed_failure_class(current, live):
-    """Current failed titles take precedence over a stale variant-risk label."""
-    if current != 'variant_coverage_gap':
+    """Refine broad census labels using the source-validated current preflight."""
+    if current not in {'variant_coverage_gap', 'candidate_replay_gap'}:
         return current
     failed = {row['fixture'] for row in fixture_evidence(live.get('fixture_evidence'))
               if row['streamsReturned'] == 0}
@@ -270,6 +271,10 @@ def observed_failure_class(current, live):
     observations = [row for row in network_evidence(live.get('network_evidence'))
                     if row['fixture'] in failed]
     if not observations:
+        return current
+    # A plain replay request remains non-mutating. Only the measured rejection
+    # of a short terminal source can establish a different current failure.
+    if current == 'candidate_replay_gap' and not _short_media_fixtures(live, observations):
         return current
     return 'chain_terminal_gap' if any(row['stage'] in {'player', 'source', 'media'}
                                       for row in observations) else 'route_proven_gap'
