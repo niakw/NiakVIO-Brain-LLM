@@ -207,6 +207,44 @@ class LiveFunctionContextTests(unittest.TestCase):
         self.assertEqual(payload['current_network_evidence'], rows)
         self.assertEqual(payload['previous_verification']['candidate']['streamsPlayable'], 0)
 
+    def test_player_markup_survives_prompt_projection_without_response_values(self):
+        markup = {'rows': [{'tag': 'div', 'value_kinds': {'data-src': 'absolute_url',
+                  'data-token': 'PRIVATE', 'src': 'https://private.test/PRIVATE'},
+                  'count': 999999, 'distinct_values': 999999, 'raw_value': 'PRIVATE'}] * 20,
+                  'sampled_chars': 999999, 'truncated': True, 'raw_body': 'PRIVATE'}
+        evidence = network_evidence([{'fixture': 'Missing', 'stage': 'episode', 'status': 200,
+            'response_structure': {'kind': 'html', 'player_markup': markup}}])
+        projected = evidence[0]['response_structure']['player_markup']
+        self.assertEqual(len(projected['rows']), 8)
+        self.assertEqual(projected['rows'][0], {'tag': 'div', 'value_kinds': {'data-src': 'absolute_url'},
+                                               'count': 128, 'distinct_values': 128})
+        self.assertEqual(projected['sampled_chars'], 131072)
+        self.assertTrue(projected['truncated'])
+        self.assertNotIn('PRIVATE', str(evidence))
+        self.assertNotIn('private.test', str(evidence))
+        request = RepairRequest(provider_id='demo', failure_class='chain_terminal_gap',
+            provider_context={'live_runtime_evidence': {'network_evidence': evidence}})
+        payload = build_force_prompt_payload(request)
+        self.assertEqual(payload['current_network_evidence'], evidence)
+        self.assertEqual(network_evidence(evidence), evidence)
+
+    def test_repeated_player_replies_do_not_evict_the_episode_markup(self):
+        events = [{'fixture': 'Missing', 'stage': 'media', 'status': 206}] * 2
+        events += [{'fixture': 'Missing', 'stage': 'player', 'status': 200,
+                    'response_structure': {'kind': 'html', 'player_markup': {
+                        'rows': [{'tag': 'source', 'value_kinds': {'src': 'absolute_url'},
+                                  'count': 1, 'distinct_values': 1}], 'sampled_chars': 20000 + index}}}
+                   for index in range(8)]
+        events.append({'fixture': 'Missing', 'stage': 'episode', 'status': 200,
+                       'response_structure': {'kind': 'html', 'player_markup': {
+                           'rows': [{'tag': 'option', 'value_kinds': {'value': 'absolute_url'},
+                                     'count': 54, 'distinct_values': 54}]}}})
+        evidence = network_evidence(events)
+        self.assertEqual(len(evidence), 8)
+        self.assertEqual([row['stage'] for row in evidence[:3]], ['media', 'player', 'episode'])
+        self.assertEqual(evidence[2]['response_structure']['player_markup']['rows'][0]['count'], 54)
+        self.assertEqual(network_evidence(evidence), evidence)
+
     def test_regex_quotes_do_not_hide_complete_parser(self):
         source = '''function parse(html){return /["']([^"']+)["']/.exec(html);}function next(){return 1;}'''
         end = javascript_function_end(source, 0)
