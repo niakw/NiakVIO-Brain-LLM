@@ -106,6 +106,73 @@ def verification_feedback(value):
     return result
 
 
+def short_media_source_focus(source, live):
+    """Expose upstream selectors when a measured terminal source is too short.
+
+    This only chooses model edit surfaces. It neither accepts a source nor
+    changes media/identity validation, and requires the same failed fixture.
+    """
+    expected = {row['fixture']: row['expectedDurationSeconds']
+                for row in fixture_evidence(live.get('fixture_evidence'))
+                if row['streamsReturned'] == 0 and row.get('expectedDurationSeconds', 0) >= 600}
+    observations = network_evidence(live.get('network_evidence'))
+    failed = {}
+    for row in observations:
+        media = row.get('media_observation') or {}
+        duration = media.get('durationSeconds')
+        if (row['fixture'] in expected and row['status'] in {200, 206}
+                and media.get('signature') == 'mp4' and type(duration) is int and 0 < duration < 60
+                and media.get('bytesSampled', 0) >= 40 and media.get('readState') in {'data', 'complete'}
+                and (media.get('cancelState') == 'complete' or media.get('readState') == 'complete')):
+            failed[row['fixture']] = duration
+    if not failed:
+        return {}
+    source = str(source or '')
+    for marker in ('/* STARTFIX:CORE.', '/* NUVIO_GLOBAL_CORE_START_BOUNDARY_V1 */'):
+        source = source.split(marker, 1)[0]
+    functions = {}
+    for match in re.finditer(r'\b(?:async\s+)?function\s+([A-Za-z_$][\w$]*)\s*\(', source):
+        end = javascript_function_end(source, match.start())
+        if end is not None and end > match.start():
+            functions.setdefault(match.group(1), source[match.start():end])
+    terminal = []
+    for row in observations:
+        tags = {tag.get('tag') for tag in (row.get('response_structure') or {}).get('tags', [])}
+        if row['fixture'] not in failed or not tags.intersection({'video', 'source'}):
+            continue
+        for name in row['functions']:
+            if (name in functions and not re.search(r'fetch|request', name, re.I)
+                    and name not in {'text', 'json', 'wrapped', 'wrap', 'apiJson', 'jsonPostAt'}):
+                if name not in terminal:
+                    terminal.append(name)
+                break
+    if not terminal:
+        return {}
+    selectors = []
+    for parent in identifiers(live.get('active_functions'), 6):
+        body = functions.get(parent, '')
+        if parent in terminal or not any(re.search(r'\b' + re.escape(name) + r'\s*\(', body) for name in terminal):
+            continue
+        for name in re.findall(r'(?<![\w$.])([A-Za-z_$][\w$]*)\s*\(', body):
+            target = functions.get(name, '')
+            if (not target or name == parent or name in terminal or name in selectors
+                    or re.search(r'crawl|extract|decode|unpack|probe|validat', name, re.I)):
+                continue
+            # Require a selector directly called by the observed dispatcher.
+            # Names support compact helpers; markup supports opaque names.
+            if (re.search(r'player|server|episode', name, re.I)
+                    or re.search(r'<(?:iframe|option|select)\b|data-(?:player|server)', target, re.I)):
+                selectors.append(name)
+    selectors.sort(key=lambda name: bool(re.search(r'episode', name, re.I)))
+    if not selectors:
+        return {}
+    return {'reason': 'short_terminal_media_source', 'selector_functions': selectors[:3],
+            'terminal_functions': terminal[:2], 'fixtures': [
+                {'fixture': name, 'sampledDurationSeconds': duration,
+                 'expectedDurationSeconds': expected[name]} for name, duration in failed.items()
+            ][:4]}
+
+
 def non_improving_functions(source, live):
     """Rotate edit locality after a proved, rejected experiment with no gain.
 

@@ -1,10 +1,80 @@
 import unittest
+import copy
 from niakvio_brain_llm.contracts import RepairRequest
 from niakvio_brain_llm.prompting import build_force_prompt_payload
 from niakvio_brain_llm.source_units import javascript_function_end
-from niakvio_brain_llm.live_evidence import network_evidence, verification_feedback, non_improving_functions, observed_failure_class, executed_runtime_source, fixture_evidence
+from niakvio_brain_llm.live_evidence import network_evidence, verification_feedback, non_improving_functions, observed_failure_class, executed_runtime_source, fixture_evidence, short_media_source_focus
 
 class LiveFunctionContextTests(unittest.TestCase):
+    def short_source_example(self):
+        source = ('function pickPlayers(html){return html.match(/iframe/g)||[];}'
+                  'async function openPlayer(url){return fetch(url).then(r=>r.text());}'
+                  'function episodeRoute(q){return q.episode;}'
+                  'function unusedPlayer(){return "not on the executed chain";}'
+                  'function decoder(value){return value;}'
+                  'async function terminalCrawl(url){var out=[];' +
+                  ''.join(f'out.push(decoder({i}));' for i in range(140)) + 'return out;}'
+                  'async function resolve(q){var episode=episodeRoute(q),players=pickPlayers(q.html);'
+                  'return terminalCrawl(await openPlayer(players[0]));}'
+                  '/* STARTFIX:CORE.TEST */function corePlayer(){return 1;}')
+        live = {'active_functions': ['terminalCrawl', 'resolve', 'openPlayer'],
+                'fixture_evidence': [{'fixture': 'Missing', 'streamsReturned': 0, 'expectedDurationSeconds': 1440}],
+                'network_evidence': [
+                    {'fixture': 'Missing', 'stage': 'media', 'status': 206,
+                     'media_observation': {'signature': 'mp4', 'durationSeconds': 5, 'bytesSampled': 32768,
+                                           'readState': 'data', 'cancelState': 'complete'}},
+                    {'fixture': 'Missing', 'stage': 'player', 'status': 200,
+                     'functions': ['fetchPage', 'terminalCrawl', 'resolve'],
+                     'response_structure': {'kind': 'html', 'tags': [{'tag': 'video'}, {'tag': 'source'}]}},
+                ]}
+        return source, live
+
+    def test_short_terminal_source_offers_executed_upstream_selectors(self):
+        source, live = self.short_source_example()
+        focus = short_media_source_focus(source, live)
+        self.assertEqual(focus['selector_functions'], ['pickPlayers', 'openPlayer', 'episodeRoute'])
+        self.assertEqual(focus['terminal_functions'], ['terminalCrawl'])
+        self.assertEqual(focus['fixtures'][0]['sampledDurationSeconds'], 5)
+        self.assertNotIn('unusedPlayer', str(focus))
+        self.assertNotIn('corePlayer', str(focus))
+        request = RepairRequest(provider_id='demo', failure_class='chain_terminal_gap',
+            allowed_mutations=['provider_bloc'], provider_context={
+                'preferredRuntimeMutationSource': source.split('/* STARTFIX:CORE.')[0],
+                'runtime_template_prior': {'reuseBeforeNovelBloc': True}, 'live_runtime_evidence': live})
+        payload = build_force_prompt_payload(request)
+        units = payload['new_bloc_target']['editable_units']
+        self.assertLessEqual(len(units), 4)
+        self.assertEqual(len({row['source'] for row in units}), len(units))
+        for name in focus['selector_functions']:
+            self.assertTrue(any('function ' + name + '(' in row['source'] for row in units), name)
+        self.assertFalse(any('out.push(decoder(' in row['source'] for row in units))
+        self.assertEqual(payload['source_selection_focus'], focus)
+
+    def test_short_source_focus_requires_complete_same_fixture_evidence(self):
+        source, live = self.short_source_example()
+        for key, value in [('durationSeconds', None), ('durationSeconds', 1440),
+                           ('readState', 'error'), ('cancelState', 'requested'),
+                           ('signature', 'html'), ('bytesSampled', 4)]:
+            invalid = copy.deepcopy(live)
+            invalid['network_evidence'][0]['media_observation'][key] = value
+            self.assertEqual(short_media_source_focus(source, invalid), {}, (key, value))
+        for key, value in [('fixture', 'Other'), ('status', 503)]:
+            invalid = copy.deepcopy(live)
+            invalid['network_evidence'][0][key] = value
+            self.assertEqual(short_media_source_focus(source, invalid), {})
+        for key, value in [('expectedDurationSeconds', None), ('expectedDurationSeconds', 30), ('streamsReturned', 1)]:
+            invalid = copy.deepcopy(live)
+            invalid['fixture_evidence'][0][key] = value
+            self.assertEqual(short_media_source_focus(source, invalid), {})
+        invalid = copy.deepcopy(live)
+        invalid['network_evidence'][1]['functions'] = ['corePlayer']
+        self.assertEqual(short_media_source_focus(source, invalid), {})
+
+    def test_upstream_markup_selector_does_not_require_a_provider_specific_name(self):
+        source, live = self.short_source_example()
+        source = source.replace('pickPlayers', 'routeA').replace('html.match(/iframe/g)', 'html.match(/<option/g)')
+        self.assertIn('routeA', short_media_source_focus(source, live)['selector_functions'])
+
     def test_terminal_media_evidence_is_bounded_and_contains_no_payload(self):
         live = [{'fixture': 'Missing', 'stage': 'media', 'media_observation': {
             'signature': 'mp4', 'durationSeconds': 35, 'bytesSampled': 999999,
