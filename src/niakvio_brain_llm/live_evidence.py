@@ -1,4 +1,5 @@
 """Bound live diagnostics to structural facts, never response scalar values."""
+import json
 import re
 from .source_units import javascript_function_end
 
@@ -18,6 +19,32 @@ def identifiers(values, limit=16):
             and not SENSITIVE.search(name)][:limit] if isinstance(values, list) else []
 
 
+def player_markup(value):
+    if not isinstance(value, dict):
+        return {}
+    attributes = {'src', 'data-src', 'href', 'value', 'data-url', 'data-link', 'data-player',
+                  'data-embed', 'data-video', 'data-code', 'data-iframe', 'data-source',
+                  'data-player-id', 'data-index', 'data-server'}
+    kinds = {'empty', 'absolute_url', 'relative_url', 'fragment', 'inline_markup',
+             'escaped_markup', 'encoded_markup', 'encoded_url', 'other'}
+    result = []
+    for row in rows(value.get('rows'), 8):
+        if not isinstance(row, dict) or row.get('tag') not in {
+            'iframe', 'video', 'source', 'a', 'button', 'option', 'div', 'li', 'input'
+        }:
+            continue
+        raw = row.get('value_kinds')
+        projected = {name: kind for name, kind in raw.items()
+                     if name in attributes and isinstance(kind, str) and kind in kinds} if isinstance(raw, dict) else {}
+        projected = dict(list(projected.items())[:8])
+        if projected:
+            total = count(row.get('count'), 128)
+            result.append({'tag': row['tag'], 'value_kinds': projected, 'count': total,
+                           'distinct_values': min(total, count(row.get('distinct_values'), 128))})
+    return {'rows': result, 'sampled_chars': count(value.get('sampled_chars'), 131072),
+            'truncated': value.get('truncated') is True}
+
+
 def response_structure(value):
     if not isinstance(value, dict):
         return {}
@@ -35,17 +62,20 @@ def response_structure(value):
                 fields.append({"path": path, "type": row["type"]})
         return {"kind": kind, "fields": fields}
     if kind == "html":
-        return {"kind": kind, "tags": [
+        result = {"kind": kind, "tags": [
             {"tag": row["tag"], "attributes": identifiers(row.get("attributes"))}
             for row in rows(value.get("tags"), 8) if isinstance(row, dict)
             and row.get("tag") in {"iframe", "script", "video", "source", "a", "button", "select", "option"}
         ], "variables": identifiers(value.get("variables"))}
+        if isinstance(value.get('player_markup'), dict):
+            result['player_markup'] = player_markup(value['player_markup'])
+        return result
     return {"kind": kind} if kind in {"text", "binary"} else {}
 
 
 def network_evidence(values):
     result = []
-    for row in rows(values, 8):
+    for row in rows(values, 12):
         if not isinstance(row, dict):
             continue
         host = str(row.get("host") or "").lower()
@@ -74,7 +104,30 @@ def network_evidence(values):
                     {'not_requested', 'requested', 'complete', 'error'} else 'not_requested',
             }
         result.append(item)
-    return result
+    if len(result) <= 8:
+        return result
+    # Repeated player replies must not hide the episode/lookup context. Reserve
+    # one event per fixture/stage, then retain distinct shapes before duplicates.
+    primary, alternatives, duplicates = [], [], []
+    phases, shapes = set(), set()
+    for item in result:
+        shape = dict(item)
+        structure = dict(shape['response_structure'])
+        if 'player_markup' in structure:
+            structure['player_markup'] = {key: value for key, value in structure['player_markup'].items()
+                                          if key != 'sampled_chars'}
+        shape['response_structure'] = structure
+        key = json.dumps(shape, sort_keys=True)
+        phase = (item['fixture'], item['stage'])
+        if phase not in phases:
+            primary.append(item)
+            phases.add(phase)
+        elif key not in shapes:
+            alternatives.append(item)
+        else:
+            duplicates.append(item)
+        shapes.add(key)
+    return (primary + alternatives + duplicates)[:8]
 
 
 def fixture_evidence(values):
