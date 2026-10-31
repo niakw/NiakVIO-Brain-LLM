@@ -6,7 +6,7 @@ from typing import Any
 
 from .contracts import RepairRequest
 from .source_units import javascript_function_end
-from .live_evidence import network_evidence, verification_feedback, non_improving_functions, fixture_evidence, executed_helper_context
+from .live_evidence import network_evidence, verification_feedback, non_improving_functions, fixture_evidence, executed_helper_context, short_media_source_focus
 
 def _clip(value: Any, limit: int) -> str:
     text = str(value or "")
@@ -510,8 +510,14 @@ def _force_structural_focus_keywords(request: RepairRequest) -> tuple[str, ...]:
     context = request.provider_context or {}
     source = context.get('preferredRuntimeMutationSource') or context.get('runtimeMutationSource') or ''
     focus.extend('avoid_function:' + name for name in non_improving_functions(source, live))
+    selection = short_media_source_focus(source, live)
+    if selection:
+        focus.append('terminal_preview_source')
+        focus.extend('avoid_function:' + name for name in selection['terminal_functions'])
+        focus.extend('function:' + name for name in selection['selector_functions'])
     focus.extend("function:" + name for name in live.get("active_functions", [])[:6]
-                 if isinstance(name, str) and re.fullmatch(r"[A-Za-z_$][\w$]{0,63}", name))
+                 if isinstance(name, str) and re.fullmatch(r"[A-Za-z_$][\w$]{0,63}", name)
+                 and name not in selection.get('terminal_functions', []))
     variant_failure = str(request.failure_class or "").strip().casefold().replace("-", "_") == "variant_coverage_gap"
 
     def record_token(raw: object) -> None:
@@ -1101,10 +1107,20 @@ def _force_edit_units(
             if re.match(r"\s*(?:async\s+)?function\s+" + re.escape(name) + r"\s*\(",
                         str(row.get("source") or ""), re.I)
         ), len(active_names)))
+        if 'terminal_preview_source' in focus_keywords:
+            # Keep the measured source-selection chain visible before spending
+            # the unit budget on the terminal helper's decoder/crawl callees.
+            for row in function_rows[:min(3, max_units)]:
+                key = (int(row.get('offset') or 0), int(row.get('end_offset') or 0))
+                if key not in selected_keys:
+                    selected.append(row)
+                    selected_keys.add(key)
         # A measured terminal helper can exceed the complete-function ceiling.
         # Reserve a bounded exact statement in that helper instead of silently
         # replacing it with an editable but unrelated dispatcher.
         for name in active_names:
+            if len(selected) >= max_units:
+                break
             reserved = False
             reserved_spans = []
             for match in re.finditer(r'\b(?:async\s+)?function\s+' + re.escape(name) + r'\s*\(', text, re.I):
@@ -1112,8 +1128,10 @@ def _force_edit_units(
                 if end is None or end - match.start() <= 1800:
                     continue
                 for _, row in ranked:
+                    if len(selected) >= max_units:
+                        break
                     key = (int(row.get('offset') or 0), int(row.get('end_offset') or 0))
-                    if (match.start() < key[0] and key[1] < end and row.get('kind') != 'function_unit'
+                    if (key not in selected_keys and match.start() < key[0] and key[1] < end and row.get('kind') != 'function_unit'
                             and not any(key[0] < right and key[1] > left for left, right in reserved_spans)):
                         selected.append(row)
                         selected_keys.add(key)
@@ -1133,6 +1151,8 @@ def _force_edit_units(
         if len(selected) >= max_units:
             break
         key = (int(row.get("offset") or 0), int(row.get("end_offset") or 0))
+        if key in selected_keys:
+            continue
         selected.append(row)
         selected_keys.add(key)
 
@@ -1613,6 +1633,10 @@ def build_force_prompt_payload(
             "validation_retry_context": "focused" if validation_feedback is not None else "compact_initial",
         },
     }
+
+    selection_focus = short_media_source_focus(str(runtime_source or ''), context.get('live_runtime_evidence') or {})
+    if selection_focus:
+        payload['source_selection_focus'] = selection_focus
 
     # CPU-only 7B generation repeatedly exhausted its 180s request budget on
     # 9-14k-character prompts, although FORCE only needs one exact current unit.
