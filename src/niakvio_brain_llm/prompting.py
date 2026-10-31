@@ -515,9 +515,9 @@ def _force_structural_focus_keywords(request: RepairRequest) -> tuple[str, ...]:
         focus.append('terminal_preview_source')
         focus.extend('avoid_function:' + name for name in selection['terminal_functions'])
         focus.extend('function:' + name for name in selection['selector_functions'])
-    focus.extend("function:" + name for name in live.get("active_functions", [])[:6]
-                 if isinstance(name, str) and re.fullmatch(r"[A-Za-z_$][\w$]{0,63}", name)
-                 and name not in selection.get('terminal_functions', []))
+    if not selection:
+        focus.extend("function:" + name for name in live.get("active_functions", [])[:6]
+                     if isinstance(name, str) and re.fullmatch(r"[A-Za-z_$][\w$]{0,63}", name))
     variant_failure = str(request.failure_class or "").strip().casefold().replace("-", "_") == "variant_coverage_gap"
 
     def record_token(raw: object) -> None:
@@ -1108,9 +1108,18 @@ def _force_edit_units(
                         str(row.get("source") or ""), re.I)
         ), len(active_names)))
         if 'terminal_preview_source' in focus_keywords:
-            # Keep the measured source-selection chain visible before spending
-            # the unit budget on the terminal helper's decoder/crawl callees.
-            for row in function_rows[:min(3, max_units)]:
+            # Rejected selectors remain in the call map as read-only context,
+            # but must not seed the next traversal or spend its root budget.
+            avoided_names = {str(token).split(':', 1)[1].casefold() for token in focus_keywords
+                             if str(token).startswith('avoid_function:')}
+            def named(row, names):
+                return any(re.match(r'\s*(?:async\s+)?function\s+' + re.escape(name) + r'\s*\(',
+                                    str(row.get('source') or ''), re.I) for name in names)
+            function_rows = [row for row in function_rows if not named(row, avoided_names)]
+            selector_rows = [row for row in function_rows if named(row, active_names)]
+            # Follow the remaining selectors' own parsers, rather than refilling
+            # their slots with transport utilities from already rejected roots.
+            for row in selector_rows[:min(3, max_units)]:
                 key = (int(row.get('offset') or 0), int(row.get('end_offset') or 0))
                 if key not in selected_keys:
                     selected.append(row)

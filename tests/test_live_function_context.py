@@ -70,6 +70,45 @@ class LiveFunctionContextTests(unittest.TestCase):
         invalid['network_evidence'][1]['functions'] = ['corePlayer']
         self.assertEqual(short_media_source_focus(source, invalid), {})
 
+    def test_short_source_rotation_follows_the_remaining_selector_parser(self):
+        source, live = self.short_source_example()
+        source = source.replace(
+            'function episodeRoute(q){return q.episode;}',
+            'function episodeRoute(q){return episodeRows(q.html).find(episodeScore);}'
+            'function episodeRows(html){return html.match(/<option[^>]*>/g)||[];}'
+            'function episodeScore(row){return /episode/.test(row);}',
+        )
+        source = source.replace('return html.match(/iframe/g)||[];',
+                                'return (html.match(/iframe/g)||[]).map(abs);')
+        source = source.replace('return fetch(url).then(r=>r.text());', 'return text(abs(url));')
+        source = source.replace('/* STARTFIX:CORE.TEST */',
+            'function abs(v){return String(v);}'
+            'async function text(url){return fetch(url).then(r=>r.text());}'
+            '/* STARTFIX:CORE.TEST */')
+        live['previous_executed_edits'] = [
+            {'find': 'return (html.match(/iframe/g)||[]).map(abs);', 'replace': 'return [];'},
+            {'find': 'return text(abs(url));', 'replace': 'return "";'},
+        ]
+        live['previous_verification'] = {
+            'executionObserved': True, 'materializedMutationObserved': True,
+            'reason': 'insufficient_playable_stream_proof',
+            'baseline': {'streamsPlayable': 0, 'streamsReturned': 0},
+            'candidate': {'streamsPlayable': 0, 'streamsReturned': 0},
+        }
+        request = RepairRequest(provider_id='demo', failure_class='chain_terminal_gap',
+            allowed_mutations=['provider_bloc'], provider_context={
+                'preferredRuntimeMutationSource': source.split('/* STARTFIX:CORE.')[0],
+                'runtime_template_prior': {'reuseBeforeNovelBloc': True},
+                'live_runtime_evidence': live,
+            })
+        units = build_force_prompt_payload(request)['new_bloc_target']['editable_units']
+        self.assertLessEqual(len(units), 4)
+        self.assertEqual(len({row['source'] for row in units}), len(units))
+        for name in ('episodeRoute', 'episodeRows', 'episodeScore'):
+            self.assertTrue(any('function ' + name + '(' in row['source'] for row in units), name)
+        for name in ('pickPlayers', 'openPlayer', 'terminalCrawl', 'unusedPlayer', 'decoder', 'corePlayer'):
+            self.assertFalse(any('function ' + name + '(' in row['source'] for row in units), name)
+
     def test_upstream_markup_selector_does_not_require_a_provider_specific_name(self):
         source, live = self.short_source_example()
         source = source.replace('pickPlayers', 'routeA').replace('html.match(/iframe/g)', 'html.match(/<option/g)')
