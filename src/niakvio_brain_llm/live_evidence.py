@@ -108,6 +108,8 @@ def network_evidence(values):
         media = row.get('media_observation')
         if isinstance(row.get('http_observation'), dict):
             item['http_observation'] = http_observation(row['http_observation'])
+        if isinstance(row.get('reader_user_agent_probe'), dict) and row['reader_user_agent_probe']:
+            item['reader_user_agent_probe'] = reader_user_agent_probe(row['reader_user_agent_probe'])
         if isinstance(media, dict):
             item['media_observation'] = {
                 'signature': media.get('signature') if media.get('signature') in
@@ -161,6 +163,23 @@ def http_observation(value):
               for key, allowed in enums.items()}
     result['sampled_bytes'] = count(value.get('sampled_bytes'), 8192)
     return result
+
+
+def reader_user_agent_probe(value):
+    """Preserve a controlled diagnostic result without retaining its inputs."""
+    attempted = value.get('attempted') is True
+    outcome = value.get('outcome')
+    if attempted:
+        outcome = outcome if isinstance(outcome, str) and outcome in {'response', 'timeout', 'error'} else 'error'
+    else:
+        outcome = 'budget_exhausted' if outcome == 'budget_exhausted' else 'missing_profile'
+    status = value.get('status')
+    http = value.get('http_observation')
+    return {
+        'attempted': attempted, 'profile_source': 'prior_successful_html', 'changed_header': 'user-agent',
+        'status': status if attempted and outcome == 'response' and type(status) is int and 100 <= status <= 599 else None,
+        'outcome': outcome, 'http_observation': http_observation(http if isinstance(http, dict) else {}),
+    }
 
 
 def fixture_evidence(values):

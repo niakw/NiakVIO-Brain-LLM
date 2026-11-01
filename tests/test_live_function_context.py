@@ -6,6 +6,62 @@ from niakvio_brain_llm.source_units import javascript_function_end
 from niakvio_brain_llm.live_evidence import network_evidence, verification_feedback, non_improving_functions, observed_failure_class, executed_runtime_source, fixture_evidence, short_media_source_focus
 
 class LiveFunctionContextTests(unittest.TestCase):
+    def test_reader_agent_control_reaches_both_prompt_channels_without_private_values(self):
+        signal = {'content_kind': 'html', 'url_relation': 'same_url', 'body_state': 'not_sampled',
+                  'sampled_bytes': 0, 'page_signal': 'unknown'}
+        control = {'attempted': True, 'profile_source': 'prior_successful_html', 'changed_header': 'user-agent',
+                   'status': 200, 'outcome': 'response', 'http_observation': signal}
+        private = 'PRIVATE_URL_HEADER_AGENT_BODY'
+        raw = {'fixture': 'Missing', 'stage': 'player', 'host': 'reader.test', 'status': 403,
+               'reader_user_agent_probe': {**control, 'profile_source': private, 'changed_header': private,
+                   'url': 'https://private.test/' + private, 'headers': {'User-Agent': private, 'Cookie': private},
+                   'body': private, 'http_observation': {**signal, 'raw_body': private, 'url': private}}}
+        live = {'network_evidence': [raw], 'previous_verification': {
+            'executionObserved': True, 'materializedMutationObserved': True, 'candidate_network': [raw],
+        }}
+        payload = build_force_prompt_payload(RepairRequest(provider_id='demo', failure_class='chain_terminal_gap',
+            allowed_mutations=['provider_bloc'], provider_context={'live_runtime_evidence': live}))
+        self.assertEqual(payload['current_network_evidence'][0]['reader_user_agent_probe'], control)
+        self.assertEqual(payload['previous_verification']['candidate_network'][0]['reader_user_agent_probe'], control)
+        self.assertNotIn(private, str(payload))
+        projected = network_evidence([raw])
+        self.assertEqual(network_evidence(projected), projected)
+        feedback = verification_feedback(live['previous_verification'])
+        self.assertEqual(verification_feedback(feedback), feedback)
+        # Exact booleans, bounded status, and dependent outcomes are independently
+        # checked by the Brain instead of trusting the producer's projection.
+        for attempted, outcome, status, expected_attempt, expected_outcome, expected_status in [
+            (True, 'response', 206, True, 'response', 206),
+            (True, 'response', True, True, 'response', None),
+            (True, 'response', 200.0, True, 'response', None),
+            (True, 'response', 99, True, 'response', None),
+            (True, 'response', 600, True, 'response', None),
+            (True, 'timeout', 200, True, 'timeout', None),
+            (True, 'error', 403, True, 'error', None),
+            (True, [private], 403, True, 'error', None),
+            (True, 'budget_exhausted', 200, True, 'error', None),
+            (False, 'missing_profile', 200, False, 'missing_profile', None),
+            (False, 'budget_exhausted', 200, False, 'budget_exhausted', None),
+            (False, 'response', 200, False, 'missing_profile', None),
+            (1, 'response', 200, False, 'missing_profile', None),
+            ('true', 'response', 200, False, 'missing_profile', None),
+        ]:
+            with self.subTest(attempted=attempted, outcome=outcome, status=status):
+                raw['reader_user_agent_probe'] = {**control, 'attempted': attempted, 'outcome': outcome, 'status': status,
+                    'raw': private, 'http_observation': {'content_kind': [private], 'url_relation': private,
+                        'body_state': private, 'page_signal': private, 'sampled_bytes': 999999, 'raw': private}}
+                clean = network_evidence([raw])[0]['reader_user_agent_probe']
+                self.assertEqual((clean['attempted'], clean['outcome'], clean['status']),
+                                 (expected_attempt, expected_outcome, expected_status))
+                self.assertEqual(clean['http_observation']['sampled_bytes'], 8192)
+                self.assertNotIn(private, str(clean))
+                self.assertEqual(network_evidence(network_evidence([raw])), network_evidence([raw]))
+        for absent in (None, {}, [], 'PRIVATE', 0):
+            raw['reader_user_agent_probe'] = absent
+            self.assertNotIn('reader_user_agent_probe', network_evidence([raw])[0])
+        raw.pop('reader_user_agent_probe')
+        self.assertNotIn('reader_user_agent_probe', network_evidence([raw])[0])
+
     def test_http_failure_observation_reaches_prompt_as_fixed_categories(self):
         signal = {'content_kind': 'html', 'url_relation': 'same_url', 'body_state': 'complete',
                   'sampled_bytes': 512, 'page_signal': 'challenge_markup'}
