@@ -109,6 +109,62 @@ class LiveFunctionContextTests(unittest.TestCase):
         for name in ('pickPlayers', 'openPlayer', 'terminalCrawl', 'unusedPlayer', 'decoder', 'corePlayer'):
             self.assertFalse(any('function ' + name + '(' in row['source'] for row in units), name)
 
+    def admission_example(self):
+        source, live = self.short_source_example()
+        source = source.replace('var out=[];', 'var routes=[url].filter(permitRoute);var out=[];', 1)
+        source = source.replace('/* STARTFIX:CORE.TEST */',
+            'function permitRoute(url){return !/\\{status:/.test(url)&&validateMedia(url)&&routeLike(url)&&routeScore(url)>0;}'
+            'function validateMedia(url){return new URL(url).pathname.includes(".mp4");}'
+            'function routeLike(url){return new URL(url).pathname.includes("/embed/");}'
+            'function routeScore(url){return new URL(url).searchParams.size;}'
+            '/* STARTFIX:CORE.TEST */')
+        live['previous_executed_edits'] = [{'find': 'return html.match(/iframe/g)||[];'}]
+        live['previous_verification'] = {'executionObserved': True, 'materializedMutationObserved': True,
+            'reason': 'insufficient_playable_stream_proof',
+            'baseline': {'streamsPlayable': 0, 'streamsReturned': 0},
+            'candidate': {'streamsPlayable': 0, 'streamsReturned': 0}}
+        live['network_evidence'].append({'fixture': 'Missing', 'stage': 'player', 'status': 200,
+            'response_structure': {'kind': 'html', 'player_markup': {'rows': [
+                {'tag': 'iframe', 'value_kinds': {'src': 'absolute_url'}, 'count': 1, 'distinct_values': 1,
+                 'value_shapes': {'src': {'kind': 'page_extension', 'origin': 'cross_origin'}}}]}}})
+        return source, live
+
+    def test_declared_foreign_reader_after_no_gain_exposes_seed_admission(self):
+        source, live = self.admission_example()
+        focus = short_media_source_focus(source, live)
+        names = ['permitRoute', 'routeLike', 'routeScore']
+        self.assertEqual(focus['seed_admission_functions'], names)
+        request = RepairRequest(provider_id='demo', failure_class='chain_terminal_gap',
+            allowed_mutations=['provider_bloc'], provider_context={
+                'preferredRuntimeMutationSource': source.split('/* STARTFIX:CORE.')[0],
+                'runtime_template_prior': {'reuseBeforeNovelBloc': True}, 'live_runtime_evidence': live})
+        payload = build_force_prompt_payload(request)
+        units = payload['new_bloc_target']['editable_units']
+        self.assertEqual(len(units), 3)
+        for name in names:
+            self.assertTrue(any('function '+name+'(' in row['source'] for row in units), name)
+        for name in ('validateMedia', 'terminalCrawl', 'pickPlayers', 'corePlayer'):
+            self.assertFalse(any('function '+name+'(' in row['source'] for row in units), name)
+        self.assertEqual(payload['source_selection_focus']['reason'], 'declared_reader_seed_admission')
+
+    def test_seed_admission_focus_requires_proved_no_gain_and_foreign_reader(self):
+        source, live = self.admission_example()
+        variants = []
+        invalid = copy.deepcopy(live)
+        invalid['previous_verification']['executionObserved'] = False
+        variants.append(invalid)
+        for key, value in [('kind', 'image_extension'), ('origin', 'same_origin')]:
+            invalid = copy.deepcopy(live)
+            invalid['network_evidence'][-1]['response_structure']['player_markup']['rows'][0]['value_shapes']['src'][key] = value
+            variants.append(invalid)
+        invalid = copy.deepcopy(live)
+        invalid['network_evidence'][-1]['fixture'] = 'Other'
+        variants.append(invalid)
+        for invalid in variants:
+            self.assertNotIn('seed_admission_functions', short_media_source_focus(source, invalid))
+        self.assertNotIn('seed_admission_functions', short_media_source_focus(
+            source.replace('permitRoute', 'validateRoute'), live))
+
     def test_upstream_markup_selector_does_not_require_a_provider_specific_name(self):
         source, live = self.short_source_example()
         source = source.replace('pickPlayers', 'routeA').replace('html.match(/iframe/g)', 'html.match(/<option/g)')
@@ -310,6 +366,16 @@ class LiveFunctionContextTests(unittest.TestCase):
         self.assertEqual(source[:end], source.split('function next')[0])
         source = 'function f(url){return /^https?:/.test(url);}'
         self.assertEqual(javascript_function_end(source, 0), len(source))
+
+    def test_complete_editable_function_keeps_literal_brace_regex(self):
+        source = r'function eligible(url){return !/\{status:/.test(url);}'
+        request = RepairRequest(provider_id='demo', failure_class='chain_terminal_gap',
+            allowed_mutations=['provider_bloc'], provider_context={
+                'preferredRuntimeMutationSource': source,
+                'runtime_template_prior': {'reuseBeforeNovelBloc': True},
+                'live_runtime_evidence': {'active_functions': ['eligible']}})
+        units = build_force_prompt_payload(request)['new_bloc_target']['editable_units']
+        self.assertTrue(any(row['source'] == source and row['kind'] == 'function_unit' for row in units))
 
     def test_live_fallback_branch_precedes_unexecuted_terminal_api(self):
         source = (

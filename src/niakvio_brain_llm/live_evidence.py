@@ -220,6 +220,41 @@ def short_media_source_focus(source, live):
                 break
     if not terminal:
         return {}
+    foreign_reader_pages = any(
+        row['fixture'] in failed and row['stage'] == 'player' and row['status'] in {200, 206}
+        and any(markup['tag'] == 'iframe' and any(
+            shape['kind'] == 'page_extension' and shape['origin'] == 'cross_origin'
+            for attribute, shape in markup.get('value_shapes', {}).items() if attribute in {'src', 'data-src'}
+        ) for markup in (row.get('response_structure') or {}).get('player_markup', {}).get('rows', []))
+        for row in observations
+    )
+    if foreign_reader_pages and non_improving_functions(source, live):
+        # A crawler can reject a declared reader before any request is visible.
+        # Offer named seed-admission callbacks, not its media/identity validators.
+        protected = re.compile(r'identity|validat|incomplete|probe|verify|directmedia', re.I)
+        admission = []
+        for terminal_name in terminal:
+            body = functions[terminal_name]
+            boundary = re.search(r'\b(?:while|for)\s*\(|\bawait\b', body)
+            setup = body[:boundary.start()] if boundary else body
+            for name in re.findall(r'\.filter\s*\(\s*([A-Za-z_$][\w$]*)\s*\)', setup):
+                if name not in functions or protected.search(name) or name in admission:
+                    continue
+                admission.append(name)
+                for callee in re.findall(r'(?<![\w$.])([A-Za-z_$][\w$]*)\s*\(', functions[name]):
+                    target = functions.get(callee, '')
+                    if (callee not in admission and not protected.search(callee)
+                            and re.search(r'new\s+URL\s*\(|\.pathname\b|\.searchParams\b', target)):
+                        admission.append(callee)
+                if admission:
+                    break
+            if admission:
+                break
+        if admission:
+            return {'reason': 'declared_reader_seed_admission', 'selector_functions': admission[:3],
+                    'seed_admission_functions': admission[:3], 'terminal_functions': terminal[:2],
+                    'fixtures': fixtures[:4],
+                    'policy': 'URL admission only; preserve protocol, asset, incomplete-identity, media and identity checks.'}
     selectors = []
     for parent in identifiers(live.get('active_functions'), 6):
         body = functions.get(parent, '')
