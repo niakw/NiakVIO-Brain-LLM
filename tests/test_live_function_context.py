@@ -6,6 +6,30 @@ from niakvio_brain_llm.source_units import javascript_function_end
 from niakvio_brain_llm.live_evidence import network_evidence, verification_feedback, non_improving_functions, observed_failure_class, executed_runtime_source, fixture_evidence, short_media_source_focus
 
 class LiveFunctionContextTests(unittest.TestCase):
+    def test_http_failure_observation_reaches_prompt_as_fixed_categories(self):
+        signal = {'content_kind': 'html', 'url_relation': 'same_url', 'body_state': 'complete',
+                  'sampled_bytes': 512, 'page_signal': 'challenge_markup'}
+        raw = {'fixture': 'Missing', 'stage': 'player', 'host': 'reader.test', 'status': 403,
+               'http_observation': {**signal, 'raw_body': 'PRIVATE', 'cookie': 'PRIVATE'}}
+        live = {'network_evidence': [raw], 'previous_verification': {
+            'executionObserved': True, 'materializedMutationObserved': True,
+            'candidate_network': [raw],
+        }}
+        payload = build_force_prompt_payload(RepairRequest(provider_id='demo', failure_class='chain_terminal_gap',
+            allowed_mutations=['provider_bloc'], provider_context={'live_runtime_evidence': live}))
+        # Both the current preflight and an executed candidate retain the clue.
+        self.assertEqual(payload['current_network_evidence'][0]['http_observation'], signal)
+        self.assertEqual(payload['previous_verification']['candidate_network'][0]['http_observation'], signal)
+        self.assertNotIn('PRIVATE', str(payload))
+        projected = network_evidence([raw])
+        self.assertEqual(network_evidence(projected), projected)
+        for value in ({key: ['PRIVATE'] for key in signal}, {**signal, 'sampled_bytes': 999999},
+                      {key: 'https://private.test/PRIVATE' for key in signal}):
+            raw['http_observation'] = value
+            clean = network_evidence([raw])[0]['http_observation']
+            self.assertLessEqual(clean['sampled_bytes'], 8192)
+            self.assertNotIn('PRIVATE', str(clean))
+
     def short_source_example(self):
         source = ('function pickPlayers(html){return html.match(/iframe/g)||[];}'
                   'async function openPlayer(url){return fetch(url).then(r=>r.text());}'
