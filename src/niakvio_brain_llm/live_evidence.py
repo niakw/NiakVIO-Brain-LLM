@@ -5,6 +5,64 @@ from .source_units import javascript_function_end
 
 IDENTIFIER = re.compile(r"[A-Za-z_$][\w$-]{0,47}")
 SENSITIVE = re.compile(r"key|token|auth|signature|secret|password|cookie|session|nonce", re.I)
+ADDRESS_SCOPE = re.compile(r"s[0-9a-f]{16}")
+ADDRESS_REF = re.compile(r"r(?:[1-9]|[1-9][0-9]|[1-4][0-9]{2}|50[0-9]|51[0-2])")
+
+
+def address_scope(value):
+    return isinstance(value, str) and ADDRESS_SCOPE.fullmatch(value) is not None
+
+
+def address_ref(value):
+    return isinstance(value, str) and ADDRESS_REF.fullmatch(value) is not None
+
+
+def address_fields(value):
+    """Opaque labels only have meaning inside their strictly validated scope."""
+    if not address_scope(value.get('address_scope')):
+        return {}
+    result = {'address_scope': value['address_scope']}
+    for name in ('address_refs_truncated', 'address_trace_truncated'):
+        if name in value:
+            result[name] = value[name] if type(value[name]) is bool else True
+    for name in ('request_ref', 'response_ref', 'referer_ref'):
+        if name in value:
+            if address_ref(value[name]):
+                result[name] = value[name]
+            elif value[name] is not None and value[name] != '':
+                result['address_refs_truncated'] = True
+    return result
+
+
+def markup_address_fields(value, attributes):
+    result = {}
+    if 'address_refs_truncated' in value:
+        flag = value['address_refs_truncated']
+        result['address_refs_truncated'] = flag if type(flag) is bool else True
+    if 'address_refs' not in value:
+        return result
+    raw = value['address_refs']
+    if not isinstance(raw, dict):
+        result['address_refs_truncated'] = True
+        return result
+    projected = {}
+    for attribute, refs in raw.items():
+        if attribute not in attributes or not isinstance(refs, list):
+            result['address_refs_truncated'] = True
+            continue
+        unique = []
+        for ref in refs:
+            if not address_ref(ref):
+                result['address_refs_truncated'] = True
+            elif ref not in unique:
+                if len(unique) < 16:
+                    unique.append(ref)
+                else:
+                    result['address_refs_truncated'] = True
+        projected[attribute] = unique
+    result['address_refs'] = projected
+    return result
+
 
 def rows(value, limit):
     return value[:limit] if isinstance(value, list) else []
@@ -19,7 +77,7 @@ def identifiers(values, limit=16):
             and not SENSITIVE.search(name)][:limit] if isinstance(values, list) else []
 
 
-def player_markup(value):
+def player_markup(value, allow_address_refs=False):
     if not isinstance(value, dict):
         return {}
     attributes = {'src', 'data-src', 'href', 'value', 'data-url', 'data-link', 'data-player',
@@ -31,10 +89,18 @@ def player_markup(value):
               'embed_route', 'page_extension', 'other', 'unknown'}
     origins = {'same_origin', 'cross_origin', 'unknown'}
     result = []
-    for row in rows(value.get('rows'), 8):
+    refs_truncated = False
+    raw_rows = value.get('rows') if isinstance(value.get('rows'), list) else []
+    for index, row in enumerate(raw_rows):
+        row_has_refs = (allow_address_refs and isinstance(row, dict)
+                        and any(key in row for key in ('address_refs', 'address_refs_truncated')))
+        if index >= 8:
+            refs_truncated = refs_truncated or row_has_refs
+            continue
         if not isinstance(row, dict) or row.get('tag') not in {
             'iframe', 'video', 'source', 'a', 'button', 'option', 'div', 'li', 'input'
         }:
+            refs_truncated = refs_truncated or row_has_refs
             continue
         raw = row.get('value_kinds')
         projected = {name: kind for name, kind in raw.items()
@@ -44,6 +110,9 @@ def player_markup(value):
             total = count(row.get('count'), 128)
             item = {'tag': row['tag'], 'value_kinds': projected, 'count': total,
                     'distinct_values': min(total, count(row.get('distinct_values'), 128))}
+            if allow_address_refs:
+                item.update(markup_address_fields(row, projected))
+                refs_truncated = refs_truncated or item.get('address_refs_truncated') is True
             raw_shapes = row.get('value_shapes')
             if isinstance(raw_shapes, dict):
                 classified = {}
@@ -56,11 +125,13 @@ def player_markup(value):
                 if classified:
                     item['value_shapes'] = classified
             result.append(item)
+        elif row_has_refs:
+            refs_truncated = True
     return {'rows': result, 'sampled_chars': count(value.get('sampled_chars'), 131072),
-            'truncated': value.get('truncated') is True}
+            'truncated': value.get('truncated') is True or refs_truncated}
 
 
-def response_structure(value):
+def response_structure(value, allow_address_refs=False):
     if not isinstance(value, dict):
         return {}
     kind = value.get("kind")
@@ -83,13 +154,13 @@ def response_structure(value):
             and row.get("tag") in {"iframe", "script", "video", "source", "a", "button", "select", "option"}
         ], "variables": identifiers(value.get("variables"))}
         if isinstance(value.get('player_markup'), dict):
-            result['player_markup'] = player_markup(value['player_markup'])
+            result['player_markup'] = player_markup(value['player_markup'], allow_address_refs)
         return result
     return {"kind": kind} if kind in {"text", "binary"} else {}
 
 
 def network_evidence(values):
-    result = []
+    result, selection_structures = [], []
     for row in rows(values, 12):
         if not isinstance(row, dict):
             continue
@@ -102,9 +173,11 @@ def network_evidence(values):
             "stage": stage if re.fullmatch(r"[a-z_]{1,40}", stage) else "",
             "status": status if type(status) is int and 100 <= status <= 599 else None,
             "functions": identifiers(row.get("functions"), 8),
-            "response_structure": response_structure(row.get("response_structure")),
+            "response_structure": response_structure(row.get("response_structure"),
+                                                      address_scope(row.get('address_scope'))),
             "announced_players": count(row.get("announced_players"), 256),
         }
+        item.update(address_fields(row))
         media = row.get('media_observation')
         if isinstance(row.get('http_observation'), dict):
             item['http_observation'] = http_observation(row['http_observation'])
@@ -123,15 +196,29 @@ def network_evidence(values):
                     {'not_requested', 'requested', 'complete', 'error'} else 'not_requested',
             }
         result.append(item)
+        # A ref loss may set markup.truncated, but that diagnostic must not
+        # create a new structural alternative in the existing event selection.
+        selection_structures.append(response_structure(row.get('response_structure'))
+                                    if 'address_scope' in item else item['response_structure'])
+    omitted_scopes = {row['address_scope'] for row in values[12:]
+                      if isinstance(row, dict) and address_scope(row.get('address_scope'))} \
+        if isinstance(values, list) else set()
     if len(result) <= 8:
+        for item in result:
+            if item.get('address_scope') in omitted_scopes:
+                item['address_trace_truncated'] = True
         return result
     # Repeated player replies must not hide the episode/lookup context. Reserve
     # one event per fixture/stage, then retain distinct shapes before duplicates.
     primary, alternatives, duplicates = [], [], []
     phases, shapes = set(), set()
-    for item in result:
-        shape = dict(item)
-        structure = dict(shape['response_structure'])
+    for item, structural in zip(result, selection_structures):
+        # Opaque correlation labels must not change the existing preference for
+        # distinct structural evidence over repeated player replies.
+        shape = {key: value for key, value in item.items() if key not in {
+            'address_scope', 'request_ref', 'response_ref', 'referer_ref',
+            'address_refs_truncated', 'address_trace_truncated'}}
+        structure = dict(structural)
         if 'player_markup' in structure:
             structure['player_markup'] = {key: value for key, value in structure['player_markup'].items()
                                           if key != 'sampled_chars'}
@@ -146,7 +233,13 @@ def network_evidence(values):
         else:
             duplicates.append(item)
         shapes.add(key)
-    return (primary + alternatives + duplicates)[:8]
+    ranked = primary + alternatives + duplicates
+    selected = ranked[:8]
+    omitted_scopes.update(item['address_scope'] for item in ranked[8:] if 'address_scope' in item)
+    for item in selected:
+        if item.get('address_scope') in omitted_scopes:
+            item['address_trace_truncated'] = True
+    return selected
 
 
 def http_observation(value):
