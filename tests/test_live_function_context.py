@@ -279,6 +279,31 @@ class LiveFunctionContextTests(unittest.TestCase):
         self.assertEqual(evidence[2]['response_structure']['player_markup']['rows'][0]['count'], 54)
         self.assertEqual(network_evidence(evidence), evidence)
 
+    def test_address_shapes_reach_the_prompt_without_urls_or_unknown_values(self):
+        markup = {'rows': [{'tag': 'div', 'value_kinds': {'data-src': 'absolute_url'},
+            'value_shapes': {'data-src': {'kind': 'image_extension', 'origin': 'cross_origin', 'url': 'PRIVATE'},
+                             'src': {'kind': 'PRIVATE', 'origin': 'PRIVATE'}},
+            'count': 3, 'distinct_values': 3},
+            {'tag': 'option', 'value_kinds': {'value': 'absolute_url'},
+             'value_shapes': {'value': {'kind': 'page_extension', 'origin': 'same_origin'}},
+             'count': 54, 'distinct_values': 54},
+            {'tag': 'iframe', 'value_kinds': {'src': 'absolute_url'},
+             'value_shapes': {'src': {'kind': 'https://private.test/PRIVATE', 'origin': 'cross_origin'}},
+             'count': 1, 'distinct_values': 1}]}
+        evidence = network_evidence([{'fixture': 'Missing', 'stage': 'episode', 'status': 200,
+            'response_structure': {'kind': 'html', 'player_markup': markup}}])
+        request = RepairRequest(provider_id='demo', failure_class='chain_terminal_gap',
+            provider_context={'live_runtime_evidence': {'network_evidence': evidence}})
+        projected = build_force_prompt_payload(request)['current_network_evidence'][0]['response_structure']['player_markup']
+        self.assertEqual(projected['rows'][0]['value_shapes'],
+                         {'data-src': {'kind': 'image_extension', 'origin': 'cross_origin'}})
+        self.assertEqual(projected['rows'][1]['value_shapes'],
+                         {'value': {'kind': 'page_extension', 'origin': 'same_origin'}})
+        self.assertNotIn('value_shapes', projected['rows'][2])
+        self.assertNotIn('PRIVATE', str(projected))
+        self.assertNotIn('private.test', str(projected))
+        self.assertEqual(network_evidence(evidence), evidence)
+
     def test_regex_quotes_do_not_hide_complete_parser(self):
         source = '''function parse(html){return /["']([^"']+)["']/.exec(html);}function next(){return 1;}'''
         end = javascript_function_end(source, 0)

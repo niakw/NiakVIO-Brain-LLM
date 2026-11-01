@@ -27,6 +27,9 @@ def player_markup(value):
                   'data-player-id', 'data-index', 'data-server'}
     kinds = {'empty', 'absolute_url', 'relative_url', 'fragment', 'inline_markup',
              'escaped_markup', 'encoded_markup', 'encoded_url', 'other'}
+    shapes = {'image_extension', 'script_extension', 'style_extension', 'media_extension',
+              'embed_route', 'page_extension', 'other', 'unknown'}
+    origins = {'same_origin', 'cross_origin', 'unknown'}
     result = []
     for row in rows(value.get('rows'), 8):
         if not isinstance(row, dict) or row.get('tag') not in {
@@ -39,8 +42,20 @@ def player_markup(value):
         projected = dict(list(projected.items())[:8])
         if projected:
             total = count(row.get('count'), 128)
-            result.append({'tag': row['tag'], 'value_kinds': projected, 'count': total,
-                           'distinct_values': min(total, count(row.get('distinct_values'), 128))})
+            item = {'tag': row['tag'], 'value_kinds': projected, 'count': total,
+                    'distinct_values': min(total, count(row.get('distinct_values'), 128))}
+            raw_shapes = row.get('value_shapes')
+            if isinstance(raw_shapes, dict):
+                classified = {}
+                for attribute in projected:
+                    shape = raw_shapes.get(attribute)
+                    if (isinstance(shape, dict) and isinstance(shape.get('kind'), str)
+                            and shape['kind'] in shapes and isinstance(shape.get('origin'), str)
+                            and shape['origin'] in origins):
+                        classified[attribute] = {'kind': shape['kind'], 'origin': shape['origin']}
+                if classified:
+                    item['value_shapes'] = classified
+            result.append(item)
     return {'rows': result, 'sampled_chars': count(value.get('sampled_chars'), 131072),
             'truncated': value.get('truncated') is True}
 
