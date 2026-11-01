@@ -771,6 +771,12 @@ def _force_window_kwargs_for_request(request: RepairRequest) -> dict[str, int]:
         and template_prior.get("reuseBeforeNovelBloc")
         and context.get("preferredRuntimeMutationSource")
     ):
+        selection = short_media_source_focus(context['preferredRuntimeMutationSource'],
+                                             context.get('live_runtime_evidence') or {})
+        if selection.get('seed_admission_functions'):
+            # Do not refill the admission surface with downstream validators.
+            return {'max_chars': 2000, 'max_windows': 2,
+                    'max_units': len(selection['seed_admission_functions'])}
         if str(request.failure_class or '').casefold() == 'variant_coverage_gap' and non_improving_functions(
             context.get('preferredRuntimeMutationSource'), context.get('live_runtime_evidence') or {}
         ):
@@ -848,7 +854,13 @@ def _force_edit_units(
             return False
         if not allow_function and stripped.startswith(("function ", "async function ", "class ", "else", "catch", "finally")):
             return False
-        if (not allow_function and "function " in stripped) or stripped.count("{") != stripped.count("}"):
+        if not allow_function and "function " in stripped:
+            return False
+        if allow_function:
+            # Literal braces inside regexes/strings are not structural braces.
+            if javascript_function_end(fragment, 0) != len(fragment):
+                return False
+        elif stripped.count("{") != stripped.count("}"):
             return False
         if absolute > 0 and text[absolute - 1:absolute].isalnum() and text[absolute:absolute + 1].isalnum():
             return False
