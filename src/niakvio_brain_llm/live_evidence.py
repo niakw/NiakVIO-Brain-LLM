@@ -106,6 +106,8 @@ def network_evidence(values):
             "announced_players": count(row.get("announced_players"), 256),
         }
         media = row.get('media_observation')
+        if isinstance(row.get('http_observation'), dict):
+            item['http_observation'] = http_observation(row['http_observation'])
         if isinstance(media, dict):
             item['media_observation'] = {
                 'signature': media.get('signature') if media.get('signature') in
@@ -143,6 +145,22 @@ def network_evidence(values):
             duplicates.append(item)
         shapes.add(key)
     return (primary + alternatives + duplicates)[:8]
+
+
+def http_observation(value):
+    """Error-page signals are bounded syntax clues, never playback proof."""
+    enums = {
+        'content_kind': {'html', 'json', 'text', 'media', 'binary', 'unknown'},
+        'url_relation': {'same_url', 'same_origin', 'cross_origin', 'unknown'},
+        'body_state': {'not_sampled', 'sampled', 'complete', 'empty', 'timeout', 'error', 'unavailable'},
+        'page_signal': {'challenge_markup', 'captcha_markup', 'access_denied_text',
+                        'not_found_text', 'rate_limit_text', 'none', 'unknown'},
+    }
+    result = {key: value[key] if isinstance(value.get(key), str) and value[key] in allowed
+              else 'unknown' if 'unknown' in allowed else 'unavailable'
+              for key, allowed in enums.items()}
+    result['sampled_bytes'] = count(value.get('sampled_bytes'), 8192)
+    return result
 
 
 def fixture_evidence(values):
@@ -254,7 +272,11 @@ def short_media_source_focus(source, live):
             return {'reason': 'declared_reader_seed_admission', 'selector_functions': admission[:3],
                     'seed_admission_functions': admission[:3], 'terminal_functions': terminal[:2],
                     'fixtures': fixtures[:4],
-                    'policy': 'URL admission only; preserve protocol, asset, incomplete-identity, media and identity checks.'}
+                    'policy': 'URL admission only; preserve protocol, asset, incomplete-identity, media and identity checks. '
+                              'An executed reader HTTP failure means admission reached that reader. '
+                              'Inspect previous_verification.candidate_network HTTP observations before another admission edit; '
+                              'page signals are diagnostic clues, not proof of a working source. '
+                              'Abstain if the offered functions cannot causally address the observed failure.'}
     selectors = []
     for parent in identifiers(live.get('active_functions'), 6):
         body = functions.get(parent, '')
