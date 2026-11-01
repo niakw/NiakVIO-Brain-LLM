@@ -186,7 +186,8 @@ def _reject_partial_function_anchor(
     if find_names:
         # Compact Force may replace an entire helper, but it must anchor a complete
         # function body. Replacing only a prefix leaves the old tail behind.
-        if find.count("{") > find.count("}"):
+        declarations = re.finditer(r"\b(?:async\s+)?function\s+[A-Za-z_$][A-Za-z0-9_$]*\s*\(", find)
+        if any(_deterministic_function_end(find, match.start()) < 0 for match in declarations):
             raise ValueError("compact Force function anchor is structurally incomplete")
         missing = find_names - replace_names
         if missing:
