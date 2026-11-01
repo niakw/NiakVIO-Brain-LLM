@@ -3,9 +3,216 @@ import copy
 from niakvio_brain_llm.contracts import RepairRequest
 from niakvio_brain_llm.prompting import build_force_prompt_payload
 from niakvio_brain_llm.source_units import javascript_function_end
-from niakvio_brain_llm.live_evidence import network_evidence, verification_feedback, non_improving_functions, observed_failure_class, executed_runtime_source, fixture_evidence, short_media_source_focus
+from niakvio_brain_llm.live_evidence import network_evidence, verification_feedback, non_improving_functions, observed_failure_class, executed_runtime_source, fixture_evidence, short_media_source_focus, player_markup, response_structure
 
 class LiveFunctionContextTests(unittest.TestCase):
+    def test_opaque_address_correlation_reaches_both_prompt_channels_by_scope(self):
+        scope, other_scope = 's0123456789abcdef', 'sfedcba9876543210'
+        # r3/r4 stand for addresses differing only by query. The Brain receives
+        # the producer's distinct labels, never either query or address.
+        episode = {'fixture': 'Missing', 'stage': 'episode', 'status': 200,
+            'address_scope': scope, 'request_ref': 'r1', 'response_ref': 'r2',
+            'address_refs_truncated': False, 'address_trace_truncated': False,
+            'response_structure': {'kind': 'html', 'player_markup': {'rows': [
+                {'tag': 'div', 'value_kinds': {'data-src': 'absolute_url'},
+                 'address_refs': {'data-src': ['r3', 'r4', 'r5']},
+                 'address_refs_truncated': False, 'count': 3, 'distinct_values': 3}]}}}
+        events = [episode] + [{'fixture': 'Missing', 'stage': 'player', 'status': 200,
+            'address_scope': scope, 'request_ref': ref, 'response_ref': response,
+            'referer_ref': 'r2', 'address_refs_truncated': False, 'address_trace_truncated': False}
+            for ref, response in [('r3', 'r3'), ('r4', 'r4'), ('r5', 'r6')]]
+        events.append({'fixture': 'Missing', 'stage': 'player', 'status': 200,
+            'address_scope': other_scope, 'request_ref': 'r3', 'response_ref': 'r8',
+            'address_trace_truncated': False})
+        live = {'network_evidence': events, 'previous_verification': {
+            'executionObserved': True, 'materializedMutationObserved': True,
+            'candidate_network': events}}
+        payload = build_force_prompt_payload(RepairRequest(provider_id='demo', failure_class='chain_terminal_gap',
+            provider_context={'live_runtime_evidence': live}))
+        projected = network_evidence(events)
+        self.assertEqual(payload['current_network_evidence'], projected)
+        self.assertEqual(payload['previous_verification']['candidate_network'], projected)
+        markup = projected[0]['response_structure']['player_markup']['rows'][0]
+        refs = markup['address_refs']['data-src']
+        self.assertEqual(refs, ['r3', 'r4', 'r5'])
+        requests = {(row['address_scope'], row['request_ref']): row for row in projected}
+        correlated = [requests[(projected[0]['address_scope'], ref)] for ref in refs]
+        self.assertEqual([row['response_ref'] for row in correlated], ['r3', 'r4', 'r6'])
+        self.assertEqual(requests[(other_scope, 'r3')]['response_ref'], 'r8')
+        self.assertEqual(network_evidence(projected), projected)
+        feedback = verification_feedback(live['previous_verification'])
+        self.assertEqual(verification_feedback(feedback), feedback)
+        self.assertNotIn('unused', str(projected))
+        self.assertNotIn('playable', str(projected))
+
+    def test_address_scope_is_required_for_all_optional_correlation_fields(self):
+        row = {'fixture': 'Missing', 'stage': 'episode', 'request_ref': 'r1', 'response_ref': 'r2',
+            'referer_ref': 'r3', 'address_refs_truncated': False, 'address_trace_truncated': False,
+            'response_structure': {'kind': 'html', 'player_markup': {'rows': [
+                {'tag': 'div', 'value_kinds': {'data-src': 'absolute_url'},
+                 'address_refs': {'data-src': ['r1']}, 'address_refs_truncated': False}]}}}
+        for scope in (None, '', 's0123456789abcde', 's0123456789abcdef0', 's0123456789abcdeF',
+                      's0123456789abcdef\n', 'S0123456789abcdef', ['s0123456789abcdef'],
+                      {'scope': 's0123456789abcdef'}, True, 1):
+            with self.subTest(scope=scope):
+                row['address_scope'] = scope
+                clean = network_evidence([row])[0]
+                self.assertFalse(any(key.startswith('address_') or key.endswith('_ref') for key in clean))
+                markup = clean['response_structure']['player_markup']
+                self.assertNotIn('address_refs', markup['rows'][0])
+                self.assertNotIn('address_refs_truncated', markup['rows'][0])
+                self.assertFalse(markup['truncated'])
+        row.pop('address_scope')
+        self.assertNotIn('address_scope', network_evidence([row])[0])
+        self.assertNotIn('address_refs', player_markup(row['response_structure']['player_markup'])['rows'][0])
+        self.assertNotIn('address_refs', response_structure(row['response_structure'])['player_markup']['rows'][0])
+
+    def test_address_fields_are_independent_strict_bounded_and_optional(self):
+        base = {'fixture': 'Missing', 'stage': 'player', 'address_scope': 's0123456789abcdef'}
+        clean = network_evidence([base])[0]
+        self.assertEqual({key: value for key, value in clean.items() if key.startswith('address_')},
+                         {'address_scope': base['address_scope']})
+        for number in range(1, 513):
+            row = network_evidence([{**base, 'request_ref': 'r' + str(number)}])[0]
+            self.assertEqual(row['request_ref'], 'r' + str(number))
+            self.assertNotIn('address_refs_truncated', row)
+        for invalid in ('r0', 'r00', 'r01', 'r513', 'r999', 'r-1', 'r+1', 'r1\n', 'R1',
+                        'https://private.test/PRIVATE?token=PRIVATE', ['r1'], {'ref': 'r1'}, True, 1):
+            with self.subTest(invalid=invalid):
+                clean = network_evidence([{**base, 'request_ref': invalid, 'response_ref': 'r512',
+                    'referer_ref': 'r1', 'address_refs_truncated': False, 'address_trace_truncated': False}])[0]
+                self.assertNotIn('request_ref', clean)
+                self.assertEqual(clean['response_ref'], 'r512')
+                self.assertEqual(clean['referer_ref'], 'r1')
+                self.assertTrue(clean['address_refs_truncated'])
+                self.assertFalse(clean['address_trace_truncated'])
+                self.assertNotIn('PRIVATE', str(clean))
+                self.assertEqual(network_evidence([clean]), [clean])
+        for empty in (None, ''):
+            clean = network_evidence([{**base, 'request_ref': empty}])[0]
+            self.assertNotIn('request_ref', clean)
+            self.assertNotIn('address_refs_truncated', clean)
+        for key in ('address_refs_truncated', 'address_trace_truncated'):
+            for flag in (True, False, None, 0, 1, '', 'false', [], {}, ['PRIVATE']):
+                with self.subTest(key=key, flag=flag):
+                    clean = network_evidence([{**base, key: flag}])[0]
+                    self.assertIs(clean[key], flag if type(flag) is bool else True)
+                    self.assertEqual(network_evidence([clean]), [clean])
+
+    def test_markup_address_refs_drop_forged_values_and_report_every_loss(self):
+        row = {'tag': 'div', 'value_kinds': {'data-src': 'absolute_url', 'src': 'relative_url'},
+            'address_refs': {'data-src': ['r1', 'r1', 'r512', 'r513', 'PRIVATE', ['r2']],
+                'src': ['r' + str(number) for number in range(1, 19)],
+                'href': ['r7'], 'data-token-PRIVATE': ['r8']},
+            'address_refs_truncated': False, 'count': 3, 'distinct_values': 3,
+            'raw_url': 'https://private.test/PRIVATE?token=PRIVATE'}
+        event = {'address_scope': 's0123456789abcdef', 'response_structure': {'kind': 'html',
+            'player_markup': {'rows': [row], 'truncated': False}}}
+        clean = network_evidence([event])
+        markup = clean[0]['response_structure']['player_markup']
+        projected = markup['rows'][0]
+        self.assertEqual(projected['address_refs'], {'data-src': ['r1', 'r512'],
+                         'src': ['r' + str(number) for number in range(1, 17)]})
+        self.assertTrue(projected['address_refs_truncated'])
+        self.assertTrue(markup['truncated'])
+        self.assertNotIn('PRIVATE', str(clean))
+        self.assertNotIn('private.test', str(clean))
+        self.assertEqual(network_evidence(clean), clean)
+        for refs in (None, 'PRIVATE', [], {'data-src': 'r1'}, {'data-src': ['r0']}, {'unknown': []}):
+            with self.subTest(refs=refs):
+                event['response_structure']['player_markup']['rows'][0] = {
+                    'tag': 'div', 'value_kinds': {'data-src': 'absolute_url'}, 'address_refs': refs}
+                clean = network_evidence([event])
+                markup = clean[0]['response_structure']['player_markup']
+                self.assertTrue(markup['rows'][0]['address_refs_truncated'])
+                self.assertTrue(markup['truncated'])
+                self.assertEqual(network_evidence(clean), clean)
+        for flag in (True, None, 0, 1, 'false', [], {}):
+            event['response_structure']['player_markup']['rows'][0] = {
+                'tag': 'div', 'value_kinds': {'src': 'absolute_url'}, 'address_refs_truncated': flag}
+            markup = network_evidence([event])[0]['response_structure']['player_markup']
+            self.assertTrue(markup['rows'][0]['address_refs_truncated'])
+            self.assertTrue(markup['truncated'])
+        event['response_structure']['player_markup']['rows'][0] = {
+            'tag': 'div', 'value_kinds': {'src': 'absolute_url'}, 'address_refs': {'src': ['r1', 'r1', 'r2']}}
+        markup = network_evidence([event])[0]['response_structure']['player_markup']
+        self.assertEqual(markup['rows'][0]['address_refs'], {'src': ['r1', 'r2']})
+        self.assertNotIn('address_refs_truncated', markup['rows'][0])
+        self.assertFalse(markup['truncated'])
+        event['response_structure']['player_markup']['rows'][0].pop('address_refs')
+        markup = network_evidence([event])[0]['response_structure']['player_markup']
+        self.assertNotIn('address_refs', markup['rows'][0])
+        self.assertNotIn('address_refs_truncated', markup['rows'][0])
+
+    def test_discarded_markup_rows_signal_lost_scoped_address_refs(self):
+        good = {'tag': 'div', 'value_kinds': {'src': 'absolute_url'}}
+        lost = {'tag': 'div', 'value_kinds': {'src': 'absolute_url'}, 'address_refs': {'src': ['r1']}}
+        for rows in ([{**lost, 'tag': 'script'}], [{**lost, 'value_kinds': {}}], [good] * 8 + [lost]):
+            with self.subTest(rows=rows):
+                event = {'address_scope': 's0123456789abcdef', 'response_structure': {'kind': 'html',
+                    'player_markup': {'rows': rows}}}
+                clean = network_evidence([event])
+                self.assertTrue(clean[0]['response_structure']['player_markup']['truncated'])
+                self.assertEqual(network_evidence(clean), clean)
+
+    def test_network_selection_marks_only_scopes_with_omitted_observations(self):
+        scope, other_scope = 's0123456789abcdef', 'sfedcba9876543210'
+        base = {'fixture': 'Missing', 'stage': 'player', 'status': 200,
+                'address_scope': scope, 'address_trace_truncated': False}
+        events = [{**base, 'request_ref': 'r' + str(index)} for index in range(1, 11)]
+        events.insert(2, {**base, 'address_scope': other_scope, 'request_ref': 'r1', 'stage': 'episode'})
+        events.append({**base, 'request_ref': 'r11', 'response_structure': {'kind': 'json',
+            'fields': [{'path': 'data.sources', 'type': 'array'}]}})
+        original = copy.deepcopy(events)
+        projected = network_evidence(events)
+        self.assertEqual(events, original)
+        self.assertEqual(len(projected), 8)
+        self.assertEqual([row['stage'] for row in projected[:2]], ['player', 'episode'])
+        self.assertEqual(projected[2]['response_structure']['kind'], 'json')
+        self.assertTrue(all(row['address_trace_truncated'] is True
+                            for row in projected if row['address_scope'] == scope))
+        self.assertFalse(next(row for row in projected if row['address_scope'] == other_scope)['address_trace_truncated'])
+        self.assertEqual(network_evidence(projected), projected)
+        # Equal observations can be omitted too: equality does not establish
+        # that every occurrence survived the eight-event bound.
+        equal = network_evidence([base] * 9)
+        self.assertEqual(len(equal), 8)
+        self.assertTrue(all(row['address_trace_truncated'] for row in equal))
+        self.assertEqual(network_evidence(equal), equal)
+        # The initial twelve-event sample can also lose a scope's observation.
+        events = [{**base, 'address_scope': other_scope}] + [None] * 11 + [{**base, 'address_scope': other_scope}]
+        sampled = network_evidence(events)
+        self.assertTrue(sampled[0]['address_trace_truncated'])
+        self.assertEqual(network_evidence(sampled), sampled)
+
+    def test_address_diagnostics_do_not_change_source_focus_or_failure_class(self):
+        source, live = self.short_source_example()
+        focus = short_media_source_focus(source, live)
+        failure = observed_failure_class('candidate_replay_gap', live)
+        enriched = copy.deepcopy(live)
+        for index, row in enumerate(enriched['network_evidence'], 1):
+            row.update(address_scope='s0123456789abcdef', request_ref='r' + str(index),
+                       response_ref='r' + str(index), address_refs_truncated=False,
+                       address_trace_truncated=False)
+        self.assertEqual(short_media_source_focus(source, enriched), focus)
+        self.assertEqual(observed_failure_class('candidate_replay_gap', enriched), failure)
+
+    def test_address_ref_loss_does_not_displace_structurally_distinct_events(self):
+        events = [{'fixture': 'Missing', 'stage': 'player', 'status': status,
+            'response_structure': {'kind': 'html', 'player_markup': {'rows': [
+                {'tag': 'div', 'value_kinds': {'src': 'absolute_url'}}], 'truncated': False}}}
+            for status in [200, 200, 201, 202, 203, 204, 205, 206, 207]]
+        baseline = network_evidence(events)
+        events[1]['response_structure']['player_markup']['rows'][0]['address_refs'] = {'src': ['r513']}
+        for index, row in enumerate(events, 1):
+            row.update(address_scope='s0123456789abcdef', request_ref='r' + str(index),
+                       address_refs_truncated=False, address_trace_truncated=False)
+        projected = network_evidence(events)
+        self.assertEqual([row['status'] for row in projected], [row['status'] for row in baseline])
+        self.assertEqual([row['status'] for row in projected], [200, 201, 202, 203, 204, 205, 206, 207])
+        self.assertTrue(all(row['address_trace_truncated'] for row in projected))
+        self.assertEqual(network_evidence(projected), projected)
+
     def test_reader_agent_control_reaches_both_prompt_channels_without_private_values(self):
         signal = {'content_kind': 'html', 'url_relation': 'same_url', 'body_state': 'not_sampled',
                   'sampled_bytes': 0, 'page_signal': 'unknown'}
