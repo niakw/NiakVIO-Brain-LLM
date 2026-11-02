@@ -4,6 +4,7 @@ import re
 from typing import Any
 
 from .contracts import RepairRequest
+from .live_evidence import verified_live_failure
 
 URL = re.compile(r"https?://[^\s\"'<>]+", re.I)
 FRESH_KEYS = {
@@ -137,6 +138,7 @@ def build_mutation_policy(
         and not (
             _has_targeted_provider_evidence(request.observations)
             or _has_current_census_provider_evidence(request.observations)
+            or verified_live_failure(request)
         )
     ):
         return {

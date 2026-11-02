@@ -747,6 +747,11 @@ def main() -> int:
                     'instruction': 'These are candidate origins from public source references, not working-site or playback proof. '
                                    'Only external execution and video validation can establish a repair.',
                 })
+            if args.mode == 'repair':
+                from niakvio_brain_llm.live_evidence import apply_verified_live_failure
+                if apply_verified_live_failure(request, live_evidence, actual_sha, args.provider):
+                    print('FIELD_BRAIN_LIVE_FAILURE_OVERRIDE provider=' + provider
+                          + ' source_sha=' + actual_sha + ' historical_positive=true', flush=True)
             request.failure_class = observed_failure_class(request.failure_class,
                                                           request.provider_context['live_runtime_evidence'])
             source = executed_runtime_source(request.provider_context, request.provider_context['live_runtime_evidence'])

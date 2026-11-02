@@ -8,6 +8,8 @@ from typing import Any, Protocol
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
+from .schema import hosted_wire_schema, restore_hosted_data_values
+
 class ModelBackend(Protocol):
     def complete(
         self,
@@ -169,13 +171,25 @@ class HostedResponsesBackend:
             "reasoning": {"effort": self.reasoning_effort},
             "max_output_tokens": max(1024, min(8192, int(self.max_tokens))),
         }
+        encoded_data_values = False
         if response_schema is not None:
+            wire_schema, encoded_data_values = hosted_wire_schema(response_schema)
+            if encoded_data_values:
+                payload['instructions'] += (
+                    '\nHosted wire encoding: provider_data edits use value_json instead of value. '
+                    'value_json must be a JSON-encoded string containing the intended JSON value; '
+                    'encode strings, objects, arrays, numbers and booleans faithfully. '
+                    'For an intended string, its encoded content includes the JSON quotation marks; '
+                    'objects and arrays use their normal JSON serialization, without double encoding. '
+                    'For delete use the string "null". The backend restores value before all '
+                    'existing mutation/path/policy validation. Other edit scopes are unchanged.'
+                )
             payload["text"] = {
                 "format": {
                     "type": "json_schema",
                     "name": "niakvio_force_response",
                     "strict": True,
-                    "schema": response_schema,
+                    "schema": wire_schema,
                 },
             }
         request = Request(
@@ -193,7 +207,21 @@ class HostedResponsesBackend:
             with urlopen(request, timeout=max(10, min(300, int(self.timeout_seconds)))) as response:
                 result = json.loads(response.read().decode("utf-8"))
         except HTTPError as exc:
-            raise RuntimeError(f"hosted model HTTP {exc.code}") from None
+            detail = ''
+            if exc.code == 400:
+                try:
+                    error = json.loads(exc.read(8192)).get('error', {})
+                    code, param = error.get('code'), error.get('param')
+                    if code in {'invalid_json_schema', 'invalid_request_error', 'invalid_type',
+                                'invalid_value', 'missing_required_parameter',
+                                'unsupported_parameter', 'unsupported_value'}:
+                        detail += ' code=' + code
+                    if param in {'text.format.schema', 'text.format', 'response_format',
+                                 'model', 'max_output_tokens', 'reasoning.effort'}:
+                        detail += ' param=' + param
+                except (ValueError, TypeError, AttributeError, OSError):
+                    pass
+            raise RuntimeError(f"hosted model HTTP {exc.code}" + detail) from None
         if result.get("status") != "completed":
             raise RuntimeError("hosted model returned an incomplete response")
         chunks: list[str] = []
@@ -206,6 +234,11 @@ class HostedResponsesBackend:
         content = "".join(chunks)
         if not content.strip():
             raise RuntimeError("hosted model returned no visible text")
+        if encoded_data_values:
+            try:
+                content = json.dumps(restore_hosted_data_values(json.loads(content)), allow_nan=False)
+            except (ValueError, RecursionError, TypeError):
+                raise RuntimeError('hosted model returned invalid DATA value encoding') from None
         return content
 
 
