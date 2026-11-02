@@ -269,6 +269,83 @@ class LiveFunctionContextTests(unittest.TestCase):
         raw.pop('reader_user_agent_probe')
         self.assertNotIn('reader_user_agent_probe', network_evidence([raw])[0])
 
+    def test_observed_media_diagnostic_bridge_is_scoped_bounded_and_not_playback_proof(self):
+        scope, private = 's0123456789abcdef', 'PRIVATE_URL_COOKIE_HEADER_BODY'
+        media = {'signature': 'mp4', 'durationSeconds': 1440, 'bytesSampled': 80,
+                 'readState': 'complete', 'cancelState': 'complete'}
+        http = {'content_kind': 'media', 'url_relation': 'same_origin',
+                'body_state': 'sampled', 'page_signal': 'none', 'sampled_bytes': 80}
+        control = {'attempted': True, 'source_ref': 'r8', 'template_ref': 'r5',
+                   'status': 206, 'outcome': 'response',
+                   'media_observation': media, 'http_observation': http}
+        raw = {'fixture': 'Missing', 'stage': 'media', 'address_scope': scope,
+               'request_ref': 'r5', 'response_ref': 'r6',
+               'observed_media_probe': {**control, 'url': 'https://private.test/' + private,
+                   'headers': {'Cookie': private, 'Authorization': private},
+                   'body': private, 'media_observation': {**media, 'raw': private},
+                   'http_observation': {**http, 'url': private, 'body': private}}}
+        live = {'network_evidence': [raw], 'previous_verification': {
+            'executionObserved': True, 'materializedMutationObserved': True,
+            'candidate_network': [raw]}}
+        payload = build_force_prompt_payload(RepairRequest(provider_id='demo',
+            failure_class='chain_terminal_gap', provider_context={'live_runtime_evidence': live}))
+        current = payload['current_network_evidence'][0]['observed_media_probe']
+        previous = payload['previous_verification']['candidate_network'][0]['observed_media_probe']
+        self.assertEqual(current, control)
+        self.assertEqual(previous, control)
+        self.assertNotIn(private, str(payload))
+        self.assertNotIn('playable', str(current))
+        self.assertEqual(network_evidence(network_evidence([raw])), network_evidence([raw]))
+
+        for attempted, outcome, status, expected in [
+            (True, 'response', 200, (True, 'response', 200)),
+            (True, 'response', True, (True, 'response', None)),
+            (True, 'response', 600, (True, 'response', None)),
+            (True, 'timeout', 206, (True, 'timeout', None)),
+            (True, 'error', 206, (True, 'error', None)),
+            (True, [private], 206, (True, 'error', None)),
+            (False, 'budget_exhausted', 206, (False, 'budget_exhausted', None)),
+        ]:
+            with self.subTest(attempted=attempted, outcome=outcome, status=status):
+                raw['observed_media_probe'] = {**control, 'attempted': attempted,
+                    'outcome': outcome, 'status': status, 'body': private,
+                    'media_observation': {'signature': [private], 'readState': [private],
+                        'cancelState': [private], 'bytesSampled': 999999, 'durationSeconds': 9999999},
+                    'http_observation': {'content_kind': [private], 'sampled_bytes': 999999,
+                        'raw': private}}
+                clean = network_evidence([raw])[0]['observed_media_probe']
+                self.assertEqual((clean['attempted'], clean['outcome'], clean['status']), expected)
+                self.assertEqual(clean['media_observation']['bytesSampled'], 32768)
+                self.assertEqual(clean['http_observation']['sampled_bytes'], 8192)
+                self.assertEqual(clean['media_observation']['signature'], 'unknown')
+                self.assertNotIn(private, str(clean))
+                self.assertEqual(network_evidence(network_evidence([raw])), network_evidence([raw]))
+
+        for bad in ({**control, 'source_ref': 'r513'}, {**control, 'template_ref': 'r0'},
+                    {**control, 'source_ref': 'https://private.test/' + private},
+                    {**control, 'attempted': 1}, {**control, 'attempted': False, 'outcome': 'response'},
+                    {}, None, [private], private):
+            with self.subTest(bad=bad):
+                raw['observed_media_probe'] = bad
+                self.assertNotIn('observed_media_probe', network_evidence([raw])[0])
+        raw['observed_media_probe'] = control
+        raw.pop('address_scope')
+        self.assertNotIn('observed_media_probe', network_evidence([raw])[0])
+        raw['address_scope'] = 's0123456789abcdeF'
+        self.assertNotIn('observed_media_probe', network_evidence([raw])[0])
+
+        # A diagnostic is not a new structural alternative: it must not crowd
+        # out earlier player/episode observations in the eight-event prompt cap.
+        repeated = [{'fixture': 'Missing', 'stage': 'media', 'status': 206,
+                     'address_scope': scope, 'request_ref': 'r' + str(i)}
+                    for i in range(1, 13)]
+        baseline = network_evidence(repeated)
+        repeated[-1]['observed_media_probe'] = control
+        selected = network_evidence(repeated)
+        self.assertEqual([x.get('request_ref') for x in selected],
+                         [x.get('request_ref') for x in baseline])
+        self.assertFalse(any('observed_media_probe' in x for x in selected))
+
     def test_http_failure_observation_reaches_prompt_as_fixed_categories(self):
         signal = {'content_kind': 'html', 'url_relation': 'same_url', 'body_state': 'complete',
                   'sampled_bytes': 512, 'page_signal': 'challenge_markup'}
