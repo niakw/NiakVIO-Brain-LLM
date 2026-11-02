@@ -183,6 +183,10 @@ def network_evidence(values):
             item['http_observation'] = http_observation(row['http_observation'])
         if isinstance(row.get('reader_user_agent_probe'), dict) and row['reader_user_agent_probe']:
             item['reader_user_agent_probe'] = reader_user_agent_probe(row['reader_user_agent_probe'])
+        if 'address_scope' in item and isinstance(row.get('observed_media_probe'), dict):
+            probe = observed_media_probe(row['observed_media_probe'])
+            if probe is not None:
+                item['observed_media_probe'] = probe
         if isinstance(media, dict):
             item['media_observation'] = {
                 'signature': media.get('signature') if media.get('signature') in
@@ -217,7 +221,7 @@ def network_evidence(values):
         # distinct structural evidence over repeated player replies.
         shape = {key: value for key, value in item.items() if key not in {
             'address_scope', 'request_ref', 'response_ref', 'referer_ref',
-            'address_refs_truncated', 'address_trace_truncated'}}
+            'address_refs_truncated', 'address_trace_truncated', 'observed_media_probe'}}
         structure = dict(structural)
         if 'player_markup' in structure:
             structure['player_markup'] = {key: value for key, value in structure['player_markup'].items()
@@ -272,6 +276,48 @@ def reader_user_agent_probe(value):
         'attempted': attempted, 'profile_source': 'prior_successful_html', 'changed_header': 'user-agent',
         'status': status if attempted and outcome == 'response' and type(status) is int and 100 <= status <= 599 else None,
         'outcome': outcome, 'http_observation': http_observation(http if isinstance(http, dict) else {}),
+    }
+
+
+
+def observed_media_probe(value):
+    """Project an optional, bounded media diagnostic; never playback authority.
+
+    Both references must belong to the surrounding event's validated scope.
+    URLs, request headers, response bodies and arbitrary producer fields are
+    intentionally discarded before this can reach either Brain prompt channel.
+    """
+    if not isinstance(value, dict) or type(value.get('attempted')) is not bool:
+        return None
+    source, template = value.get('source_ref'), value.get('template_ref')
+    if not address_ref(source) or not address_ref(template):
+        return None
+    attempted, outcome = value['attempted'], value.get('outcome')
+    if attempted:
+        outcome = outcome if outcome in {'response', 'timeout', 'error'} and isinstance(outcome, str) else 'error'
+    elif outcome != 'budget_exhausted':
+        return None
+    status = value.get('status')
+    media = value.get('media_observation')
+    media = media if isinstance(media, dict) else {}
+    http = value.get('http_observation')
+    return {
+        'attempted': attempted, 'source_ref': source, 'template_ref': template,
+        'status': status if attempted and outcome == 'response' and type(status) is int
+            and 100 <= status <= 599 else None,
+        'outcome': outcome,
+        'media_observation': {
+            'signature': media.get('signature') if media.get('signature') in
+                {'unknown', 'mp4', 'ebml', 'mpegts', 'hls', 'html'} else 'unknown',
+            'durationSeconds': count(media.get('durationSeconds'), 1209600)
+                if type(media.get('durationSeconds')) is int else None,
+            'bytesSampled': count(media.get('bytesSampled'), 32768),
+            'readState': media.get('readState') if media.get('readState') in
+                {'not_read', 'data', 'empty', 'complete', 'error'} else 'not_read',
+            'cancelState': media.get('cancelState') if media.get('cancelState') in
+                {'not_requested', 'requested', 'complete', 'error'} else 'not_requested',
+        },
+        'http_observation': http_observation(http if isinstance(http, dict) else {}),
     }
 
 
