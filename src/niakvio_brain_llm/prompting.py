@@ -1655,6 +1655,20 @@ def build_force_prompt_payload(
         },
     }
 
+    if any('observed_media_probe' in row for row in payload['current_network_evidence'] +
+           payload['previous_verification'].get('candidate_network', [])):
+        payload['observed_media_probe_policy'] = (
+            "observed_media_probe is one controlled diagnostic GET of a source declared in the parent HTML; "
+            "it is never a returned or validated stream and never proves playback or episode identity. "
+            "Correlate source_ref and template_ref only inside the parent event's address_scope. "
+            "A complete five-second MP4 prefix remains short-source evidence for a 1440-second fixture. "
+            "A 1440-second MP4 prefix is a concrete duration difference from a five-second template, "
+            "so inspect source freshness and request metadata while preserving duration and identity checks. "
+            "It does not establish that the declared source is valid or unused. HTTP error facts describe "
+            "the control response; timeout, error, budget exhaustion and incomplete read/cancel are inconclusive. "
+            "Use current_fixture_evidence and previous_verification stream counts for returned/playable outcomes."
+        )
+
     selection_focus = short_media_source_focus(str(runtime_source or ''), context.get('live_runtime_evidence') or {})
     if selection_focus:
         payload['source_selection_focus'] = selection_focus
