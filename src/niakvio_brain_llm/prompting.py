@@ -6,7 +6,7 @@ from typing import Any
 
 from .contracts import RepairRequest
 from .source_units import javascript_function_end
-from .live_evidence import network_evidence, verification_feedback, non_improving_functions, fixture_evidence, executed_helper_context, short_media_source_focus
+from .live_evidence import network_evidence, verification_feedback, non_improving_functions, fixture_evidence, executed_helper_context, short_media_source_focus, public_domain_references, domain_reference_focus
 
 def _clip(value: Any, limit: int) -> str:
     text = str(value or "")
@@ -1353,6 +1353,7 @@ def build_force_prompt_payload(
     context = request.provider_context or {}
 
     allowed_scopes = list(policy.get("allowed_scopes") or request.allowed_mutations or [])
+    domain_focus = domain_reference_focus(context.get('live_runtime_evidence'))
     validation_feedback = next(
         (
             row
@@ -1392,7 +1393,15 @@ def build_force_prompt_payload(
     )
     registered = context.get("registered_patch_sources")
     target: dict[str, Any] = {}
-    if "provider_patch" in allowed_scopes and isinstance(registered, dict) and registered:
+    if domain_focus and 'provider_data' in allowed_scopes and isinstance(context.get('override'), dict):
+        target = {
+            'scope': 'provider_data',
+            'path': 'provider-overrides.json > provider_patches[provider_id]',
+            'source': _compact({key: value for key, value in context['override'].items() if key in {
+                'official_site', 'official_hub', 'domain_substitutions',
+                'runtime_domain_replacements', 'manifest_overrides'}}, string_limit=600),
+        }
+    elif "provider_patch" in allowed_scopes and isinstance(registered, dict) and registered:
         path, source = next(iter(registered.items()))
         target = {
             "scope": "provider_patch",
@@ -1654,6 +1663,15 @@ def build_force_prompt_payload(
             "validation_retry_context": "focused" if validation_feedback is not None else "compact_initial",
         },
     }
+
+    references = public_domain_references((context.get('live_runtime_evidence') or {}).get('public_domain_references'))
+    if references:
+        payload['public_domain_references'] = references
+        payload['domain_candidate_policy'] = (
+            'A referenced origin is an unverified domain candidate, never a repaired provider or playback proof. '
+            'A 404-only failed fixture can justify a minimal provider_data domain hypothesis. '
+            'Preserve protocol, duration and identity validation; external execution must prove the gain.'
+        )
 
     if any('observed_media_probe' in row for row in payload['current_network_evidence'] +
            payload['previous_verification'].get('candidate_network', [])):
