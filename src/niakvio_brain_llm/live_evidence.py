@@ -81,6 +81,76 @@ def prioritize_domain_data(scopes, allowed, context):
     return scopes
 
 
+def verified_live_failure(request):
+    """A request-local preflight receipt permits synthesis, never publication."""
+    proof = (request.provider_context or {}).get('verified_live_failure')
+    if not isinstance(proof, dict) or proof.get('provider') != request.provider_id:
+        return False
+    if (not isinstance(proof.get('sourceSha'), str)
+            or not re.fullmatch(r'[0-9a-f]{40}', proof['sourceSha'])
+            or proof.get('sourceValidated') is not True or proof.get('httpStatuses') != [404]
+            or proof.get('publicationAuthority') is not False):
+        return False
+    failures = proof.get('fixtureFailures')
+    return bool(isinstance(failures, list) and 0 < len(failures) <= 8 and all(
+        isinstance(row, dict) and isinstance(row.get('fixture'), str) and row['fixture'].strip()
+        and len(row['fixture']) <= 120 and not re.search(r'[\x00-\x1f\x7f]', row['fixture'])
+        and type(row.get('streamsReturned')) is int and row['streamsReturned'] == 0
+        and type(row.get('streamsPlayable')) is int and row['streamsPlayable'] == 0
+        for row in failures))
+
+
+def apply_verified_live_failure(request, live, source_sha, explicit_providers):
+    """Demote stale positive priors only after the CLI verifies exact checkout evidence."""
+    if (not isinstance(live, dict) or not isinstance(source_sha, str)
+            or not re.fullmatch(r'[0-9a-f]{40}', source_sha)
+            or live.get('sourceSha') != source_sha or live.get('provider') != request.provider_id
+            or request.provider_id not in set(explicit_providers or [])
+            or ' '.join(str(request.status).upper().replace('_', ' ').replace('-', ' ').split())
+                not in {'FULL OK', 'PARTIAL OK'}):
+        return False
+    fixtures = live.get('fixture_evidence')
+    if not isinstance(fixtures, list) or not 0 < len(fixtures) <= 8:
+        return False
+    failed, labels = [], set()
+    for row in fixtures:
+        if not isinstance(row, dict):
+            return False
+        label, returned, playable = row.get('fixture'), row.get('streamsReturned'), row.get('streamsPlayable')
+        if (not isinstance(label, str) or not label.strip() or len(label) > 120
+                or re.search(r'[\x00-\x1f\x7f]', label) or label in labels
+                or type(returned) is not int or type(playable) is not int
+                or not 0 <= playable <= returned):
+            return False
+        labels.add(label)
+        if 'decodedMediaControls' in row and (type(row['decodedMediaControls']) is not int
+                or not 0 <= row['decodedMediaControls'] <= playable):
+            return False
+        if returned == playable == 0:
+            failed.append({'fixture': label, 'streamsReturned': 0, 'streamsPlayable': 0})
+    if not failed:
+        return False
+    names = {row['fixture'] for row in failed}
+    events = [row for row in rows(live.get('network_evidence'), 64)
+              if isinstance(row, dict) and row.get('fixture') in names and not row.get('infrastructure')]
+    if not events or any(type(row.get('status')) is not int or row['status'] != 404 for row in events):
+        return False
+    # Every failed fixture needs its own executed HTTP counterexample.
+    if {row['fixture'] for row in events} != names:
+        return False
+    proof = {'provider': request.provider_id, 'sourceSha': source_sha, 'sourceValidated': True,
+             'fixtureFailures': failed, 'httpStatuses': [404], 'publicationAuthority': False}
+    previous_status, previous_failure = request.status, request.failure_class
+    request.provider_context['verified_live_failure'] = proof
+    request.status = 'CURRENT FAILURE'
+    request.failure_class = 'provider_transport_gap'
+    request.observations.insert(0, {'source': 'verified-live-preflight', 'stage': 'current_failure',
+        'value': {**proof, 'historicalStatus': previous_status, 'historicalFailureClass': previous_failure},
+        'instruction': 'Exact-current failed fixtures supersede a historical positive census for this attempt only. '
+                       'This permits a provider-local proposal, not proof of a repair.'})
+    return True
+
+
 def address_scope(value):
     return isinstance(value, str) and ADDRESS_SCOPE.fullmatch(value) is not None
 
@@ -227,6 +297,25 @@ def response_structure(value, allow_address_refs=False):
         ], "variables": identifiers(value.get("variables"))}
         if isinstance(value.get('player_markup'), dict):
             result['player_markup'] = player_markup(value['player_markup'], allow_address_refs)
+        if isinstance(value.get('inline_fields'), list):
+            result['inline_fields'] = [
+                {'name': row['name'], 'type': row['type'], 'key_syntax': row['key_syntax']}
+                for row in rows(value['inline_fields'], 12) if isinstance(row, dict)
+                and isinstance(row.get('name'), str) and IDENTIFIER.fullmatch(row['name'])
+                and not SENSITIVE.search(row['name'])
+                and isinstance(row.get('type'), str) and row['type'] in
+                    {'string', 'number', 'boolean', 'null', 'object', 'array'}
+                and isinstance(row.get('key_syntax'), str) and row['key_syntax'] in {'quoted', 'bare'}]
+        if isinstance(value.get('script_resources'), list):
+            kinds = {'absolute_url', 'protocol_relative_url', 'root_relative_url', 'relative_path'}
+            roles = {'app_entry', 'start_entry', 'chunk', 'other_script'}
+            locations = {'src_attribute', 'inline_import'}
+            result['script_resources'] = [
+                {key: row[key] for key in ('kind', 'role', 'location')}
+                for row in rows(value['script_resources'], 8) if isinstance(row, dict)
+                and isinstance(row.get('kind'), str) and row['kind'] in kinds
+                and isinstance(row.get('role'), str) and row['role'] in roles
+                and isinstance(row.get('location'), str) and row['location'] in locations]
         return result
     return {"kind": kind} if kind in {"text", "binary"} else {}
 
