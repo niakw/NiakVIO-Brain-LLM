@@ -1,12 +1,84 @@
 """Bound live diagnostics to structural facts, never response scalar values."""
 import json
 import re
+import ipaddress
+from urllib.parse import urlsplit
 from .source_units import javascript_function_end
 
 IDENTIFIER = re.compile(r"[A-Za-z_$][\w$-]{0,47}")
 SENSITIVE = re.compile(r"key|token|auth|signature|secret|password|cookie|session|nonce", re.I)
 ADDRESS_SCOPE = re.compile(r"s[0-9a-f]{16}")
 ADDRESS_REF = re.compile(r"r(?:[1-9]|[1-9][0-9]|[1-4][0-9]{2}|50[0-9]|51[0-2])")
+NETWORK_ERROR_CODES = frozenset({
+    'ENOTFOUND', 'EAI_AGAIN', 'ECONNREFUSED', 'ECONNRESET', 'ETIMEDOUT',
+    'UND_ERR_CONNECT_TIMEOUT', 'UND_ERR_HEADERS_TIMEOUT', 'UND_ERR_SOCKET',
+    'CERT_HAS_EXPIRED', 'ERR_TLS_CERT_ALTNAME_INVALID', 'UNABLE_TO_VERIFY_LEAF_SIGNATURE',
+    'DEPTH_ZERO_SELF_SIGNED_CERT', 'NUVIO_FETCH_TIMEOUT',
+})
+
+
+def public_domain_references(values):
+    """Validate immutable public-source candidates, without granting proof."""
+    result = []
+    for row in rows(values, 12):
+        if not isinstance(row, dict):
+            continue
+        origin, source, sha = (row.get(key) for key in ('origin', 'source_url', 'source_sha'))
+        if (not all(isinstance(value, str) for value in (origin, source, sha))
+                or not re.fullmatch(r'[0-9a-f]{40}', sha)
+                or len(origin) > 253 or len(source) > 600
+                or any(re.search(r'[\x00-\x20\x7f\\]', value) for value in (origin, source))):
+            continue
+        try:
+            site, reference = urlsplit(origin), urlsplit(source)
+            host = site.hostname or ''
+            if (site.scheme != 'https' or site.username or site.password or site.port
+                    or site.path or site.query or site.fragment
+                    or not re.fullmatch(r'(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}', host)
+                    or host.endswith(('.localhost', '.local', '.internal', '.invalid', '.example', '.test'))):
+                continue
+            try:
+                ipaddress.ip_address(host)
+                continue
+            except ValueError:
+                pass
+            if (reference.scheme != 'https' or reference.username or reference.password
+                    or reference.port or reference.query or reference.fragment):
+                continue
+            prefix = r'/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/'
+            suffix = re.escape(sha) + r'/(?:[A-Za-z0-9_.-]+/)*[A-Za-z0-9_.-]+'
+            pattern = prefix + ('blob/' if reference.hostname == 'github.com' else '') + suffix
+            if (reference.hostname not in {'github.com', 'raw.githubusercontent.com'}
+                    or not re.fullmatch(pattern, reference.path)
+                    or any(part in {'.', '..'} for part in reference.path.split('/'))):
+                continue
+        except ValueError:
+            continue
+        item = {'origin': 'https://' + host, 'source_url': source, 'source_sha': sha}
+        if item not in result:
+            result.append(item)
+        if len(result) == 3:
+            break
+    return result
+
+
+def domain_reference_focus(live):
+    """404-only failed fixtures justify a domain-data hypothesis, not success."""
+    live = live if isinstance(live, dict) else {}
+    references = public_domain_references(live.get('public_domain_references'))
+    failed = {row['fixture'] for row in fixture_evidence(live.get('fixture_evidence'))
+              if row['streamsReturned'] == 0 and row['streamsPlayable'] == 0}
+    events = [row for row in network_evidence(live.get('network_evidence'))
+              if row['fixture'] in failed]
+    return {'references': references, 'fixtures': sorted(failed)} \
+        if references and events and all(row['status'] == 404 for row in events) else {}
+
+
+def prioritize_domain_data(scopes, allowed, context):
+    if ('provider_data' in allowed and context.get('override')
+            and domain_reference_focus(context.get('live_runtime_evidence'))):
+        return ['provider_data'] + [scope for scope in scopes if scope != 'provider_data']
+    return scopes
 
 
 def address_scope(value):
@@ -178,6 +250,8 @@ def network_evidence(values):
             "announced_players": count(row.get("announced_players"), 256),
         }
         item.update(address_fields(row))
+        if isinstance(row.get('error_code'), str) and row['error_code'] in NETWORK_ERROR_CODES:
+            item['error_code'] = row['error_code']
         media = row.get('media_observation')
         if isinstance(row.get('http_observation'), dict):
             item['http_observation'] = http_observation(row['http_observation'])
@@ -320,6 +394,8 @@ def fixture_evidence(values):
     for output, row in zip(result, [row for row in rows(values, 8) if isinstance(row, dict)]):
         if type(row.get('expectedDurationSeconds')) is int and 0 < row['expectedDurationSeconds'] <= 1209600:
             output['expectedDurationSeconds'] = row['expectedDurationSeconds']
+        if 'decodedMediaControls' in row:
+            output['decodedMediaControls'] = count(row.get('decodedMediaControls'), 8)
     return result
 
 
