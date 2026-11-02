@@ -62,6 +62,14 @@ Other tracked candidates:
 
 Official Qwen family authority: the QwenLM GitHub organization.
 
+### Local-only default and disabled paid API
+
+Paid generation is disabled by default, even when an API key is present.
+The local backend accepts loopback endpoints only and never falls back to a
+remote model. A missing local server fails without a paid request. The separate
+`NIAKVIO_ALLOW_PAID_API=1` switch is required before any hosted request; it is
+not set by repository automation and must not be enabled without new approval.
+
 ### Optional OpenAI API generation
 
 `plan_batch_from_checkout.py --backend hosted` explicitly selects the OpenAI

@@ -28,6 +28,9 @@ class Response:
 
 class HostedDataWireTests(unittest.TestCase):
     def setUp(self):
+        paid = patch.dict('os.environ', {'NIAKVIO_ALLOW_PAID_API': '1'})
+        paid.start()
+        self.addCleanup(paid.stop)
         self.schema = _compact_wire_schema_for(RepairRequest(provider_id='demo', failure_class='domain_gap'),
                                                {'allowed_scopes': ['provider_data']})
 

@@ -29,6 +29,11 @@ class Response:
 
 
 class HostedBackendTests(unittest.TestCase):
+    def setUp(self):
+        paid = patch.dict('os.environ', {'NIAKVIO_ALLOW_PAID_API': '1'})
+        paid.start()
+        self.addCleanup(paid.stop)
+
     def test_explicit_schema_and_no_retention_or_tools(self):
         captured = {}
 
@@ -91,6 +96,7 @@ class HostedBackendTests(unittest.TestCase):
     def test_niakvio_environment_key_and_hosted_default_ignore_local_model(self):
         with patch.dict("os.environ", {
             "NIAKVIO_OPENAI_API_KEY": "test-niakvio-only",
+            "NIAKVIO_ALLOW_PAID_API": "1",
             "OPENAI_API_KEY": "test-other-key",
             "NIAKVIO_LLM_MODEL": "qwen-local-only",
         }, clear=True):
@@ -102,6 +108,7 @@ class HostedBackendTests(unittest.TestCase):
     def test_hosted_environment_override_and_generic_key_fallback(self):
         with patch.dict("os.environ", {
             "OPENAI_API_KEY": "test-generic-only",
+            "NIAKVIO_ALLOW_PAID_API": "1",
             "NIAKVIO_HOSTED_MODEL": "gpt-6-astra",
         }, clear=True):
             model = HostedResponsesBackend.from_environment(max_tokens=4096)
@@ -112,7 +119,7 @@ class HostedBackendTests(unittest.TestCase):
         self.assertEqual(explicit.model, "gpt-6.1-sol")
 
     def test_environment_missing_key_has_no_request(self):
-        with patch.dict("os.environ", {}, clear=True), patch("niakvio_brain_llm.backend.urlopen") as send:
+        with patch.dict("os.environ", {'NIAKVIO_ALLOW_PAID_API': '1'}, clear=True), patch("niakvio_brain_llm.backend.urlopen") as send:
             with self.assertRaisesRegex(RuntimeError, "NIAKVIO_OPENAI_API_KEY or OPENAI_API_KEY"):
                 HostedResponsesBackend.from_environment()
             send.assert_not_called()
@@ -129,7 +136,7 @@ class HostedBackendTests(unittest.TestCase):
             argv = [str(script), "--niakvio-root", str(root), "--experience", str(root / "experience.jsonl"),
                     "--documents", str(root / "documents.jsonl"), "--output", str(root / "out.jsonl"),
                     "--backend", "hosted"]
-            with patch.dict("os.environ", {"NIAKVIO_OPENAI_API_KEY": "test-cli-only"}, clear=True), \
+            with patch.dict("os.environ", {"NIAKVIO_OPENAI_API_KEY": "test-cli-only", 'NIAKVIO_ALLOW_PAID_API': '1'}, clear=True), \
                     patch.object(sys, "argv", argv), \
                     patch.object(HostedResponsesBackend, "from_environment", wraps=HostedResponsesBackend.from_environment) as factory, \
                     patch("niakvio_brain_llm.backend.urlopen") as send, \
