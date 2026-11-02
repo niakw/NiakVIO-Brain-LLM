@@ -294,7 +294,7 @@ def observed_media_probe(value):
         return None
     attempted, outcome = value['attempted'], value.get('outcome')
     if attempted:
-        outcome = outcome if outcome in {'response', 'timeout', 'error'} and isinstance(outcome, str) else 'error'
+        outcome = outcome if isinstance(outcome, str) and outcome in {'response', 'timeout', 'error'} else 'error'
     elif outcome != 'budget_exhausted':
         return None
     status = value.get('status')
@@ -307,14 +307,14 @@ def observed_media_probe(value):
             and 100 <= status <= 599 else None,
         'outcome': outcome,
         'media_observation': {
-            'signature': media.get('signature') if media.get('signature') in
+            'signature': media.get('signature') if isinstance(media.get('signature'), str) and media.get('signature') in
                 {'unknown', 'mp4', 'ebml', 'mpegts', 'hls', 'html'} else 'unknown',
             'durationSeconds': count(media.get('durationSeconds'), 1209600)
                 if type(media.get('durationSeconds')) is int else None,
             'bytesSampled': count(media.get('bytesSampled'), 32768),
-            'readState': media.get('readState') if media.get('readState') in
+            'readState': media.get('readState') if isinstance(media.get('readState'), str) and media.get('readState') in
                 {'not_read', 'data', 'empty', 'complete', 'error'} else 'not_read',
-            'cancelState': media.get('cancelState') if media.get('cancelState') in
+            'cancelState': media.get('cancelState') if isinstance(media.get('cancelState'), str) and media.get('cancelState') in
                 {'not_requested', 'requested', 'complete', 'error'} else 'not_requested',
         },
         'http_observation': http_observation(http if isinstance(http, dict) else {}),
