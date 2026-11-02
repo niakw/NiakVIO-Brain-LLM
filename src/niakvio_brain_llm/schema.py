@@ -3,6 +3,72 @@ from __future__ import annotations
 from copy import deepcopy
 from typing import Any
 
+
+def hosted_wire_schema(schema: dict[str, Any]) -> tuple[dict[str, Any], bool]:
+    """Encode arbitrary DATA values as JSON strings on the strict API wire.
+
+    OpenAI strict schemas cannot represent the unconstrained ``value: {}``
+    accepted by the local mutation contract. Keep that contract unchanged and
+    adapt only the hosted transport; the backend restores the value before the
+    planner and receiver validate it.
+    """
+    prepared = deepcopy(schema)
+    encoded = False
+
+    def visit(node: Any) -> None:
+        nonlocal encoded
+        if not isinstance(node, dict):
+            return
+        properties = node.get('properties')
+        if isinstance(properties, dict):
+            scope = properties.get('scope') or {}
+            data_scope = scope.get('const') == 'provider_data' or scope.get('enum') == ['provider_data']
+            if data_scope and properties.get('value') == {}:
+                del properties['value']
+                properties['value_json'] = {'type': 'string', 'maxLength': 24000}
+                node['required'] = list(properties)
+                encoded = True
+            for child in properties.values():
+                visit(child)
+        for key in ('items', 'additionalProperties'):
+            visit(node.get(key))
+        for key in ('anyOf', 'oneOf', 'allOf'):
+            for child in node.get(key) or []:
+                visit(child)
+        for child in (node.get('$defs') or {}).values():
+            visit(child)
+
+    visit(prepared)
+    return prepared, encoded
+
+
+def restore_hosted_data_values(value: Any) -> Any:
+    """Restore wire DATA values without interpreting their nested JSON data."""
+    import json
+
+    if isinstance(value, list):
+        return [restore_hosted_data_values(item) for item in value]
+    if not isinstance(value, dict):
+        return value
+    if value.get('scope') == 'provider_data':
+        raw = value.get('value_json')
+        if not isinstance(raw, str) or len(raw) > 24000 or 'value' in value:
+            raise ValueError('hosted DATA response has invalid value encoding')
+        def non_finite(_constant: str) -> None:
+            raise ValueError('hosted DATA response has non-finite JSON value')
+        try:
+            decoded = json.loads(raw, parse_constant=non_finite)
+        except (ValueError, RecursionError):
+            raise ValueError('hosted DATA response has invalid JSON value') from None
+        restored = {key: item for key, item in value.items() if key != 'value_json'}
+        if value.get('operation') == 'delete':
+            if decoded is not None:
+                raise ValueError('hosted DATA delete requires a null wire value')
+        else:
+            restored['value'] = decoded
+        return restored
+    return {key: restore_hosted_data_values(item) for key, item in value.items()}
+
 DATA_ROOT_PATTERN = (
     r"^(capability|official_hub|official_site|manifest_overrides|domain_substitutions|"
     r"published_types|identity_input|learned_routes|candidate_learned_routes|"
