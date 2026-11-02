@@ -183,18 +183,12 @@ def network_evidence(values):
             item['http_observation'] = http_observation(row['http_observation'])
         if isinstance(row.get('reader_user_agent_probe'), dict) and row['reader_user_agent_probe']:
             item['reader_user_agent_probe'] = reader_user_agent_probe(row['reader_user_agent_probe'])
+        if 'address_scope' in item:
+            probe = observed_media_probe(row.get('observed_media_probe'))
+            if probe is not None:
+                item['observed_media_probe'] = probe
         if isinstance(media, dict):
-            item['media_observation'] = {
-                'signature': media.get('signature') if media.get('signature') in
-                    {'unknown', 'mp4', 'ebml', 'mpegts', 'hls', 'html'} else 'unknown',
-                'durationSeconds': count(media.get('durationSeconds'), 1209600)
-                    if type(media.get('durationSeconds')) is int else None,
-                'bytesSampled': count(media.get('bytesSampled'), 65536),
-                'readState': media.get('readState') if media.get('readState') in
-                    {'not_read', 'data', 'empty', 'complete', 'error'} else 'not_read',
-                'cancelState': media.get('cancelState') if media.get('cancelState') in
-                    {'not_requested', 'requested', 'complete', 'error'} else 'not_requested',
-            }
+            item['media_observation'] = media_observation(media)
         result.append(item)
         # A ref loss may set markup.truncated, but that diagnostic must not
         # create a new structural alternative in the existing event selection.
@@ -217,7 +211,7 @@ def network_evidence(values):
         # distinct structural evidence over repeated player replies.
         shape = {key: value for key, value in item.items() if key not in {
             'address_scope', 'request_ref', 'response_ref', 'referer_ref',
-            'address_refs_truncated', 'address_trace_truncated'}}
+            'address_refs_truncated', 'address_trace_truncated', 'observed_media_probe'}}
         structure = dict(structural)
         if 'player_markup' in structure:
             structure['player_markup'] = {key: value for key, value in structure['player_markup'].items()
@@ -233,7 +227,12 @@ def network_evidence(values):
         else:
             duplicates.append(item)
         shapes.add(key)
-    ranked = primary + alternatives + duplicates
+    # The bounded control may be attached to a repeated reader response. Keep
+    # its parent event after phase coverage, before ordinary alternatives, so
+    # a real late control result survives this smaller prompt window.
+    controls = [item for item in alternatives + duplicates if 'observed_media_probe' in item]
+    ranked = primary + controls + [item for item in alternatives + duplicates
+                                  if 'observed_media_probe' not in item]
     selected = ranked[:8]
     omitted_scopes.update(item['address_scope'] for item in ranked[8:] if 'address_scope' in item)
     for item in selected:
@@ -256,6 +255,41 @@ def http_observation(value):
               for key, allowed in enums.items()}
     result['sampled_bytes'] = count(value.get('sampled_bytes'), 8192)
     return result
+
+
+def media_observation(value, prefix_limit=65536):
+    enums = {
+        'signature': ({'unknown', 'mp4', 'ebml', 'mpegts', 'hls', 'html'}, 'unknown'),
+        'readState': ({'not_read', 'data', 'empty', 'complete', 'error'}, 'not_read'),
+        'cancelState': ({'not_requested', 'requested', 'complete', 'error'}, 'not_requested'),
+    }
+    result = {key: value[key] if isinstance(value.get(key), str) and value[key] in allowed else default
+              for key, (allowed, default) in enums.items()}
+    result['durationSeconds'] = count(value.get('durationSeconds'), 1209600) \
+        if type(value.get('durationSeconds')) is int else None
+    result['bytesSampled'] = count(value.get('bytesSampled'), prefix_limit)
+    return result
+
+
+def observed_media_probe(value):
+    """A bounded control request is diagnostic evidence, never a stream verdict."""
+    if (not isinstance(value, dict) or type(value.get('attempted')) is not bool
+            or not address_ref(value.get('source_ref')) or not address_ref(value.get('template_ref'))):
+        return None
+    attempted, outcome = value['attempted'], value.get('outcome')
+    if not attempted and outcome != 'budget_exhausted':
+        return None
+    if attempted and (not isinstance(outcome, str) or outcome not in {'response', 'timeout', 'error'}):
+        outcome = 'error'
+    status = value.get('status')
+    media, http = value.get('media_observation'), value.get('http_observation')
+    return {
+        'attempted': attempted, 'source_ref': value['source_ref'], 'template_ref': value['template_ref'],
+        'status': status if attempted and outcome == 'response' and type(status) is int and 100 <= status <= 599 else None,
+        'outcome': outcome,
+        'media_observation': media_observation(media if isinstance(media, dict) else {}, 32768),
+        'http_observation': http_observation(http if isinstance(http, dict) else {}),
+    }
 
 
 def reader_user_agent_probe(value):
