@@ -7,8 +7,22 @@ from dataclasses import dataclass, field
 from typing import Any, Protocol
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
+from urllib.parse import urlsplit
 
 from .schema import hosted_wire_schema, restore_hosted_data_values
+
+
+def require_paid_api_opt_in() -> None:
+    if os.environ.get('NIAKVIO_ALLOW_PAID_API') != '1':
+        raise RuntimeError('paid model API is disabled; use the local backend')
+
+
+def require_local_endpoint(base_url: str) -> None:
+    endpoint = urlsplit(base_url)
+    if (endpoint.scheme not in {'http', 'https'}
+            or endpoint.hostname not in {'127.0.0.1', 'localhost', '::1'}
+            or endpoint.username or endpoint.password or endpoint.query or endpoint.fragment):
+        raise ValueError('local backend requires a loopback endpoint; remote API fallback is disabled')
 
 class ModelBackend(Protocol):
     def complete(
@@ -37,6 +51,7 @@ class LocalOpenAICompatibleBackend:
         user: str,
         response_schema: dict[str, Any] | None = None,
     ) -> str:
+        require_local_endpoint(self.base_url)
         messages = [
             {"role": "system", "content": system},
             {"role": "user", "content": user},
@@ -141,6 +156,7 @@ class HostedResponsesBackend:
 
     @classmethod
     def from_environment(cls, *, model: str | None = None, **options: Any) -> "HostedResponsesBackend":
+        require_paid_api_opt_in()
         credential = os.environ.get("NIAKVIO_OPENAI_API_KEY") or os.environ.get("OPENAI_API_KEY")
         if not credential:
             raise RuntimeError("hosted backend requires NIAKVIO_OPENAI_API_KEY or OPENAI_API_KEY secret")
@@ -157,6 +173,7 @@ class HostedResponsesBackend:
         user: str,
         response_schema: dict[str, Any] | None = None,
     ) -> str:
+        require_paid_api_opt_in()
         if not self.api_key or not self.api_key.strip():
             raise RuntimeError("hosted backend requires an API key")
         if self.model not in {"gpt-6.1-sol", "gpt-6-astra"}:
