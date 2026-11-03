@@ -1,4 +1,5 @@
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 from urllib.error import URLError
 
@@ -6,6 +7,17 @@ from niakvio_brain_llm.backend import HostedResponsesBackend, LocalOpenAICompati
 
 
 class NoPaidApiTests(unittest.TestCase):
+    def test_workflows_cannot_bypass_backend_billing_guard(self):
+        root = Path(__file__).resolve().parents[1]
+        for workflow in (root / '.github/workflows').glob('*.yml'):
+            text = workflow.read_text(encoding='utf-8')
+            with self.subTest(workflow=workflow.name):
+                self.assertNotIn('api.openai.com', text)
+                self.assertNotRegex(text, r'secrets\.(?:NIAKVIO_)?OPENAI_API_KEY')
+                self.assertNotRegex(text, r'NIAKVIO_ALLOW_PAID_API:\s*[\"\x27]?1')
+        disabled = (root / '.github/workflows/hosted-api-check.yml').read_text(encoding='utf-8')
+        self.assertIn('if: ${{ false }}', disabled)
+
     def test_key_presence_cannot_enable_paid_requests(self):
         for setting in (None, '', '0', 'true'):
             env = {'NIAKVIO_OPENAI_API_KEY': 'test-only'}
