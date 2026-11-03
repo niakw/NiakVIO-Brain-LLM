@@ -6,7 +6,7 @@ from typing import Any
 
 from .contracts import RepairRequest
 from .source_units import javascript_function_end
-from .live_evidence import network_evidence, verification_feedback, non_improving_functions, fixture_evidence, executed_helper_context
+from .live_evidence import network_evidence, verification_feedback, non_improving_functions, fixture_evidence, executed_helper_context, short_media_source_focus, public_domain_references, domain_reference_focus
 
 def _clip(value: Any, limit: int) -> str:
     text = str(value or "")
@@ -510,8 +510,14 @@ def _force_structural_focus_keywords(request: RepairRequest) -> tuple[str, ...]:
     context = request.provider_context or {}
     source = context.get('preferredRuntimeMutationSource') or context.get('runtimeMutationSource') or ''
     focus.extend('avoid_function:' + name for name in non_improving_functions(source, live))
-    focus.extend("function:" + name for name in live.get("active_functions", [])[:6]
-                 if isinstance(name, str) and re.fullmatch(r"[A-Za-z_$][\w$]{0,63}", name))
+    selection = short_media_source_focus(source, live)
+    if selection:
+        focus.append('terminal_preview_source')
+        focus.extend('avoid_function:' + name for name in selection['terminal_functions'])
+        focus.extend('function:' + name for name in selection['selector_functions'])
+    if not selection:
+        focus.extend("function:" + name for name in live.get("active_functions", [])[:6]
+                     if isinstance(name, str) and re.fullmatch(r"[A-Za-z_$][\w$]{0,63}", name))
     variant_failure = str(request.failure_class or "").strip().casefold().replace("-", "_") == "variant_coverage_gap"
 
     def record_token(raw: object) -> None:
@@ -765,6 +771,12 @@ def _force_window_kwargs_for_request(request: RepairRequest) -> dict[str, int]:
         and template_prior.get("reuseBeforeNovelBloc")
         and context.get("preferredRuntimeMutationSource")
     ):
+        selection = short_media_source_focus(context['preferredRuntimeMutationSource'],
+                                             context.get('live_runtime_evidence') or {})
+        if selection.get('seed_admission_functions'):
+            # Do not refill the admission surface with downstream validators.
+            return {'max_chars': 2000, 'max_windows': 2,
+                    'max_units': len(selection['seed_admission_functions'])}
         if str(request.failure_class or '').casefold() == 'variant_coverage_gap' and non_improving_functions(
             context.get('preferredRuntimeMutationSource'), context.get('live_runtime_evidence') or {}
         ):
@@ -842,7 +854,13 @@ def _force_edit_units(
             return False
         if not allow_function and stripped.startswith(("function ", "async function ", "class ", "else", "catch", "finally")):
             return False
-        if (not allow_function and "function " in stripped) or stripped.count("{") != stripped.count("}"):
+        if not allow_function and "function " in stripped:
+            return False
+        if allow_function:
+            # Literal braces inside regexes/strings are not structural braces.
+            if javascript_function_end(fragment, 0) != len(fragment):
+                return False
+        elif stripped.count("{") != stripped.count("}"):
             return False
         if absolute > 0 and text[absolute - 1:absolute].isalnum() and text[absolute:absolute + 1].isalnum():
             return False
@@ -1101,10 +1119,29 @@ def _force_edit_units(
             if re.match(r"\s*(?:async\s+)?function\s+" + re.escape(name) + r"\s*\(",
                         str(row.get("source") or ""), re.I)
         ), len(active_names)))
+        if 'terminal_preview_source' in focus_keywords:
+            # Rejected selectors remain in the call map as read-only context,
+            # but must not seed the next traversal or spend its root budget.
+            avoided_names = {str(token).split(':', 1)[1].casefold() for token in focus_keywords
+                             if str(token).startswith('avoid_function:')}
+            def named(row, names):
+                return any(re.match(r'\s*(?:async\s+)?function\s+' + re.escape(name) + r'\s*\(',
+                                    str(row.get('source') or ''), re.I) for name in names)
+            function_rows = [row for row in function_rows if not named(row, avoided_names)]
+            selector_rows = [row for row in function_rows if named(row, active_names)]
+            # Follow the remaining selectors' own parsers, rather than refilling
+            # their slots with transport utilities from already rejected roots.
+            for row in selector_rows[:min(3, max_units)]:
+                key = (int(row.get('offset') or 0), int(row.get('end_offset') or 0))
+                if key not in selected_keys:
+                    selected.append(row)
+                    selected_keys.add(key)
         # A measured terminal helper can exceed the complete-function ceiling.
         # Reserve a bounded exact statement in that helper instead of silently
         # replacing it with an editable but unrelated dispatcher.
         for name in active_names:
+            if len(selected) >= max_units:
+                break
             reserved = False
             reserved_spans = []
             for match in re.finditer(r'\b(?:async\s+)?function\s+' + re.escape(name) + r'\s*\(', text, re.I):
@@ -1112,8 +1149,10 @@ def _force_edit_units(
                 if end is None or end - match.start() <= 1800:
                     continue
                 for _, row in ranked:
+                    if len(selected) >= max_units:
+                        break
                     key = (int(row.get('offset') or 0), int(row.get('end_offset') or 0))
-                    if (match.start() < key[0] and key[1] < end and row.get('kind') != 'function_unit'
+                    if (key not in selected_keys and match.start() < key[0] and key[1] < end and row.get('kind') != 'function_unit'
                             and not any(key[0] < right and key[1] > left for left, right in reserved_spans)):
                         selected.append(row)
                         selected_keys.add(key)
@@ -1133,6 +1172,8 @@ def _force_edit_units(
         if len(selected) >= max_units:
             break
         key = (int(row.get("offset") or 0), int(row.get("end_offset") or 0))
+        if key in selected_keys:
+            continue
         selected.append(row)
         selected_keys.add(key)
 
@@ -1312,6 +1353,7 @@ def build_force_prompt_payload(
     context = request.provider_context or {}
 
     allowed_scopes = list(policy.get("allowed_scopes") or request.allowed_mutations or [])
+    domain_focus = domain_reference_focus(context.get('live_runtime_evidence'))
     validation_feedback = next(
         (
             row
@@ -1351,7 +1393,15 @@ def build_force_prompt_payload(
     )
     registered = context.get("registered_patch_sources")
     target: dict[str, Any] = {}
-    if "provider_patch" in allowed_scopes and isinstance(registered, dict) and registered:
+    if domain_focus and 'provider_data' in allowed_scopes and isinstance(context.get('override'), dict):
+        target = {
+            'scope': 'provider_data',
+            'path': 'provider-overrides.json > provider_patches[provider_id]',
+            'source': _compact({key: value for key, value in context['override'].items() if key in {
+                'official_site', 'official_hub', 'domain_substitutions',
+                'runtime_domain_replacements', 'manifest_overrides'}}, string_limit=600),
+        }
+    elif "provider_patch" in allowed_scopes and isinstance(registered, dict) and registered:
         path, source = next(iter(registered.items()))
         target = {
             "scope": "provider_patch",
@@ -1613,6 +1663,33 @@ def build_force_prompt_payload(
             "validation_retry_context": "focused" if validation_feedback is not None else "compact_initial",
         },
     }
+
+    references = public_domain_references((context.get('live_runtime_evidence') or {}).get('public_domain_references'))
+    if references:
+        payload['public_domain_references'] = references
+        payload['domain_candidate_policy'] = (
+            'A referenced origin is an unverified domain candidate, never a repaired provider or playback proof. '
+            'A 404-only failed fixture can justify a minimal provider_data domain hypothesis. '
+            'Preserve protocol, duration and identity validation; external execution must prove the gain.'
+        )
+
+    if any('observed_media_probe' in row for row in payload['current_network_evidence'] +
+           payload['previous_verification'].get('candidate_network', [])):
+        payload['observed_media_probe_policy'] = (
+            "observed_media_probe is one controlled diagnostic GET of a source declared in the parent HTML; "
+            "it is never a returned or validated stream and never proves playback or episode identity. "
+            "Correlate source_ref and template_ref only inside the parent event's address_scope. "
+            "A complete five-second MP4 prefix remains short-source evidence for a 1440-second fixture. "
+            "A 1440-second MP4 prefix is a concrete duration difference from a five-second template, "
+            "so inspect source freshness and request metadata while preserving duration and identity checks. "
+            "It does not establish that the declared source is valid or unused. HTTP error facts describe "
+            "the control response; timeout, error, budget exhaustion and incomplete read/cancel are inconclusive. "
+            "Use current_fixture_evidence and previous_verification stream counts for returned/playable outcomes."
+        )
+
+    selection_focus = short_media_source_focus(str(runtime_source or ''), context.get('live_runtime_evidence') or {})
+    if selection_focus:
+        payload['source_selection_focus'] = selection_focus
 
     # CPU-only 7B generation repeatedly exhausted its 180s request budget on
     # 9-14k-character prompts, although FORCE only needs one exact current unit.

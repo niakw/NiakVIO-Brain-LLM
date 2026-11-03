@@ -12,6 +12,13 @@ FIXDATA_COMMENT = re.compile(r"/\*\s*FIXDATA:.*?\*/", re.IGNORECASE | re.DOTALL)
 URL = re.compile(r"https?://[^\s\"'<>]+", re.IGNORECASE)
 HOST = re.compile(r"\b(?:[a-z0-9-]+\.)+[a-z]{2,}\b", re.IGNORECASE)
 ROUTE_LITERAL = re.compile(r"([\"'])/(?![/*])[^\"'\n]{1,180}\1")
+# Reference snippets are advisory, never executable edit targets. Strip short
+# credential literals as well as long opaque blobs before model exposure.
+SENSITIVE_LITERAL = re.compile(
+    r"""(?ix)(?P<prefix>['"]?(?:authorization|proxy-authorization|cookie|set-cookie|
+    x-api-key|api[_-]?key|access[_-]?token|refresh[_-]?token|client[_-]?secret|
+    password|secret|token)['"]?\s*[:=]\s*)(?P<quote>['"])(?P<value>[^'"\n]{1,256})(?P=quote)"""
+)
 TECHNICAL_TOKENS = (
     "fetch", "headers", "cookie", "user-agent", "referer", "origin", "redirect",
     "timeout", "search", "detail", "episode", "watch", "player", "iframe", "embed",
@@ -355,6 +362,10 @@ def _sanitize_reference_source(text: str, provider_id: str, *, limit: int = 1400
     value = URL.sub("<URL>", value)
     value = HOST.sub("<HOST>", value)
     value = ROUTE_LITERAL.sub(lambda m: m.group(1) + "<ROUTE>" + m.group(1), value)
+    value = SENSITIVE_LITERAL.sub(
+        lambda m: m.group("prefix") + m.group("quote") + "<credential-omitted>" + m.group("quote"),
+        value,
+    )
     if provider_id:
         value = re.sub(re.escape(provider_id), "<PROVIDER>", value, flags=re.IGNORECASE)
     value = re.sub(r"PROVIDER\.[A-Z0-9_.-]+", "PROVIDER.<REFERENCE>", value, flags=re.IGNORECASE)
@@ -409,7 +420,7 @@ def build_validated_reference_patterns(
         if not provider or provider.casefold() == target_id:
             continue
         status = str(row.get("status") or "").strip().casefold().replace("_", " ")
-        if "full ok" not in status:
+        if status != "full ok":
             continue
         context = build_provider_context(root, provider)
         sources: list[tuple[str, str]] = []

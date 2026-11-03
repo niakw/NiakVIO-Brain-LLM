@@ -1407,6 +1407,36 @@ function resolve(){return []}'''
                 compact_force=True,
             )
 
+    def test_compact_force_function_unit_converts_literal_braces_end_to_end(self):
+        for literal in (r'/\{status:/', '"{"', '1/*{*/', '1//{\n'):
+            with self.subTest(literal=literal):
+                source = 'function eligible(url){const marker=' + literal + ';return Boolean(url);}'
+                request = RepairRequest(
+                    provider_id="demo", failure_class="route_proven_gap", status="ROUTE PROVEN",
+                    allowed_mutations=["provider_bloc"],
+                    provider_context={"runtimeMutationSource": source,
+                                      "runtimeMutationFilename": "providers/demo.js"},
+                )
+                payload = build_force_prompt_payload(request)
+                unit = next(row for row in payload["new_bloc_target"]["editable_units"]
+                            if row.get("kind") == "function_unit")
+                replacement = 'const marker=' + literal + ';return Boolean(url)&&url.length>1;'
+                mutation = _compact_edit_to_mutation(request, {
+                    "scope": "provider_bloc", "family": "route_admission",
+                    "unit_id": unit["id"], "replace": replacement,
+                })
+                updated = source.replace(mutation["find"], mutation["replace"], 1)
+                self.assertIn('function eligible(url){', updated)
+                self.assertIn('url.length>1', updated)
+                self.assertIn(literal, updated)
+
+    def test_compact_force_rejects_partial_anchor_with_balanced_literal_brace(self):
+        from niakvio_brain_llm.planner import _reject_partial_function_anchor
+        partial = 'function eligible(url){const marker="}";return url;'
+        self.assertEqual(partial.count('{'), partial.count('}'))
+        with self.assertRaisesRegex(ValueError, "structurally incomplete"):
+            _reject_partial_function_anchor(partial, partial + '}')
+
     def test_compact_force_file_edit_rejects_non_unique_find(self):
         response = json.dumps({
             "edit": {

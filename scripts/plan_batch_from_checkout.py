@@ -441,7 +441,8 @@ def main() -> int:
 
         if bloc_ready and "provider_bloc" not in scopes:
             scopes.append("provider_bloc")
-        return list(dict.fromkeys(scopes))
+        from niakvio_brain_llm.live_evidence import prioritize_domain_data
+        return prioritize_domain_data(list(dict.fromkeys(scopes)), allowed, context)
 
     def _run_force_scope(
         position: int,
@@ -723,9 +724,10 @@ def main() -> int:
         provider = str(census_row["provider"])
         request = request_cache.get(provider) or request_from_checkout(args.niakvio_root, provider)
         if live_evidence is not None and live_evidence.get("provider") == provider:
-            from niakvio_brain_llm.live_evidence import network_evidence, verification_feedback, fixture_evidence, observed_failure_class, executed_runtime_source
+            from niakvio_brain_llm.live_evidence import network_evidence, verification_feedback, fixture_evidence, observed_failure_class, executed_runtime_source, public_domain_references
             request.provider_context["live_runtime_evidence"] = {
                 "network_evidence": network_evidence(live_evidence.get("network_evidence")),
+                "public_domain_references": public_domain_references(live_evidence.get("public_domain_references")),
                 "fixture_evidence": fixture_evidence(live_evidence.get("fixture_evidence")),
                 "previous_verification": verification_feedback(live_evidence.get("previous_verification")),
                 "active_functions": [str(name) for name in live_evidence.get("active_functions", [])[:6]
@@ -737,6 +739,19 @@ def main() -> int:
                     if isinstance(row, dict)
                 ],
             }
+            references = request.provider_context['live_runtime_evidence']['public_domain_references']
+            if references:
+                request.observations.insert(0, {
+                    'stage': 'public_domain_reference', 'source': 'immutable-public-upstream',
+                    'value': {'references': references, 'publicationAuthority': False},
+                    'instruction': 'These are candidate origins from public source references, not working-site or playback proof. '
+                                   'Only external execution and video validation can establish a repair.',
+                })
+            if args.mode == 'repair':
+                from niakvio_brain_llm.live_evidence import apply_verified_live_failure
+                if apply_verified_live_failure(request, live_evidence, actual_sha, args.provider):
+                    print('FIELD_BRAIN_LIVE_FAILURE_OVERRIDE provider=' + provider
+                          + ' source_sha=' + actual_sha + ' historical_positive=true', flush=True)
             request.failure_class = observed_failure_class(request.failure_class,
                                                           request.provider_context['live_runtime_evidence'])
             source = executed_runtime_source(request.provider_context, request.provider_context['live_runtime_evidence'])
