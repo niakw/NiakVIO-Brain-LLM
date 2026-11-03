@@ -31,6 +31,71 @@ class ResponseShapeAdapterTests(unittest.TestCase):
         self.assertNotIn("bad token", repr(shape))
         self.assertNotIn("forbidden", repr(shape))
 
+    def test_selector_names_are_exact_observed_ascii_strings(self):
+        exact = "c" * 48
+        shape = _safe_response_shape({
+            "kind": "html",
+            "forms": True,
+            "classTokens": ["movie-card", exact, exact + "x", True, False, None, "épisode"],
+            "idTokens": ["results", exact, exact + "x", True, None, "épisode"],
+            "classFacts": [
+                {"token": exact + "x", "count": 3},
+                {"token": True, "count": 3},
+                {"token": "épisode", "count": 3},
+                {"token": "movie-card", "count": 3,
+                 "tags": ["DIV", "a", "t" * 17, True, None, "élément"]},
+            ],
+        })
+        self.assertEqual(shape["classTokens"], ["movie-card", exact])
+        self.assertEqual(shape["idTokens"], ["results", exact])
+        self.assertNotIn("forms", shape)
+        self.assertEqual(shape["classFacts"], [{
+            "token": "movie-card", "count": 3, "tags": ["div", "a"],
+            "selfHref": 0, "nestedAnchors": 0, "signals": [],
+        }])
+
+    def test_malformed_fact_counters_do_not_abort_current_observations(self):
+        for field in ("count", "selfHref", "nestedAnchors"):
+            for invalid in ("not-a-count", "5", {}, [], True, 1.5, None):
+                with self.subTest(field=field, invalid=invalid):
+                    observation = _provider_targeted_observation({"providers": {"demo": {
+                        "network": {"movie": [{"status": 200, "shape": {
+                            "kind": "html", "classFacts": [
+                                {"token": "invalid-card", field: invalid},
+                                {"token": "movie-card", "count": 99, "selfHref": 99,
+                                 "nestedAnchors": 99, "tags": ["a"]},
+                            ],
+                        }}]},
+                    }}}, "demo")
+                    facts = observation["network"]["movie"][0]["shape"]["classFacts"]
+                    self.assertEqual([row["token"] for row in facts], ["movie-card"])
+                    self.assertEqual((facts[0]["count"], facts[0]["selfHref"],
+                                      facts[0]["nestedAnchors"]), (12, 12, 24))
+                    self.assertNotIn("invalid-card", repr(observation))
+
+    def test_imported_fact_does_not_fabricate_a_truncated_selector_hint(self):
+        fabricated = "movie-card" + "x" * 38
+        observation = _provider_sharded_observation({"rows": [{
+            "provider_id": "demo", "semantic_type": "movie", "status": "no_streams",
+            "debug_fetches": [{"url": "https://provider.invalid/", "status": 200,
+                              "response_shape": {"kind": "html", "classFacts": [
+                                  {"token": fabricated + "-suffix", "count": 4,
+                                   "tags": ["div"], "nestedAnchors": 4},
+                                  {"token": "movie-card", "count": 2, "tags": ["a"]},
+                              ]}}],
+        }]}, "demo")
+        self.assertNotIn(fabricated, repr(observation))
+        self.assertIn("classFacts=[movie-card;count=2;", observation["structureHints"][0])
+
+    def test_malformed_tag_or_signal_containers_do_not_create_facts(self):
+        for invalid in ("article", True, {"private": "value"}, 42):
+            with self.subTest(invalid=invalid):
+                shape = _safe_response_shape({"kind": "html", "classFacts": [{
+                    "token": "movie-card", "count": 2, "tags": invalid, "signals": invalid,
+                }]})
+                self.assertEqual(shape["classFacts"][0]["tags"], [])
+                self.assertEqual(shape["classFacts"][0]["signals"], [])
+
 
     def test_targeted_observation_surfaces_shallow_html_structure_hint(self):
         payload = {

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
@@ -136,18 +137,16 @@ def _safe_response_shape(value: Any) -> dict[str, Any]:
         return out
     for key in ("sampleBytes", "forms", "iframes", "videos", "sources", "scripts", "anchors", "functions", "fetchCalls"):
         raw = value.get(key)
-        if isinstance(raw, int):
+        if type(raw) is int:
             out[key] = max(0, min(raw, 65536 if key == "sampleBytes" else 99))
     for key, limit in (("classTokens", 16), ("idTokens", 12)):
         rows = value.get(key)
         if isinstance(rows, list):
             safe = [
-                str(item)[:48]
+                item
                 for item in rows[:limit]
-                if str(item)
-                and str(item)[0].isalpha()
-                and all(ch.isalnum() or ch in "_-" for ch in str(item))
-                and 2 <= len(str(item)) <= 48
+                if isinstance(item, str)
+                and re.fullmatch(r"[A-Za-z][A-Za-z0-9_-]{1,47}", item)
             ]
             if safe:
                 out[key] = safe
@@ -158,30 +157,30 @@ def _safe_response_shape(value: Any) -> dict[str, Any]:
         for row in facts[:8]:
             if not isinstance(row, dict):
                 continue
-            token = str(row.get("token") or "")[:48]
-            if not (
-                token
-                and token[0].isalpha()
-                and all(ch.isalnum() or ch in "_-" for ch in token)
-                and 2 <= len(token) <= 48
-            ):
+            # Reject malformed evidence rather than manufacture a selector
+            # through truncation or coercion of a JSON scalar.
+            token = row.get("token")
+            if not isinstance(token, str) or not re.fullmatch(r"[A-Za-z][A-Za-z0-9_-]{1,47}", token):
                 continue
+            counters = {key: row.get(key, 0) for key in ("count", "selfHref", "nestedAnchors")}
+            if any(type(raw) is not int for raw in counters.values()):
+                continue
+            raw_tags = row.get("tags")
             tags = [
-                str(tag)[:16].lower()
-                for tag in (row.get("tags") or [])[:4]
-                if str(tag)
-                and str(tag)[0].isalpha()
-                and all(ch.isalnum() or ch in "_-" for ch in str(tag))
+                tag.lower()
+                for tag in (raw_tags[:4] if isinstance(raw_tags, list) else [])
+                if isinstance(tag, str) and re.fullmatch(r"[A-Za-z][A-Za-z0-9_-]{0,15}", tag)
             ]
+            raw_signals = row.get("signals")
             safe_facts.append({
                 "token": token,
-                "count": max(0, min(int(row.get("count") or 0), 12)),
+                "count": max(0, min(counters["count"], 12)),
                 "tags": tags,
-                "selfHref": max(0, min(int(row.get("selfHref") or 0), 12)),
-                "nestedAnchors": max(0, min(int(row.get("nestedAnchors") or 0), 24)),
+                "selfHref": max(0, min(counters["selfHref"], 12)),
+                "nestedAnchors": max(0, min(counters["nestedAnchors"], 24)),
                 "signals": [
-                    str(sig) for sig in (row.get("signals") or [])[:9]
-                    if str(sig) in allowed_signals
+                    sig for sig in (raw_signals[:9] if isinstance(raw_signals, list) else [])
+                    if isinstance(sig, str) and sig in allowed_signals
                 ],
             })
         if safe_facts:
