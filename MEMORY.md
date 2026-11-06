@@ -988,3 +988,11 @@
 - Brain-LLM now treats `advisor_only` as a distinct prompt mode: the model-facing mutation policy is forced to no-mutation and source blobs use the smaller diagnostic/advisor compaction path. Deterministic Force remains the only mutation owner and exact source stays outside the advisor payload.
 - A regression test reproduces a Coflix-style hierarchical variant-coverage request with large negative experiment history and verifies the serialized advisor payload remains inside the 7600-character bound while preserving the dynamic variant-coverage signal.
 - This is a Brain pipeline correction only; it does not claim Coflix repaired. Coflix must be rerun through guidance -> Learning -> executable candidate/materialization -> playback/identity/completeness proof.
+
+## 2026-11-06 — Existing Codex CSS evidence fix integrated after review
+
+- Reviewed open PR #21 from head 59f1ca43 and its exact CI SUCCESS run 41705213829. PR changes only Brain evidence normalization and tests, not provider runtime: preserves exact valid ASCII class/id/tag tokens (no fabricated truncation/string coercion), refuses malformed counter/scalar values, and bounds supported structural evidence.
+- Merged PR #21 into Brain main at 0c669c89dd50c1c506bcc28a6024d56e3dcdcac0. This improves observation reliability, not stream playback, not model ability to generate new repair strategies, and not provider counters.
+- Independent NiakVIO census 42297852170 still 21 FULL, 17 repairQueue. Fast Repair 42298748040 selected 12, accepted 0, no_new_repair_experiment. Representative plans expose allowedProfiles=[] and learning_generations_exhausted; Brain generation/selection remains critical unresolved work.
+- Client S00 regression exposed in NiakVIO Core: season zero coerced to season one and mismatched structured/title evidence accepted. Shared Core/ProviderBase fix was committed on NiakVIO main at 2be0fed, Core Stream Metadata CI 42300164497 passed. Full manifest rematerialization/replay and validated cross-catalogue mini-series equivalence are not yet proved.
+- No model-generated provider repair was validated from this Brain PR. Preserve negative experiment memory and require new executable causal strategy, current-byte materialization, terminal decoded media identity and non-regression before promoting any provider.
