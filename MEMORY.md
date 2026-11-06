@@ -1013,3 +1013,11 @@
 - Brain CI 42306020022 failed privacy audit because a 40-hex Git commit SHA in the exact merged-branch cleanup manifest was interpreted as a French phone number. The bug is in data classification, not leaked personal data.
 - Privacy scanner now strips only complete bounded 40-hex Git object IDs **for PHONE_FR matching**; it still scans full original text for tokens, emails, public IPs and private home paths, and still detects phone numbers outside hashes. Added explicit unit tests for real phone vs SHA.
 - The first branch cleanup 42306019987 safely aborted before deletion due test TypeError; fixed in 4886c862. Actual remote cleanup count and CI verification pending.
+
+## Verified cleanup outcome — 2026-11-06
+
+- [Run 42306142613](https://github.com/niakw/NiakVIO-Brain-LLM/actions/runs/42306142613) **SUCCESS**, exact signal `deleted=17, eligible=17, skipped=[]`.
+- Re-enumeration after the run: **9 remote branches** (`main` plus eight intentionally preserved unmerged/unattributed lanes).
+- Brain CI [42306321066](https://github.com/niakw/NiakVIO-Brain-LLM/actions/runs/42306321066) **SUCCESS** on `4521b8ec`, including unit suite and public-repository privacy audit after Git SHA/phone false-positive correction.
+- NiakVIO contribution invitation [Discussion #273](https://github.com/niakw/NiakVIO/discussions/273) published by [run 42305731807](https://github.com/niakw/NiakVIO/actions/runs/42305731807).
+- No evidence was deleted from main; merged PR history and comments persist. The eight preserved branches require a separate review before deletion.

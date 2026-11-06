@@ -20,3 +20,11 @@
 ## Verification required
 
 The cleanup workflow validates exact SHA, merged PR state, same-repository source, unprotected branch, absence of open PR and no head movement before deletion. Branches skipped by these guards are **not** considered cleaned. Afterwards verify GitHub remote branch enumeration, then report actual count. The workflow does not touch main, worktrees, provider code, published manifests or Brain evidence.
+
+## Verified cleanup outcome — 2026-11-06
+
+- [Run 42306142613](https://github.com/niakw/NiakVIO-Brain-LLM/actions/runs/42306142613) **SUCCESS**, exact signal `deleted=17, eligible=17, skipped=[]`.
+- Re-enumeration after the run: **9 remote branches** (`main` plus eight intentionally preserved unmerged/unattributed lanes).
+- Brain CI [42306321066](https://github.com/niakw/NiakVIO-Brain-LLM/actions/runs/42306321066) **SUCCESS** on `4521b8ec`, including unit suite and public-repository privacy audit after Git SHA/phone false-positive correction.
+- NiakVIO contribution invitation [Discussion #273](https://github.com/niakw/NiakVIO/discussions/273) published by [run 42305731807](https://github.com/niakw/NiakVIO/actions/runs/42305731807).
+- No evidence was deleted from main; merged PR history and comments persist. The eight preserved branches require a separate review before deletion.
