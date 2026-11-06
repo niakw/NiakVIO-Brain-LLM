@@ -2,6 +2,8 @@
   "schemaVersion": 1,
   "requestedAt": "2026-11-06",
   "repository": "niakw/NiakVIO-Brain-LLM",
-  "sourceMainSha": "02b82482039f217b98e7cabe5e2a60d2b649e1a7",
-  "eligible": 17
+  "sourceMainSha": "10b4fd388e410a3da7ba1b705f1cdfd89680e295",
+  "eligible": 17,
+  "retry": 1,
+  "reason": "Fix branch cleanup policy test set intersection TypeError before any deletion; rerun exact validated cohort."
 }

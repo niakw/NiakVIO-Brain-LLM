@@ -1003,3 +1003,7 @@
 - New fail-closed one-shot cleanup workflow requires GitHub runtime exact SHA, merged PR, same repo, unprotected ref, no open PR and double HEAD check before deleting. A run is not deletion proof; inspect remote and workflow result.
 - Existing CONTRIBUTING.md was blank. Replaced with real Brain-first contribution guide, evidence standards, testing, security and open community links.
 - Community invitation in NiakVIO Discussions is requested through NiakVIO workflow 42305731807; link must be confirmed before claiming it was published.
+
+## 2026-11-06 — Branch cleanup preflight corrected
+
+- First cleanup run 42306019987 failed safely *before any branch was deleted*: test mistakenly intersected a set with a list, raising TypeError. Test now explicitly converts preserved branch list to a set; workflow retriggered on new source. Original merged-branch SHA manifest remains unchanged; no silent weakening of deletion preconditions.

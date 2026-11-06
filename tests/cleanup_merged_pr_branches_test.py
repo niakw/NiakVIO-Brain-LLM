@@ -19,7 +19,7 @@ for path in ("main", "niakvio-guidance", "codex/../../main", "fix/foo//bar", "re
 for invalid in ({"branch":"codex/demo","sha":"notsha","pr":1},
                 {"branch":"codex/demo","sha":"a"*40,"pr":True}):
     assert not mod.valid_entry(invalid)
-assert not set(row["branch"] for row in rows) & ["codex/niakvio-brain-reliability","fix/brain-observed-media-bridge-contract","fix/force-selected-function-envelope","fix/force-skip-advisor-preflight-20261011","fix/force-skip-legacy-prompt-prefill","fix/private-chat-redaction-idempotence","fix/private-memory-homepath-redaction","niakvio-guidance"]
+assert not set(row["branch"] for row in rows) & set(["codex/niakvio-brain-reliability","fix/brain-observed-media-bridge-contract","fix/force-selected-function-envelope","fix/force-skip-advisor-preflight-20261011","fix/force-skip-legacy-prompt-prefill","fix/private-chat-redaction-idempotence","fix/private-memory-homepath-redaction","niakvio-guidance"])
 workflow = (ROOT / ".github/workflows/cleanup-merged-pr-branches.yml").read_text()
 assert "contents: write" in workflow
 assert "pull_request_target" not in workflow
