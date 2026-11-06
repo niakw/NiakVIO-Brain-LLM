@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "repository": "niakw/NiakVIO-Brain-LLM",
+  "sourceMainSha": "d6524f5bd8d04bd2247d02df7e143fa19cfb4253",
+  "createdAt": "2026-11-06",
+  "expectedCount": 6,
+  "branches": [
+    {
+      "branch": "codex/niakvio-brain-reliability",
+      "sha": "1969f2dd3e2914b7898c9cf03c233ec159498b17",
+      "provenAncestorOf": "d6524f5bd8d04bd2247d02df7e143fa19cfb4253"
+    },
+    {
+      "branch": "fix/force-selected-function-envelope",
+      "sha": "2f4b6028c6c16333c9b0e41a9ec3e79cd6b45426",
+      "provenAncestorOf": "d6524f5bd8d04bd2247d02df7e143fa19cfb4253"
+    },
+    {
+      "branch": "fix/force-skip-advisor-preflight-20261011",
+      "sha": "8b19d5f9ed4a8643fc9e15ec0d4640e88abb7468",
+      "provenAncestorOf": "d6524f5bd8d04bd2247d02df7e143fa19cfb4253"
+    },
+    {
+      "branch": "fix/force-skip-legacy-prompt-prefill",
+      "sha": "8b19d5f9ed4a8643fc9e15ec0d4640e88abb7468",
+      "provenAncestorOf": "d6524f5bd8d04bd2247d02df7e143fa19cfb4253"
+    },
+    {
+      "branch": "fix/private-chat-redaction-idempotence",
+      "sha": "8b19d5f9ed4a8643fc9e15ec0d4640e88abb7468",
+      "provenAncestorOf": "d6524f5bd8d04bd2247d02df7e143fa19cfb4253"
+    },
+    {
+      "branch": "fix/private-memory-homepath-redaction",
+      "sha": "17f1dc8df308d69d9d14b32b533b965d44926df6",
+      "provenAncestorOf": "d6524f5bd8d04bd2247d02df7e143fa19cfb4253"
+    }
+  ]
+}

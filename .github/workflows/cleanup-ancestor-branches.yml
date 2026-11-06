@@ -1,0 +1,24 @@
+name: CLEAN - Retire main-ancestor branches
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/triggers/ancestor-branch-cleanup-2026-11-06.json'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  clean:
+    if: github.repository == 'niakw/NiakVIO-Brain-LLM'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Verify ancestry cleanup policy
+        run: python3 tests/cleanup_ancestor_branches_test.py
+      - name: Delete only exact ancestor refs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/cleanup_ancestor_branches.py

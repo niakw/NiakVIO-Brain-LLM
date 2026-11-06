@@ -28,3 +28,9 @@ The cleanup workflow validates exact SHA, merged PR state, same-repository sourc
 - Brain CI [42306321066](https://github.com/niakw/NiakVIO-Brain-LLM/actions/runs/42306321066) **SUCCESS** on `4521b8ec`, including unit suite and public-repository privacy audit after Git SHA/phone false-positive correction.
 - NiakVIO contribution invitation [Discussion #273](https://github.com/niakw/NiakVIO/discussions/273) published by [run 42305731807](https://github.com/niakw/NiakVIO/actions/runs/42305731807).
 - No evidence was deleted from main; merged PR history and comments persist. The eight preserved branches require a separate review before deletion.
+
+## Second-stage exact ancestry cleanup — 2026-11-06
+
+- After 17 merged-PR branch deletions, Git compare against main `d6524f5bd8d04bd2247d02df7e143fa19cfb4253` proves six additional refs are ancestor-only: `codex/niakvio-brain-reliability`, `fix/force-selected-function-envelope`, `fix/force-skip-advisor-preflight-20261011`, `fix/force-skip-legacy-prompt-prefill`, `fix/private-chat-redaction-idempotence`, `fix/private-memory-homepath-redaction`. The comparison result was `ahead` (main ahead of branch) with `behind_by=0` for each, not guessed by age/name.
+- Preserve `fix/brain-observed-media-bridge-contract` (diverged, three unique commits) and `niakvio-guidance` (no common ancestor, separate guidance lane). Main is protected.
+- Added one-time cleanup with live GitHub compare, exact SHA, protected/open-PR checks and double HEAD check; remote deletion must be confirmed by run and re-enumeration.
