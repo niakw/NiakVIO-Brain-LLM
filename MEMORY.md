@@ -1032,3 +1032,10 @@
 
 - Initial ancestor cleanup run 42307493401 deleted exactly one already-merged ancestor branch `codex/niakvio-brain-reliability`, then failed safely on a large GitHub compare JSON response truncated to 1 MB (JSONDecodeError). Other five remained untouched at failure time.
 - Raised GitHub JSON response cap to guarded 12 MB, requested one commit per comparison page and retained strict behind_by=0/current-ref matching. Already-absent branch is idempotently skipped. Triggered another protected cleanup run. Do not claim six deleted until remote inventory verifies.
+
+## Final remote cleanup proof — 2026-11-06
+
+- [First cleanup run 42306142613](https://github.com/niakw/NiakVIO-Brain-LLM/actions/runs/42306142613): 17/17 exact merged PR branches deleted.
+- [Ancestor cleanup run 42307826860](https://github.com/niakw/NiakVIO-Brain-LLM/actions/runs/42307826860): five additional ancestor refs deleted, one already absent from prior partial run (42307493401).
+- **Current remote branch inventory is exactly 3:** `main`, `niakvio-guidance`, `fix/brain-observed-media-bridge-contract`. The last two preserve work not demonstrably integrated; no blanket deletion.
+- One-shot cleanup scripts, tests, triggers, manifests and two workflows were removed **after successful remote verification** to avoid leaving maintenance scaffolding permanently in production code. Their exact SHA inputs, execution logs and previous versions remain accessible via Git history.

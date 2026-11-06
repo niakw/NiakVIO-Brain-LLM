@@ -34,3 +34,10 @@ The cleanup workflow validates exact SHA, merged PR state, same-repository sourc
 - After 17 merged-PR branch deletions, Git compare against main `d6524f5bd8d04bd2247d02df7e143fa19cfb4253` proves six additional refs are ancestor-only: `codex/niakvio-brain-reliability`, `fix/force-selected-function-envelope`, `fix/force-skip-advisor-preflight-20261011`, `fix/force-skip-legacy-prompt-prefill`, `fix/private-chat-redaction-idempotence`, `fix/private-memory-homepath-redaction`. The comparison result was `ahead` (main ahead of branch) with `behind_by=0` for each, not guessed by age/name.
 - Preserve `fix/brain-observed-media-bridge-contract` (diverged, three unique commits) and `niakvio-guidance` (no common ancestor, separate guidance lane). Main is protected.
 - Added one-time cleanup with live GitHub compare, exact SHA, protected/open-PR checks and double HEAD check; remote deletion must be confirmed by run and re-enumeration.
+
+## Final remote cleanup proof — 2026-11-06
+
+- [First cleanup run 42306142613](https://github.com/niakw/NiakVIO-Brain-LLM/actions/runs/42306142613): 17/17 exact merged PR branches deleted.
+- [Ancestor cleanup run 42307826860](https://github.com/niakw/NiakVIO-Brain-LLM/actions/runs/42307826860): five additional ancestor refs deleted, one already absent from prior partial run (42307493401).
+- **Current remote branch inventory is exactly 3:** `main`, `niakvio-guidance`, `fix/brain-observed-media-bridge-contract`. The last two preserve work not demonstrably integrated; no blanket deletion.
+- One-shot cleanup scripts, tests, triggers, manifests and two workflows were removed **after successful remote verification** to avoid leaving maintenance scaffolding permanently in production code. Their exact SHA inputs, execution logs and previous versions remain accessible via Git history.
