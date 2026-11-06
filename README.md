@@ -218,3 +218,7 @@ Brain/LLM is the **author** of provider-local repair candidates. NiakVIO is the 
 A NiakVIO orchestrator, assistant or operator must not replace a failed Brain attempt by directly hand-editing provider runtime Lego, provider JS, provider-specific override recipes or provider-local repair tests and then count that as Brain Repair success. Investigative code ideas may be converted into sanitized evidence/context, but provider-local mutations must be emitted through the Brain mutation contract and then survive NiakVIO isolated current-byte playback, identity and non-regression validation.
 
 Infrastructure changes remain legitimate when they improve the repair system itself (evidence freshness, harness, causal routing, mutation receiver, sandbox, validation, pagination, timeouts, publication guards, or genuinely generic Core behavior).
+
+## 🤝 Contributions
+
+Pull requests and tested ideas are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) and join the [NiakVIO community discussions](https://github.com/niakw/NiakVIO/discussions). We especially need reusable Brain repair strategies and real-world, sanitized diagnostics.

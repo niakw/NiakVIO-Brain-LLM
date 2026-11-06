@@ -996,3 +996,10 @@
 - Independent NiakVIO census 42297852170 still 21 FULL, 17 repairQueue. Fast Repair 42298748040 selected 12, accepted 0, no_new_repair_experiment. Representative plans expose allowedProfiles=[] and learning_generations_exhausted; Brain generation/selection remains critical unresolved work.
 - Client S00 regression exposed in NiakVIO Core: season zero coerced to season one and mismatched structured/title evidence accepted. Shared Core/ProviderBase fix was committed on NiakVIO main at 2be0fed, Core Stream Metadata CI 42300164497 passed. Full manifest rematerialization/replay and validated cross-catalogue mini-series equivalence are not yet proved.
 - No model-generated provider repair was validated from this Brain PR. Preserve negative experiment memory and require new executable causal strategy, current-byte materialization, terminal decoded media identity and non-regression before promoting any provider.
+
+## 2026-11-06 — Repository cleanup and contributions invitation
+
+- Brain-LLM main at 02b82482039f217b98e7cabe5e2a60d2b649e1a7, 26 branches total, 0 open PR. 17 exact-head merged PR branches marked for guarded deletion (manifest cleanup/merged-pr-branches-2026-11-06.json). Eight unmerged/unattributed branches preserved, including closed-unmerged PR #16/#3 and active niakvio-guidance. No unconditional branch wipe.
+- New fail-closed one-shot cleanup workflow requires GitHub runtime exact SHA, merged PR, same repo, unprotected ref, no open PR and double HEAD check before deleting. A run is not deletion proof; inspect remote and workflow result.
+- Existing CONTRIBUTING.md was blank. Replaced with real Brain-first contribution guide, evidence standards, testing, security and open community links.
+- Community invitation in NiakVIO Discussions is requested through NiakVIO workflow 42305731807; link must be confirmed before claiming it was published.
