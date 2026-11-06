@@ -1007,3 +1007,9 @@
 ## 2026-11-06 — Branch cleanup preflight corrected
 
 - First cleanup run 42306019987 failed safely *before any branch was deleted*: test mistakenly intersected a set with a list, raising TypeError. Test now explicitly converts preserved branch list to a set; workflow retriggered on new source. Original merged-branch SHA manifest remains unchanged; no silent weakening of deletion preconditions.
+
+## 2026-11-06 — Privacy audit rejects false positives from Git SHAs, not real PII
+
+- Brain CI 42306020022 failed privacy audit because a 40-hex Git commit SHA in the exact merged-branch cleanup manifest was interpreted as a French phone number. The bug is in data classification, not leaked personal data.
+- Privacy scanner now strips only complete bounded 40-hex Git object IDs **for PHONE_FR matching**; it still scans full original text for tokens, emails, public IPs and private home paths, and still detects phone numbers outside hashes. Added explicit unit tests for real phone vs SHA.
+- The first branch cleanup 42306019987 safely aborted before deletion due test TypeError; fixed in 4886c862. Actual remote cleanup count and CI verification pending.

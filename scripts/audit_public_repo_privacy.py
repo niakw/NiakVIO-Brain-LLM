@@ -26,6 +26,9 @@ TOKEN_PATTERNS = (
 )
 
 EMAIL = re.compile(r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", re.I)
+# Hex commit IDs can contain ten consecutive digits; that is not a phone number.
+GIT_SHA40 = re.compile(r"(?<![A-Za-z0-9])[0-9a-f]{40}(?![A-Za-z0-9])", re.I)
+
 PHONE_FR = re.compile(r"(?<!\d)(?:\+33[ .-]?|0)[1-9](?:[ .-]?\d{2}){4}(?!\d)")
 IPV4 = re.compile(r"(?<![\d.])(?:\d{1,3}\.){3}\d{1,3}(?![\d.])")
 HOME_PATH = re.compile(r"(?:/Users|/home)/([A-Za-z0-9._-]+)")
@@ -69,6 +72,15 @@ def public_ipv4(value: str) -> bool:
     )
 
 
+def phone_in_public_text(text: str) -> bool:
+    """Ignore only complete 40-hex Git object IDs for phone-number detection.
+
+    The original text is still checked for secrets, emails, IPs and home paths.
+    Real phone numbers outside commit hashes remain blocking.
+    """
+    return PHONE_FR.search(GIT_SHA40.sub("<COMMIT_SHA>", text)) is not None
+
+
 def main() -> int:
     findings: list[str] = []
 
@@ -92,7 +104,7 @@ def main() -> int:
             if not value.casefold().endswith(tuple(s.casefold() for s in ALLOWED_EMAIL_SUFFIXES)):
                 findings.append(f"{raw}: potential email address")
 
-        if PHONE_FR.search(text):
+        if phone_in_public_text(text):
             findings.append(f"{raw}: potential French phone number")
 
         for match in IPV4.finditer(text):
