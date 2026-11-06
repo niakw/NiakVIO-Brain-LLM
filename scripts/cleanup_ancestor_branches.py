@@ -46,7 +46,7 @@ def main() -> None:
                 or details.get("protected",True) or not isinstance(active,list) or active
                 or (current.get("object") or {}).get("sha")!=sha):
             raise RuntimeError("Ancestry branch preflight failed: "+name)
-        compare=api("repos/"+REPO+"/compare/"+sha+"..."+head)
+        compare=api("repos/"+REPO+"/compare/"+sha+"..."+head+"?per_page=1")
         if (not isinstance(compare,dict) or compare.get("status") not in ("ahead","identical")
                 or compare.get("behind_by")!=0):
             raise RuntimeError("Unique commits or divergent history; refusing "+name)

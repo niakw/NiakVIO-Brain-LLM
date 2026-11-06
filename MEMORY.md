@@ -1027,3 +1027,8 @@
 - After 17 merged-PR branch deletions, Git compare against main `d6524f5bd8d04bd2247d02df7e143fa19cfb4253` proves six additional refs are ancestor-only: `codex/niakvio-brain-reliability`, `fix/force-selected-function-envelope`, `fix/force-skip-advisor-preflight-20261011`, `fix/force-skip-legacy-prompt-prefill`, `fix/private-chat-redaction-idempotence`, `fix/private-memory-homepath-redaction`. The comparison result was `ahead` (main ahead of branch) with `behind_by=0` for each, not guessed by age/name.
 - Preserve `fix/brain-observed-media-bridge-contract` (diverged, three unique commits) and `niakvio-guidance` (no common ancestor, separate guidance lane). Main is protected.
 - Added one-time cleanup with live GitHub compare, exact SHA, protected/open-PR checks and double HEAD check; remote deletion must be confirmed by run and re-enumeration.
+
+## 2026-11-06 — Ancestor branch cleanup partial execution and bounded API fix
+
+- Initial ancestor cleanup run 42307493401 deleted exactly one already-merged ancestor branch `codex/niakvio-brain-reliability`, then failed safely on a large GitHub compare JSON response truncated to 1 MB (JSONDecodeError). Other five remained untouched at failure time.
+- Raised GitHub JSON response cap to guarded 12 MB, requested one commit per comparison page and retained strict behind_by=0/current-ref matching. Already-absent branch is idempotently skipped. Triggered another protected cleanup run. Do not claim six deleted until remote inventory verifies.

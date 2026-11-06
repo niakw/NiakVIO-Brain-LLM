@@ -48,7 +48,9 @@ def api(path: str, method: str = "GET") -> dict | list | None:
     })
     try:
         with urlopen(request, timeout=30) as response:
-            contents = response.read(1000000)
+            contents = response.read(12_000_001)
+            if len(contents) > 12_000_000:
+                raise RuntimeError("GitHub API response exceeded bounded JSON size")
             return json.loads(contents.decode("utf-8")) if contents else None
     except HTTPError as err:
         if err.code == 404 and method == "GET":

@@ -1,6 +1,8 @@
 {
   "schemaVersion": 1,
   "requestedAt": "2026-11-06",
-  "sourceMainSha": "d6524f5bd8d04bd2247d02df7e143fa19cfb4253",
-  "count": 6
+  "sourceMainSha": "b5b2c7dfa446b07b31a4f773524de0c926312f6a",
+  "count": 6,
+  "retry": 1,
+  "reason": "Resume exact ancestor cleanup after safe 1/6 deletion: bounded GitHub compare JSON was previously truncated at 1 MB."
 }

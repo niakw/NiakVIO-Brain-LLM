@@ -21,3 +21,7 @@ for candidate in ("main","niakvio-guidance","fix/brain-observed-media-bridge-con
     except ValueError:pass
     else:raise AssertionError("Protected/unmerged branch accepted: "+candidate)
 print("BRAIN_ANCESTOR_CLEANUP_POLICY_OK")
+
+source=(ROOT/"scripts/cleanup_ancestor_branches.py").read_text()
+assert 'compare/"+sha+"..."+head+"?per_page=1' in source
+assert "12_000_000" in (ROOT/"scripts/cleanup_merged_pr_branches.py").read_text()
