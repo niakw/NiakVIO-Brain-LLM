@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from urllib.parse import urlsplit
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -49,10 +50,30 @@ def redact_sensitive(text: str) -> str:
     return value
 
 
+def _has_official_github_link(text: str) -> bool:
+    """Count only absolute GitHub links, not lookalike URLs or URL path text.
+
+    Text from private conversations is untrusted. Host identity cannot be
+    inferred from a substring such as `github.com/` in an arbitrary URL.
+    """
+    for raw in re.findall(r"https?://[^\\s<>\\\"'\\x60]+", text, flags=re.I)[:32]:
+        try:
+            url = urlsplit(raw)
+        except ValueError:
+            continue
+        if (url.scheme.casefold() == "https"
+                and url.hostname in {"github.com", "www.github.com"}
+                and not url.username and not url.password
+                and url.port in (None, 443)
+                and url.path.startswith("/") and len(url.path) > 1):
+            return True
+    return False
+
+
 def technical_score(text: str) -> int:
     lower = text.casefold()
     score = sum(1 for term in TECHNICAL_TERMS if term in lower)
-    if text.count(chr(96)) >= 3 or "github.com/" in lower:
+    if text.count(chr(96)) >= 3 or _has_official_github_link(text):
         score += 1
     if any(token in text for token in ("provider_", "STREAM_", "TMDB", "FULL OK", "PARTIAL OK", "NO PROOF")):
         score += 2
