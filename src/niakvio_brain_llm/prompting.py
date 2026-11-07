@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import os
 import re
 
 from typing import Any
 
 from .contracts import RepairRequest
+from .provider_context import _sanitize_reference_source
 from .source_units import javascript_function_end
 from .live_evidence import network_evidence, verification_feedback, non_improving_functions, fixture_evidence, executed_helper_context, short_media_source_focus, public_domain_references, domain_reference_focus
 
@@ -1814,7 +1816,36 @@ def build_force_prompt_payload(
             if isinstance(target_data, dict) and target_data.get("editable_units"):
                 target_data.pop("source_windows", None)
     if prompt_chars() > soft_limit:
-        payload["validated_reference_patterns"] = []
+        # Preserve one *pattern-only* example for a bounded local CPU model.
+        # This is never live evidence, route authority, or permission to copy
+        # foreign provider constants. Keep the default fleet behavior unchanged.
+        candidates = payload.get("validated_reference_patterns") or []
+        eligible = next((
+            row for row in candidates
+            if isinstance(row, dict)
+            and row.get("status") == "FULL OK"
+            and row.get("proof_authority") is False
+            and row.get("copy_policy") == "pattern_reference_only"
+            and isinstance(row.get("snippet"), str) and row["snippet"].strip()
+        ), None)
+        if (os.environ.get("NIAKVIO_FORCE_CPU_PEER_PATTERN") == "1"
+                and eligible is not None):
+            payload["validated_reference_patterns"] = [{
+                "technical_features": [
+                    _clip(value, 30) for value in
+                    (eligible.get("technical_features") or [])[:4]
+                ],
+                "snippet": _sanitize_reference_source(
+                    eligible["snippet"], str(eligible.get("provider") or ""),
+                    limit=420,
+                ),
+                "proof_authority": False,
+                "copy_policy": "pattern_reference_only",
+                "must_revalidate_current_provider": True,
+                "never_copy_foreign_routes_or_hosts": True,
+            }]
+        else:
+            payload["validated_reference_patterns"] = []
         payload["provider_field_evidence"] = [
             {**row, "text": _clip(row.get("text"), 240)}
             for row in payload.get("provider_field_evidence") or []
@@ -1844,7 +1875,6 @@ def build_force_prompt_payload(
     # Opt-in CPU FORCE mode: preserve exact mutation unit IDs and safety policy
     # while bounding duplicated observation/helper context. This is presentation
     # compression only; current-byte validation and media proof remain external.
-    import os
     if os.environ.get("NIAKVIO_FORCE_CPU_TIGHT_PROMPT") == "1" and prompt_chars() > 9600:
         editable = any(
             isinstance(payload.get(key), dict) and payload[key].get("editable_units")
@@ -1963,12 +1993,15 @@ def build_force_prompt_payload(
             payload["current_observations"] = (
                 payload.get("current_observations") or [])[:1]
             payload["provider_field_evidence"] = []
-            payload["validated_reference_patterns"] = []
             feedback = payload.get("previous_verification")
             if isinstance(feedback, dict):
                 feedback["candidate_network"] = (
                     feedback.get("candidate_network") or [])[:1]
 
+        if prompt_chars() > 12000:
+            # Peer patterns are optional hints; they must never starve the
+            # immutable exact-source unit of its strict CPU prompt budget.
+            payload["validated_reference_patterns"] = []
         if prompt_chars() > 12000:
             # Never silently clip exact editable units or invent source bytes.
             # A remaining oversized payload is a missing CPU executor contract,

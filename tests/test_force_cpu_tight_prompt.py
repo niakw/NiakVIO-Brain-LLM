@@ -109,3 +109,40 @@ assert compact["mutation_policy"]["allow_mutations"] is True
 assert compact["current_fixture_evidence"][0]["streamsReturned"] == 0
 assert compact["previous_verification"]["executionObserved"] is True
 print("CPU_FORCE_TIGHT_PROMPT_OK exact-unit-ids and bounded causal evidence")
+
+# An opt-in local CPU run must retain one sanitized, non-authoritative FULL
+# peer pattern instead of throwing all successful reusable patterns away.
+request.provider_context["validated_reference_patterns"] = [{
+    "provider": "public-peer",
+    "status": "FULL OK",
+    "technical_features": ["player", "iframe"],
+    "snippet": (
+        "function inspectPlayer(html) { const hostname = "
+        "'https://private.example.org/secret'; return html.match(/iframe/); }"
+    ),
+    "proof_authority": False,
+    "copy_policy": "pattern_reference_only",
+}]
+with patch.dict(os.environ, {
+    "NIAKVIO_FORCE_CPU_TIGHT_PROMPT": "1",
+    "NIAKVIO_FORCE_CPU_PEER_PATTERN": "1",
+}):
+    with_reference = build_force_prompt_payload(request, {}, policy)
+with patch.dict(os.environ, {
+    "NIAKVIO_FORCE_CPU_TIGHT_PROMPT": "1",
+    "NIAKVIO_FORCE_CPU_PEER_PATTERN": "0",
+}):
+    without_reference = build_force_prompt_payload(request, {}, policy)
+references = with_reference["validated_reference_patterns"]
+assert len(references) == 1
+assert references[0]["proof_authority"] is False
+assert references[0]["copy_policy"] == "pattern_reference_only"
+assert references[0]["must_revalidate_current_provider"] is True
+assert "<URL>" in references[0]["snippet"]
+assert "private.example.org" not in str(references)
+assert "public-peer" not in str(references)
+assert without_reference["validated_reference_patterns"] == []
+assert with_reference["new_bloc_target"]["editable_units"] == without_reference["new_bloc_target"]["editable_units"]
+assert size(with_reference) <= 12000
+print("CPU_FORCE_PEER_PATTERN_OK redacted prior, exact-unit-preserving, no-proof-authority")
+
