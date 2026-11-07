@@ -631,9 +631,12 @@ def _provider_force_negative_memory(payload: Any, provider_id: str) -> list[dict
             # their execution semantics, but never overwrite explicit false
             # or infer execution from an unavailable/not-generated profile.
             "executionObserved": (
-                value.get("executionObserved") is True
-                if "executionObserved" in value
-                else _canon(value.get("lastOutcome")) not in {"profile unavailable", "not generated"}
+                _canon(value.get("lastOutcome")) not in
+                {"profile unavailable", "not generated", "accepted", "verified", "success"}
+                and (
+                    value.get("executionObserved") is True
+                    if "executionObserved" in value else True
+                )
             ),
         })
 
