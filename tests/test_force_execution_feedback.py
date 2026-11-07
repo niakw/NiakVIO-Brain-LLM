@@ -17,6 +17,7 @@ class ForceExecutionFeedbackTests(unittest.TestCase):
             "providerId": "demo", "mutationFingerprint": "a" * 64,
             "mutationContextFingerprint": "b" * 64,
             "consecutiveFailures": 1, "lastOutcome": "rejected",
+            "executionObserved": True, "materializedMutationObserved": True,
             "lastReason": "required_category_playable_proof:anime",
             "lastBaselineCoverage": coverage, "lastCandidateCoverage": coverage,
             "lastCoverageDelta": {"streamsPlayable": 0, "exploredPlayerRequests": 0},
