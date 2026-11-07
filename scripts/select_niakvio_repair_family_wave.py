@@ -55,10 +55,12 @@ def load_json(path: Path | None) -> dict[str, Any]:
 def execution_burden_from_diagnostics(payload: dict[str, Any]) -> dict[str, int]:
     """Count model/runtime execution blocks without treating them as provider failures."""
     burden: dict[str, int] = {}
+    # canon() converts underscores to hyphens. Keep the lookup in exactly
+    # that canonical representation or reason-only execution failures vanish.
     blocked_reasons = {
         "timeouterror",
-        "provider_budget_exhausted",
-        "force_provider_budget_exhausted",
+        "provider-budget-exhausted",
+        "force-provider-budget-exhausted",
     }
     for row in payload.get("rows") or []:
         if not isinstance(row, dict):
@@ -80,7 +82,10 @@ def execution_burden_from_diagnostics(payload: dict[str, Any]) -> dict[str, int]
             ):
                 count += 1
         if count:
-            burden[provider] = count
+            # A provider may have multiple independent diagnostic rows/pages.
+            # Preserve all observed execution failures instead of allowing the
+            # last row to overwrite its earlier evidence.
+            burden[provider] = burden.get(provider, 0) + count
     return burden
 
 
