@@ -758,6 +758,38 @@ def _force_source_windows(
     return windows
 
 
+def rejected_force_unit_hashes(request: RepairRequest) -> set[str]:
+    """Exact-source fingerprints of rejected pure deletions in this repair attempt.
+
+    Do not reuse ephemeral unit IDs across prompt-window re-ranking on retries.
+    Retain only SHA-256 of current source snippets, never raw provider bytes.
+    """
+    import hashlib
+    hashes: set[str] = set()
+    for row in request.observations or []:
+        if not isinstance(row, dict) or row.get("stage") != "force_validation_feedback":
+            continue
+        if row.get("reason") != "causally_empty_deletion":
+            continue
+        value = str(row.get("rejected_unit_sha256") or "").strip().lower()
+        if re.fullmatch(r"[0-9a-f]{64}", value):
+            hashes.add(value)
+    return hashes
+
+
+def selectable_force_units(request: RepairRequest, units: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Filter structurally failed exact snippets; preserve everything else."""
+    import hashlib
+    rejected = rejected_force_unit_hashes(request)
+    if not rejected:
+        return units
+    return [
+        unit for unit in units
+        if hashlib.sha256(str(unit.get("source") or "").encode("utf-8")).hexdigest()
+        not in rejected
+    ]
+
+
 def _force_window_kwargs_for_request(request: RepairRequest) -> dict[str, int]:
     feedback = any(
         isinstance(row, dict)
@@ -1435,6 +1467,15 @@ def build_force_prompt_payload(
             "source_windows": _force_source_windows(runtime_source, request.failure_class, focus_keywords=structural_focus_keywords, **context_window_kwargs),
             "editable_units": _force_edit_units(runtime_source, request.failure_class, focus_keywords=structural_focus_keywords, **force_window_kwargs),
         }
+
+    # A rejected deletion must not be offered again, even when retry window
+    # size/order changes ephemeral unit IDs. The same filter is applied to
+    # constrained grammar and converter below.
+    for target_data in (target, new_bloc_target):
+        if isinstance(target_data, dict) and isinstance(target_data.get("editable_units"), list):
+            target_data["editable_units"] = selectable_force_units(
+                request, target_data["editable_units"]
+            )
 
     if validation_feedback is not None:
         observation_source = [validation_feedback]

@@ -19,7 +19,7 @@ from .document_memory import DocumentStore
 from .mutation_guard import validate_mutations
 from .policy import build_mutation_policy
 from .priors import build_causal_prior
-from .prompting import _force_edit_units, _force_source_windows, _force_structural_focus_keywords, _force_window_kwargs_for_request, build_force_prompt_payload, build_prompt_payload
+from .prompting import _force_edit_units, _force_source_windows, _force_structural_focus_keywords, _force_window_kwargs_for_request, build_force_prompt_payload, build_prompt_payload, selectable_force_units, rejected_force_unit_hashes
 from .retrieval import ExperienceStore
 from .schema import REPAIR_PROPOSAL_SCHEMA, advisor_schema_for, compact_force_schema_for, proposal_schema_for
 from .verification_plan import recommended_tests
@@ -511,6 +511,37 @@ def _resolve_structured_anchor(
     return anchor_find, anchor_replace
 
 
+class RejectedForceUnitError(ValueError):
+    """Sanitized rejection tied to exact current source, never provider text."""
+
+    def __init__(self, message: str, source_sha256: str):
+        super().__init__(message)
+        self.rejected_unit_sha256 = source_sha256
+
+
+def tagged_force_deletion(request: RepairRequest, edit: dict[str, Any] | None, exc: ValueError) -> ValueError:
+    """Attach current source fingerprint only for an actually rejected Bloc deletion."""
+    if (
+        not isinstance(edit, dict)
+        or edit.get("scope") != "provider_bloc"
+        or "pure deletion" not in str(exc).casefold()
+    ):
+        return exc
+    unit_id = str(edit.get("unit_id") or "")
+    if not re.fullmatch(r"w[0-9]+u[0-9]+", unit_id):
+        return exc
+    context = request.provider_context or {}
+    source = str(context.get("preferredRuntimeMutationSource") or context.get("runtimeMutationSource") or "")
+    try:
+        unit, _ = _force_unit_for_edit(request, source, unit_id)
+    except ValueError:
+        return exc
+    exact = str(unit.get("source") or "")
+    if not exact:
+        return exc
+    return RejectedForceUnitError(str(exc), hashlib.sha256(exact.encode("utf-8")).hexdigest())
+
+
 def _force_unit_for_edit(
     request: RepairRequest,
     source: str,
@@ -518,6 +549,9 @@ def _force_unit_for_edit(
 ) -> tuple[dict[str, Any], dict[str, int]]:
     if not unit_id:
         raise ValueError("compact Force unit_id is missing")
+    # The constrained wire and exact-byte converter must reject the same
+    # previously failed units, even if a backend ignores the schema.
+
     edit_kwargs = _force_window_kwargs_for_request(request)
     focus_keywords = _force_structural_focus_keywords(request)
     units = _force_edit_units(
@@ -537,6 +571,8 @@ def _force_unit_for_edit(
     )
     if unit is None:
         raise ValueError("compact Force unit_id is not valid for current source")
+    if not selectable_force_units(request, [unit]):
+        raise ValueError("compact Force unit_id was rejected in this repair attempt")
     find = str(unit.get("source") or "")
     absolute = int(unit.get("offset") or 0)
     if not find or source[absolute:absolute + len(find)] != find:
@@ -3225,7 +3261,8 @@ def _compact_wire_schema_for(
                 focus_keywords=_force_structural_focus_keywords(request),
                 **_force_window_kwargs_for_request(request),
             )
-            unit_ids = [str(row.get("id")) for row in units if str(row.get("id") or "")]
+            unit_ids = [str(row.get("id")) for row in selectable_force_units(request, units)
+                        if str(row.get("id") or "")]
             if not unit_ids:
                 continue
             variants.append({
@@ -3263,7 +3300,8 @@ def _compact_wire_schema_for(
                 focus_keywords=_force_structural_focus_keywords(request),
                 **_force_window_kwargs_for_request(request),
             )
-            unit_ids = [str(row.get("id")) for row in units if str(row.get("id") or "")]
+            unit_ids = [str(row.get("id")) for row in selectable_force_units(request, units)
+                        if str(row.get("id") or "")]
             if not unit_ids:
                 continue
             variants.append({
@@ -3536,10 +3574,14 @@ class BrainPlanner:
             )
         parsed = _extract_json(raw)
         if compact_force:
-            mutation = _compact_edit_to_mutation(
-                request,
-                parsed.get("edit") if isinstance(parsed.get("edit"), dict) else None,
-            )
+            raw_edit = parsed.get("edit") if isinstance(parsed.get("edit"), dict) else None
+            try:
+                mutation = _compact_edit_to_mutation(request, raw_edit)
+            except ValueError as exc:
+                tagged = tagged_force_deletion(request, raw_edit, exc)
+                if tagged is exc:
+                    raise
+                raise tagged from exc
             mutations = [mutation] if isinstance(mutation, dict) else []
             abstain = not mutations
             proposal = RepairProposal(

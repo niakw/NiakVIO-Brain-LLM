@@ -639,6 +639,13 @@ def main() -> int:
                     "window-local edit in the same scope or abstain",
                 ),
             }
+            rejected_hash = str(getattr(exc, "rejected_unit_sha256", "") or "")
+            if reason == "causally_empty_deletion" and re.fullmatch(r"[0-9a-f]{64}", rejected_hash):
+                feedback["rejected_unit_sha256"] = rejected_hash
+                feedback["instruction"] += (
+                    "; Brain has excluded that exact rejected source unit from "
+                    "the next selection. Choose another available unit or abstain."
+                )
             existing_observations = [
                 row for row in list(retry_request.observations or [])
                 if isinstance(row, dict)
