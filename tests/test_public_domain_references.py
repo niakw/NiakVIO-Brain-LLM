@@ -148,6 +148,13 @@ class PublicDomainReferenceTests(unittest.TestCase):
             'stage': 'media', 'status': 404,
         })
         self.assertFalse(domain_reference_focus(live))
+        clipped = evidence(404)
+        clipped['network_evidence'] *= 12
+        clipped['network_evidence'].append({
+            'fixture': 'JJK', 'host': 'old-provider.org',
+            'stage': 'content_lookup', 'status': 200,
+        })
+        self.assertFalse(domain_reference_focus(clipped))
         live = evidence(404)
         live['fixture_evidence'].append({
             'fixture': 'Spartacus S00E01', 'category': 'tv',
