@@ -104,6 +104,15 @@ class LivePreflightPolicyTests(unittest.TestCase):
         value_live = preflight(); value_live['network_evidence'][0]['infrastructure'] = True; variants.append(value_live)
         value_live = preflight(); value_live['network_evidence'][0]['fixture'] = 'Other'; variants.append(value_live)
         value_live = preflight(); value_live['fixture_evidence'] *= 2; variants.append(value_live)
+        # Real preflight logs can exceed the Brain prompt's twelve-event cap.
+        # A 200 catalogue result in the thirteenth slot must not be dropped
+        # while an earlier 404-only prefix is promoted to transport proof.
+        value_live = preflight()
+        value_live['network_evidence'] = [
+            {**value_live['network_evidence'][0]} for _ in range(12)
+        ] + [{'fixture': 'JJK S01E01', 'host': 'old-provider.org',
+              'stage': 'content_lookup', 'status': 200}]
+        variants.append(value_live)
         variants += [{}, None]
         for live in variants:
             with self.subTest(live=live):
