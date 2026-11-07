@@ -127,6 +127,40 @@ class PublicDomainReferenceTests(unittest.TestCase):
         request.allowed_mutations = ['provider_bloc']
         self.assertEqual(production_scope_order(request), ['provider_bloc'])
 
+    def test_player_or_media_404_cannot_reclassify_provider_domain(self):
+        # Real-world TV failures can reach a reader/embed or media URL while
+        # the upstream catalogue is healthy. A bare 404 is not domain proof.
+        for stage in ('player', 'source', 'media', 'playback', 'unknown', ''):
+            with self.subTest(stage=stage):
+                live = evidence(404)
+                live['network_evidence'][0]['stage'] = stage
+                self.assertFalse(domain_reference_focus(live))
+                request = RepairRequest(provider_id='demo', failure_class='chain_terminal_gap',
+                    provider_context={'override': {'official_site': 'https://old-provider.org'},
+                        'runtimeMutationSource': 'function lookup(){return [];}', 'live_runtime_evidence': live},
+                    allowed_mutations=['provider_data', 'provider_bloc'])
+                # The domain hypothesis may not preempt the parser/player
+                # remediation just because a terminal 404 was observed.
+                self.assertNotEqual(production_scope_order(request)[0], 'provider_data')
+        live = evidence(404)
+        live['network_evidence'].append({
+            'fixture': 'JJK', 'host': 'reader.cdn.test',
+            'stage': 'media', 'status': 404,
+        })
+        self.assertFalse(domain_reference_focus(live))
+        live = evidence(404)
+        live['fixture_evidence'].append({
+            'fixture': 'Spartacus S00E01', 'category': 'tv',
+            'streamsReturned': 0, 'streamsPlayable': 0,
+        })
+        self.assertFalse(domain_reference_focus(live))
+        live['network_evidence'].append({
+            'fixture': 'Spartacus S00E01', 'host': 'old-provider.org',
+            'stage': 'episode', 'status': 404,
+        })
+        self.assertEqual(domain_reference_focus(live)['fixtures'],
+                         ['JJK', 'Spartacus S00E01'])
+
     def test_domain_data_prompt_retains_relevant_maps_without_claiming_repair(self):
         override = {'notes': 'PRIVATE' * 1000,
                     'official_site': 'https://old-provider.org', 'official_hub': 'https://provider-hub.org',
