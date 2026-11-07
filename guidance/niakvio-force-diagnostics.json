@@ -1,0 +1,28 @@
+{
+  "brainLlmSha": "c7c5e7d94c1337192b2fd132c059ddc1abe9a705",
+  "privateContentRetained": false,
+  "proofAuthority": false,
+  "providerCount": 1,
+  "publicationAuthority": false,
+  "rows": [
+    {
+      "abstain": false,
+      "failureClass": "route_proven_gap",
+      "mutationScopes": [
+        "provider_bloc"
+      ],
+      "ok": true,
+      "providerId": "4khdhub",
+      "scopeTrace": [
+        {
+          "outcome": "selected",
+          "reason": "executable_mutation",
+          "scope": "provider_bloc"
+        }
+      ],
+      "status": "ROUTE_PROVEN"
+    }
+  ],
+  "schemaVersion": 1,
+  "sourceNiakvioSha": "2ac06197f200b451b23dedec84e05def0cc601e5"
+}

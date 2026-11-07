@@ -1,0 +1,23 @@
+{
+  "brainLlmSha": "c7c5e7d94c1337192b2fd132c059ddc1abe9a705",
+  "complete": true,
+  "completedProviders": [
+    "4khdhub"
+  ],
+  "cycle": 1,
+  "pageProviders": [
+    "4khdhub"
+  ],
+  "pageSize": 9,
+  "privateContentRetained": false,
+  "processedCount": 1,
+  "proofAuthority": false,
+  "publicationAuthority": false,
+  "remainingCount": 0,
+  "remainingProviders": [],
+  "requestedProviders": [
+    "4khdhub"
+  ],
+  "schemaVersion": 1,
+  "sourceNiakvioSha": "2ac06197f200b451b23dedec84e05def0cc601e5"
+}
