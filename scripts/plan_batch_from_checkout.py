@@ -492,6 +492,12 @@ def main() -> int:
                 60 if speculative_portfolio_slot else 180,
             ),
         )
+        # A single CPU-Qwen proof may need longer than 180 s even with exact
+        # source-backed prompt compaction. Explicit local-only opt-in; normal
+        # multi-provider FORCE and speculative portfolio budgets are unchanged.
+        cpu_long_call = os.environ.get("NIAKVIO_FORCE_CPU_LONG_CALL") == "1"
+        if cpu_long_call and not speculative_portfolio_slot:
+            primary_timeout = max(primary_timeout, min(300, int(args.timeout_seconds)))
         transport_timeout = max(
             45 if speculative_portfolio_slot else 90,
             min(
@@ -885,8 +891,9 @@ def main() -> int:
                     candidate_budget_seconds = 0.0
                 elif not planned:
                     future_reserve = max(0, remaining_candidates - 1) * 45.0
+                    cpu_long_call = os.environ.get("NIAKVIO_FORCE_CPU_LONG_CALL") == "1"
                     candidate_budget_seconds = min(
-                        180.0,
+                        330.0 if cpu_long_call and max_hypotheses == 1 else 180.0,
                         remaining_provider_seconds,
                         max(
                             90.0,

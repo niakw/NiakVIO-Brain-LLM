@@ -22,6 +22,11 @@ assert 'brain-force-portfolio-rejection' in batch
 assert '"brain-force-sandbox-memory"' in batch
 assert 'negative_memory_rows=' in batch
 assert '60 if speculative_portfolio_slot else 180' in batch
+# New CPU-long-call mode must only raise the first single-provider slot.
+assert 'NIAKVIO_FORCE_CPU_LONG_CALL' in batch
+assert '330.0 if cpu_long_call and max_hypotheses == 1 else 180.0' in batch
+assert 'min(300, int(args.timeout_seconds))' in batch
+assert 'if cpu_long_call and not speculative_portfolio_slot:' in batch
 assert 'FIELD_BRAIN_FORCE_SPECULATIVE_FAST_FAIL' in batch
 assert 'retry=transport-suppressed' in batch
 assert 'retry=validation-suppressed' in batch
