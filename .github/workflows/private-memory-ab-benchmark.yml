@@ -21,12 +21,12 @@ jobs:
     timeout-minutes: 55
     steps:
       - name: Checkout Brain
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           path: brain
 
       - name: Checkout NiakVIO read-only
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           repository: niakw/NiakVIO
           path: niakvio
@@ -34,7 +34,7 @@ jobs:
 
       - name: Checkout niakvio-private read-only
         if: matrix.memory_mode == 'public_plus_private'
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           repository: niakw/niakvio-private
           ref: main
@@ -46,7 +46,7 @@ jobs:
             raw/chatgpt-project/g-p-6a7f1d27495c819182b4081bfccdafd8
           sparse-checkout-cone-mode: true
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
         with:
           python-version: "3.12"
 
@@ -78,7 +78,7 @@ jobs:
             --output private-chat-documents.jsonl \
             | tee private-memory-report.json
 
-      - uses: actions/cache@v4
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         id: llama-bin-cache
         with:
           path: llama-prebuilt
@@ -94,7 +94,7 @@ jobs:
           tar -xzf llama-b11140.tar.gz -C llama-prebuilt
           test -n "$(find llama-prebuilt -type f -name llama-server -print -quit)"
 
-      - uses: actions/cache@v4
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: |
             ~/.cache/llama.cpp
@@ -139,7 +139,7 @@ jobs:
         if: always()
         run: rm -f private-chat-documents.jsonl private-memory-report.json
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always()
         with:
           name: ab-${{ matrix.memory_mode }}-${{ matrix.shard }}
@@ -149,11 +149,12 @@ jobs:
     needs: benchmark
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
+          persist-credentials: false
           path: brain
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
           pattern: ab-*
           path: shards
@@ -206,7 +207,7 @@ jobs:
           print(json.dumps(result, indent=2, sort_keys=True))
           PY
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: private-memory-ab-summary
           path: |
