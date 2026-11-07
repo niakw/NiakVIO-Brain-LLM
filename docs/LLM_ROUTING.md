@@ -45,3 +45,9 @@ For hundreds of providers:
 5. LLM candidates are verified independently by NiakVIO.
 
 This keeps intelligence available without paying model inference cost for every routine provider.
+
+## Current diagnostic execution debt (November 2026)
+
+Family-wave rotation counts **execution blockers**, not alleged provider failures. The diagnostics reader canonicalizes reason codes (underscores become hyphens) before classification. Both `provider_budget_exhausted` and `force_provider_budget_exhausted` must therefore match the canonical codes, even when the outcome is merely `rejected` rather than `budget_exhausted`. Multiple independent `scopeTrace` rows/pages for the same provider accumulate instead of overwriting earlier execution debt. A non-execution error (for example a provider HTTP block) does not create model execution debt.
+
+When a family contains an unblocked witness, the selection wave rotates away from execution-blocked siblings; if all are blocked, it retries the least-blocked member. This reduces waste in large cohorts, but **does not** imply any generated candidate is valid or a provider is repaired. Exact current-source compilation, applied bytes and real terminal playback remain independent requirements.
