@@ -117,6 +117,8 @@ class AdvisorMemoryRetentionTests(unittest.TestCase):
                         "consecutiveFailures": 1,
                         "lastOutcome": "rejected",
                         "lastReason": f"force-reason-{index}",
+                        "executionObserved": True,
+                        "materializedMutationObserved": True,
                     }
                     for index in range(40)
                 ],
@@ -138,6 +140,8 @@ class AdvisorMemoryRetentionTests(unittest.TestCase):
         for changes in (
             {"executionObserved": False, "lastOutcome": "rejected"},
             {"lastOutcome": "profile_unavailable"},
+            {"lastOutcome": "rejected"},
+            {"executionObserved": True, "lastOutcome": "not_generated"},
         ):
             with self.subTest(changes=changes):
                 rows = _provider_force_negative_memory({"entries": [{
