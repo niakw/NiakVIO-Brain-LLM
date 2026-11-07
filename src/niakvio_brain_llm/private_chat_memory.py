@@ -56,15 +56,16 @@ def _has_official_github_link(text: str) -> bool:
     Text from private conversations is untrusted. Host identity cannot be
     inferred from a substring such as `github.com/` in an arbitrary URL.
     """
-    for raw in re.findall(r"https?://[^\\s<>\\\"'\\x60]+", text, flags=re.I)[:32]:
+    for raw in re.findall(r'https?://[^\s<>"\x27\x60]+', text, flags=re.I)[:32]:
         try:
             url = urlsplit(raw)
+            host, port = url.hostname, url.port
         except ValueError:
             continue
         if (url.scheme.casefold() == "https"
-                and url.hostname in {"github.com", "www.github.com"}
+                and host in {"github.com", "www.github.com"}
                 and not url.username and not url.password
-                and url.port in (None, 443)
+                and port in (None, 443)
                 and url.path.startswith("/") and len(url.path) > 1):
             return True
     return False
