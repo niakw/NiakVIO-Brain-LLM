@@ -10,6 +10,7 @@ from urllib.request import Request, urlopen
 from urllib.parse import urlsplit
 
 from .schema import hosted_wire_schema, restore_hosted_data_values
+from .api_cost import BudgetLedger
 
 
 def require_paid_api_opt_in() -> None:
@@ -234,6 +235,11 @@ class HostedResponsesBackend:
             },
             method="POST",
         )
+        # A monetary budget is optional until explicitly configured. It uses
+        # a shared, locked ledger rather than counting model hypotheses.
+        # Reserve BEFORE network traffic; a failed call cannot bypass limits.
+        budget = BudgetLedger.from_environment()
+        reservation = budget.reserve(self.model, request.data, payload["max_output_tokens"]) if budget else None
         # Fail closed: HTTP/auth/schema errors must not trigger an unguarded
         # provider-code fallback or include secret request headers in logs.
         try:
@@ -255,6 +261,9 @@ class HostedResponsesBackend:
                 except (ValueError, TypeError, AttributeError, OSError):
                     pass
             raise RuntimeError(f"hosted model HTTP {exc.code}" + detail) from None
+        if budget and reservation is not None:
+            # Missing/invalid usage deliberately keeps pending dollars reserved.
+            budget.settle(self.model, reservation, result.get("usage"))
         if result.get("status") != "completed":
             raise RuntimeError("hosted model returned an incomplete response")
         chunks: list[str] = []
