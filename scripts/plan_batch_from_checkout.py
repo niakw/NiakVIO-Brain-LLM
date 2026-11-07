@@ -742,13 +742,12 @@ def main() -> int:
                 )
                 return None, exc
             transport_request = copy.deepcopy(scoped_request)
+            if cpu_output_budget and truncated_completion:
+                transport_timeout = max(transport_timeout, primary_timeout)
             try:
                 retry = _run_once(
                     transport_request,
-                    timeout_seconds=(
-                        max(transport_timeout, primary_timeout)
-                        if cpu_output_budget and truncated_completion else transport_timeout
-                    ),
+                    timeout_seconds=transport_timeout,
                     max_tokens=(
                         retry_tokens
                         if cpu_output_budget and truncated_completion else primary_tokens
