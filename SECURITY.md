@@ -22,3 +22,8 @@ Ce fichier n'atteste ni la clôture des alertes privées CodeQL/Dependabot/secre
 - Les 11 workflows avec actions GitHub mutables ont été épinglés à des SHAs complets et les checkouts non persistants `9e322dc`/`ee40901`. Ce durcissement ne qualifie pas le moteur comme prêt pour l'envoi de mémoire privée à une API hébergée.
 
 Rapport métier et sécurité des deux dépôts : [NiakVIO audit](https://github.com/niakw/NiakVIO/blob/main/docs/NIAKVIO_BRAIN_METIER_SECURITE_QUALITE_AUDIT_2026-11-07.md).
+
+
+## Scanner CodeQL intégré
+
+Le workflow `SEC - CodeQL maintained Brain source` analyse désormais le Python et les GitHub Actions du dépôt avec `security-extended`, actions épinglées à SHA et vérification de la matrice complète. Son statut n'est pas une clôture automatique des alertes serveur : vérifier séparément le rapport des alertes ouvertes et les workflows de publication. Le dernier inventaire *avant activation de ce workflow* montrait 0 alerte CodeQL ouverte sur Brain, mais les nouvelles sources exigent une analyse du HEAD courant.
