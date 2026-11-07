@@ -1740,5 +1740,104 @@ def build_force_prompt_payload(
             }
             for row in payload["current_observations"][:2]
         ]
+    # Opt-in CPU FORCE mode: preserve exact mutation unit IDs and safety policy
+    # while bounding duplicated observation/helper context. This is presentation
+    # compression only; current-byte validation and media proof remain external.
+    import os
+    if os.environ.get("NIAKVIO_FORCE_CPU_TIGHT_PROMPT") == "1" and prompt_chars() > 9600:
+        editable = any(
+            isinstance(payload.get(key), dict) and payload[key].get("editable_units")
+            for key in ("mutation_target", "new_bloc_target")
+        )
+        if editable:
+            # The exact editable unit already carries the executable source.
+            # A second 8 KB helper copy costs CPU tokens without mutation authority.
+            payload["executed_helper_context"] = []
+
+        def short_network(rows: Any, *, count: int = 4) -> list[dict[str, Any]]:
+            if not isinstance(rows, list):
+                return []
+            ranks = {"media": 0, "source": 1, "player": 2,
+                     "episode": 3, "detail": 4, "search": 5}
+            ordered = sorted(
+                enumerate(row for row in rows if isinstance(row, dict)),
+                key=lambda pair: (ranks.get(str(pair[1].get("stage") or ""), 6), pair[0]),
+            )
+            chosen = []
+            seen_stages = set()
+            for _, row in ordered:
+                stage = str(row.get("stage") or "")
+                if stage in seen_stages:
+                    continue
+                chosen.append(row)
+                seen_stages.add(stage)
+                if len(chosen) == count:
+                    break
+            if len(chosen) < count:
+                for _, row in ordered:
+                    if len(chosen) == count:
+                        break
+                    if row not in chosen:
+                        chosen.append(row)
+
+            safe_fields = (
+                "fixture", "stage", "status", "functions",
+                "address_scope", "request_ref", "response_ref", "referer_ref",
+                "media_observation", "http_observation", "observed_media_probe",
+                "reader_user_agent_probe", "address_refs_truncated",
+                "address_trace_truncated",
+            )
+            out = []
+            for row in chosen:
+                compact = {key: row[key] for key in safe_fields if key in row}
+                shape = row.get("response_structure")
+                if isinstance(shape, dict):
+                    summary = {
+                        key: shape[key] for key in ("kind", "tags", "truncated")
+                        if key in shape
+                    }
+                    markup = shape.get("player_markup")
+                    if isinstance(markup, dict):
+                        summary["player_markup"] = {
+                            "rows": [
+                                {key: item[key]
+                                 for key in ("tag", "count", "value_kinds",
+                                             "distinct_values", "address_refs")
+                                 if key in item}
+                                for item in (markup.get("rows") or [])[:2]
+                                if isinstance(item, dict)
+                            ],
+                            "truncated": bool(markup.get("truncated")),
+                        }
+                    compact["response_structure"] = _compact(summary, string_limit=140)
+                out.append(compact)
+            return out
+
+        if prompt_chars() > 9600:
+            payload["current_network_evidence"] = short_network(
+                payload.get("current_network_evidence"))
+            feedback = payload.get("previous_verification")
+            if isinstance(feedback, dict) and feedback.get("candidate_network"):
+                feedback["candidate_network"] = short_network(
+                    feedback.get("candidate_network"), count=2)
+
+        if prompt_chars() > 9600:
+            # Retain one response per causal stage, plus exact edit IDs.
+            payload["current_network_evidence"] = (
+                payload.get("current_network_evidence") or [])[:3]
+            payload["current_observations"] = (
+                payload.get("current_observations") or [])[:1]
+            payload["provider_field_evidence"] = []
+            payload["validated_reference_patterns"] = []
+            feedback = payload.get("previous_verification")
+            if isinstance(feedback, dict):
+                feedback["candidate_network"] = (
+                    feedback.get("candidate_network") or [])[:1]
+
+        if prompt_chars() > 12000:
+            # Never silently clip exact editable units or invent source bytes.
+            # A remaining oversized payload is a missing CPU executor contract,
+            # not permission to mutate unsupported current source.
+            raise ValueError("CPU Force prompt exceeds bounded exact-source budget")
     return payload
 
