@@ -1,5 +1,9 @@
 # NiakVIO Brain LLM
 
+
+> **Repository quality/security checkpoint (2026-11-07):** [cross-repository audit](https://github.com/niakw/NiakVIO/blob/main/docs/NIAKVIO_BRAIN_METIER_SECURITE_QUALITE_AUDIT_2026-11-07.md) · [Brain Repair Roadmap](https://github.com/niakw/NiakVIO/blob/main/BRAIN_REPAIR_ROADMAP.md). CodeQL high `#1` in private conversation URL scoring was corrected; [read-only inventory #42364586403](https://github.com/niakw/NiakVIO-Brain-LLM/actions/runs/42364586403) confirms **0 open CodeQL alerts** afterward. Dependabot/secret scanning remain unverified via current token, and **0 providers have yet been restored end-to-end by Brain-generated code**. This is not an optimized production readiness certification.
+
+
 Independent AI/LLM layer for NiakVIO provider repair.
 
 ## Goal

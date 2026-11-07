@@ -13,3 +13,12 @@ Seule la branche `main` actuelle est maintenue. Le projet est en version 0.x ; l
 - Un VPS faible n'est pas destiné à exécuter un LLM lourd ou une exécution non isolée de code provider ; garder les runners CI et barrières réseau distincts.
 
 Ce fichier n'atteste ni la clôture des alertes privées CodeQL/Dependabot/secret scanning ni un niveau d'isolation parfait. Voir [NiakVIO SECURITY.md](https://github.com/niakw/NiakVIO/blob/main/SECURITY.md) et [API/cost](docs/MODEL_ROUTING_COST_2026-11-07.md).
+
+
+## Vérification CodeQL du 7 novembre 2026
+
+- Initial : une alerte High ouverte (#1, `py/incomplete-url-substring-sanitization`) dans `private_chat_memory.py` : une sous-chaîne `github.com/` ne garantit pas l'origine d'une URL. Correction `68267973`/`b3031d36`, tests `e03334b` incluant sous-domaines usurpés, userinfo, ports invalides et HTTPS.
+- Après correction : [inventaire GitHub `42364586403`](https://github.com/niakw/NiakVIO-Brain-LLM/actions/runs/42364586403) **0 alerte CodeQL ouverte**, [CI Brain](https://github.com/niakw/NiakVIO-Brain-LLM/actions/runs/42364094964) verte. Ne pas interpréter les retours `unavailable_not_clean` de Dependabot et Secret scanning comme 0.
+- Les 11 workflows avec actions GitHub mutables ont été épinglés à des SHAs complets et les checkouts non persistants `9e322dc`/`ee40901`. Ce durcissement ne qualifie pas le moteur comme prêt pour l'envoi de mémoire privée à une API hébergée.
+
+Rapport métier et sécurité des deux dépôts : [NiakVIO audit](https://github.com/niakw/NiakVIO/blob/main/docs/NIAKVIO_BRAIN_METIER_SECURITE_QUALITE_AUDIT_2026-11-07.md).
