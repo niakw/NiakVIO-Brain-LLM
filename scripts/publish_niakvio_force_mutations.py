@@ -147,14 +147,21 @@ def load_force_memory(root: Path) -> set[tuple[str,str,str]]:
         provider=canon(row.get("providerId"))
         mutation_fp=str(row.get("mutationFingerprint") or "").strip().casefold()
         context_fp=str(row.get("mutationContextFingerprint") or "").strip().casefold()
-        # The publisher and the Brain generator MUST share executable-negative
-        # semantics. Historical ledgers may have failed the strict playback
-        # gate without actually applying any child bytes: explicit False is
-        # authoritative. A generation failure or unavailable profile cannot
-        # blacklist a concrete mutation, even if a legacy writer set True.
+        # A missing legacy flag is NOT proof of executed child bytes.
+        # Rejected provider_bloc also requires a materialized mutation, not
+        # merely a proposed edit/old ignored generator file. This must match
+        # the planner and the adapter that project the same exact ledger.
         outcome=str(row.get("lastOutcome") or "").strip().casefold().replace("-","_")
         if (outcome in {"not_generated","profile_unavailable","accepted","verified","success"}
-            or row.get("executionObserved") is False):
+            or row.get("executionObserved") is not True):
+            continue
+        summary=row.get("lastMutationSummary") or []
+        if row.get("materializedMutationObserved") is False:
+            continue
+        if (summary and all(
+            isinstance(item,dict) and item.get("scope")=="provider_bloc"
+            for item in summary
+        ) and row.get("materializedMutationObserved") is not True):
             continue
         if (
             provider
