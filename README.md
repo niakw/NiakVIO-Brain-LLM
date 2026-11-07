@@ -219,6 +219,8 @@ NiakVIO sandbox execution, current-byte playback, identity and regression gates
 remain authoritative.
 
 
+The current FORCE retry policy also distinguishes a recoverable first live-binding edit from a **repeated** deletion of a referenced variable on the same exact source unit. Only on repetition does the Brain rotate its source-unit focus; no per-provider lifetime attempt cap is created. This prevents wasted identical CPU/API hypotheses without relaxing NiakVIO's sandbox and media-validation gates.
+
 ## Provider mutation ownership
 
 Brain/LLM is the **author** of provider-local repair candidates. NiakVIO is the **verifier and publisher**.

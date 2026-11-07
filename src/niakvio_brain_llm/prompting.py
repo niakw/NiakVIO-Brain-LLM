@@ -820,6 +820,25 @@ def _force_source_windows(
     return windows
 
 
+def repeated_live_binding_rejection(observations: list[dict[str, Any]], reason: str, unit_sha256: str) -> bool:
+    """Rotate only after an identical live-binding error recurs on exact bytes.
+
+    The first rejection can be fixed within that function. The second
+    repetition indicates failed correction and justifies switching to another
+    current-source unit. No lifetime retry budget is imposed.
+    """
+    if (reason != "removed_live_binding"
+            or not re.fullmatch(r"[0-9a-f]{64}", unit_sha256)):
+        return False
+    return any(
+        isinstance(row, dict)
+        and row.get("stage") == "force_validation_feedback"
+        and row.get("reason") == reason
+        and row.get("rejected_unit_sha256") == unit_sha256
+        for row in observations
+    )
+
+
 def rejected_force_unit_hashes(request: RepairRequest) -> set[str]:
     """Exact-source fingerprints of rejected inert edits in this repair attempt.
 
@@ -831,7 +850,9 @@ def rejected_force_unit_hashes(request: RepairRequest) -> set[str]:
     for row in request.observations or []:
         if not isinstance(row, dict) or row.get("stage") != "force_validation_feedback":
             continue
-        if row.get("reason") not in {"causally_empty_deletion", "no_op"}:
+        if (row.get("reason") not in {"causally_empty_deletion", "no_op"}
+                and not (row.get("reason") == "removed_live_binding"
+                         and row.get("rotate_unit") is True)):
             continue
         value = str(row.get("rejected_unit_sha256") or "").strip().lower()
         if re.fullmatch(r"[0-9a-f]{64}", value):

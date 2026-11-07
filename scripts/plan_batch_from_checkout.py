@@ -19,6 +19,7 @@ from niakvio_brain_llm.document_memory import DocumentStore
 from niakvio_brain_llm.niakvio_adapter import request_from_checkout
 from niakvio_brain_llm.orchestrator import BrainOrchestrator
 from niakvio_brain_llm.planner import BrainPlanner
+from niakvio_brain_llm.prompting import repeated_live_binding_rejection
 from niakvio_brain_llm.retrieval import ExperienceStore
 from niakvio_brain_llm.repair_family import repair_family_descriptor, select_family_wave
 from niakvio_brain_llm.routing import REPLAYABLE_FAMILY_MECHANISMS
@@ -61,7 +62,8 @@ def force_feedback_temperature(request) -> float:
         if str(observation.get("stage") or "") != "force_validation_feedback":
             continue
         reason = str(observation.get("reason") or "").strip().casefold()
-        if reason in {"no_op", "causally_empty_deletion", "helper_collision"}:
+        if reason in {"no_op", "causally_empty_deletion", "helper_collision"} or (
+                reason == "removed_live_binding" and observation.get("rotate_unit") is True):
             return 0.2
     return 0.0
 
@@ -640,16 +642,22 @@ def main() -> int:
                 ),
             }
             rejected_hash = str(getattr(exc, "rejected_unit_sha256", "") or "")
-            if reason in {"causally_empty_deletion", "no_op"} and re.fullmatch(r"[0-9a-f]{64}", rejected_hash):
-                feedback["rejected_unit_sha256"] = rejected_hash
-                feedback["instruction"] += (
-                    "; Brain has excluded that exact rejected source unit from "
-                    "the next selection. Choose another available unit or abstain."
-                )
             existing_observations = [
                 row for row in list(retry_request.observations or [])
                 if isinstance(row, dict)
             ]
+            if re.fullmatch(r"[0-9a-f]{64}", rejected_hash) and reason in {
+                    "causally_empty_deletion", "no_op", "removed_live_binding"}:
+                feedback["rejected_unit_sha256"] = rejected_hash
+                rotate = (reason != "removed_live_binding"
+                          or repeated_live_binding_rejection(
+                              existing_observations, reason, rejected_hash))
+                if rotate:
+                    feedback["rotate_unit"] = True
+                    feedback["instruction"] += (
+                        "; Brain has excluded that exact rejected source unit "
+                        "from this retry. Choose another current causal unit or abstain."
+                    )
             prior_feedback = [
                 row for row in existing_observations
                 if str(row.get("stage") or "") == "force_validation_feedback"

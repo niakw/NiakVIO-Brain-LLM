@@ -8,7 +8,7 @@ from niakvio_brain_llm.planner import (
     _force_unit_for_edit,
     tagged_force_deletion,
 )
-from niakvio_brain_llm.prompting import build_force_prompt_payload, selectable_force_units
+from niakvio_brain_llm.prompting import build_force_prompt_payload, selectable_force_units, repeated_live_binding_rejection
 
 
 class ForceRejectedUnitDiversification(unittest.TestCase):
@@ -61,6 +61,50 @@ class ForceRejectedUnitDiversification(unittest.TestCase):
         allowed, _ = _force_unit_for_edit(request, source, remaining[0]["id"])
         self.assertNotEqual(hashlib.sha256(allowed["source"].encode("utf-8")).hexdigest(),
                             expected_hash)
+
+    def test_repeated_removed_binding_rotates_only_after_one_correction(self):
+        source = (
+            "function searchTitle(q){const dec=find(q);return dec;}\n"
+            "function resolvePlayer(u){const dec=parse(u);return dec;}\n"
+            "function extractSources(h){return parseSources(h);}\n"
+        )
+        request = RepairRequest(
+            provider_id="synthetic", status="CHAIN REACHED",
+            failure_class="chain_terminal_gap",
+            allowed_mutations=["provider_bloc"],
+            provider_context={"runtimeMutationSource":source,
+                              "runtimeMutationFilename":"providers/synthetic.js"},
+        )
+        policy = {"allow_mutations":True,"allowed_scopes":["provider_bloc"]}
+        offered = build_force_prompt_payload(request,{},policy)["new_bloc_target"]["editable_units"]
+        self.assertGreaterEqual(len(offered),2)
+        unit = offered[0]
+        rejection = tagged_force_deletion(
+            request, {"scope":"provider_bloc","unit_id":unit["id"]},
+            ValueError("compact Force replacement removes live binding still referenced nearby: dec"))
+        self.assertIsInstance(rejection, RejectedForceUnitError)
+        h = rejection.rejected_unit_sha256
+        self.assertFalse(repeated_live_binding_rejection([], "removed_live_binding", h))
+        request.observations = [{
+            "stage":"force_validation_feedback", "reason":"removed_live_binding",
+            "rejected_unit_sha256":h,
+        }]
+        # First error is recoverable in the same helper.
+        still_available = build_force_prompt_payload(request,{},policy)["new_bloc_target"]["editable_units"]
+        self.assertTrue(any(u["source"] == unit["source"] for u in still_available))
+        self.assertTrue(repeated_live_binding_rejection(
+            request.observations,"removed_live_binding",h))
+        request.observations.insert(0,{
+            "stage":"force_validation_feedback", "reason":"removed_live_binding",
+            "rejected_unit_sha256":h, "rotate_unit":True,
+        })
+        after = build_force_prompt_payload(request,{},policy)["new_bloc_target"]["editable_units"]
+        self.assertTrue(after)
+        self.assertFalse(any(u["source"] == unit["source"] for u in after))
+        self.assertFalse(repeated_live_binding_rejection(
+            request.observations,"removed_live_binding","0"*64))
+        self.assertFalse(repeated_live_binding_rejection(
+            request.observations,"syntax_error",h))
 
     def test_graphql_error_prioritizes_current_lookup_producer_not_validator(self):
         # An HTTP 200 with GraphQL errors/data:null is not a valid content

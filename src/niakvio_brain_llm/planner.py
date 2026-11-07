@@ -520,11 +520,11 @@ class RejectedForceUnitError(ValueError):
 
 
 def tagged_force_deletion(request: RepairRequest, edit: dict[str, Any] | None, exc: ValueError) -> ValueError:
-    """Bind inert Bloc edits to exact source for retry diversification, not publication."""
+    """Bind failed Bloc edits to exact source for causal retry diversification."""
     if (
         not isinstance(edit, dict)
         or edit.get("scope") != "provider_bloc"
-        or not any(reason in str(exc).casefold() for reason in ("pure deletion", "no-op"))
+        or not any(reason in str(exc).casefold() for reason in ("pure deletion", "no-op", "removes live binding still referenced nearby"))
     ):
         return exc
     unit_id = str(edit.get("unit_id") or "")
