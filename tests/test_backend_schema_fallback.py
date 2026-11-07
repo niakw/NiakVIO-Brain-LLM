@@ -118,6 +118,37 @@ class BackendSchemaFallbackTests(unittest.TestCase):
         finally:
             backend_mod.urlopen = original
 
+    def test_local_numeric_timings_never_leak_response_or_prompt(self):
+        from contextlib import redirect_stdout
+        from io import StringIO
+        original = backend_mod.urlopen
+        def fake_urlopen(request, timeout=0):
+            return _Response({
+                "choices": [{"message": {"content": '{"ok":true, "secret":"PRIVATE"}'}}],
+                "timings": {
+                    "prompt_n": 1200, "predicted_n": 35,
+                    "prompt_ms": 2890.5, "predicted_ms": 420.25,
+                    "model": "secret PRIVATE",
+                },
+            })
+        backend_mod.urlopen = fake_urlopen
+        try:
+            out = StringIO()
+            with redirect_stdout(out):
+                result = LocalOpenAICompatibleBackend().complete(
+                    system="secret PRIVATE", user="secret PRIVATE",
+                    response_schema={"type": "object"}
+                )
+        finally:
+            backend_mod.urlopen = original
+        assert result.startswith('{"ok":true')
+        logged = out.getvalue()
+        self.assertIn("FIELD_BRAIN_LOCAL_INFERENCE", logged)
+        self.assertIn("prompt_n=1200.0", logged)
+        self.assertIn("predicted_ms=420.25", logged)
+        self.assertNotIn("PRIVATE", logged)
+        self.assertNotIn("model=", logged)
+
     def test_non_400_is_not_retried(self):
         calls = []
         original = backend_mod.urlopen

@@ -133,6 +133,22 @@ class LocalOpenAICompatibleBackend:
                 raise RuntimeError(
                     f"llama.cpp fallback HTTP {fallback_exc.code}: {body[:1200]}"
                 ) from fallback_exc
+        # Telemetry is numeric-only and never logs prompts, generated text,
+        # routes, headers, server URLs or model configuration. Inference throughput
+        # distinguishes slow local CPU generation from an HTTP/model failure.
+        timings = value.get("timings") if isinstance(value, dict) else None
+        if isinstance(timings, dict):
+            safe = {}
+            for key in ("prompt_n", "predicted_n", "prompt_ms", "predicted_ms"):
+                number = timings.get(key)
+                if type(number) in (int, float) and 0 <= number < 1e9:
+                    safe[key] = round(float(number), 2)
+            if safe:
+                print("FIELD_BRAIN_LOCAL_INFERENCE " + " ".join(
+                    f"{key}={safe[key]}" for key in (
+                        "prompt_n", "predicted_n", "prompt_ms", "predicted_ms"
+                    ) if key in safe
+                ), flush=True)
         choice = value["choices"][0]
         finish_reason = str(choice.get("finish_reason") or "").strip().casefold()
         if finish_reason in {"length", "max_tokens"}:
