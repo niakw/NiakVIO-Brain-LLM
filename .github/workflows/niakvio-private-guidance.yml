@@ -42,7 +42,7 @@ jobs:
     timeout-minutes: 180
     steps:
       - name: Checkout Brain LLM
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           ref: ${{ inputs.brain_sha || github.sha }}
           path: brain
@@ -70,7 +70,7 @@ jobs:
           echo "FIELD_NIAKVIO_GUIDANCE_SOURCE sha=$sha"
 
       - name: Checkout exact NiakVIO source
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           repository: niakw/NiakVIO
           ref: ${{ steps.source.outputs.sha }}
@@ -246,7 +246,7 @@ jobs:
           echo "complete=$complete" >> "$GITHUB_OUTPUT"
           echo "cycle=$cycle" >> "$GITHUB_OUTPUT"
       - name: Checkout private NiakVIO project read-only
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           repository: niakw/niakvio-private
           ref: main
@@ -258,7 +258,7 @@ jobs:
             raw/chatgpt-project/g-p-6a7f1d27495c819182b4081bfccdafd8
           sparse-checkout-cone-mode: true
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
         with:
           python-version: "3.12"
 
@@ -390,7 +390,7 @@ jobs:
             fi
           fi
 
-      - uses: actions/cache@v4
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         if: steps.route.outputs.llm_needed == 'true' && steps.deterministic_force.outputs.ready != 'true'
         id: llama-bin-cache
         with:
@@ -405,7 +405,7 @@ jobs:
           tar -xzf llama-b11140.tar.gz -C llama-prebuilt
           test -n "$(find llama-prebuilt -type f -name llama-server -print -quit)"
 
-      - uses: actions/cache@v4
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         if: steps.route.outputs.llm_needed == 'true' && steps.deterministic_force.outputs.ready != 'true'
         with:
           path: |
@@ -721,7 +721,7 @@ jobs:
             -f target_providers="${{ steps.cohort.outputs.csv }}" \
             -f page_size="${{ inputs.page_size || '9' }}"
           echo "FIELD_NIAKVIO_GUIDANCE_CONTINUE remaining=${{ steps.page.outputs.remaining }} source=${{ steps.source.outputs.sha }}"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always()
         with:
           name: niakvio-guidance-${{ github.run_id }}

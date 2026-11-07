@@ -18,12 +18,12 @@ jobs:
     timeout-minutes: 60
     steps:
       - name: Checkout Brain LLM
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           path: brain
 
       - name: Checkout niakvio-private read-only
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           repository: niakw/niakvio-private
           ref: main
@@ -35,7 +35,7 @@ jobs:
             raw/chatgpt-project/g-p-6a7f1d27495c819182b4081bfccdafd8
           sparse-checkout-cone-mode: true
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
         with:
           python-version: "3.12"
 
