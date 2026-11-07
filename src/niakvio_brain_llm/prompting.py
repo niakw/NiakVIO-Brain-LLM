@@ -1800,9 +1800,25 @@ def build_force_prompt_payload(
                 return []
             ranks = {"media": 0, "source": 1, "player": 2,
                      "episode": 3, "detail": 4, "search": 5}
+            def causal_graphql_failure(row: dict[str, Any]) -> bool:
+                shape = row.get("response_structure")
+                if not isinstance(shape, dict) or shape.get("kind") != "json":
+                    return False
+                graphql = shape.get("graphql")
+                return isinstance(graphql, dict) and (
+                    int(graphql.get("errorCount") or 0) > 0
+                    or graphql.get("dataState") == "null"
+                    or bool(graphql.get("nullRoots"))
+                )
+
+            # Under a tight CPU budget, one verified GraphQL failure is more
+            # causal than another identical HTML 200 from the same stage.
+            # Preserve stage diversity; do not treat this as playback proof.
             ordered = sorted(
                 enumerate(row for row in rows if isinstance(row, dict)),
-                key=lambda pair: (ranks.get(str(pair[1].get("stage") or ""), 6), pair[0]),
+                key=lambda pair: (
+                    0 if causal_graphql_failure(pair[1]) else 1,
+                    ranks.get(str(pair[1].get("stage") or ""), 6), pair[0]),
             )
             chosen = []
             seen_stages = set()
@@ -1837,6 +1853,24 @@ def build_force_prompt_payload(
                         key: shape[key] for key in ("kind", "tags", "truncated")
                         if key in shape
                     }
+                    if shape.get("kind") == "json":
+                        # These fields were already validated by
+                        # live_evidence.response_structure; preserve bounded
+                        # schema/error diagnostics, never arbitrary values.
+                        summary["fields"] = [
+                            {"path": item["path"], "type": item["type"]}
+                            for item in (shape.get("fields") or [])[:8]
+                            if isinstance(item, dict) and "path" in item
+                            and "type" in item
+                        ]
+                        graphql = shape.get("graphql")
+                        if isinstance(graphql, dict):
+                            summary["graphql"] = {
+                                k: graphql[k] for k in (
+                                    "errorCount", "codes", "kinds",
+                                    "dataState", "nullRoots")
+                                if k in graphql
+                            }
                     markup = shape.get("player_markup")
                     if isinstance(markup, dict):
                         summary["player_markup"] = {

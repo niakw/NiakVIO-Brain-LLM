@@ -33,6 +33,21 @@ rows = [
         },
     } for i in range(8)
 ]
+# Reproduce a HTTP-200 GraphQL failure nested among successful HTML
+# responses. Tight CPU prefill must preserve the class, not just status=200.
+rows[2]["response_structure"] = {
+    "kind": "json",
+    "fields": [{"path": "data.episode", "type": "null"},
+               {"path": "errors[].message", "type": "string"}],
+    "graphql": {
+        "errorCount": 1,
+        "codes": ["GRAPHQL_VALIDATION_FAILED"],
+        "kinds": ["schema_mismatch"],
+        "dataState": "null",
+        "nullRoots": [],
+        "message": "PRIVATE_ERROR_PAYLOAD",
+    },
+}
 live = {
     "active_functions": ["resolve"],
     "network_evidence": rows,
@@ -74,6 +89,22 @@ variants = [row for row in schema["properties"]["edit"]["anyOf"]
 assert len(variants) == 1
 assert [u["id"] for u in units] == variants[0]["properties"]["unit_id"]["enum"]
 assert any(row.get("stage") in {"media","player","source"} for row in compact["current_network_evidence"])
+causal = [
+    row["response_structure"] for row in compact["current_network_evidence"]
+    if isinstance(row.get("response_structure"), dict)
+    and "graphql" in row["response_structure"]
+]
+assert causal, "tight CPU prompt discarded live GraphQL failure"
+assert causal[0]["graphql"]["errorCount"] == 1
+assert causal[0]["graphql"]["kinds"] == ["schema_mismatch"]
+assert causal[0]["graphql"]["dataState"] == "null"
+assert {"path": "data.episode", "type": "null"} in causal[0]["fields"]
+assert "PRIVATE_ERROR_PAYLOAD" not in json.dumps(compact)
+# Candidate verification feedback must retain the same causal category.
+assert any(
+    row.get("response_structure", {}).get("graphql", {}).get("errorCount") == 1
+    for row in compact["previous_verification"]["candidate_network"]
+)
 assert compact["mutation_policy"]["allow_mutations"] is True
 assert compact["current_fixture_evidence"][0]["streamsReturned"] == 0
 assert compact["previous_verification"]["executionObserved"] is True
