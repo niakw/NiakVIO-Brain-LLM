@@ -62,6 +62,32 @@ def public_domain_references(values):
     return result
 
 
+# Only discovery/catalogue requests may establish a provider-origin 404.
+# Player/source/media HTTP errors concern downstream terminals, not the
+# provider's catalogue domain or the viability of a provider_data mutation.
+PROVIDER_LOOKUP_STAGES = frozenset({
+    'search', 'catalogue', 'content_lookup', 'detail', 'episode',
+})
+
+
+def _failed_fixture_lookup_404s(events, failed):
+    """Require a complete 404-only lookup trace for every failed fixture.
+
+    An isolated CDN/player 404, mixed 200 route, or unspecified stage cannot
+    be promoted into a provider transport/domain failure.
+    """
+    return bool(
+        failed and events
+        and {row.get('fixture') for row in events} == set(failed)
+        and all(
+            row.get('stage') in PROVIDER_LOOKUP_STAGES
+            and type(row.get('status')) is int
+            and row['status'] == 404
+            for row in events
+        )
+    )
+
+
 def domain_reference_focus(live):
     """404-only failed fixtures justify a domain-data hypothesis, not success."""
     live = live if isinstance(live, dict) else {}
@@ -71,7 +97,7 @@ def domain_reference_focus(live):
     events = [row for row in network_evidence(live.get('network_evidence'))
               if row['fixture'] in failed]
     return {'references': references, 'fixtures': sorted(failed)} \
-        if references and events and all(row['status'] == 404 for row in events) else {}
+        if references and _failed_fixture_lookup_404s(events, failed) else {}
 
 
 def prioritize_domain_data(scopes, allowed, context):
@@ -133,10 +159,10 @@ def apply_verified_live_failure(request, live, source_sha, explicit_providers):
     names = {row['fixture'] for row in failed}
     events = [row for row in rows(live.get('network_evidence'), 64)
               if isinstance(row, dict) and row.get('fixture') in names and not row.get('infrastructure')]
-    if not events or any(type(row.get('status')) is not int or row['status'] != 404 for row in events):
-        return False
-    # Every failed fixture needs its own executed HTTP counterexample.
-    if {row['fixture'] for row in events} != names:
+    # Terminal/player 404s are not provider-origin lookup failures. A mix
+    # of lookup 404s and a successful downstream route is not enough to
+    # reclassify a retained FULL/PARTIAL provider as a domain failure.
+    if not _failed_fixture_lookup_404s(events, names):
         return False
     proof = {'provider': request.provider_id, 'sourceSha': source_sha, 'sourceValidated': True,
              'fixtureFailures': failed, 'httpStatuses': [404], 'publicationAuthority': False}
