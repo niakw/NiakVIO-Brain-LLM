@@ -23,6 +23,31 @@ from niakvio_brain_llm.retrieval import ExperienceStore
 from niakvio_brain_llm.repair_family import repair_family_descriptor, select_family_wave
 from niakvio_brain_llm.routing import REPLAYABLE_FAMILY_MECHANISMS
 
+def force_output_token_caps(scope: str, cpu_local_single: bool = False) -> tuple[int, int]:
+    """Bounded synthesis output, with opt-in CPU first-candidate headroom.
+
+    A 3B CPU model can finish its prefill and still be cut off at the old
+    320-token provider_bloc ceiling. Larger output is admitted ONLY for one
+    isolated local provider candidate. Constrained schema, current-byte
+    validation and external playback/identity gates remain mandatory.
+    """
+    scope_token_cap = {
+        "provider_data": 192,
+        "provider_patch": 640,
+        "provider_js": 640,
+        "provider_bloc": 320,
+    }.get(scope, 320)
+    recovery_token_cap = {
+        "provider_data": 256,
+        "provider_patch": 768,
+        "provider_js": 768,
+        "provider_bloc": 256,
+    }.get(scope, 384)
+    if cpu_local_single and scope == "provider_bloc":
+        return 1024, 1408
+    return scope_token_cap, recovery_token_cap
+
+
 def force_feedback_temperature(request) -> float:
     """Diversify only AFTER an actual validated model edit is rejected.
 
@@ -323,6 +348,7 @@ def main() -> int:
             isinstance(exc, TimeoutError)
             or "timed out" in str(exc).casefold()
             or "unterminated string" in str(exc).casefold()
+            or "completion truncated by max_tokens" in str(exc).casefold()
             or "jsondecodeerror" in type(exc).__name__.casefold()
         )
 
@@ -461,21 +487,26 @@ def main() -> int:
             for observation in (base_request.observations or [])
         )
 
-        scope_token_cap = {
-            "provider_data": 192,
-            "provider_patch": 640,
-            "provider_js": 640,
-            "provider_bloc": 320,
-        }.get(scope, 320)
-        recovery_token_cap = {
-            "provider_data": 256,
-            "provider_patch": 768,
-            "provider_js": 768,
-            "provider_bloc": 256,
-        }.get(scope, 384)
+        cpu_long_call = os.environ.get("NIAKVIO_FORCE_CPU_LONG_CALL") == "1"
+        cpu_output_budget = (
+            os.environ.get("NIAKVIO_FORCE_CPU_OUTPUT_BUDGET") == "1"
+            and cpu_long_call and args.backend == "local"
+            and len(args.provider) == 1 and int(args.max_hypotheses) == 1
+            and not portfolio_reserved
+        )
+        scope_token_cap, recovery_token_cap = force_output_token_caps(
+            scope, cpu_local_single=cpu_output_budget
+        )
         primary_tokens = max(128, min(int(args.max_tokens), scope_token_cap))
         retry_tokens = max(128, min(int(args.max_tokens), recovery_token_cap))
         speculative_portfolio_slot = portfolio_reserved
+        if cpu_output_budget and scope == "provider_bloc":
+            print(
+                "FIELD_BRAIN_FORCE_OUTPUT_BUDGET "
+                f"provider={provider} scope={scope} tokens={primary_tokens} "
+                f"recovery_tokens={retry_tokens}",
+                flush=True,
+            )
         validation_timeout = max(
             45 if speculative_portfolio_slot else 60,
             min(
@@ -495,7 +526,6 @@ def main() -> int:
         # A single CPU-Qwen proof may need longer than 180 s even with exact
         # source-backed prompt compaction. Explicit local-only opt-in; normal
         # multi-provider FORCE and speculative portfolio budgets are unchanged.
-        cpu_long_call = os.environ.get("NIAKVIO_FORCE_CPU_LONG_CALL") == "1"
         if cpu_long_call and not speculative_portfolio_slot:
             primary_timeout = max(primary_timeout, min(300, int(args.timeout_seconds)))
         transport_timeout = max(
@@ -700,7 +730,8 @@ def main() -> int:
         except ValueError as validation_exc:
             return _run_validation_chain(scoped_request, validation_exc)
         except Exception as exc:
-            if not _retryable_force_error(exc):
+            truncated_completion = "completion truncated by max_tokens" in str(exc).casefold()
+            if not _retryable_force_error(exc) or (truncated_completion and not cpu_output_budget):
                 return None, exc
             if speculative_portfolio_slot:
                 print(
@@ -714,8 +745,14 @@ def main() -> int:
             try:
                 retry = _run_once(
                     transport_request,
-                    timeout_seconds=transport_timeout,
-                    max_tokens=primary_tokens,
+                    timeout_seconds=(
+                        max(transport_timeout, primary_timeout)
+                        if cpu_output_budget and truncated_completion else transport_timeout
+                    ),
+                    max_tokens=(
+                        retry_tokens
+                        if cpu_output_budget and truncated_completion else primary_tokens
+                    ),
                 )
                 return _row(position, 1, provider, transport_request, retry), None
             except ValueError as validation_exc:
