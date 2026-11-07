@@ -980,7 +980,7 @@ def _force_memory_blocks_mutations(
                 return True
             if int(row.get("consecutiveFailures") or 0) <= 0:
                 continue
-            if row.get("executionObserved") is False:
+            if row.get("executionObserved") is not True:
                 continue
             # Old Brain memories sometimes claimed an executed failure
             # without any child bytes. Never block a viable exact mutation on
@@ -990,7 +990,9 @@ def _force_memory_blocks_mutations(
                            "accepted", "verified", "success"}:
                 continue
             if "provider_bloc" in scopes:
-                return True
+                if row.get("materializedMutationObserved") is True:
+                    return True
+                continue
             if str(row.get("mutationContextFingerprint") or "").strip().casefold() == context_fp:
                 return True
     return False
