@@ -82,6 +82,25 @@ class LivePreflightPolicyTests(unittest.TestCase):
             value_live = preflight(); value_live['fixture_evidence'] = [fixture]; variants.append(value_live)
         for status in (None, 200, 403, True):
             value_live = preflight(); value_live['network_evidence'][0]['status'] = status; variants.append(value_live)
+        # A real streaming chain can hit a 404 at the reader/player/media
+        # stage after a valid catalogue response. Such evidence must never
+        # grant provider-origin mutation authority, even for stale FULL rows.
+        for stage in ('player', 'source', 'media', 'playback', '', 'unknown'):
+            value_live = preflight()
+            value_live['network_evidence'][0]['stage'] = stage
+            variants.append(value_live)
+        value_live = preflight()
+        value_live['network_evidence'].append({
+            'fixture': 'JJK S01E01', 'host': 'reader.cdn.test',
+            'stage': 'media', 'status': 404,
+        })
+        variants.append(value_live)
+        value_live = preflight()
+        value_live['network_evidence'].append({
+            'fixture': 'JJK S01E01', 'host': 'old-provider.org',
+            'stage': 'detail', 'status': 200,
+        })
+        variants.append(value_live)
         value_live = preflight(); value_live['network_evidence'][0]['infrastructure'] = True; variants.append(value_live)
         value_live = preflight(); value_live['network_evidence'][0]['fixture'] = 'Other'; variants.append(value_live)
         value_live = preflight(); value_live['fixture_evidence'] *= 2; variants.append(value_live)
@@ -98,6 +117,35 @@ class LivePreflightPolicyTests(unittest.TestCase):
         for explicit in ([], ['other']):
             self.assertFalse(apply_verified_live_failure(request(), preflight(), SHA, explicit))
         self.assertFalse(apply_verified_live_failure(request(), preflight(), 'b' * 40, ['demo']))
+
+    def test_multi_category_lookup_errors_remain_lookup_only_not_playback_proof(self):
+        """A TV episode 404 and a film catalogue 404 can only justify a
+        provider-data hypothesis when each is actually at the lookup stage.
+        The exact same status from a player/media URL is a different failure.
+        """
+        live = preflight()
+        live['fixture_evidence'] = [
+            {'fixture': 'Film 2021', 'category': 'movie',
+             'streamsReturned': 0, 'streamsPlayable': 0},
+            {'fixture': 'Spartacus S00E01', 'category': 'tv',
+             'streamsReturned': 0, 'streamsPlayable': 0},
+        ]
+        live['network_evidence'] = [
+            {'fixture': 'Film 2021', 'host': 'old-provider.org', 'stage': 'search', 'status': 404},
+            {'fixture': 'Spartacus S00E01', 'host': 'old-provider.org',
+             'stage': 'episode', 'status': 404},
+        ]
+        model_request = request()
+        self.assertTrue(apply_verified_live_failure(model_request, live, SHA, ['demo']))
+        self.assertFalse(model_request.provider_context['verified_live_failure']['publicationAuthority'])
+        self.assertEqual(model_request.provider_context['verified_live_failure']['fixtureFailures'], [
+            {'fixture': 'Film 2021', 'streamsReturned': 0, 'streamsPlayable': 0},
+            {'fixture': 'Spartacus S00E01', 'streamsReturned': 0, 'streamsPlayable': 0},
+        ])
+        live['network_evidence'][1]['stage'] = 'player'
+        stale = request()
+        self.assertFalse(apply_verified_live_failure(stale, live, SHA, ['demo']))
+        self.assertEqual(stale.status, 'FULL OK')
 
     def test_each_failed_fixture_requires_its_own_404_and_existing_context_is_still_required(self):
         live = preflight()
