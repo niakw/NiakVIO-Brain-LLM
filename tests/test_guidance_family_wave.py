@@ -42,6 +42,38 @@ class GuidanceFamilyWaveTests(unittest.TestCase):
         self.assertEqual(report["repairFamilyCount"], 2)
         self.assertEqual(report["deferredProviders"], ["alpha"])
 
+    def test_reason_only_budget_failures_accumulate_and_rotate_family_witness(self):
+        # Real guidance may emit several scopeTrace rows/pages for one provider.
+        # Underscore-shaped reasons normalize to hyphen-shaped codes; rejected
+        # outcomes alone must not hide execution failures from family rotation.
+        diagnostics = {
+            "rows": [
+                {"providerId": "alpha", "scopeTrace": [
+                    {"reason": "provider_budget_exhausted", "outcome": "rejected"},
+                    {"reason": "TimeoutError", "outcome": "rejected"},
+                ]},
+                {"providerId": "alpha", "scopeTrace": [
+                    {"reason": "force_provider_budget_exhausted", "outcome": "rejected"},
+                ]},
+                {"providerId": "beta", "scopeTrace": [
+                    {"reason": "provider-http-blocked", "outcome": "rejected"},
+                ]},
+            ],
+        }
+        self.assertEqual(
+            mod.execution_burden_from_diagnostics(diagnostics),
+            {"alpha": 3},
+        )
+        mod.load_memory = lambda _root: {
+            "schemaVersion": 2, "entries": [], "validatedFamilies": [],
+        }
+        selected, report = mod.select_wave(
+            ["alpha", "beta", "gamma"], ROOT, previous_diagnostics=diagnostics,
+        )
+        self.assertEqual(selected, ["beta", "gamma"])
+        self.assertEqual(report["providerExecutionBurden"], {"alpha": 3})
+        self.assertEqual(report["executionBlockedProviders"], ["alpha"])
+
     def test_previous_generation_timeout_rotates_family_witness(self):
         mod.load_memory = lambda _root: {
             "schemaVersion": 2,
