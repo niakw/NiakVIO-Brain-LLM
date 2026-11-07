@@ -103,6 +103,47 @@ class HostedBackendTests(unittest.TestCase):
             self.assertIs(captured["body"]["store"],False)
             self.assertNotIn("tools",captured["body"])
 
+    def test_budget_exhaustion_blocks_network_before_paid_request(self):
+        with tempfile.TemporaryDirectory() as directory:
+            env = {
+                "NIAKVIO_API_BUDGET_USD": "0",
+                "NIAKVIO_API_BUDGET_LEDGER": str(Path(directory) / "cost-ledger.json"),
+            }
+            with patch.dict("os.environ", env), patch("niakvio_brain_llm.backend.urlopen") as send:
+                with self.assertRaisesRegex(RuntimeError, "monetary budget exhausted"):
+                    HostedResponsesBackend(api_key="test-only", model="gpt-6-luna").complete(
+                        system="public-only", user="public-only")
+                send.assert_not_called()
+
+    def test_usage_is_accounted_without_logging_prompt_or_key(self):
+        with tempfile.TemporaryDirectory() as directory:
+            ledger = Path(directory) / "cost-ledger.json"
+            captured = {}
+            def send(request, *, timeout):
+                captured["body"] = json.loads(request.data.decode("utf-8"))
+                return Response({
+                    "status": "completed",
+                    "usage": {"input_tokens": 6000, "output_tokens": 1200},
+                    "output": [{"type": "message", "content": [
+                        {"type": "output_text", "text": "{\\"mutations\\":[]}"},
+                    ]}],
+                })
+            env = {
+                "NIAKVIO_API_BUDGET_USD": "0.02",
+                "NIAKVIO_API_BUDGET_LEDGER": str(ledger),
+            }
+            with patch.dict("os.environ", env), patch("niakvio_brain_llm.backend.urlopen", side_effect=send):
+                output = HostedResponsesBackend(api_key="test-only", model="gpt-6-luna").complete(
+                    system="synthetic-system", user="synthetic-user")
+            self.assertEqual(json.loads(output), {"mutations": []})
+            stats = json.loads(ledger.read_text(encoding="utf-8"))
+            self.assertEqual(float(stats["spent_usd"]), 0.0012)
+            self.assertEqual(float(stats["pending_usd"]), 0.0)
+            self.assertEqual(stats["requests_accounted"], 1)
+            self.assertNotIn("synthetic", ledger.read_text())
+            self.assertNotIn("test-only", ledger.read_text())
+            self.assertIs(captured["body"]["store"], False)
+
     def test_unapproved_model_refused(self):
         model = HostedResponsesBackend(api_key="test-only", model="unverified-model")
         with self.assertRaisesRegex(ValueError, "unapproved hosted model"):

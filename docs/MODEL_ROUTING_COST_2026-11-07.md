@@ -41,3 +41,19 @@ Chaque essai doit ajouter une information **causale** ou une hypothèse distinct
 ### Qualification obligatoire
 
 Comparer les modèles sur un même SHA et des fixtures vraiment représentatives : film, TV normale, animé, S00/mini-série avec oracles et cas négatifs, identité terminale, qualité, langues et lecteurs multiples. Mesurer cause proposée, génération, compilation, application, matérialisation, vraie vidéo décodée, erreurs d'identité et coût réel. **Aucun benchmark API réel n'a encore validé la meilleure combinaison.** Les backends Gemini/Groq/OpenRouter et le routeur de coûts sont documentés ici, pas implémentés.
+
+## Garde-fou budgétaire exécutable (7 novembre 2026)
+
+Le backend OpenAI Responses propose maintenant un **registre monétaire partagé facultatif**, sans changement du backend local et sans activation implicite des API :
+
+```sh
+# À définir uniquement lorsque les appels payants sont explicitement autorisés :
+export NIAKVIO_API_BUDGET_USD=5.00
+export NIAKVIO_API_BUDGET_LEDGER=/var/lib/niakvio/private-api-budget.json
+# Les deux barrières existantes restent nécessaires :
+# NIAKVIO_ALLOW_PAID_API=1 et NIAKVIO_OPENAI_API_KEY via secret.
+```
+
+L'adaptateur réserve une estimation prudente *avant* l'appel puis comptabilise les tokens retournés par la réponse sous un verrou de fichier. Un usage absent ou un appel interrompu **conserve sa réservation** pour ne pas offrir de dépassement silencieux. Le fichier ne contient ni prompt, ni source provider, ni secret, uniquement des sommes agrégées et des compteurs. La limite porte sur les USD, **jamais sur un nombre de tentatives**.
+
+**Limite importante :** des runners GitHub distincts ne partagent pas automatiquement ce fichier ; il faut un stockage commun transactionnel ou un budget géré par un service central pour garantir un plafond entre machines. Les tarifs et estimations doivent être revalidés auprès du fournisseur. Le budget local ne remplace pas les alertes/quotas de facturation du compte API. Les appels API restent désactivés par défaut. Tests : `tests/test_api_cost.py` et `tests/test_hosted_backend.py`.

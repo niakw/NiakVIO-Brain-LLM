@@ -91,6 +91,8 @@ only NiakVIO-verified outcomes qualify for positive learning.
 
 See [Multi-role API model costs & privacy](docs/MODEL_ROUTING_COST_2026-11-07.md) for the budget and routing decision; adding models to an allowlist does not enable paid requests or constitute a completed repair.
 
+Optional hosted monetary guard: configure `NIAKVIO_API_BUDGET_USD` and a shared, private `NIAKVIO_API_BUDGET_LEDGER` file. It reserves spending before any hosted call, settles provider usage when available, and never limits the lifetime number of candidate attempts. Separate CI hosts do **not** share a file automatically. [Details and limitations](docs/MODEL_ROUTING_COST_2026-11-07.md). Paid API remains off until explicitly enabled.
+
 ## Scaling model
 
 The Brain does not load or call the LLM for every provider.
