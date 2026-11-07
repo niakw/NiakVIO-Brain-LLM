@@ -147,14 +147,20 @@ def load_force_memory(root: Path) -> set[tuple[str,str,str]]:
         provider=canon(row.get("providerId"))
         mutation_fp=str(row.get("mutationFingerprint") or "").strip().casefold()
         context_fp=str(row.get("mutationContextFingerprint") or "").strip().casefold()
+        # The publisher and the Brain generator MUST share executable-negative
+        # semantics. Historical ledgers may have failed the strict playback
+        # gate without actually applying any child bytes: explicit False is
+        # authoritative. A generation failure or unavailable profile cannot
+        # blacklist a concrete mutation, even if a legacy writer set True.
+        outcome=str(row.get("lastOutcome") or "").strip().casefold().replace("-","_")
+        if (outcome in {"not_generated","profile_unavailable","accepted","verified","success"}
+            or row.get("executionObserved") is False):
+            continue
         if (
             provider
             and re.fullmatch(r"[0-9a-f]{64}",mutation_fp)
             and re.fullmatch(r"[0-9a-f]{64}",context_fp)
-            and (
-                int(row.get("consecutiveFailures") or 0)>0
-                or int(row.get("successes") or 0)>0
-            )
+            and int(row.get("consecutiveFailures") or 0)>0
         ):
             blocked.add((provider,mutation_fp,context_fp))
     return blocked
