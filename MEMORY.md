@@ -1140,3 +1140,10 @@
 ## 2026-11-07 — Couverture CodeQL Brain réactivée par code source maintenu
 
 - Le précédent inventaire serveur CodeQL Brain [42364586403](https://github.com/niakw/NiakVIO-Brain-LLM/actions/runs/42364586403) signalait **0 alerte ouverte**, après correction de l'ancienne #1. Cela ne qualifie pas les fichiers récemment ajoutés à lui seul. Nouveau workflow `.github/workflows/codeql.yml` : analyse de `python` et `actions` avec `security-extended`, actions immuables, checkout sans identifiants persistants et gate complet; attendre run exact SHA et lecture des alertes pour conclure. Aucun provider n'est réparé par cet audit.
+
+
+## 2026-11-07 — CodeQL GitHub Default Setup confirmé ; refus du doublon Advanced
+
+- Expérience `6ec6666` sur `main` : workflow avancé Python/Actions CodeQL avec `security-extended`, [run 42368367977](https://github.com/niakw/NiakVIO-Brain-LLM/actions/runs/42368367977) **FAILURE**. Les moteurs ont compilé et analysé respectivement 124 fichiers Python et 14 fichiers Actions, mais l'upload SARIF a été refusé : `CodeQL analyses from advanced configurations cannot be processed when the default setup is enabled`. C'est un conflit de configuration (GitHub Default Setup déjà actif), pas une nouvelle preuve de vulnérabilité ou de succès.
+- Rollback ciblé `4664b7c` : suppression de notre seul workflow CodeQL avancé, qui ne doit pas concurrencer GitHub Default Setup. CI Brain [42368367931](https://github.com/niakw/NiakVIO-Brain-LLM/actions/runs/42368367931) SUCCESS sur code `6ec6666`; vérifier nouveau HEAD et états de sécurité serveur, ne pas compter comme scanner réussi le run 42368367977.
+- L'inventaire 42364586403 `open=0` est antérieur aux nouveaux modules d'API budget et provenance de replay, donc pas une certification du HEAD. Dependabot / secrets restent non vérifiables par les droits actuels.

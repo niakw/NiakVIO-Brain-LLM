@@ -24,6 +24,8 @@ Ce fichier n'atteste ni la clôture des alertes privées CodeQL/Dependabot/secre
 Rapport métier et sécurité des deux dépôts : [NiakVIO audit](https://github.com/niakw/NiakVIO/blob/main/docs/NIAKVIO_BRAIN_METIER_SECURITE_QUALITE_AUDIT_2026-11-07.md).
 
 
-## Scanner CodeQL intégré
+## Scanner CodeQL : configuration GitHub par défaut
 
-Le workflow `SEC - CodeQL maintained Brain source` analyse désormais le Python et les GitHub Actions du dépôt avec `security-extended`, actions épinglées à SHA et vérification de la matrice complète. Son statut n'est pas une clôture automatique des alertes serveur : vérifier séparément le rapport des alertes ouvertes et les workflows de publication. Le dernier inventaire *avant activation de ce workflow* montrait 0 alerte CodeQL ouverte sur Brain, mais les nouvelles sources exigent une analyse du HEAD courant.
+La sécurité CodeQL est gérée par **GitHub Default Setup**, déjà activé sur ce dépôt. Un workflow supplémentaire utilisant `github/codeql-action/analyze` a été essayé sur `6ec6666` (run [42368367977](https://github.com/niakw/NiakVIO-Brain-LLM/actions/runs/42368367977)), mais les analyses Python et Actions ont été **refusées à l'upload SARIF** : `CodeQL analyses from advanced configurations cannot be processed when the default setup is enabled`.
+
+Le workflow redondant a donc été retiré par `4664b7c`. Il faut lire les alertes et analyses du **Default Setup** pour le SHA courant ; le résultat de l'ancien inventaire 0 open (run 42364586403) ne suffit pas pour les nouveaux fichiers. Ni un test unitaire vert ni une analyse avancée rejetée ne représentent un contrôle CodeQL réussi.
