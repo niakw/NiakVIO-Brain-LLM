@@ -627,17 +627,15 @@ def _provider_force_negative_memory(payload: Any, provider_id: str) -> list[dict
             "lastCurrentSha": str(value.get("lastCurrentSha") or "")[:40],
             "sourceNiakvioSha": str(value.get("sourceNiakvioSha") or "")[:40],
             "sourceBrainLlmSha": str(value.get("sourceBrainLlmSha") or "")[:40],
-            # Legacy FORCE sandbox records predate the execution flag. Keep
-            # their execution semantics, but never overwrite explicit false
-            # or infer execution from an unavailable/not-generated profile.
+            # An unverified old ledger is a prior, never proof that a child
+            # was executed/materialized. These fields have identical semantics
+            # in the generator, adapter, publisher and current-byte sandbox.
             "executionObserved": (
-                _canon(value.get("lastOutcome")) not in
+                value.get("executionObserved") is True
+                and _canon(value.get("lastOutcome")) not in
                 {"profile unavailable", "not generated", "accepted", "verified", "success"}
-                and (
-                    value.get("executionObserved") is True
-                    if "executionObserved" in value else True
-                )
             ),
+            "materializedMutationObserved": value.get("materializedMutationObserved") is True,
         })
 
     # Keep every execution key for deterministic replay exclusions, newest
