@@ -62,6 +62,70 @@ class ForceRejectedUnitDiversification(unittest.TestCase):
         self.assertNotEqual(hashlib.sha256(allowed["source"].encode("utf-8")).hexdigest(),
                             expected_hash)
 
+    def test_graphql_error_prioritizes_current_lookup_producer_not_validator(self):
+        # An HTTP 200 with GraphQL errors/data:null is not a valid content
+        # result. Do not offer terminal guards as a repair for a lookup failure.
+        from niakvio_brain_llm.prompting import _force_structural_focus_keywords
+        source = (
+            "function siteFallback(){return 0;}\n"
+            "function verifyEpisodeIdentity(){return true;}\n"
+            "function resolve(){return null;}\n"
+            "function searchOneAt(q){return apiJson(q);}\n"
+            "function findShow(q){return searchOneAt(q);}\n"
+            "function apiJson(q){return q;}\n"
+        )
+        live = {
+            "active_functions": [
+                "siteFallback", "resolve", "searchOneAt", "findShow",
+                "verifyEpisodeIdentity", "apiJson",
+            ],
+            "network_evidence": [{
+                "fixture": "Missing S01E01", "stage": "content_lookup",
+                "status": 200,
+                "functions": ["resolve", "searchOneAt", "verifyEpisodeIdentity"],
+                "response_structure": {
+                    "kind": "json",
+                    "graphql": {
+                        "errorCount": 2, "kinds": ["schema_mismatch"],
+                        "dataState": "null", "codes": ["GRAPHQL_VALIDATION_FAILED"],
+                        "message": "PRIVATE_REJECTED_QUERY"
+                    },
+                },
+            }],
+        }
+        request = RepairRequest(
+            provider_id="example", status="CHAIN REACHED",
+            failure_class="chain_terminal_gap",
+            allowed_mutations=["provider_bloc"],
+            provider_context={"runtimeMutationSource": source,
+                "runtimeMutationFilename": "providers/example.js",
+                "live_runtime_evidence": live},
+        )
+        focus = _force_structural_focus_keywords(request)
+        self.assertEqual(focus[0], "function:searchOneAt")
+        self.assertEqual(focus[1], "function:apiJson")
+        self.assertNotIn("function:verifyEpisodeIdentity", focus[:3])
+        payload = build_force_prompt_payload(
+            request, {}, {"allow_mutations": True, "allowed_scopes": ["provider_bloc"]}
+        )
+        self.assertIn("function:searchOneAt", payload["structural_focus"])
+        self.assertNotIn("PRIVATE_REJECTED_QUERY", str(payload))
+        units = payload["new_bloc_target"]["editable_units"]
+        self.assertTrue(units)
+        self.assertTrue(any("searchOneAt" in str(u.get("source")) for u in units))
+        schema = _compact_wire_schema_for(request, {"allow_mutations": True,
+                                                       "allowed_scopes": ["provider_bloc"]})
+        variants = [v for v in schema["properties"]["edit"]["anyOf"]
+                    if v.get("properties", {}).get("scope", {}).get("enum") == ["provider_bloc"]]
+        self.assertEqual([u["id"] for u in units],
+                         variants[0]["properties"]["unit_id"]["enum"])
+        # Successful HTML/JSON without classified GraphQL failure must not
+        # override the existing generic function ordering.
+        live["network_evidence"][0]["response_structure"] = {"kind": "json"}
+        request.provider_context["live_runtime_evidence"] = live
+        self.assertEqual(_force_structural_focus_keywords(request)[0],
+                         "function:siteFallback")
+
     def test_noop_retries_rotate_exact_source_without_losing_other_units(self):
         source = (
             "function searchTitle(q){return fetchTitle(q);}\n"

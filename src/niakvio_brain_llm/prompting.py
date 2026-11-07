@@ -502,6 +502,62 @@ def build_prompt_payload(
     return payload
 
 
+def _graphql_causal_source_functions(request: RepairRequest, source: str) -> tuple[str, ...]:
+    """Prefer current lookup producers when GraphQL returns an error in HTTP 200.
+
+    An upstream error does not establish provider fault. These are *candidate*
+    localities for Brain synthesis, never authorization to bypass validation.
+    Function names must exist as declarations in the exact current source.
+    """
+    context = request.provider_context if isinstance(request.provider_context, dict) else {}
+    live = context.get("live_runtime_evidence") or {}
+    if not isinstance(live, dict) or not isinstance(source, str) or not source:
+        return ()
+    observed = network_evidence(live.get("network_evidence"))
+    relevant = []
+    for row in observed:
+        if row.get("stage") not in {"search", "content_lookup", "detail", "episode"}:
+            continue
+        shape = row.get("response_structure") or {}
+        if shape.get("kind") != "json":
+            continue
+        graphql = shape.get("graphql") or {}
+        if not isinstance(graphql, dict):
+            continue
+        if not (int(graphql.get("errorCount") or 0) > 0 or graphql.get("dataState") == "null"):
+            continue
+        relevant.append(row)
+    if not relevant:
+        return ()
+
+    blocked = set(non_improving_functions(source, live))
+    candidates = []
+    for row in relevant[:8]:
+        candidates.extend(row.get("functions") or [])
+    candidates.extend((live.get("active_functions") or [])[:6])
+    seen = set()
+    scored = []
+    for order, value in enumerate(candidates):
+        if not isinstance(value, str) or not re.fullmatch(r"[A-Za-z_$][\w$]{0,63}", value):
+            continue
+        if value in seen or value in blocked or re.search(
+            r"identity|validat|verify|duration|streamscore|mediasignature|probe", value, re.I
+        ):
+            continue
+        seen.add(value)
+        if not re.search(
+            r"\b(?:async\s+)?function\s+"+re.escape(value)+r"\s*\(", source
+        ):
+            continue
+        # For a GraphQL response with null data, upstream search/query
+        # producers are the right locality to inspect before terminal parsers.
+        rank = (0 if re.search(r"search|query|graphql|lookup", value, re.I)
+                else 1 if re.search(r"find|api|request", value, re.I)
+                else 2)
+        scored.append((rank, order, value))
+    return tuple(row[2] for row in sorted(scored)[:3])
+
+
 def _force_structural_focus_keywords(request: RepairRequest) -> tuple[str, ...]:
     """Derive bounded source-focus tokens from current structural evidence."""
     class_tokens: list[str] = []
@@ -510,6 +566,10 @@ def _force_structural_focus_keywords(request: RepairRequest) -> tuple[str, ...]:
     context = request.provider_context or {}
     source = context.get('preferredRuntimeMutationSource') or context.get('runtimeMutationSource') or ''
     focus.extend('avoid_function:' + name for name in non_improving_functions(source, live))
+    # A classified GraphQL failure at lookup is stronger edit-locality evidence
+    # than a generic downstream "chain terminal" tag. Preserve the other
+    # focus keywords as bounded fallback if no current declared helper matches.
+    focus.extend("function:" + name for name in _graphql_causal_source_functions(request, source))
     selection = short_media_source_focus(source, live)
     if selection:
         focus.append('terminal_preview_source')
