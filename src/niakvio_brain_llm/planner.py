@@ -982,10 +982,12 @@ def _force_memory_blocks_mutations(
                 continue
             if row.get("executionObserved") is False:
                 continue
-            if (
-                str(row.get("lastOutcome") or "").strip().casefold() == "profile_unavailable"
-                and row.get("executionObserved") is not True
-            ):
+            # Old Brain memories sometimes claimed an executed failure
+            # without any child bytes. Never block a viable exact mutation on
+            # such ungenerated/unavailable outcomes, even with legacy True.
+            outcome = str(row.get("lastOutcome") or "").strip().casefold().replace("-", "_")
+            if outcome in {"profile_unavailable", "not_generated",
+                           "accepted", "verified", "success"}:
                 continue
             if "provider_bloc" in scopes:
                 return True
