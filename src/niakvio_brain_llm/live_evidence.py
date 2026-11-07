@@ -92,6 +92,12 @@ def domain_reference_focus(live):
     """404-only failed fixtures justify a domain-data hypothesis, not success."""
     live = live if isinstance(live, dict) else {}
     references = public_domain_references(live.get('public_domain_references'))
+    # network_evidence() intentionally projects at most twelve raw events.
+    # Never classify 404-only domain evidence from a clipped trace: a later
+    # catalogue success/player response could reverse that conclusion.
+    trace = live.get('network_evidence')
+    if not isinstance(trace, list) or len(trace) > 12:
+        return {}
     failed = {row['fixture'] for row in fixture_evidence(live.get('fixture_evidence'))
               if row['streamsReturned'] == 0 and row['streamsPlayable'] == 0}
     events = [row for row in network_evidence(live.get('network_evidence'))
@@ -157,7 +163,12 @@ def apply_verified_live_failure(request, live, source_sha, explicit_providers):
     if not failed:
         return False
     names = {row['fixture'] for row in failed}
-    events = [row for row in rows(live.get('network_evidence'), 64)
+    # Fail closed when the preflight has more events than the Brain prompt
+    # actually retains; a clipped 404-only prefix is not exact evidence.
+    trace = live.get('network_evidence')
+    if not isinstance(trace, list) or len(trace) > 12:
+        return False
+    events = [row for row in rows(trace, 12)
               if isinstance(row, dict) and row.get('fixture') in names and not row.get('infrastructure')]
     # Terminal/player 404s are not provider-origin lookup failures. A mix
     # of lookup 404s and a successful downstream route is not enough to
