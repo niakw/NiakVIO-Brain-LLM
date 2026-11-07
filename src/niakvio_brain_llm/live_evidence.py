@@ -536,6 +536,15 @@ def verification_feedback(value):
         result[phase] = {key: count(row.get(key))
                          for key in ("streamsPlayable", "streamsReturned", "identityContradictions")}
         result[phase]['fixtureCoverage'] = fixture_evidence(row.get('fixtureCoverage'))
+        # Keep numeric fanout progress in the negative-memory feedback. A repair
+        # with no decoded media may still open new player/variant branches, so
+        # that attempt must not blacklist its edit locality as ineffective.
+        coverage = row.get('variantCoverage') if isinstance(row.get('variantCoverage'), dict) else {}
+        result[phase]['variantCoverage'] = {
+            key: count(coverage.get(key))
+            for key in ('announcedPlayerCandidates', 'announcedVariantCandidates',
+                        'exploredPlayerRequests', 'maxPlayableHeight')
+        }
     result["candidate_network"] = network_evidence(value.get("candidate_network"))
     return result
 
@@ -657,7 +666,8 @@ def non_improving_functions(source, live):
     if not feedback.get('executionObserved') or not feedback.get('materializedMutationObserved'):
         return []
     if feedback.get('reason') not in {'insufficient_playable_stream_proof', 'no_strict_runtime_improvement',
-                                     'variant_coverage_no_verified_dimension_gain'}:
+                                     'variant_coverage_no_verified_dimension_gain',
+                                     'decoded_repair_no_new_fixture_control'}:
         return []
     if feedback.get('baseline') != feedback.get('candidate'):
         return []
