@@ -137,15 +137,18 @@ class ForceCandidatePublicationTests(unittest.TestCase):
             allowed_mutations=["provider_bloc"],
         )
 
-        def check(last_outcome, observed, expected_blocked):
+        def check(last_outcome, observed, materialized, expected_blocked):
             value = {
                 "providerId": "4khdhub", "mutationFingerprint": fp,
                 "mutationContextFingerprint": ctx_fp,
                 "consecutiveFailures": 1, "failures": 1,
                 "successes": 0, "lastOutcome": last_outcome,
+                "lastMutationSummary": [{"scope":"provider_bloc","operation":"upsert"}],
             }
             if observed is not None:
                 value["executionObserved"] = observed
+            if materialized is not None:
+                value["materializedMutationObserved"] = materialized
             with tempfile.TemporaryDirectory() as temporary:
                 root = Path(temporary)
                 (root / "automation").mkdir()
@@ -176,20 +179,27 @@ class ForceCandidatePublicationTests(unittest.TestCase):
             )
             self.assertEqual(
                 projected[0]["executionObserved"],
-                last_outcome == "rejected" and observed is not False,
+                last_outcome == "rejected" and observed is True,
                 (last_outcome, observed),
             )
+            self.assertEqual(
+                projected[0]["materializedMutationObserved"],
+                materialized is True, (last_outcome, materialized),
+            )
 
-        for outcome, observed, blocked in (
-            ("rejected", False, False),
-            ("rejected", True, True),
-            ("rejected", None, True),
-            ("not_generated", True, False),
-            ("profile_unavailable", True, False),
-            ("accepted", True, False),
+        for outcome, observed, materialized, blocked in (
+            ("rejected", False, True, False),
+            ("rejected", True, True, True),
+            ("rejected", True, False, False),
+            ("rejected", True, None, False),
+            ("rejected", None, True, False),
+            ("not_generated", True, True, False),
+            ("profile_unavailable", True, True, False),
+            ("accepted", True, True, False),
         ):
-            with self.subTest(outcome=outcome, executionObserved=observed):
-                check(outcome, observed, blocked)
+            with self.subTest(outcome=outcome, executionObserved=observed,
+                              materializedMutationObserved=materialized):
+                check(outcome, observed, materialized, blocked)
 
     def test_unexecuted_rejection_does_not_remove_sandbox_candidate(self):
         mutation = self.row("candidate-a")["proposal"]["mutations"][0]
