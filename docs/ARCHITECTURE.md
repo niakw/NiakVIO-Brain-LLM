@@ -490,3 +490,12 @@ This compiler is provider-agnostic and current-byte bound. It emits provider_blo
 Variant completeness is hierarchical: a provider may expose a small number of servers/players while each server exposes many legitimate terminal variants. The deterministic FORCE compiler may therefore widen bounded player traversal separately from aggregate stream retention when current runtime evidence is a high-risk variant-coverage truncation and the function delegates to the shared media crawler.
 
 The current bounded envelope is 16 player/server rows and 32 aggregate terminal streams. This is intentionally provider-shape agnostic: provider-local runtimes still own how their own HTML/JSON names and locates servers, while the Brain only removes proven truncation from exact current bytes. Isolated sandbox acceptance still requires no runtime/identity/playback regression plus a verified completeness dimension gain.
+
+
+## 2026-11-07 — HTTP 404 : distinguer origine catalogue et terminal
+
+La classification causale des échecs HTTP de `live_evidence.py` sépare désormais explicitement les étapes **provider lookup** (`search`, `catalogue`, `content_lookup`, `detail`, `episode`) de **player/source/media**. Un 404 sur une page lecteur, un CDN, un segment média ou une étape inconnue n'est **pas** une preuve que le domaine du provider est à remplacer. Le Brain ne peut déplacer en tête la stratégie `provider_data`, ni déclasser un ancien FULL/PARTIAL sur le seul fondement de tels 404.
+
+`_failed_fixture_lookup_404s` requiert que chaque fixture réellement échouée dispose de sa propre trace 404 limitée aux étapes de recherche/catalogue ; une trace mixte 200/404 ou une erreur aval invalide cette attribution précise. `apply_verified_live_failure` garde le statut historique inchangé quand la preuve ne satisfait pas ce contrat. `domain_reference_focus` utilise le même oracle, sans accorder d'autorité de publication à une référence externe.
+
+Tests : `tests/test_live_preflight_policy.py` et `tests/test_public_domain_references.py`, dont un scénario film + `Spartacus S00E01`. Ces scénarios testent la **cohérence de classification** sur données synthétiques représentatives ; ils n'établissent ni la bonne identité d'un épisode joué, ni un stream terminal valide, ni une réparation complète d'un provider. Les observations live et le catalogue restent des autorités distinctes.
