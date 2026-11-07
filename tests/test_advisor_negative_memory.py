@@ -51,6 +51,8 @@ force_payload = {
         "lastOutcome": "rejected",
         "lastReason": "required_category_playable_proof:anime",
         "lastMutationSummary": [{"scope": "provider_bloc", "operation": "upsert", "family": "url_extractor"}],
+        "executionObserved": True,
+        "materializedMutationObserved": True,
         "lastCurrentSha": "1" * 40,
         "sourceNiakvioSha": "2" * 40,
         "sourceBrainLlmSha": "3" * 40,
@@ -61,6 +63,7 @@ force_rows = _provider_force_negative_memory(force_payload, "animesalt")
 assert len(force_rows) == 1, force_rows
 assert force_rows[0]["memoryRole"] == "force_sandbox_execution"
 assert force_rows[0]["executionObserved"] is True
+assert force_rows[0]["materializedMutationObserved"] is True
 assert force_rows[0]["lastReason"] == "required_category_playable_proof:anime"
 assert force_rows[0]["lastMutationSummary"][0]["family"] == "url_extractor"
 encoded_force = json.dumps(force_rows)
@@ -90,6 +93,7 @@ assert [row["lastReason"] for row in recent_rows[:4]] == [
     "reason-6", "reason-5", "reason-4", "reason-3"
 ], recent_rows
 assert recent_rows[0]["mutationFingerprint"] == f"{6:064x}"
+assert recent_rows[0]["executionObserved"] is False, "legacy inference cannot claim a sandbox execution"
 
 with tempfile.TemporaryDirectory() as td:
     root = Path(td)
