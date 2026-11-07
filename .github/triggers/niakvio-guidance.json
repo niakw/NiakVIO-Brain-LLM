@@ -1,25 +1,10 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "71547ed213b845c9bdfb759c7d94743b4041b72a",
-  "reason": "Rerun all 16 real RepairQueue after Brain-LLM generator preflight fix: skip unused oversized advisor prompt, compact Qwen prefill without editable unit-ID drift, diversity on validated no-op retries. Retain strict compilation/current provider bytes/identity-matched playable terminal/nonregression; prior run completed 16 with zero executable mutations, no claim of repair.",
+  "niakvio_sha": "2ac06197f200b451b23dedec84e05def0cc601e5",
+  "reason": "Brain-first exact-current-byte representative 4KHDHub: reproduce nested movie-card prefix collision in real provider runtime; deterministic/model Brain must generate executable provider_patch/provider_bloc mutation, never manual provider edit. Publish only if NiakVIO independently compiles, materializes and proves correct movie+TV terminal media, identity, safe headers and non-regression. No fixture-only acceptance; persist negative outcomes.",
   "requested_repair_queue": [
-    "4khdhub",
-    "allanime",
-    "allwish",
-    "animekai",
-    "animesalt",
-    "animesama-co",
-    "animesultra",
-    "animevost-fr",
-    "animevostfr",
-    "flemmix",
-    "mallumv",
-    "moviebox",
-    "moviesmod",
-    "uhdmovies",
-    "vidfast",
-    "yflix"
+    "4khdhub"
   ],
-  "retry": 41,
+  "retry": 42,
   "require_deterministic_force": false
 }
