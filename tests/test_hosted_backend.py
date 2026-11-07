@@ -125,7 +125,7 @@ class HostedBackendTests(unittest.TestCase):
                     "status": "completed",
                     "usage": {"input_tokens": 6000, "output_tokens": 1200},
                     "output": [{"type": "message", "content": [
-                        {"type": "output_text", "text": "{\\"mutations\\":[]}"},
+                        {"type": "output_text", "text": '{"mutations":[]}'},
                     ]}],
                 })
             env = {
