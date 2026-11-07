@@ -6,6 +6,55 @@ from niakvio_brain_llm.source_units import javascript_function_end
 from niakvio_brain_llm.live_evidence import network_evidence, verification_feedback, non_improving_functions, observed_failure_class, executed_runtime_source, fixture_evidence, short_media_source_focus, player_markup, response_structure
 
 class LiveFunctionContextTests(unittest.TestCase):
+    def test_graphql_causal_classes_reach_brain_without_private_error_values(self):
+        private = "PRIVATE_URL_COOKIE_TOKEN"
+        response = {
+            "kind": "json",
+            "fields": [{"path": "errors[].message", "type": "string"},
+                       {"path": "data.episode", "type": "null"}],
+            "graphql": {
+                "errorCount": 2,
+                "codes": ["GRAPHQL_VALIDATION_FAILED", "EVIL_" + private],
+                "kinds": ["schema_mismatch", private],
+                "dataState": "null",
+                "nullRoots": ["episode", private],
+                "message": private,
+                "url": "https://secret.test/" + private,
+            },
+        }
+        expected = {
+            "errorCount": 2,
+            "codes": ["GRAPHQL_VALIDATION_FAILED"],
+            "kinds": ["schema_mismatch"],
+            "dataState": "null",
+            "nullRoots": ["episode"],
+        }
+        clean = response_structure(response)
+        self.assertEqual(clean["graphql"], expected)
+        self.assertNotIn(private, str(clean))
+        network = [{
+            "fixture": "Missing S01E01", "stage": "content_lookup",
+            "status": 200, "response_structure": response,
+        }]
+        req = RepairRequest(provider_id="demo", failure_class="chain_terminal_gap",
+            provider_context={"live_runtime_evidence": {
+                "network_evidence": network,
+                "previous_verification": {"candidate_network": network},
+            }})
+        payload = build_force_prompt_payload(req)
+        self.assertEqual(payload["current_network_evidence"][0]["response_structure"]["graphql"], expected)
+        self.assertEqual(payload["previous_verification"]["candidate_network"][0]["response_structure"]["graphql"], expected)
+        self.assertNotIn(private, str(payload))
+        self.assertEqual(network_evidence(network_evidence(network)), network_evidence(network))
+        invalid = dict(response)
+        invalid["graphql"] = {**response["graphql"], "errorCount": 999999,
+            "codes": [private] * 50, "dataState": private, "nullRoots": [private]}
+        projected = response_structure(invalid)["graphql"]
+        self.assertEqual(projected["errorCount"], 16)
+        self.assertEqual(projected["codes"], [])
+        self.assertEqual(projected["dataState"], "missing")
+        self.assertEqual(projected["nullRoots"], [])
+
     def test_opaque_address_correlation_reaches_both_prompt_channels_by_scope(self):
         scope, other_scope = 's0123456789abcdef', 'sfedcba9876543210'
         # r3/r4 stand for addresses differing only by query. The Brain receives

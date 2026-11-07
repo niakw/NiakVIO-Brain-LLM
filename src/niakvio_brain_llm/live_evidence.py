@@ -288,7 +288,44 @@ def response_structure(value, allow_address_refs=False):
                 continue
             if row.get("type") in {"string", "number", "boolean", "null", "object", "array"}:
                 fields.append({"path": path, "type": row["type"]})
-        return {"kind": kind, "fields": fields}
+        result = {"kind": kind, "fields": fields}
+        raw = value.get("graphql")
+        if isinstance(raw, dict):
+            # Only bounded enum facts from the deterministic response classifier
+            # enter Brain. Never admit arbitrary GraphQL error messages/values.
+            valid_codes = {
+                "GRAPHQL_VALIDATION_FAILED", "GRAPHQL_PARSE_FAILED",
+                "BAD_USER_INPUT", "BAD_REQUEST", "UNAUTHENTICATED",
+                "FORBIDDEN", "INTERNAL_SERVER_ERROR", "SERVICE_UNAVAILABLE",
+                "PERSISTED_QUERY_NOT_FOUND", "TOO_MANY_REQUESTS", "NOT_FOUND",
+            }
+            valid_kinds = {
+                "schema_mismatch", "syntax", "auth", "rate_limit",
+                "timeout", "not_found", "server_error", "unknown",
+            }
+            states = {"missing", "null", "object", "array", "scalar"}
+            null_fields = {
+                "episode", "shows", "sources", "search", "media",
+                "video", "results", "title",
+            }
+            result["graphql"] = {
+                "errorCount": count(raw.get("errorCount"), 16),
+                "codes": list(dict.fromkeys(
+                    x for x in rows(raw.get("codes"), 8)
+                    if isinstance(x, str) and x in valid_codes
+                ))[:8],
+                "kinds": list(dict.fromkeys(
+                    x for x in rows(raw.get("kinds"), 8)
+                    if isinstance(x, str) and x in valid_kinds
+                ))[:8],
+                "dataState": raw["dataState"] if isinstance(raw.get("dataState"), str)
+                    and raw["dataState"] in states else "missing",
+                "nullRoots": list(dict.fromkeys(
+                    x for x in rows(raw.get("nullRoots"), 8)
+                    if isinstance(x, str) and x in null_fields
+                ))[:8],
+            }
+        return result
     if kind == "html":
         result = {"kind": kind, "tags": [
             {"tag": row["tag"], "attributes": identifiers(row.get("attributes"))}
