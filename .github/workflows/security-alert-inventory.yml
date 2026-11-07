@@ -45,10 +45,11 @@ jobs:
           print(f"FIELD_SECURITY_ALERT_INVENTORY source={source} status=read open={len(items)} severities={json.dumps(counts,sort_keys=True)}")
           if source == "code-scanning":
               for row in items[:100]:
-                  print("OPEN_CODEQL_ALERT number={} severity={} rule={} path={}".format(
+                  location = ((row.get("most_recent_instance") or {}).get("location") or {})
+                  print("OPEN_CODEQL_ALERT number={} severity={} rule={} path={} line={}".format(
                       clean(row.get("number")), clean((row.get("rule") or {}).get("security_severity_level")),
-                      clean((row.get("rule") or {}).get("id")),
-                      clean((((row.get("most_recent_instance") or {}).get("location") or {}).get("path")))))
+                      clean((row.get("rule") or {}).get("id")), clean(location.get("path")),
+                      clean(location.get("start_line"))))
           if source == "dependabot":
               for row in items[:100]:
                   print("OPEN_DEPENDABOT_ALERT number={} severity={} package={}".format(
