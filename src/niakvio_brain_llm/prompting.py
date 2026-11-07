@@ -759,7 +759,7 @@ def _force_source_windows(
 
 
 def rejected_force_unit_hashes(request: RepairRequest) -> set[str]:
-    """Exact-source fingerprints of rejected pure deletions in this repair attempt.
+    """Exact-source fingerprints of rejected inert edits in this repair attempt.
 
     Do not reuse ephemeral unit IDs across prompt-window re-ranking on retries.
     Retain only SHA-256 of current source snippets, never raw provider bytes.
@@ -769,7 +769,7 @@ def rejected_force_unit_hashes(request: RepairRequest) -> set[str]:
     for row in request.observations or []:
         if not isinstance(row, dict) or row.get("stage") != "force_validation_feedback":
             continue
-        if row.get("reason") != "causally_empty_deletion":
+        if row.get("reason") not in {"causally_empty_deletion", "no_op"}:
             continue
         value = str(row.get("rejected_unit_sha256") or "").strip().lower()
         if re.fullmatch(r"[0-9a-f]{64}", value):

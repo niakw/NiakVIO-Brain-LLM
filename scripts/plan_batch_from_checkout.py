@@ -640,7 +640,7 @@ def main() -> int:
                 ),
             }
             rejected_hash = str(getattr(exc, "rejected_unit_sha256", "") or "")
-            if reason == "causally_empty_deletion" and re.fullmatch(r"[0-9a-f]{64}", rejected_hash):
+            if reason in {"causally_empty_deletion", "no_op"} and re.fullmatch(r"[0-9a-f]{64}", rejected_hash):
                 feedback["rejected_unit_sha256"] = rejected_hash
                 feedback["instruction"] += (
                     "; Brain has excluded that exact rejected source unit from "
@@ -653,7 +653,7 @@ def main() -> int:
             prior_feedback = [
                 row for row in existing_observations
                 if str(row.get("stage") or "") == "force_validation_feedback"
-            ][:1]
+            ][:3]
             required_evidence = [
                 row for row in existing_observations
                 if str(row.get("source") or "").strip().casefold()
@@ -672,6 +672,7 @@ def main() -> int:
                     str(row.get("stage") or ""),
                     str(row.get("source") or ""),
                     str(row.get("reason") or ""),
+                    str(row.get("rejected_unit_sha256") or ""),
                 )
                 if fingerprint in seen:
                     continue
