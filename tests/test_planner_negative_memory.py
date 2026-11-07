@@ -14,7 +14,7 @@ def fingerprint(value):
 
 
 class PlannerNegativeMemoryTests(unittest.TestCase):
-    def plan(self, mutations, *, failed=None, source_digest="a" * 64, execution_observed=True, last_outcome="rejected"):
+    def plan(self, mutations, *, failed=None, source_digest="a" * 64, execution_observed=True, materialized_observed=True, last_outcome="rejected"):
         path = "scripts/provider_patches/demo_runtime.py"
         request = RepairRequest(
             provider_id="demo",
@@ -37,6 +37,7 @@ class PlannerNegativeMemoryTests(unittest.TestCase):
                     "lastReason": "required_category_playable_proof:movie",
                     "lastOutcome": last_outcome,
                     "executionObserved": execution_observed,
+                    "materializedMutationObserved": materialized_observed,
                 }],
             }],
         )
@@ -104,6 +105,8 @@ class PlannerNegativeMemoryTests(unittest.TestCase):
     def test_unexecuted_candidate_is_not_negative_execution_memory(self):
         mutations = [self.bloc()]
         self.assertEqual(self.plan(mutations, execution_observed=False).mutations, mutations)
+        self.assertEqual(self.plan(mutations, materialized_observed=False).mutations, mutations)
+        self.assertEqual(self.plan(mutations, materialized_observed=None).mutations, mutations)
         self.assertEqual(self.plan(
             mutations, execution_observed=None, last_outcome="profile_unavailable",
         ).mutations, mutations)
