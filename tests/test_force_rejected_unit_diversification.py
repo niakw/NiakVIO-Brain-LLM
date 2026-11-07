@@ -103,7 +103,7 @@ class ForceRejectedUnitDiversification(unittest.TestCase):
         )
         focus = _force_structural_focus_keywords(request)
         self.assertEqual(focus[0], "function:searchOneAt")
-        self.assertEqual(focus[1], "function:apiJson")
+        self.assertEqual(focus[1], "function:findShow")
         self.assertNotIn("function:verifyEpisodeIdentity", focus[:3])
         payload = build_force_prompt_payload(
             request, {}, {"allow_mutations": True, "allowed_scopes": ["provider_bloc"]}
