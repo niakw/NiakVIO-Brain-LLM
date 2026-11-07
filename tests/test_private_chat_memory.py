@@ -7,6 +7,8 @@ from niakvio_brain_llm.private_chat_memory import (
     PROJECT_ID,
     import_private_chat_project,
     redact_sensitive,
+    technical_score,
+    _has_official_github_link,
 )
 
 
@@ -64,6 +66,25 @@ class PrivateChatMemoryTests(unittest.TestCase):
             }), encoding="utf-8")
             with self.assertRaises(ValueError):
                 import_private_chat_project(project)
+
+    def test_only_exact_https_github_hosts_qualify_as_technical_links(self):
+        cases = (
+            ("https://github.com/niakw/NiakVIO", True),
+            ("HTTPS://www.github.com/niakw/NiakVIO", True),
+            ("https://github.com.attacker.invalid/niakw/NiakVIO", False),
+            ("https://evil.invalid/github.com/niakw/NiakVIO", False),
+            ("https://github.com@evil.invalid/niakw/NiakVIO", False),
+            ("https://github.com:999999/niakw/NiakVIO", False),
+            ("http://github.com/niakw/NiakVIO", False),
+            ("https://notgithub.com/niakw/NiakVIO", False),
+            ("https://github.com", False),
+            ("no link here", False),
+        )
+        for value, expected in cases:
+            with self.subTest(value=value):
+                self.assertIs(_has_official_github_link(value), expected)
+        self.assertEqual(technical_score("https://github.com/niakw/NiakVIO") -
+                         technical_score("https://github.com.attacker.invalid/niakw/NiakVIO"), 1)
 
     def test_redacts_sensitive_personal_and_secret_values(self):
         value = redact_sensitive(
