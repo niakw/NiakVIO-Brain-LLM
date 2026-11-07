@@ -8,7 +8,8 @@ Seule la branche `main` actuelle est maintenue. Le projet est en version 0.x ; l
 - Provider, pages récupérées et sortie LLM = **données non fiables** ; seul NiakVIO contrôle l'application, le SHA des octets matérialisés, le média décodé, l'identité et la non-régression.
 - Les jobs manipulant des mémoires privées doivent filtrer leurs logs et artefacts. Aucun prompt source privé ni token dans les fichiers publics ou dans les uploads d'artefacts.
 - Toutes les GitHub Actions externes sont épinglées à un SHA 40 caractères ; les checkouts utilisent `persist-credentials: false` pour ne pas laisser le jeton Git dans les répertoires de travail. Le test `test_workflow_supply_chain_policy.py` vérifie cela.
-- Le registre budgétaire optionnel utilise un verrou de fichier, une réservation conservatrice avant réseau et ne stocke aucun prompt/secret. Les runners indépendants requièrent un plafond commun côté fournisseur/serveur.\n- Les requêtes payantes exigent explicitement `NIAKVIO_ALLOW_PAID_API=1` et une clé API. Aucune bascule automatique sur un service payant ; les appels distants sont désactivés par défaut.
+- Le registre budgétaire optionnel utilise un verrou de fichier, une réservation conservatrice avant réseau et ne stocke aucun prompt/secret. Les runners indépendants requièrent un plafond commun côté fournisseur/serveur.
+- Les requêtes payantes exigent explicitement `NIAKVIO_ALLOW_PAID_API=1` et une clé API. Aucune bascule automatique sur un service payant ; les appels distants sont désactivés par défaut.
 - `store=false` pour les requêtes Responses OpenAI ; les API tierces doivent être évaluées selon leurs règles de confidentialité, de conservation et d'apprentissage avant utilisation.
 - Un VPS faible n'est pas destiné à exécuter un LLM lourd ou une exécution non isolée de code provider ; garder les runners CI et barrières réseau distincts.
 
@@ -29,3 +30,9 @@ Rapport métier et sécurité des deux dépôts : [NiakVIO audit](https://github
 La sécurité CodeQL est gérée par **GitHub Default Setup**, déjà activé sur ce dépôt. Un workflow supplémentaire utilisant `github/codeql-action/analyze` a été essayé sur `6ec6666` (run [42368367977](https://github.com/niakw/NiakVIO-Brain-LLM/actions/runs/42368367977)), mais les analyses Python et Actions ont été **refusées à l'upload SARIF** : `CodeQL analyses from advanced configurations cannot be processed when the default setup is enabled`.
 
 Le workflow redondant a donc été retiré par `4664b7c`. Il faut lire les alertes et analyses du **Default Setup** pour le SHA courant ; le résultat de l'ancien inventaire 0 open (run 42364586403) ne suffit pas pour les nouveaux fichiers. Ni un test unitaire vert ni une analyse avancée rejetée ne représentent un contrôle CodeQL réussi.
+
+## 2026-11-07 — Dependabot version updates
+
+L'ancien `.github/dependabot.yml` était un modèle non fonctionnel (`package-ecosystem: ""`). La configuration sur `main` surveille désormais chaque lundi les manifestes Python/`pip` à la racine et les **GitHub Actions** épinglées, limite à deux les PR de mise à jour par écosystème et groupe les mises à jour mineures/correctives pour réduire le bruit. Ce mécanisme **ne fusionne aucun code automatiquement** : vérifier les SHA d'Actions et l'ensemble de la CI avant merge. Les runs du bot `42396347774` (pip) et `42396347990` (Actions), ainsi que la CI Brain `42396342387` sur le correctif `0ecfc8e8`, sont réussis.
+
+Cela ne prouve pas que les **alertes de sécurité Dependabot ou Secret Scanning** sont toutes résolues : leur inventaire est distinct et doit être lu via une autorisation GitHub dédiée. Ne pas convertir un diagnostic `unavailable_not_clean` en « zéro alerte ».
