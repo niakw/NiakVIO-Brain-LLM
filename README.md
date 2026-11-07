@@ -19,7 +19,7 @@ NiakVIO evidence (read-only)
        -> local LLM only when synthesis is useful
   -> bounded RepairProposal
   -> deterministic mutation + verification policy
-  -> external NiakVIO verifier (future integration only)
+  -> external NiakVIO sandbox verifier (integrated; strict decoded-media success still unproven)
   -> sanitized positive / negative / safety memory
 ```
 
@@ -76,7 +76,7 @@ not set by repository automation and must not be enabled without new approval.
 Responses API instead of the local runtime. Provision `NIAKVIO_OPENAI_API_KEY`
 in the environment; `OPENAI_API_KEY` is a fallback. The default hosted model is
 `gpt-6.1-sol`; use `NIAKVIO_HOSTED_MODEL` or `--model` to select the approved
-`gpt-6-astra` alternative. Local `NIAKVIO_LLM_MODEL` settings do not override the
+`gpt-6-astra` alternative, or explicitly choose lower-cost `gpt-6-luna` / `gpt-6.1-terra`. Local `NIAKVIO_LLM_MODEL` settings do not override the
 hosted default. All other batch arguments remain required as usual.
 
 The hosted request disables response retention (`store=false`) and requests no
@@ -84,6 +84,8 @@ tools. API output still passes the same local mutation, sandbox, identity and
 playback gates. Authentication failure stops generation without falling back to
 an unverified provider edit. API generation does not itself train model weights;
 only NiakVIO-verified outcomes qualify for positive learning.
+
+See [Multi-role API model costs & privacy](docs/MODEL_ROUTING_COST_2026-11-07.md) for the budget and routing decision; adding models to an allowlist does not enable paid requests or constitute a completed repair.
 
 ## Scaling model
 

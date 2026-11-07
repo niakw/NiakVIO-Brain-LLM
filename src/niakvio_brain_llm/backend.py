@@ -192,7 +192,7 @@ class HostedResponsesBackend:
         require_paid_api_opt_in()
         if not self.api_key or not self.api_key.strip():
             raise RuntimeError("hosted backend requires an API key")
-        if self.model not in {"gpt-6.1-sol", "gpt-6-astra"}:
+        if self.model not in {"gpt-6-luna", "gpt-6.1-terra", "gpt-6.1-sol", "gpt-6-astra"}:
             raise ValueError("unapproved hosted model identifier")
         if self.reasoning_effort not in {"low", "medium", "high"}:
             raise ValueError("unsupported bounded hosted reasoning effort")

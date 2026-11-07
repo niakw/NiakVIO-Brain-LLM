@@ -88,6 +88,21 @@ class HostedBackendTests(unittest.TestCase):
                     with self.assertRaises(RuntimeError):
                         model.complete(system="s", user="u")
 
+    def test_explicit_low_cost_models_use_the_same_secure_hosted_contract(self):
+        for model_name in ("gpt-6-luna", "gpt-6.1-terra"):
+            captured = {}
+            def respond(request, *, timeout):
+                captured["body"] = json.loads(request.data.decode("utf-8"))
+                return Response({"status":"completed","output":[
+                    {"type":"message","content":[{"type":"output_text","text":"{}"}]}
+                ]})
+            with self.subTest(model=model_name), patch("niakvio_brain_llm.backend.urlopen", side_effect=respond):
+                text = HostedResponsesBackend(api_key="test-only", model=model_name).complete(system="s",user="u")
+            self.assertEqual(text,"{}")
+            self.assertEqual(captured["body"]["model"],model_name)
+            self.assertIs(captured["body"]["store"],False)
+            self.assertNotIn("tools",captured["body"])
+
     def test_unapproved_model_refused(self):
         model = HostedResponsesBackend(api_key="test-only", model="unverified-model")
         with self.assertRaisesRegex(ValueError, "unapproved hosted model"):
