@@ -2,6 +2,7 @@ import unittest
 
 from niakvio_brain_llm.contracts import RepairRequest
 from niakvio_brain_llm.niakvio_adapter import _provider_force_negative_memory
+from niakvio_brain_llm.live_evidence import non_improving_functions, verification_feedback
 from niakvio_brain_llm.prompting import build_force_prompt_payload
 
 
@@ -55,6 +56,42 @@ class ForceExecutionFeedbackTests(unittest.TestCase):
             self.assertIn("function " + name + "(", joined)
         self.assertNotIn('function s(', joined)
         self.assertLessEqual(len(units), 4)
+
+
+    def test_decoded_repair_failure_rotates_only_without_real_fanout_progress(self):
+        source = 'function classBlocks(html,cls){return String(html||"").slice(0,1);}'
+        metric = {
+            "streamsReturned": 0, "streamsPlayable": 0,
+            "identityContradictions": 0, "fixtureCoverage": [],
+            "variantCoverage": {
+                "announcedPlayerCandidates": 16, "announcedVariantCandidates": 16,
+                "exploredPlayerRequests": 1, "maxPlayableHeight": 0,
+            },
+        }
+        previous = {
+            "reason": "decoded_repair_no_new_fixture_control",
+            "executionObserved": True, "materializedMutationObserved": True,
+            "baseline": metric, "candidate": metric,
+        }
+        context = {
+            "previous_verification": previous,
+            "previous_executed_edits": [{"find": source}],
+        }
+        self.assertEqual(non_improving_functions(source, context), ["classBlocks"])
+        feedback = verification_feedback(previous)
+        self.assertEqual(feedback["baseline"]["variantCoverage"]["exploredPlayerRequests"], 1)
+        self.assertEqual(feedback["candidate"]["variantCoverage"]["announcedPlayerCandidates"], 16)
+
+        # A deeper crawl is evidence of progress, even if decoder proof remains zero.
+        changed = {**metric, "variantCoverage": {**metric["variantCoverage"], "exploredPlayerRequests": 3}}
+        progressed = {**context, "previous_verification": {**previous, "candidate": changed}}
+        self.assertEqual(non_improving_functions(source, progressed), [])
+        # Missing executable/materialized bytes must never blacklist a source.
+        unexecuted = {**context, "previous_verification": {**previous, "executionObserved": False}}
+        self.assertEqual(non_improving_functions(source, unexecuted), [])
+        self.assertEqual(non_improving_functions(source, {
+            **context, "previous_verification": {**previous, "reason": "decoded_repair_fixture_contract"},
+        }), [])
 
 
 if __name__ == "__main__":
