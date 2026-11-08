@@ -4,7 +4,16 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ['.github/workflows/security-alert-inventory.yml']
+    # A weekly/manual-only readout misses current code changes. Audit every
+    # maintained executable or dependency/workflow change; fail closed when
+    # inventory visibility is unavailable rather than declaring clean.
+    paths:
+      - '.github/workflows/**'
+      - 'src/**'
+      - 'scripts/**'
+      - 'tests/**'
+      - 'pyproject.toml'
+      - 'config/**'
   schedule:
     - cron: '19 4 * * 1'
 
