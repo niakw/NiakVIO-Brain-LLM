@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from .backend import ModelBackend
+from .advisor_experiments import experiment_fingerprint, failed_advisor_fingerprints, next_advisor_experiment
 from .source_units import javascript_function_end as _deterministic_function_end
 from .contracts import RepairProposal, RepairRequest
 from .document_memory import DocumentStore
@@ -3670,6 +3671,44 @@ class BrainPlanner:
             raise ValueError(
                 f"model strategy {proposal.strategy} conflicts with high-confidence prior {prior_strategy}"
             )
+
+        # In real Learning runs the model can repeat a previously executed
+        # and rejected experiment despite receiving the negative memory in its
+        # prompt. A late publisher rejection wastes the entire bounded slot.
+        # Enforce novelty at the actual advisor decision boundary; keep the
+        # causal layer/strategy fixed and never turn a rotation into proof.
+        if request.advisor_only and proposal.target_layer == "provider" and not proposal.abstain:
+            blocked = failed_advisor_fingerprints(request)
+            if blocked:
+                try:
+                    fingerprint = experiment_fingerprint(proposal.experiment)
+                except (KeyError, TypeError, ValueError) as exc:
+                    raise ValueError("advisor experiment lacks a complete bounded schema") from exc
+                if fingerprint in blocked:
+                    replacement = next_advisor_experiment(request, proposal.strategy)
+                    if replacement:
+                        selected = experiment_fingerprint(replacement)
+                        if selected in blocked:
+                            raise RuntimeError("advisor experiment selector replayed executed negative memory")
+                        proposal.experiment = replacement
+                        print(
+                            "FIELD_BRAIN_ADVISOR_NEGATIVE_ROTATION "
+                            f"provider={request.provider_id} blocked=true "
+                            "alternative=bounded_untried publication_proof=false",
+                            flush=True,
+                        )
+                    else:
+                        proposal.abstain = True
+                        proposal.abstain_reason = (
+                            "bounded advisor experiments exhausted; require new current causal evidence"
+                        )
+                        proposal.experiment = {}
+                        print(
+                            "FIELD_BRAIN_ADVISOR_NEGATIVE_ROTATION "
+                            f"provider={request.provider_id} blocked=true "
+                            "alternative=none abstain=true publication_proof=false",
+                            flush=True,
+                        )
 
         allowed_scopes = set(mutation_policy.get("allowed_scopes") or [])
         if proposal.mutations and not mutation_policy.get("allow_mutations"):
