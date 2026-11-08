@@ -12,6 +12,7 @@ import unittest
 from niakvio_brain_llm.advisor_experiments import (
     DEFAULTS,
     _generic_variants,
+    _targeted_variants,
     experiment_fingerprint,
     failed_advisor_fingerprints,
 )
@@ -103,7 +104,7 @@ class RuntimeNegativeNoveltyTests(unittest.TestCase):
     def test_all_bounded_variants_exhausted_abstains_instead_of_repeating(self):
         history = [
             negative(experiment)
-            for experiment in [MODEL_EXPERIMENT, *_generic_variants(MODEL_EXPERIMENT)]
+            for experiment in [MODEL_EXPERIMENT, *_targeted_variants(MODEL_EXPERIMENT, "playable"), *_generic_variants(MODEL_EXPERIMENT)]
         ]
         req = request(history)
         proposal = BrainPlanner(ReplayBackend()).plan(req)
