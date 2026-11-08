@@ -214,7 +214,17 @@ mutation payloads or private-chat text.
 
 Each spec has a stable SHA-256 fingerprint. NiakVIO can therefore learn that one
 experiment failed without suppressing every future experiment in the same
-strategy family. The model still has no publication or proof authority:
+strategy family.
+
+The advisor now checks the model's **actual proposed experiment** against
+executed-negative memory inside `BrainPlanner.plan()`, before batch reservation
+or guidance publication. A repeated fingerprint is replaced by the next
+bounded, causally relevant *untried* parameter set while preserving the
+evidence-backed strategy and layer; when none remains, it explicitly abstains
+and requests fresh observations. Unexecuted suggestions do not become negative
+execution evidence. This policy is covered by
+`tests/test_advisor_runtime_negative_novelty.py` and does **not** validate a
+stream, change provider bytes, or authorize publication. The model still has no publication or proof authority:
 NiakVIO sandbox execution, current-byte playback, identity and regression gates
 remain authoritative.
 
