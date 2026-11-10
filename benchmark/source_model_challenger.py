@@ -71,11 +71,18 @@ def main() -> int:
     ap.add_argument("--output", required=True)
     ap.add_argument("--endpoint", default="http://127.0.0.1:8080")
     ap.add_argument("--model", default="qwen35-9b")
+    ap.add_argument("--provider", action="append", default=[],
+                    help="Exact family ID(s) for first live sandbox proof")
+    ap.add_argument("--raw-candidates", default="",
+                    help="Runner-local only, never upload this file as an artifact")
     ap.add_argument("--max-tokens", type=int, default=768)
     ap.add_argument("--timeout-seconds", type=int, default=420)
     args = ap.parse_args()
     if not 128 <= args.max_tokens <= 2048 or not 30 <= args.timeout_seconds <= 900:
         ap.error("outside bounded inference limits")
+    selected = list(dict.fromkeys(args.provider)) if args.provider else list(TOPOLOGIES)
+    if not selected or any(value not in TOPOLOGIES for value in selected):
+        ap.error("provider must belong to the four evidence-based source families")
     root = Path(args.niakvio_root).resolve()
     sha = subprocess.check_output(
         ["git", "-C", str(root), "rev-parse", "HEAD"], text=True).strip()
@@ -88,7 +95,9 @@ def main() -> int:
         temperature=0.0)
     planner = BrainPlanner(backend, ExperienceStore([]), DocumentStore([]))
     rows = []
-    for provider_id, family in TOPOLOGIES.items():
+    full_candidates = []
+    for provider_id in selected:
+        family = TOPOLOGIES[provider_id]
         row = {"provider": provider_id, "family": family}
         try:
             request = request_from_checkout(root, provider_id)
@@ -99,6 +108,23 @@ def main() -> int:
             with contextlib.redirect_stdout(sys.stderr):
                 proposal = planner.propose_raw(request)
             row.update(classify_proposal(request, proposal))
+            if (args.raw_candidates and row.get("mutationDslValid")
+                    and row.get("mutationPolicyCompliant")
+                    and not row.get("abstained") and proposal.confidence >= 0.80):
+                full_candidates.append({
+                    "ok": True, "provider": provider_id,
+                    "proposal": proposal.to_dict(),
+                })
+                # This file is a transient sandbox input only. A public
+                # artifact MUST NOT include unreviewed model-generated source,
+                # upstream response bodies or route/credential text.
+                destination = Path(args.raw_candidates)
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                destination.write_text(
+                    "".join(json.dumps(item) + "\n" for item in full_candidates),
+                    encoding="utf-8",
+                )
+                destination.chmod(0o600)
         except Exception as exc:
             row.update({"schemaValid": False, "errorType": type(exc).__name__,
                         "materialized": False, "executed": False,
@@ -108,7 +134,7 @@ def main() -> int:
             "schemaVersion": 1, "model": args.model,
             "sourceRepository": "niakw/NiakVIO",
             "sourceSha": sha,
-            "families": len(TOPOLOGIES),
+            "families": len(selected),
             "processed": len(rows),
             "validCompletions": sum(bool(x.get("schemaValid")) for x in rows),
             "policyValidMutationProposals": sum(bool(x.get("mutationDslValid")) for x in rows),
@@ -123,7 +149,7 @@ def main() -> int:
               + " model_json=" + str(row.get("schemaValid") is True).lower()
               + " admissible_mutation=" + str(row.get("mutationDslValid") is True).lower()
               + " publish=false", file=sys.stderr, flush=True)
-    return 0 if len(rows) == len(TOPOLOGIES) else 1
+    return 0 if len(rows) == len(selected) else 1
 
 
 if __name__ == "__main__":

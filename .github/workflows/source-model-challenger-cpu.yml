@@ -70,19 +70,81 @@ jobs:
             sleep 2
           done
           exit 1
-      - name: Inspect four actual current families; DO NOT apply patches
+      - name: Regenerate one source-grounded Brain 9B proposal (ephemeral)
         run: |
           set -euo pipefail
-          timeout 55m python benchmark/source_model_challenger.py \
+          timeout 12m python benchmark/source_model_challenger.py \
             --niakvio-root .challenger/niakvio \
+            --provider 4khdhub \
+            --raw-candidates .challenger/private-sandbox-input.jsonl \
             --output .challenger/real-source-report.json \
             --model qwen35-9b --max-tokens 768 --timeout-seconds 420
           python -m json.tool .challenger/real-source-report.json >/dev/null
+      - name: Feed the generated proposal through canonical Brain FORCE application in isolated checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ ! -s .challenger/private-sandbox-input.jsonl ]; then
+            echo "FIELD_BRAIN_REAL_SOURCE_SANDBOX no_admissible_candidate=true"
+            exit 0
+          fi
+          niak_sha="$(git -C .challenger/niakvio rev-parse HEAD)"
+          python scripts/publish_niakvio_force_mutations.py \
+            --input .challenger/private-sandbox-input.jsonl \
+            --output .challenger/private-force-payload.json \
+            --niakvio-root .challenger/niakvio \
+            --niakvio-sha "$niak_sha" --brain-llm-sha "$GITHUB_SHA"
+          count="$(python -c 'import json; print(json.load(open(".challenger/private-force-payload.json"))["providerCount"])')"
+          if [ "$count" != 1 ]; then
+            echo "FIELD_BRAIN_REAL_SOURCE_SANDBOX force_sanitizer_rejected=true"
+            exit 0
+          fi
+          python .challenger/niakvio/scripts/apply_brain_llm_force_mutations.py \
+            --input "$(pwd)/.challenger/private-force-payload.json" \
+            --current-sha "$niak_sha" --provider 4khdhub \
+            --report "$(pwd)/.challenger/private-apply-report.json"
+          applied="$(python -c 'import json; print(json.load(open(".challenger/private-apply-report.json"))["appliedProviderCount"])')"
+          if [ "$applied" != 1 ]; then
+            echo "FIELD_BRAIN_REAL_SOURCE_SANDBOX canonical_apply_not_accepted=true"
+            exit 0
+          fi
+          (
+            cd .challenger/niakvio
+            npm ci --ignore-scripts --no-audit --no-fund
+            python scripts/materialize_provider_v3_one.py 4khdhub
+            python scripts/stage_published.py
+            NUVIO_HEALTH_PROVIDER_FILTER=4khdhub \
+              NUVIO_HEALTH_OUTPUT="$GITHUB_WORKSPACE/.challenger/deep-output" \
+              node scripts/health_check.mjs --deep
+          )
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          output=Path(".challenger/deep-output/health-results.json")
+          report=json.load(output.open())
+          results=report.get("results") or []
+          assert len(results)==1
+          r=results[0]
+          tests=r.get("tests") or []
+          playable=sum(int(t.get("streams_playable") or 0) for t in tests)
+          identity=sum(int(t.get("identity_verified_streams") or 0) for t in tests)
+          summary={"sourceSha":str(report.get("environment",{}).get("commit") or ""),
+                   "provider":"4khdhub",
+                   "status":r.get("status"),"playable":playable,"identityVerified":identity,
+                   "candidateMaterialized":True,"sandboxExecuted":True,
+                   "validated":playable>0 and identity>0,
+                   "published":False}
+          Path(".challenger/source-sandbox-result.json").write_text(json.dumps(summary,indent=2)+"\\n")
+          print("FIELD_BRAIN_REAL_SOURCE_REPLAY materialized=true playback=%d identity=%d publish=false" %
+                (playable,identity))
+          PY
       - name: Upload sanitized read-only diagnostics
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: brain-qwen35-9b-real-source-diagnostic
-          path: .challenger/real-source-report.json
+          path: |
+            .challenger/real-source-report.json
+            .challenger/source-sandbox-result.json
           retention-days: 7
           if-no-files-found: warn

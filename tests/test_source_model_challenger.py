@@ -12,6 +12,19 @@ class SourceModelChallengerContract(unittest.TestCase):
                          {"4khdhub", "allanime", "moviesmod", "yflix"})
         self.assertEqual(len(set(TOPOLOGIES.values())), 4)
 
+    def test_workflow_never_uploads_unreviewed_candidate_bytes(self):
+        from pathlib import Path
+        workflow=(Path(__file__).resolve().parents[1]/
+                  ".github/workflows/source-model-challenger-cpu.yml").read_text()
+        self.assertIn("--provider 4khdhub",workflow)
+        self.assertIn("apply_brain_llm_force_mutations.py",workflow)
+        self.assertIn("materialize_provider_v3_one.py 4khdhub",workflow)
+        self.assertIn("node scripts/health_check.mjs --deep",workflow)
+        uploaded=workflow.split("      - name: Upload sanitized read-only diagnostics",1)[1]
+        self.assertNotIn("private-",uploaded)
+        self.assertNotIn("provider-overrides.json",uploaded)
+        self.assertNotIn("providers/",uploaded)
+
     def test_invalid_unbound_mutation_not_counted_as_admissible(self):
         request = RepairRequest(provider_id="moviesmod", failure_class="route_proven_gap",
                                 provider_context={})
