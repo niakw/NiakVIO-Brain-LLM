@@ -12,10 +12,8 @@ on:
         required: true
         type: string
     secrets:
-      TMDB_API_KEY:
-        required: false
-      TMDB_ACCESS_TOKEN:
-        required: false
+      TMDB_API_KEY: { required: false }
+      TMDB_ACCESS_TOKEN: { required: false }
   workflow_dispatch:
   # No automatic 9B run on Brain-only push: previously this silently tested
   # a keyless environment and misclassified live provider execution.

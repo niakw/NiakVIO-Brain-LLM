@@ -1,3 +1,7 @@
+## 2026-11-10 — Privacy audit false positive on workflow_call secret declaration
+
+- Brain `e835b68` CI `42871048764` failed the strict public-repository privacy audit only because the new GitHub Actions `workflow_call.secrets.TMDB_API_KEY\nrequired: false` **declaration** (not a credential value) matched the scanner's multiline `api_key_value` regex. No secret text was committed. Switched the two secret *schema declarations* to inline YAML mappings `{ required: false }`, preserving GitHub Actions semantics while avoiding the false match. The genuine API key/credential scanner remains untouched. Re-run exact Brain SHA CI before using it as a pinned reusable workflow.
+
 ## 2026-11-10 — Source replay parity blocker: Brain benchmark omitted TMDB fixture credentials
 
 - On 2026-11-10, 4-family Brain run `42869086696` at Brain `8e03f6d` with Niak source `89fae811` observed 4khdhub `provider_unreachable` / **0 owned network requests**, while Niak's six-family reverse run `42869551654` on the descendant source `21e90cc` (workflow/docs-only source differences) passed exact movie/TV fixtures with **2 HTTP-200 HTML content_lookup responses** and active `detail`/`resolve` functions. In both runs 0 streams, but execution depth differs, so a pre-network defect cannot be declared persistent. Brain workflow did not pass `TMDB_API_KEY` or `TMDB_ACCESS_TOKEN`; Niak reverse workflow does. Credential presence is therefore an **environment confounder** to eliminate, not definitive proof of causation without same-sha A/B.
