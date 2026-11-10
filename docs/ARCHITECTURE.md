@@ -689,3 +689,15 @@ refine the causal failure and prioritize actually executed provider-owned
 functions before the FORCE scope cascade, but cannot grant source authority,
 media/episode identity, playback or publication. Baseline vs candidate vs
 confirmation remains the separate post-mutation proof.
+
+
+### Sanitized current causal signatures (2026-11-10)
+The Brain synthesizer now sees a compact, typed description of current
+provider-executed HTTP/GraphQL/HTML/player/media **observation** signatures.
+Each signature explicitly has no publication/media identity authority; it
+cannot invent a working host, correct episode, valid stream or mutating policy.
+The identical pure classifier serves production live FORCE context and
+four-family read-only model comparison. When the worker never issues a request,
+the next action is same-byte Nuvio-vs-Deep invocation diagnosis, **not** an
+automatic provider parse patch. Actual model output and replay are independently
+required; synthetic signature tests never count as fixes.

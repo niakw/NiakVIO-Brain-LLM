@@ -8,6 +8,7 @@ from typing import Any
 from .contracts import RepairRequest
 from .provider_context import _sanitize_reference_source
 from .source_units import javascript_function_end
+from .current_evidence import current_causal_signatures
 from .live_evidence import network_evidence, verification_feedback, non_improving_functions, fixture_evidence, executed_helper_context, short_media_source_focus, public_domain_references, domain_reference_focus
 
 def _clip(value: Any, limit: int) -> str:
@@ -1807,6 +1808,7 @@ def build_force_prompt_payload(
         ),
         "current_network_evidence": network_evidence((context.get("live_runtime_evidence") or {}).get("network_evidence")),
         "current_fixture_evidence": fixture_evidence((context.get("live_runtime_evidence") or {}).get("fixture_evidence")),
+        "current_causal_signatures": current_causal_signatures(context.get("live_runtime_evidence")),
         "terminal_evidence_policy": (
             "A sampled media signature proves bytes reached the terminal probe, not playback or identity. "
             "If that fixture still returns no streams, inspect post-extraction validation, duration and "

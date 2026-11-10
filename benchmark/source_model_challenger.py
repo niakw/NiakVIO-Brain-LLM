@@ -242,6 +242,7 @@ def main() -> int:
                 row["liveNetworkObservations"] = current_live["network_count"]
                 row["liveFixtureObservations"] = current_live["fixture_count"]
                 row["liveActiveFunctionCount"] = current_live["active_function_count"]
+                row["currentCausalSignals"] = current_live["causal_signals"]
                 if missing_provider_execution_evidence(live_context, current_live):
                     print(
                         "FIELD_BRAIN_SOURCE_PREFLIGHT_BLOCKED "
@@ -343,6 +344,7 @@ def main() -> int:
               + " abstention_category=" + str(row.get("abstentionCategory") or "none")
               + " live_network=" + str(row.get("liveNetworkObservations") or 0)
               + " live_fixtures=" + str(row.get("liveFixtureObservations") or 0)
+              + " causal_signals=" + ",".join(row.get("currentCausalSignals") or [])
               + " current_anchor=" + str(row.get("currentByteAnchorValid"))
               + " publish=false", file=sys.stderr, flush=True)
     return 0 if len(rows) == len(selected) else 1

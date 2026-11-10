@@ -8,6 +8,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from .current_evidence import current_causal_signatures
 from .live_evidence import (
     apply_verified_live_failure, executed_runtime_source, fixture_evidence,
     network_evidence, observed_failure_class, public_domain_references,
@@ -82,6 +83,7 @@ def attach_live_runtime_evidence(
         "network_count": len(current["network_evidence"]),
         "fixture_count": len(current["fixture_evidence"]),
         "active_function_count": len(active_functions),
+        "causal_signals": current_causal_signatures(current)["signals"],
         "historical_prior_overridden": overridden,
         "fixture_selection_complete": live.get("fixture_selection_complete") is True,
     }

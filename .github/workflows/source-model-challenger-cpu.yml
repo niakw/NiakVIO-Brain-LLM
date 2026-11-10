@@ -7,6 +7,8 @@ on:
     paths:
       - 'benchmark/source_model_challenger.py'
       - 'src/niakvio_brain_llm/live_context_ingest.py'
+      - 'src/niakvio_brain_llm/current_evidence.py'
+      - 'src/niakvio_brain_llm/prompting.py'
       - '.github/workflows/source-model-challenger-cpu.yml'
 
 permissions:
