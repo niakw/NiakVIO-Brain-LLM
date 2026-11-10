@@ -1249,3 +1249,15 @@
   Keep existing local model and paid API off by default. Benchmark an upgraded
   generator on the same independent topology+episode corpus before selecting it.
   Source: https://docs.github.com/en/github-models
+
+### 2026-11-10 — Prevent a multi-format provider from satisfying all reverse witnesses
+
+An actual `42785682750` census has provider-owned successful 2xx responses
+across HTML-download, HTML-player, HTML-catalogue and JSON/API categories,
+including providers with more than one shape. TMDB metadata fetches must NOT
+count as provider API replies; HTTP challenges (including 200 turnstile) give no
+format proof. Family waves now reserve independent provider witnesses per
+observed topology where available, even if a multi-format provider already
+emits those shapes. This is bounded *diagnostic breadth*, not four functional
+repairs. Cross-topology tests require independent provider selection, no
+TMDB contamination, and negative WAF controls. No provider bytes mutated.

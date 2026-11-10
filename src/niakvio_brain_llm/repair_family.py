@@ -429,11 +429,12 @@ def select_family_wave(
                     }
                 }
 
-            covered = topologies(representative)
+            # Independent witness diversity matters: one multi-format
+            # website must not stand in for an unrelated streaming/API site.
+            # Add at most one different provider for each *observed* topology.
+            # No invented topology or automatic publication authority.
             available = set().union(*(topologies(item) for item in members))
-            for topology in sorted(available - covered):
-                if topology in covered:
-                    continue
+            for topology in sorted(available):
                 witnesses = [
                     item for item in members
                     if item[0] not in selected_indexes and topology in topologies(item)
@@ -442,7 +443,6 @@ def select_family_wave(
                     continue
                 extra = min(witnesses, key=witness_key)
                 selected_indexes.add(extra[0])
-                covered.update(topologies(extra))
 
     selected = [
         row for index, row in enumerate(rows)

@@ -65,7 +65,7 @@ class CrossTopologyFamilyWaveTests(unittest.TestCase):
         page = fixture("html", markers=("player", "turnstile"))
         self.assertEqual(observed_source_topologies(page["observations"]), [])
 
-    def test_overlapping_topologies_do_not_force_redundant_provider(self):
+    def test_overlapping_topologies_get_independent_provider_witnesses(self):
         mixed = fixture("html", markers=("download",))
         mixed["observations"][0]["value"]["network"]["movie"].append({
             "status": 200, "host": "provider.example", "shape": {"kind": "json"}
@@ -74,8 +74,8 @@ class CrossTopologyFamilyWaveTests(unittest.TestCase):
         desc = [repair_family_descriptor(x) for x in raws]
         rows = [{"provider": f"p{i}", "repair_family": d} for i,d in enumerate(desc)]
         selected, deferred = select_family_wave(rows, ensure_topology_coverage=True)
-        self.assertEqual([row["provider"] for row in selected], ["p0"])
-        self.assertEqual(len(deferred), 2)
+        self.assertEqual([row["provider"] for row in selected], ["p0", "p1", "p2"])
+        self.assertEqual(len(deferred), 0)
 
     def test_no_unverified_family_fanout(self):
         raw = fixture("json")
