@@ -61,6 +61,7 @@ class SourceModelChallengerContract(unittest.TestCase):
         workflow=(Path(__file__).resolve().parents[1]/
                   ".github/workflows/source-model-challenger-cpu.yml").read_text()
         self.assertIn("--provider 4khdhub --canonical-force",workflow)
+        self.assertIn("python -m benchmark.source_model_challenger", workflow)
         from benchmark import source_model_challenger as source_challenger
         import inspect
         self.assertIn("planner.plan(request, compact_force=True)",

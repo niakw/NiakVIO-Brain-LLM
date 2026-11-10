@@ -73,7 +73,7 @@ jobs:
       - name: Generate a production-normalized Brain FORCE candidate (ephemeral)
         run: |
           set -euo pipefail
-          timeout 12m python benchmark/source_model_challenger.py \
+          timeout 12m python -m benchmark.source_model_challenger \
             --niakvio-root .challenger/niakvio \
             --provider 4khdhub --canonical-force \
             --raw-candidates .challenger/private-sandbox-input.jsonl \

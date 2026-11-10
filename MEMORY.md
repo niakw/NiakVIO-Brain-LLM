@@ -1,3 +1,7 @@
+## 2026-11-10 — CPU challenger entrypoint import fix
+
+- Source challenger run `42842746224` failed **before inference** with `ModuleNotFoundError: No module named 'scripts'`: workflow launched `python benchmark/source_model_challenger.py`, which places the `benchmark/` directory, not the checkout root, on `sys.path`; CI imports used `python -m unittest` and did not catch the workflow entrypoint mismatch. Corrected workflow to `python -m benchmark.source_model_challenger` and asserted the exact entrypoint in the contract test. This is an execution harness fix, **not** provider repair. Run `42843282751` on prior `e53d27d7` can still fail with the same import issue and cannot prove the new entrypoint.
+
 ## 2026-11-10 — CPU challenger must use production Brain FORCE, not raw proposal mode
 
 - Root-cause follow-up to `42831184770`: `benchmark/source_model_challenger.py` called `BrainPlanner.propose_raw()`, documented as skipping production normalization, while the authoritative pipeline requires `BrainPlanner.plan(compact_force=True)` for constrained grammar, current `unit_id` resolution and exact-match conversion. Thus a JSON/DSL-valid 9B proposal was never evidence of a production-compilable candidate.
