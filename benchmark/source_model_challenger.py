@@ -11,7 +11,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from niakvio_brain_llm.backend import LocalOpenAICompatibleBackend
+from niakvio_brain_llm.backend import LocalOpenAICompatibleBackend, HostedResponsesBackend
 from niakvio_brain_llm.document_memory import DocumentStore
 from niakvio_brain_llm.force_scope_order import select_force_scopes
 from niakvio_brain_llm.mutation_guard import validate_mutations
@@ -106,6 +106,7 @@ def main() -> int:
     ap.add_argument("--niakvio-root", required=True)
     ap.add_argument("--output", required=True)
     ap.add_argument("--endpoint", default="http://127.0.0.1:8080")
+    ap.add_argument("--backend", choices=("local", "hosted"), default="local")
     ap.add_argument("--model", default="qwen35-9b")
     ap.add_argument("--provider", action="append", default=[],
                     help="Exact family ID(s) for first live sandbox proof")
@@ -120,9 +121,13 @@ def main() -> int:
     args = ap.parse_args()
     if args.model_only_force and not args.canonical_force:
         ap.error("--model-only-force requires --canonical-force")
+    if args.backend == "hosted" and not (args.canonical_force and args.model_only_force):
+        ap.error("hosted challenger must use constrained model-only FORCE")
     if not 128 <= args.max_tokens <= 2048 or not 30 <= args.timeout_seconds <= 900:
         ap.error("outside bounded inference limits")
     selected = list(dict.fromkeys(args.provider)) if args.provider else list(TOPOLOGIES)
+    if args.backend == "hosted" and len(selected) != 1:
+        ap.error("hosted source challenger allows exactly one requested provider")
     if not selected or any(value not in TOPOLOGIES for value in selected):
         ap.error("provider must belong to the four evidence-based source families")
     root = Path(args.niakvio_root).resolve()
@@ -131,10 +136,18 @@ def main() -> int:
     assert len(sha) == 40
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
-    backend = LocalOpenAICompatibleBackend(
-        base_url=args.endpoint, model=args.model,
-        timeout_seconds=args.timeout_seconds, max_tokens=args.max_tokens,
-        temperature=0.0)
+    backend = (
+        HostedResponsesBackend.from_environment(
+            model=args.model, timeout_seconds=min(args.timeout_seconds, 300),
+            max_tokens=max(1024, args.max_tokens), reasoning_effort="medium",
+        )
+        if args.backend == "hosted"
+        else LocalOpenAICompatibleBackend(
+            base_url=args.endpoint, model=args.model,
+            timeout_seconds=args.timeout_seconds, max_tokens=args.max_tokens,
+            temperature=0.0,
+        )
+    )
     planner = BrainPlanner(backend, ExperienceStore([]), DocumentStore([]))
     rows = []
     full_candidates = []
@@ -187,6 +200,7 @@ def main() -> int:
         rows.append(row)
         report = {
             "schemaVersion": 1, "model": args.model,
+            "backend": args.backend,
             "sourceRepository": "niakw/NiakVIO",
             "sourceSha": sha,
             "families": len(selected),

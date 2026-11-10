@@ -1,3 +1,9 @@
+## 2026-11-10 — Manual stronger hosted model route prepared, not run or billed
+
+- Four-family canonical CPU Qwen3.5-9B challenger `42852086843` on executable Brain `672aba08`: all four independent representatives (`4khdhub`, `allanime`, `moviesmod`, `yflix`) routed their first production-priority mutation scope (`provider_bloc`) to local 9B; all four returned schema-valid **abstentions with 0 mutations**. No provider was repaired, rematerialized or stream-validated by this model-only run. `a6483bd` fixed a stale test, and exact Brain main CI became green.
+- Official GitHub Models API was retired July 30, 2026; no `GITHUB_TOKEN` inference replacement exists. Existing OpenAI Responses backend supports `gpt-6.1-sol` and `gpt-6-astra`. Added a separately dispatched, **manual-only** hosted benchmark workflow with an explicit repo secret, $0.50 per-run locked budget, one provider per run, fixed model allowlist, constrained current-source Brain FORCE, canonical application and real Deep; no production writes. Repository secret is not available or assumed and **no paid API call has been executed**. Global spend cap must be enforced at provider account as separate runner ledgers are independent.
+- This is model-evaluation infrastructure, not a repair. An actual hosted A/B result and exact playable media identity remains blocked until an operator configures the API key/billing and intentionally dispatches the workflow.
+
 ## 2026-11-10 — GitHub Models retired; do not plan GITHUB_TOKEN inference
 
 - Verified official GitHub Docs and July 1 changelog: GitHub Models fully retired **July 30, 2026** (playground, API and BYOK all closed). Thus old 2025 free `GITHUB_TOKEN models:read` advice is obsolete. GitHub Actions CPU and Copilot are separate; do not claim unlimited hosted model inference from repository tokens.

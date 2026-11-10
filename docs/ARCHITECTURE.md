@@ -631,3 +631,18 @@ sanitized source/secret handling. Do not silently enable cloud calls, presume
 GPU availability on GitHub-hosted CPU runners, or use Copilot as an undocumented
 substitute for the retired GitHub Models inference API. Keep the common
 compiler/materializer/playable-media validation regardless of model chosen.
+
+
+### Explicit hosted challenger, no automatic spending (2026-11-10)
+
+A separate manual-only `Brain - Hosted Source Challenger` workflow can compare
+GPT-6.1 Sol or GPT-6 Astra against one provider from the independent family
+representatives. It is disabled without the repository secret
+`NIAKVIO_OPENAI_API_KEY`, uses the production FORCE source-scope selector,
+current edit-unit compiler, exact source anchors, isolated NiakVIO materialization,
+Deep playback and content-identity proof. The workflow budget is **$0.50 per
+explicit invocation**, with the existing locked `BudgetLedger` and
+`NIAKVIO_ALLOW_PAID_API=1` only inside that manual job. Because separate
+runner ledgers are not a global account-wide cap, users also need a provider
+billing cap. No production publication is possible from this benchmark.
+No hosted API call was made when this workflow was added.

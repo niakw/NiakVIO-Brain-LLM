@@ -153,6 +153,25 @@ class SourceModelChallengerContract(unittest.TestCase):
         self.assertNotIn("provider-overrides.json",uploaded)
         self.assertNotIn("providers/",uploaded)
 
+
+    def test_hosted_workflow_is_manual_read_only_and_explicitly_bounded(self):
+        workflow = (Path(__file__).resolve().parents[1] /
+                    ".github/workflows/hosted-source-model-challenger.yml").read_text()
+        self.assertIn("workflow_dispatch:", workflow)
+        self.assertNotIn("  push:", workflow)
+        self.assertNotIn("  schedule:", workflow)
+        self.assertIn("contents: read", workflow)
+        self.assertIn("NIAKVIO_OPENAI_API_KEY: ${{ secrets.NIAKVIO_OPENAI_API_KEY }}", workflow)
+        self.assertIn("NIAKVIO_API_BUDGET_USD: '0.50'", workflow)
+        self.assertIn("--backend hosted", workflow)
+        self.assertIn("--canonical-force --model-only-force", workflow)
+        self.assertIn("apply_brain_llm_force_mutations.py", workflow)
+        self.assertIn("source_replay_evidence", workflow)
+        self.assertIn("no_admissible_candidate=true publish=false", workflow)
+        uploaded = workflow.split("      - name: Upload sanitized diagnostics only", 1)[1]
+        self.assertNotIn("private-", uploaded)
+        self.assertNotIn("provider-overrides.json", uploaded)
+
     def test_registered_provider_patch_is_not_a_false_negative(self):
         from benchmark.source_model_challenger import classify_proposal
         path = "scripts/provider_patches/already_registered.py"
