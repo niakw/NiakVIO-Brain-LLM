@@ -1,3 +1,7 @@
+## 2026-11-10 — Share live-evidence CI repair
+
+- Brain CI `42860476402` on `a144c3e` failed in **only the newly added unit test**, which called nonexistent `RepairRequest.from_dict()` (RepairRequest supports dataclass construction/to_dict; RepairProposal supports from_dict). 440 tests ran, 3 subtest errors for the same wrong constructor. Fixed test to `copy.deepcopy(base)`; the live ingestion implementation itself was not the source of this failure. Full CI and the actual exact-provider preflight must still pass before declaring the infrastructure validated.
+
 ## 2026-11-10 — Real-source Brain model challenger lacked live provider execution evidence
 
 - Source-SHA `c10dcfa` four-family run `42858541518` completed successfully as a diagnostic but all four model-only cases **abstained**, now with explicit context measurements: 4khdhub `editable_units=2`, allanime `=4`, moviesmod `=2`, yflix `=2`; each had 1 historical strategy hint but `field_evidence=0` and `policy_abstain=false`; all abstentions categorized `missing_current_causal_evidence`. Thus Qwen is not rejecting for lack of editable units or mutation safety; it needs actual network/fixture causality before generating edits. Zero providers repaired, no media tested after a generated edit.

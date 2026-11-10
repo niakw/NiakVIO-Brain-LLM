@@ -1,4 +1,5 @@
 from __future__ import annotations
+import copy
 import json
 import tempfile
 import unittest
@@ -46,7 +47,7 @@ class SourceModelChallengerContract(unittest.TestCase):
                 ValueError, "authority mismatch|fixture set is incomplete"
             ):
                 attach_live_runtime_evidence(
-                    RepairRequest.from_dict(base.to_dict()),
+                    copy.deepcopy(base),
                     {**good, field: value}, source_sha="a"*40,
                     explicit_providers=["allanime"],
                 )
