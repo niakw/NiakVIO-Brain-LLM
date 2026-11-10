@@ -1271,3 +1271,19 @@ correctly failed the negative duplication test (416 tests, 1 failure). The
 selection now skips identical mono-topology siblings and insists that extra
 witnesses differ structurally from the chosen representative. Recheck the
 latest exact-SHA CI before claiming this correction validated.
+
+## 2026-11-10 — GitHub standard-CPU 9B challenger experiment
+
+- Added isolated model-challenger workflow with a one-time explicit trigger.
+  Uses public-repo standard 4 vCPU/16 GiB runner (free), official llama.cpp
+  b11140 binary checksum and 5.78 GB SoAIHQ Qwen3.5-9B Q4_K_M weights
+  checksum `ef6f244d63abcba4f8d30b7cbd9369e9e798fc33cf21109889373f59af329c93`.
+- Does not use deprecated GitHub Models, API keys, paid endpoints or mutate
+  NiakVIO provider code. Benchmarks six historical, public cases only; it can
+  show generation contract performance but **cannot** claim any player/media
+  repair or represent the full topological validation matrix. A positive result
+  would justify a further exact-source live/cross-topology A/B, not promotion.
+- The current default local 3B guidance/7B FORCE remains unchanged; model
+  selection is gated on actual runnable inference, measurable gains and safe
+  provider replay. If the runner cannot load/download 9B, log it as environment
+  limitation and retain baseline.

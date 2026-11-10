@@ -57,6 +57,14 @@
       "baseModel": "Qwen/Qwen3.8-27B",
       "status": "teacher-candidate",
       "reason": "too large for default hosted CPU runtime; potential critic/distillation teacher"
+    },
+    {
+      "id": "qwen35-9b",
+      "baseModel": "Qwen/Qwen3.5-9B",
+      "weights": "SoAIHQ/Qwen3.5-9B-GGUF Q4_K_M",
+      "quantizationTarget": "Q4_K_M",
+      "status": "cpu-benchmark-only",
+      "reason": "9B Q4 challenger fits standard public GitHub Actions runner; unqualified for provider publication; verified reference weights SHA256; no paid API"
     }
   ]
 }
