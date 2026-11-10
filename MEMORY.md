@@ -1,3 +1,8 @@
+## 2026-11-10 — GitHub Models retired; do not plan GITHUB_TOKEN inference
+
+- Verified official GitHub Docs and July 1 changelog: GitHub Models fully retired **July 30, 2026** (playground, API and BYOK all closed). Thus old 2025 free `GITHUB_TOKEN models:read` advice is obsolete. GitHub Actions CPU and Copilot are separate; do not claim unlimited hosted model inference from repository tokens.
+- Brain already has explicit opt-in hosted Responses backend, but no authenticated/billable provider test is evidenced and no API secret or spending can be assumed. Qwen3.5-9B on GitHub CPU remains the available no-key local control; compare on exact current source plus accepted/current-byte media proof, not JSON compliance. Documents updated without changing production provider code.
+
 ## 2026-11-10 — Scope priority refactor test migrated to single authority
 
 - Brain-LLM CI `42852086359` FAILED on `672aba08`: 433 tests otherwise ran, but historical source-contract test `tests/test_force_retry_budget.py` still looked for `scopes.append("provider_bloc")` inside `scripts/plan_batch_from_checkout.py` after the method correctly moved to `src/niakvio_brain_llm/force_scope_order.py`. This was a stale test fixture expectation, not a runtime failure. Updated the assertion to verify shared module plus production wrapper. Do not count new scope-first inference run until its exact commit CI passes and terminal validation is inspected.

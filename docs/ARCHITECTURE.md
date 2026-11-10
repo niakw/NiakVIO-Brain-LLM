@@ -614,3 +614,20 @@ The read-only canonical CPU challenger carries an isolated four-provider matrix
 its sandbox, its exact source SHA, its provider-scoped canonical apply and Deep
 check, and its separate artifact. A single case or an inferred family topology
 cannot establish another provider's media/identity success.
+
+
+### Hosted model choice and GitHub retirement (2026-11-10)
+
+GitHub Models was **fully retired on July 30, 2026**, including its inference
+API and BYOK surface. A GitHub Actions `GITHUB_TOKEN` cannot be treated as a
+free hosted model endpoint. Source: https://docs.github.com/en/github-models
+and https://github.blog/changelog/2026-07-01-github-models-is-being-fully-retired-on-july-30-2026/
+
+The public runner benchmark uses checksum-pinned local Qwen3.5-9B on CPU and
+is **read-only**; a passing diagnostic run does not establish a repaired stream.
+The existing `HostedResponsesBackend` (or a compatible separately provisioned
+hosted inference service) requires explicit credentials, bounded cost, and
+sanitized source/secret handling. Do not silently enable cloud calls, presume
+GPU availability on GitHub-hosted CPU runners, or use Copilot as an undocumented
+substitute for the retired GitHub Models inference API. Keep the common
+compiler/materializer/playable-media validation regardless of model chosen.
