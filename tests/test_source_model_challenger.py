@@ -60,7 +60,11 @@ class SourceModelChallengerContract(unittest.TestCase):
         from pathlib import Path
         workflow=(Path(__file__).resolve().parents[1]/
                   ".github/workflows/source-model-challenger-cpu.yml").read_text()
-        self.assertIn("--provider 4khdhub",workflow)
+        self.assertIn("--provider 4khdhub --canonical-force",workflow)
+        from benchmark import source_model_challenger as source_challenger
+        import inspect
+        self.assertIn("planner.plan(request, compact_force=True)",
+                      inspect.getsource(source_challenger.main))
         self.assertIn("apply_brain_llm_force_mutations.py",workflow)
         self.assertIn("materialize_provider_v3_one.py 4khdhub",workflow)
         self.assertIn("node scripts/health_check.mjs --deep",workflow)

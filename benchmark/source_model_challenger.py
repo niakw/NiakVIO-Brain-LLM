@@ -90,6 +90,8 @@ def main() -> int:
     ap.add_argument("--model", default="qwen35-9b")
     ap.add_argument("--provider", action="append", default=[],
                     help="Exact family ID(s) for first live sandbox proof")
+    ap.add_argument("--canonical-force", action="store_true",
+                    help="Use the real Brain FORCE planner, grammar and exact edit-unit converter")
     ap.add_argument("--raw-candidates", default="",
                     help="Runner-local only, never upload this file as an artifact")
     ap.add_argument("--max-tokens", type=int, default=768)
@@ -123,7 +125,11 @@ def main() -> int:
             # The proposal has no side effects. No output includes prompt,
             # evidence values, edits, media, URLs, headers or tokens.
             with contextlib.redirect_stdout(sys.stderr):
-                proposal = planner.propose_raw(request)
+                proposal = (
+                    planner.plan(request, compact_force=True)
+                    if args.canonical_force else planner.propose_raw(request)
+                )
+            row["generationMode"] = "canonical_force" if args.canonical_force else "raw_model_probe"
             row.update(classify_proposal(request, proposal, niakvio_root=root))
             if (args.raw_candidates and row.get("canonicalApplyEligible")
                     and row.get("mutationPolicyCompliant")
@@ -157,6 +163,7 @@ def main() -> int:
             "policyValidMutationProposals": sum(bool(x.get("mutationDslValid")) for x in rows),
             "repairAcceptanceProof": False,
             "mode": "read_only_public_current_source_diagnostic",
+            "generationMode": "canonical_force" if args.canonical_force else "raw_model_probe",
             "results": rows,
         }
         temporary = output.with_suffix(".tmp")

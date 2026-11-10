@@ -70,12 +70,12 @@ jobs:
             sleep 2
           done
           exit 1
-      - name: Regenerate one source-grounded Brain 9B proposal (ephemeral)
+      - name: Generate a production-normalized Brain FORCE candidate (ephemeral)
         run: |
           set -euo pipefail
           timeout 12m python benchmark/source_model_challenger.py \
             --niakvio-root .challenger/niakvio \
-            --provider 4khdhub \
+            --provider 4khdhub --canonical-force \
             --raw-candidates .challenger/private-sandbox-input.jsonl \
             --output .challenger/real-source-report.json \
             --model qwen35-9b --max-tokens 768 --timeout-seconds 420

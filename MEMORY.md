@@ -1,3 +1,8 @@
+## 2026-11-10 — CPU challenger must use production Brain FORCE, not raw proposal mode
+
+- Root-cause follow-up to `42831184770`: `benchmark/source_model_challenger.py` called `BrainPlanner.propose_raw()`, documented as skipping production normalization, while the authoritative pipeline requires `BrainPlanner.plan(compact_force=True)` for constrained grammar, current `unit_id` resolution and exact-match conversion. Thus a JSON/DSL-valid 9B proposal was never evidence of a production-compilable candidate.
+- The challenger now exposes explicit `--canonical-force`, used by the real-source workflow. Legacy inference-only topology comparisons can retain raw mode; diagnostic output records the chosen mode. Existing current-owned-anchor preflight remains mandatory, then external NiakVIO canonical apply/Deep replays the actual resulting candidate. No provider manually patched; next CPU run must still prove model invocation, application/materialization and playable identity, and subsequent independent families.
+
 ## 2026-11-10 — Qwen3.5-9B exact-runtime anchor gap, Brain bridge fix
 
 - Brain-LLM main `eef5613b`, Qwen challenger `42831184770`: `4khdhub` proposed a syntactically legal, policy-admissible Bloc, but canonical NiakVIO apply raised `provider_bloc find must occur exactly once in current provider-owned runtime bytes`; **no rematerialization, media, or repair**. Earlier four-topology inference run `42828162981` succeeded but did not prove playable repairs.

@@ -600,3 +600,10 @@ bytes before calling it canonical-apply eligible. Missing, duplicate, stale or
 Core-only anchors are rejected without editing providers. The authoritative
 NiakVIO apply, materialization, terminal playback and content identity gates
 still must pass. Source-family diversity is not equivalent to playback proof.
+
+### Canonical CPU challenger pipeline (2026-11-10)
+The real-source CPU challenger explicitly requests `BrainPlanner.plan(...,
+compact_force=True)` instead of the raw-model-only probe. This exercises the
+production FORCE constrained grammar/current-unit converter before the exact
+current-provider anchor preflight and external NiakVIO sandbox materializer.
+The raw-model path remains benchmark-only; it cannot establish executable repair.
