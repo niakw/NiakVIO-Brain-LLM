@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import copy
 import hashlib
 import json
 import subprocess
@@ -12,6 +13,7 @@ from pathlib import Path
 
 from niakvio_brain_llm.backend import LocalOpenAICompatibleBackend
 from niakvio_brain_llm.document_memory import DocumentStore
+from niakvio_brain_llm.force_scope_order import select_force_scopes
 from niakvio_brain_llm.mutation_guard import validate_mutations
 from niakvio_brain_llm.niakvio_adapter import request_from_checkout
 from niakvio_brain_llm.planner import BrainPlanner
@@ -26,6 +28,16 @@ TOPOLOGIES = {
     "moviesmod": "html_player",
     "yflix": "film_series_api",
 }
+
+
+def production_first_scope_request(request):
+    """Use the exact production FORCE scope ordering, bounded to one CPU candidate."""
+    scopes = select_force_scopes(request)
+    if not scopes:
+        raise ValueError("no evidence-backed FORCE mutation scope")
+    scoped = copy.deepcopy(request)
+    scoped.allowed_mutations = [scopes[0]]
+    return scoped, scopes[0]
 
 
 def classify_proposal(request, proposal, *, niakvio_root: Path | None = None) -> dict:
@@ -133,6 +145,9 @@ def main() -> int:
             request = request_from_checkout(root, provider_id)
             if request.provider_id.casefold().replace("_", "-") != provider_id:
                 raise ValueError("checkout provider identity mismatch")
+            if args.canonical_force:
+                request, chosen_scope = production_first_scope_request(request)
+                row["selectedScope"] = chosen_scope
             # The proposal has no side effects. No output includes prompt,
             # evidence values, edits, media, URLs, headers or tokens.
             with contextlib.redirect_stdout(sys.stderr):
@@ -194,6 +209,7 @@ def main() -> int:
               + " admissible_mutation=" + str(row.get("canonicalApplyEligible") is True).lower()
               + " mode=" + str(row.get("generationMode") or "unknown")
               + " abstained=" + str(row.get("abstained") is True).lower()
+              + " scope=" + str(row.get("selectedScope") or "all")
               + " mutation_count=" + str(row.get("mutationCount") or 0)
               + " current_anchor=" + str(row.get("currentByteAnchorValid"))
               + " publish=false", file=sys.stderr, flush=True)

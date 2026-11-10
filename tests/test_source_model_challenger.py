@@ -6,7 +6,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 from niakvio_brain_llm.contracts import RepairRequest
-from benchmark.source_model_challenger import TOPOLOGIES, classify_proposal
+from benchmark.source_model_challenger import TOPOLOGIES, classify_proposal, production_first_scope_request
 from scripts.publish_niakvio_force_mutations import validate_current_provider_bloc_anchors
 from benchmark.source_replay_evidence import summarize_deep_report
 
@@ -105,6 +105,26 @@ class SourceModelChallengerContract(unittest.TestCase):
             self.assertTrue(validate_current_provider_bloc_anchors(
                 Path(tmp), "unregistered", [{"scope": "provider_data"}]
             ))
+
+    def test_production_scope_first_matches_actual_shared_selector(self):
+        from niakvio_brain_llm.force_scope_order import select_force_scopes
+        request = RepairRequest(
+            provider_id="demo", failure_class="chain_terminal_gap",
+            status="CHAIN REACHED",
+            allowed_mutations=["provider_data", "provider_patch", "provider_bloc"],
+            provider_context={
+                "runtimeMutationSource": "function resolver(){return resolvePlayer(url);}",
+                "runtime_template_prior": {"reuseBeforeNovelBloc": True},
+                "override": {"official_site": "https://site.invalid"},
+                "registered_patch_sources": {"scripts/provider_patches/demo.py": "MANAGED_FIX_ID"},
+            },
+        )
+        before = list(request.allowed_mutations)
+        scoped, chosen = production_first_scope_request(request)
+        self.assertEqual(chosen, select_force_scopes(request)[0])
+        self.assertEqual(chosen, "provider_bloc")
+        self.assertEqual(scoped.allowed_mutations, ["provider_bloc"])
+        self.assertEqual(request.allowed_mutations, before)
 
     def test_four_independent_architectures(self):
         self.assertEqual(set(TOPOLOGIES),

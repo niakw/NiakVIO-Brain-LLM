@@ -22,13 +22,10 @@ def evidence(status=404):
 
 
 def production_scope_order(request):
-    path = Path(__file__).resolve().parents[1] / 'scripts/plan_batch_from_checkout.py'
-    tree = ast.parse(path.read_text())
-    function = next(node for node in ast.walk(tree)
-                    if isinstance(node, ast.FunctionDef) and node.name == '_force_scope_order')
-    namespace = {}
-    exec(compile(ast.Module(body=[function], type_ignores=[]), str(path), 'exec'), namespace)
-    return namespace['_force_scope_order'](request)
+    # Both the real batch planner and challenger must delegate to this exact
+    # module rather than maintaining divergent mutation-scope policies.
+    from niakvio_brain_llm.force_scope_order import select_force_scopes
+    return select_force_scopes(request)
 
 
 class PublicDomainReferenceTests(unittest.TestCase):

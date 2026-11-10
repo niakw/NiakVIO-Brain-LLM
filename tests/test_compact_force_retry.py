@@ -242,7 +242,9 @@ class CompactForceRetryTest(unittest.TestCase):
         planner = (ROOT / "src" / "niakvio_brain_llm" / "planner.py").read_text(encoding="utf-8")
         self.assertIn('if args.mode == "repair" and not args.advisor_only:', script)
         self.assertIn("_force_scope_order", script)
-        scope_order = script[script.index("def _force_scope_order"):script.index("def _run_force_scope")]
+        scope_order = (ROOT / "src" / "niakvio_brain_llm" /
+                       "force_scope_order.py").read_text(encoding="utf-8")
+        self.assertIn("return select_force_scopes(request)", script)
         self.assertIn("structural_gap =", scope_order)
         self.assertIn("runtime_patch_ready =", scope_order)
         self.assertIn("NIAKVIO_PROVIDER_RUNTIME_RESOLVER_V1", scope_order)
