@@ -30,8 +30,16 @@ ERRORS = ("cloudflare","access denied","captcha","just a moment","checking your 
 
 def shape(text: str, query: str) -> dict:
     # Reconstruct only safe structural facts. No titles, links or HTML escape.
-    cards=[m.group(0) for m in CARD_OPEN_RE.finditer(text)
-           if "movie-card" in m.group(1).lower().split()]
+    card_matches=[m for m in CARD_OPEN_RE.finditer(text)
+                  if "movie-card" in m.group(1).lower().split()]
+    cards=[m.group(0) for m in card_matches]
+    card_regions=[
+        text[m.start():(
+          card_matches[i+1].start() if i+1<len(card_matches)
+          else min(len(text),m.start()+15000)
+        )]
+        for i,m in enumerate(card_matches)
+    ]
     title_nodes=[re.sub(r"<[^>]*>"," ",part).casefold()
                  for part in TITLE_RE.findall(text)]
     query_terms=[word for word in re.findall(r"[a-z0-9]+",query.casefold())
@@ -49,13 +57,23 @@ def shape(text: str, query: str) -> dict:
         "html_class_attributes":len(CLASS_RE.findall(text)),
         "anchors_with_href":len(ANCHOR_RE.findall(text)),
         "exact_card_open_tags":len(cards),
-        "exact_cards_with_href":sum(bool(re.search(r"\\bhref\\s*=",tag,re.I)) for tag in cards),
+        "exact_cards_with_href":sum(bool(re.search(r"\bhref\s*=",tag,re.I)) for tag in cards),
+        "card_regions_with_nested_href":sum(bool(ANCHOR_RE.search(region))
+                                           for region in card_regions),
+        "card_regions_with_matching_query":sum(
+            bool(query_terms) and all(word in re.sub(r"<[^>]*>"," ",region).casefold()
+                                      for word in query_terms)
+            for region in card_regions
+        ),
         "title_nodes_matching_query_terms":matching_title_nodes,
         "title_nodes_parsed":len(title_nodes),
         "class_token_counts":count,
         "waf_marker_flags":hint,
         "body_sha256_16":hashlib.sha256(text.encode("utf-8")).hexdigest()[:16],
     }
+
+# A genuinely present href must never be miscounted as absent.
+assert re.search(r"\bhref\s*=", '<a class="movie-card" href="/detail">')
 
 def probe(origin: str, term: str) -> dict:
     target=origin.rstrip("/")+"/?"+urllib.parse.urlencode({"s":term})
