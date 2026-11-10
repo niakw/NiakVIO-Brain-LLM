@@ -13,8 +13,11 @@ permissions:
   contents: read
 
 concurrency:
+  # One active source-family inference experiment on the current Brain SHA.
+  # Superseded source-correctness experiments waste 9B CPU time and can block
+  # the new safety/fixture contract behind stale 75-minute jobs.
   group: niakvio-source-cpu-challenger
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   current-source:

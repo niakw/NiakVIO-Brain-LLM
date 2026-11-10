@@ -1,3 +1,8 @@
+## 2026-11-10 — CPU challenger must cancel superseded SHA runs
+
+- Multiple consecutive source-contract fixes left an old `42861059105` CPU 9B run on superseded `4ad1dd4` still consuming 75-minute-cap runner slots, while the current SHA diagnostic `42862595857` remained `pending` behind the `concurrency: cancel-in-progress: false` group. That prolongs the real-source feedback loop even though the old SHA lacks tight prompt and new no-request guard.
+- The read-only 4-family inference benchmark is now `cancel-in-progress:true` **only for this diagnostic workflow**; a newer source SHA supersedes the older CPU model run. The source/identity proof itself remains strict and independent; production repair/Learning runs are NOT cancelled or weakened. The exact latest model-sha run must be inspected rather than borrowing stale logs.
+
 ## 2026-11-10 — Fast fail for unobserved provider execution; still not a repair
 
 - Live preflight `42861059105` on Brain `4ad1dd4` confirmed 4khdhub strict 2 fixtures / `provider_unreachable`, 0 observed network events, 0 provider-owned functions; Qwen used ~172 sec then abstained for missing current causal evidence. By contrast other families produced network observations. This is not evidence the provider itself is responsible; dispatch/harness/runtime are still possible.
