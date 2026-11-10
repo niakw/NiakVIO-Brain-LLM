@@ -40,9 +40,34 @@ def production_first_scope_request(request):
     return scoped, scopes[0]
 
 
-def classify_proposal(request, proposal, *, niakvio_root: Path | None = None) -> dict:
+def load_challenger_rag(
+    experience_path: Path | None, document_path: Path | None, *, require: bool
+) -> tuple[ExperienceStore, DocumentStore]:
+    """Production-compatible public RAG; never silently use empty stores in FORCE."""
+    if require and (experience_path is None or document_path is None):
+        raise ValueError("canonical FORCE needs both explicit public experience and document corpora")
+    for path in (experience_path, document_path):
+        if path is not None and (not path.is_file() or not path.stat().st_size):
+            raise ValueError("missing or empty public RAG corpus")
+    experience = (ExperienceStore.from_jsonl_many([experience_path])
+                  if experience_path else ExperienceStore([]))
+    documents = (DocumentStore.from_jsonl_many([document_path])
+                 if document_path else DocumentStore([]))
+    if require and (not experience.rows or not documents.rows):
+        raise ValueError("canonical FORCE public RAG corpus has no usable records")
+    return experience, documents
+
+
+def classify_proposal(
+    request, proposal, *, niakvio_root: Path | None = None,
+    experience_store: ExperienceStore | None = None,
+) -> dict:
     """No provider source or route/URL is ever present in the report."""
-    prior = build_causal_prior(request, [])
+    prior = build_causal_prior(
+        request,
+        experience_store.search(request.to_dict(), limit=6)
+        if experience_store is not None else [],
+    )
     policy = build_mutation_policy(request, prior)
     mutations = list(proposal.mutations)
     allowed = set(policy.get("allowed_scopes") or ())
@@ -104,6 +129,10 @@ def classify_proposal(request, proposal, *, niakvio_root: Path | None = None) ->
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--niakvio-root", required=True)
+    ap.add_argument("--experience", type=Path, default=None,
+                    help="Production-compatible public experience JSONL (required in FORCE)")
+    ap.add_argument("--documents", type=Path, default=None,
+                    help="Production-compatible public documents JSONL (required in FORCE)")
     ap.add_argument("--output", required=True)
     ap.add_argument("--endpoint", default="http://127.0.0.1:8080")
     ap.add_argument("--backend", choices=("local", "hosted"), default="local")
@@ -148,7 +177,10 @@ def main() -> int:
             temperature=0.0,
         )
     )
-    planner = BrainPlanner(backend, ExperienceStore([]), DocumentStore([]))
+    experience_store, document_store = load_challenger_rag(
+        args.experience, args.documents, require=args.canonical_force,
+    )
+    planner = BrainPlanner(backend, experience_store, document_store)
     rows = []
     full_candidates = []
     for provider_id in selected:
@@ -175,7 +207,16 @@ def main() -> int:
                 "canonical_model_force" if args.model_only_force else
                 "canonical_force" if args.canonical_force else "raw_model_probe"
             )
-            row.update(classify_proposal(request, proposal, niakvio_root=root))
+            row.update(classify_proposal(
+                request, proposal, niakvio_root=root,
+                experience_store=experience_store,
+            ))
+            row["retrievedExperienceCount"] = len(
+                experience_store.search(request.to_dict(), limit=6)
+            )
+            row["retrievedDocumentCount"] = len(
+                document_store.search(request.to_dict(), limit=4)
+            )
             if (args.raw_candidates and row.get("canonicalApplyEligible")
                     and row.get("mutationPolicyCompliant")
                     and not row.get("abstained") and proposal.confidence >= 0.80):
@@ -201,6 +242,8 @@ def main() -> int:
         report = {
             "schemaVersion": 1, "model": args.model,
             "backend": args.backend,
+            "publicExperienceRecords": len(experience_store.rows),
+            "publicDocumentChunks": len(document_store.rows),
             "sourceRepository": "niakw/NiakVIO",
             "sourceSha": sha,
             "families": len(selected),

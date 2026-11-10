@@ -6,7 +6,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 from niakvio_brain_llm.contracts import RepairRequest
-from benchmark.source_model_challenger import TOPOLOGIES, classify_proposal, production_first_scope_request
+from benchmark.source_model_challenger import TOPOLOGIES, classify_proposal, production_first_scope_request, load_challenger_rag
 from scripts.publish_niakvio_force_mutations import validate_current_provider_bloc_anchors
 from benchmark.source_replay_evidence import summarize_deep_report
 
@@ -66,6 +66,44 @@ class SourceModelChallengerContract(unittest.TestCase):
         result = summarize_deep_report(report, provider="yflix", source_sha="d"*40)
         self.assertEqual(result["identityMatchedPlayable"], 1)
         self.assertTrue(result["validated"])
+
+    def test_force_rag_input_never_silently_empties_on_missing_corpora(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            experience = root / "experiences.jsonl"
+            documents = root / "docs.jsonl"
+            with self.assertRaisesRegex(ValueError, "both explicit public"):
+                load_challenger_rag(None, None, require=True)
+            with self.assertRaisesRegex(ValueError, "missing or empty"):
+                load_challenger_rag(experience, documents, require=True)
+            experience.write_text(json.dumps({
+                "experience_id": "case-1", "failure_class": "chain_terminal_gap",
+                "strategy": "test-current-byte-diagnosis", "result": "rejected",
+            }) + "\n", encoding="utf-8")
+            documents.write_text(json.dumps({
+                "kind": "document", "path": "ARCHITECTURE.md",
+                "heading": "terminal", "role": "provider_family",
+                "authority": 90, "text": "chain terminal gap",
+            }) + "\n", encoding="utf-8")
+            memory, docs = load_challenger_rag(experience, documents, require=True)
+            self.assertEqual(len(memory.rows), 1)
+            self.assertEqual(len(docs.rows), 1)
+            self.assertEqual(memory.search({"failure_class": "chain_terminal_gap"}, limit=6)[0]["experience_id"], "case-1")
+
+    def test_force_classifier_uses_same_experience_corpus_as_planner(self):
+        from niakvio_brain_llm.retrieval import ExperienceStore
+        store = ExperienceStore([{
+            "experience_id": "past-verified", "failure_class": "chain_terminal_gap",
+            "strategy": "terminal_media_traversal", "result": "validated",
+        }])
+        request = RepairRequest(provider_id="yflix", failure_class="chain_terminal_gap")
+        proposal = SimpleNamespace(
+            mutations=[], abstain=True, target_layer="provider", strategy="",
+        )
+        with patch("benchmark.source_model_challenger.build_causal_prior",
+                   return_value={"target_layer": "provider"}) as prior:
+            classify_proposal(request, proposal, experience_store=store)
+        self.assertTrue(prior.call_args[0][1], "classifier must receive the same RAG results as planner")
 
     def test_real_source_anchor_contract_across_four_independent_families(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -138,6 +176,10 @@ class SourceModelChallengerContract(unittest.TestCase):
         self.assertIn('--provider "$PROVIDER_ID" --canonical-force --model-only-force',workflow)
         self.assertIn("provider_id: [4khdhub, allanime, moviesmod, yflix]", workflow)
         self.assertIn("python -m benchmark.source_model_challenger", workflow)
+        self.assertIn("scripts/import_public_niakvio.py", workflow)
+        self.assertIn("scripts/import_public_docs.py", workflow)
+        self.assertIn("--experience .challenger/public-experience.jsonl", workflow)
+        self.assertIn("--documents .challenger/public-documents.jsonl", workflow)
         from benchmark import source_model_challenger as source_challenger
         import inspect
         self.assertIn("allow_deterministic_force=not args.model_only_force",

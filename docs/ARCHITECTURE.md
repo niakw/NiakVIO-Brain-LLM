@@ -643,3 +643,14 @@ receives an API key or enables paid calls; the pre-existing repository contract
 remains deliberately disabled. The stronger model experiment is **not run**
 and requires a separate operator-controlled deployment and spending consent.
 No provider publication is possible from the benchmark.
+
+
+### Public-RAG parity in read-only real-source challenger (2026-11-10)
+The canonical four-family CPU challenger imports production public experience and
+documentation with the same importer scripts used by the normal FORCE workflow.
+Empty, missing or unusable corpora cause a fail-closed diagnostic rather than a
+fake representative model test. The model planner and post-generation classifier
+receive the same retrieval store. Reports contain record counts only; private
+project memory remains unavailable in this public CI and must not be assumed
+equivalent to the full production Brain context. The generated candidate still
+requires exact anchor / canonical apply / materialize / real media identity.
