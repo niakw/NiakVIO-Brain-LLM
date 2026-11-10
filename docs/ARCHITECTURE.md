@@ -592,3 +592,11 @@ La classification causale des échecs HTTP de `live_evidence.py` sépare désorm
 `_failed_fixture_lookup_404s` requiert que chaque fixture réellement échouée dispose de sa propre trace 404 limitée aux étapes de recherche/catalogue ; une trace mixte 200/404 ou une erreur aval invalide cette attribution précise. `apply_verified_live_failure` garde le statut historique inchangé quand la preuve ne satisfait pas ce contrat. `domain_reference_focus` utilise le même oracle, sans accorder d'autorité de publication à une référence externe.
 
 Tests : `tests/test_live_preflight_policy.py` et `tests/test_public_domain_references.py`, dont un scénario film + `Spartacus S00E01`. Ces scénarios testent la **cohérence de classification** sur données synthétiques représentatives ; ils n'établissent ni la bonne identité d'un épisode joué, ni un stream terminal valide, ni une réparation complète d'un provider. Les observations live et le catalogue restent des autorités distinctes.
+
+### Current-byte FORCE anchor boundary (2026-11-10)
+The public Brain-LLM FORCE bridge checks every generated `provider_bloc` find for
+exactly one occurrence in the manifest-selected, provider-owned *current runtime*
+bytes before calling it canonical-apply eligible. Missing, duplicate, stale or
+Core-only anchors are rejected without editing providers. The authoritative
+NiakVIO apply, materialization, terminal playback and content identity gates
+still must pass. Source-family diversity is not equivalent to playback proof.

@@ -1,3 +1,9 @@
+## 2026-11-10 — Qwen3.5-9B exact-runtime anchor gap, Brain bridge fix
+
+- Brain-LLM main `eef5613b`, Qwen challenger `42831184770`: `4khdhub` proposed a syntactically legal, policy-admissible Bloc, but canonical NiakVIO apply raised `provider_bloc find must occur exactly once in current provider-owned runtime bytes`; **no rematerialization, media, or repair**. Earlier four-topology inference run `42828162981` succeeded but did not prove playable repairs.
+- Root-cause class: the Brain's early DSL/Force sanitizer check admitted a generated `find` that did not match the selected provider's actual current runtime rectangle. Brain-only preflight now validates exact owned-current-byte uniqueness before export and before the CPU challenger calls canonical apply. Reports split DSL validity from current-byte eligibility; canonical apply, materialization and playable Deep are still required. Four independent topology IDs have positive/negative anchor regression tests.
+- NiakVIO census `42834816565`: 46 providers, 14 FULL and 1 PARTIAL carried, 26 in repair queue. Fast Repair `42836110289`: 13 selected, zero validated. Learning `42839676985` and `42837652121` were running when inspected. Next proof is model-generated executable current byte, followed by correct title/episode/terminal media and cross-family coverage, not just CI green.
+
 ## 2026-10-25 — Current-byte repair watch and read-only source confinement
 
 - Independent live audit of `niakw/NiakVIO` main `970b753a5053893439b4c6cc8b7cec49e7020b84`: authoritative sharded census `40207319271` records **21 FULL OK / 46**, **17 repairQueue**, 3 PARTIAL, 2 CANDIDATE, 11 ROUTE PROVEN, 1 CHAIN REACHED, 1 NO PROOF, 2 REGRESSION and 5 DISABLED. The historical September **14-provider** cohort is not the current queue and must not silently replace the latest 17-provider authority.

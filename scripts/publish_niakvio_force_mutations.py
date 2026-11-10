@@ -5,6 +5,7 @@ import argparse
 import hashlib
 import json
 import re
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -72,6 +73,32 @@ def _provider_runtime_surface(root: Path, provider: str) -> tuple[str, str]:
     if not path.is_file():
         raise ValueError(f"{provider}: current provider runtime bytes unavailable: {filename}")
     return filename, hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def validate_current_provider_bloc_anchors(
+    root: Path, provider: str, mutations: list[dict[str, Any]]
+) -> bool:
+    """Read-only exact-anchor check; canonical NiakVIO FORCE is still authoritative."""
+    blocs = [m for m in mutations if m.get("scope") == "provider_bloc"]
+    if not blocs:
+        return True
+    filename, _digest = _provider_runtime_surface(root, provider)
+    target = (root / filename).resolve()
+    if not target.is_relative_to(root.resolve()):
+        raise ValueError(f"{provider}: runtime source escapes checkout")
+    source = target.read_text(encoding="utf-8", errors="replace")
+    begin_marker = "/* BEGIN NIAKVIO_PROVIDER */"
+    end_marker = "/* END NIAKVIO_PROVIDER */"
+    if source.count(begin_marker) == 1 and source.count(end_marker) == 1:
+        begin = source.index(begin_marker)
+        end = source.index(end_marker, begin)
+        first_core = source.find("/* STARTFIX:CORE.", begin, end)
+        source = source[begin:first_core if first_core >= 0 else end]
+    for mutation in blocs:
+        find = mutation.get("find")
+        if not isinstance(find, str) or not find or source.count(find) != 1:
+            raise ValueError(f"{provider}: provider_bloc find is absent or non-unique in current provider-owned bytes")
+    return True
 
 
 def mutation_context_fingerprint(
@@ -232,6 +259,12 @@ def sanitize(
             mutations,
             allowed_patch_paths=registered,
         )
+        try:
+            validate_current_provider_bloc_anchors(niakvio_root, provider, mutations)
+        except ValueError:
+            print(f"FIELD_BRAIN_FORCE_CURRENT_ANCHOR_REJECTED provider={provider}",
+                  file=sys.stderr, flush=True)
+            continue
 
         # Defense in depth: the Force bridge is provider-local only.
         allowed = set(request.allowed_mutations or [])

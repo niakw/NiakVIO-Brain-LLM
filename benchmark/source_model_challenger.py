@@ -18,6 +18,7 @@ from niakvio_brain_llm.planner import BrainPlanner
 from niakvio_brain_llm.policy import build_mutation_policy
 from niakvio_brain_llm.priors import build_causal_prior
 from niakvio_brain_llm.retrieval import ExperienceStore
+from scripts.publish_niakvio_force_mutations import validate_current_provider_bloc_anchors
 
 TOPOLOGIES = {
     "4khdhub": "download_html",
@@ -27,7 +28,7 @@ TOPOLOGIES = {
 }
 
 
-def classify_proposal(request, proposal) -> dict:
+def classify_proposal(request, proposal, *, niakvio_root: Path | None = None) -> dict:
     """No provider source or route/URL is ever present in the report."""
     prior = build_causal_prior(request, [])
     policy = build_mutation_policy(request, prior)
@@ -47,7 +48,23 @@ def classify_proposal(request, proposal) -> dict:
             syntax_valid = True
         except Exception:
             pass
+    current_anchor_valid = None
+    if niakvio_root is not None:
+        current_anchor_valid = False
+        if syntax_valid:
+            try:
+                current_anchor_valid = validate_current_provider_bloc_anchors(
+                    niakvio_root, request.provider_id, mutations
+                )
+            except (OSError, ValueError):
+                pass
+    canonical_eligible = bool(
+        syntax_valid and policy_ok and not proposal.abstain
+        and current_anchor_valid is True
+    )
     return {
+        "currentByteAnchorValid": current_anchor_valid,
+        "canonicalApplyEligible": canonical_eligible,
         "schemaValid": True,
         "targetLayer": proposal.target_layer,
         "strategyMatchesPrior": (not prior.get("strategy_prior")
@@ -107,8 +124,8 @@ def main() -> int:
             # evidence values, edits, media, URLs, headers or tokens.
             with contextlib.redirect_stdout(sys.stderr):
                 proposal = planner.propose_raw(request)
-            row.update(classify_proposal(request, proposal))
-            if (args.raw_candidates and row.get("mutationDslValid")
+            row.update(classify_proposal(request, proposal, niakvio_root=root))
+            if (args.raw_candidates and row.get("canonicalApplyEligible")
                     and row.get("mutationPolicyCompliant")
                     and not row.get("abstained") and proposal.confidence >= 0.80):
                 full_candidates.append({
@@ -147,7 +164,7 @@ def main() -> int:
         temporary.replace(output)
         print("FIELD_BRAIN_SOURCE_CHALLENGER provider=" + provider_id
               + " model_json=" + str(row.get("schemaValid") is True).lower()
-              + " admissible_mutation=" + str(row.get("mutationDslValid") is True).lower()
+              + " admissible_mutation=" + str(row.get("canonicalApplyEligible") is True).lower()
               + " publish=false", file=sys.stderr, flush=True)
     return 0 if len(rows) == len(selected) else 1
 

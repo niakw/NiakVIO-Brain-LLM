@@ -1,12 +1,56 @@
 from __future__ import annotations
+import json
+import tempfile
 import unittest
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 from niakvio_brain_llm.contracts import RepairRequest
 from benchmark.source_model_challenger import TOPOLOGIES, classify_proposal
+from scripts.publish_niakvio_force_mutations import validate_current_provider_bloc_anchors
 
 
 class SourceModelChallengerContract(unittest.TestCase):
+
+    def test_real_source_anchor_contract_across_four_independent_families(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "providers").mkdir()
+            (root / "manifest.json").write_text(json.dumps({
+                "scrapers": [{"id": name, "filename": f"providers/{name}.js"}
+                             for name in TOPOLOGIES]
+            }), encoding="utf-8")
+            candidate = {"scope": "provider_bloc",
+                         "find": "return decodeProviderPayload(raw);",
+                         "replace": "return decodeProviderPayload(raw || '');"}
+            for provider in TOPOLOGIES:
+                path = root / "providers" / f"{provider}.js"
+                path.write_text(
+                    "/* BEGIN NIAKVIO_PROVIDER */\n"
+                    "return decodeProviderPayload(raw);\n"
+                    "/* STARTFIX:CORE.IDENTITY */\n"
+                    "return coreGuard();\n"
+                    "/* END NIAKVIO_PROVIDER */\n", encoding="utf-8")
+                self.assertTrue(validate_current_provider_bloc_anchors(root, provider, [candidate]))
+                for bad_find in ["return missing();", "return coreGuard();"]:
+                    with self.assertRaisesRegex(ValueError, "absent or non-unique"):
+                        validate_current_provider_bloc_anchors(
+                            root, provider, [{**candidate, "find": bad_find}]
+                        )
+                path.write_text(
+                    "/* BEGIN NIAKVIO_PROVIDER */\n"
+                    "return decodeProviderPayload(raw);\n"
+                    "return decodeProviderPayload(raw);\n"
+                    "/* END NIAKVIO_PROVIDER */\n", encoding="utf-8")
+                with self.assertRaisesRegex(ValueError, "absent or non-unique"):
+                    validate_current_provider_bloc_anchors(root, provider, [candidate])
+
+    def test_non_bloc_mutation_does_not_require_runtime_anchor(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.assertTrue(validate_current_provider_bloc_anchors(
+                Path(tmp), "unregistered", [{"scope": "provider_data"}]
+            ))
+
     def test_four_independent_architectures(self):
         self.assertEqual(set(TOPOLOGIES),
                          {"4khdhub", "allanime", "moviesmod", "yflix"})
