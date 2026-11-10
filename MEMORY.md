@@ -1,3 +1,8 @@
+## 2026-11-10 — Real execution preflight must use immutable strict decoded fixture selector
+
+- Exact Brain run `42860824167` on `285798fa` passed local tests but its 4khdhub live preflight failed **correctly** at fixture identity gate: `expected=2 observed=10 missingCategories=none`, `FIELD_BRAIN_LIVE_CONTEXT_REJECTED exact_sha_or_fixture_incomplete`, with `provider_unreachable / no_provider_request_observed / 0 streams`. The model wasn't invoked, which is the correct fail-closed result rather than a provider repair failure.
+- Root cause: NiakVIO `scripts/evaluate_brain_llm_force_candidates.py::require_decoded_repair` activates immutable category-correct fixtures only when `NIAKVIO_REQUIRE_DECODE_PROOF=1` (precise variable); the public preflight workflow had omitted this opt-in and accidentally selected ten regular health fixtures. Added exact env var only to current-provider preflight. The strict fixture set cannot be relaxed to hide mismatches. Test asserts the actual env variable at entrypoint. Other three family results and new exact SHA must be inspected.
+
 ## 2026-11-10 — Live-preflight regression gate made triggerable
 
 - Brain `a144c3e` four-family run `42860476271` failed *before preflight/inference*: newly introduced test incorrectly invoked `RepairRequest.from_dict` (absent API). Brain `5695452` corrected it to `copy.deepcopy`. The benchmark's push path filter previously did not include test/helper changes; the CPU challenge is now re-triggered by the workflow itself and by the shared live-ingestion helper so future changes cannot leave stale four-family evidence.

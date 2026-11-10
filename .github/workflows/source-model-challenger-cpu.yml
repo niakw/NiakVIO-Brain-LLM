@@ -64,7 +64,7 @@ jobs:
           (
             cd .challenger/niakvio
             npm ci --ignore-scripts --no-audit --no-fund
-            timeout 9m python scripts/capture_brain_live_context.py \
+            NIAKVIO_REQUIRE_DECODE_PROOF=1 timeout 9m python scripts/capture_brain_live_context.py \
               --provider "$PROVIDER_ID" \
               --output "$GITHUB_WORKSPACE/.challenger/live-context.json"
           )
