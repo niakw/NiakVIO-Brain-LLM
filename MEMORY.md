@@ -1287,3 +1287,9 @@ latest exact-SHA CI before claiming this correction validated.
   selection is gated on actual runnable inference, measurable gains and safe
   provider replay. If the runner cannot load/download 9B, log it as environment
   limitation and retain baseline.
+
+## 2026-11-10 — CPU challenger telemetry JSON contamination (run 42795306938)
+
+- Qwen3.5-9B Q4_K_M weights verified against SHA-256 and llama.cpp server healthy on GitHub standard CPU runner. The model benchmark ran ~22 minutes, then the report parser failed with `Expecting value: line 1 column 1`; failure was in report formatting, not proven model weakness.
+- Root cause: backend emits `FIELD_BRAIN_LOCAL_INFERENCE` telemetry on stdout while benchmark redirects stdout into `result.json`; JSON reports must not embed backend telemetry. Keep telemetry on stderr only during benchmark generation, and provide optional atomic `--output` with per-case checkpoint persistence and a completed-case gate. Historical cases are synthetic diagnosis controls; do not report provider repair or decoded identity from these scores.
+- Follow-up model run triggered by `benchmark/model-challenger.trigger`; no production or paid inference changed. Inspect exact run and score before changing default.

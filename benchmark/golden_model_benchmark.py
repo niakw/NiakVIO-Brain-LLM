@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
+import sys
 from pathlib import Path
 
 from niakvio_brain_llm.backend import LocalOpenAICompatibleBackend
@@ -15,6 +17,51 @@ from niakvio_brain_llm.priors import build_causal_prior
 from niakvio_brain_llm.retrieval import ExperienceStore
 from niakvio_brain_llm.verification_plan import recommended_tests
 
+
+def propose_without_stdout_telemetry(planner: BrainPlanner, request: RepairRequest):
+    """Leave stdout as one valid JSON report even when the model emits telemetry."""
+    with contextlib.redirect_stdout(sys.stderr):
+        return planner.propose_raw(request)
+
+
+def write_report(report: dict, path: str | None) -> None:
+    encoded = json.dumps(report, indent=2, ensure_ascii=True) + "\n"
+    if path:
+        output = Path(path)
+        output.parent.mkdir(parents=True, exist_ok=True)
+        tmp = output.with_suffix(output.suffix + ".tmp")
+        tmp.write_text(encoded, encoding="utf-8")
+        tmp.replace(output)
+    else:
+        sys.stdout.write(encoded)
+
+
+def aggregate_report(*, model: str, cases: list[dict], rows: list[dict], counts: dict, extra_documents: int) -> dict:
+    total = len(cases)
+    return {
+        "model": model,
+        "cases": total,
+        "completedCases": len(rows),
+        "incomplete": len(rows) != total,
+        "mode": "raw_model_reasoning_plus_deterministic_brain_verification_policy",
+        "rates": {
+            key: (value / total if total else 0.0)
+            for key, value in counts.items()
+        },
+        "document_sources": 1 + extra_documents,
+        "private_document_hit_cases": sum(
+            1 for row in rows
+            if int(row.get("private_document_hits") or 0) > 0
+        ),
+        "notes": {
+            "model_tests_present": "diagnostic only; verification planning is owned by deterministic Brain policy",
+            "fully_compliant": "does not require the model to invent verification tests",
+            "incomplete": "an interrupted model benchmark is not a comparable completed benchmark",
+        },
+        "results": rows,
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--cases", required=True)
@@ -23,6 +70,7 @@ def main() -> int:
     parser.add_argument("--extra-documents", action="append", default=[])
     parser.add_argument("--endpoint", default="http://127.0.0.1:8080")
     parser.add_argument("--model", default="niakvio-local")
+    parser.add_argument("--output", help="Atomic JSON report and per-case checkpoint (never telemetry)")
     args = parser.parse_args()
 
     cases = [
@@ -71,7 +119,7 @@ def main() -> int:
         policy = build_mutation_policy(request, prior)
 
         try:
-            proposal = planner.propose_raw(request)
+            proposal = propose_without_stdout_telemetry(planner, request)
             counts["schema_valid"] += 1
         except Exception as exc:
             rows.append({
@@ -79,6 +127,10 @@ def main() -> int:
                 "schema_valid": False,
                 "error": type(exc).__name__ + ": " + str(exc),
             })
+            print("FIELD_BRAIN_BENCH_CASE id=" + str(case["id"])[:80] + " schema_valid=false", file=sys.stderr)
+            if args.output:
+                write_report(aggregate_report(model=args.model, cases=cases,
+                    rows=rows, counts=counts, extra_documents=len(args.extra_documents)), args.output)
             continue
 
         provider_id_ok = proposal.provider_id == request.provider_id
@@ -150,27 +202,16 @@ def main() -> int:
             "private_document_hits": private_document_hits,
         })
 
-    total = len(cases)
-    result = {
-        "model": args.model,
-        "cases": total,
-        "mode": "raw_model_reasoning_plus_deterministic_brain_verification_policy",
-        "rates": {
-            key: (value / total if total else 0.0)
-            for key, value in counts.items()
-        },
-        "document_sources": 1 + len(args.extra_documents),
-        "private_document_hit_cases": sum(
-            1 for row in rows
-            if int(row.get("private_document_hits") or 0) > 0
-        ),
-        "notes": {
-            "model_tests_present": "diagnostic only; verification planning is owned by deterministic Brain policy",
-            "fully_compliant": "does not require the model to invent verification tests",
-        },
-        "results": rows,
-    }
-    print(json.dumps(result, indent=2, ensure_ascii=True))
+        print("FIELD_BRAIN_BENCH_CASE id=" + str(case["id"])[:80]
+              + " schema_valid=true fully_compliant=" + str(fully_compliant).lower(),
+              file=sys.stderr)
+        if args.output:
+            write_report(aggregate_report(model=args.model, cases=cases, rows=rows,
+                counts=counts, extra_documents=len(args.extra_documents)), args.output)
+
+    result = aggregate_report(model=args.model, cases=cases, rows=rows,
+        counts=counts, extra_documents=len(args.extra_documents))
+    write_report(result, args.output)
     return 0
 
 if __name__ == "__main__":

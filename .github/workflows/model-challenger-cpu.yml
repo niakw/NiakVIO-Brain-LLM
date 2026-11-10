@@ -85,8 +85,14 @@ jobs:
             --experience .challenger/experience.jsonl \
             --documents .challenger/documents.jsonl \
             --endpoint http://127.0.0.1:8080 --model qwen35-9b \
-            > .challenger/result.json
+            --output .challenger/result.json
           python -m json.tool .challenger/result.json > /dev/null
+          python - <<'PY'
+          import json
+          r=json.load(open(".challenger/result.json"))
+          if r["incomplete"] or r["completedCases"] != r["cases"]:
+              raise SystemExit("benchmark incomplete: do not publish a model quality score")
+          PY
           python scripts/compare_model_benchmarks.py .challenger/result.json > .challenger/quality.json
           python - <<'PY'
           import json
