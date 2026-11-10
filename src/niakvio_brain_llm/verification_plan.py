@@ -13,6 +13,19 @@ STRATEGY_TESTS: dict[str, list[str]] = {
         "verify_all_published_core_guards_current_byte_parity",
         "replay_real_media_and_external_subtitles_with_episode_identity",
     ],
+    "promote_quick_candidate_only_after_terminal_identity": [
+        "replay_provisional_candidate_on_exact_published_sha_and_client",
+        "require_correct_work_season_episode_and_source_independent_identity",
+        "reject_embedded_and_detached_foreign_episode_subtitles",
+        "verify_compiled_applied_materialized_terminal_replayed_persisted_chain",
+    ],
+    "discover_verified_event_miniseries_alias": [
+        "discover_explicit_related_event_entity_in_metadata_and_provider_catalogue",
+        "crosscheck_independent_episodic_title_and_original_air_date",
+        "forbid_unverified_s00_to_s01_or_s02_numeric_fallback",
+        "replay_alternate_event_search_detail_player_with_correct_work_identity",
+        "verify_terminal_media_and_subtitle_episode_provenance",
+    ],
     "discover_api_from_current_page_and_bundles": [
         "probe_current_provider_page_and_bundles",
         "validate_discovered_provider_owned_api",

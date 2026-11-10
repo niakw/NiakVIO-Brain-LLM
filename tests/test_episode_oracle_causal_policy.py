@@ -53,6 +53,56 @@ class ReverseEngineeredEpisodeOracleRouting(unittest.TestCase):
             checks,
         )
 
+    def test_quick_stream_gain_does_not_authorize_content_identity(self):
+        request = RepairRequest(
+            provider_id="uhdmovies",
+            status="ROUTE PROVEN",
+            failure_class="quick-media-identity-proof-gap",
+        )
+        prior = build_causal_prior(request, [])
+        self.assertEqual(prior["target_layer"], "core")
+        self.assertEqual(
+            prior["strategy_prior"],
+            "promote_quick_candidate_only_after_terminal_identity",
+        )
+        policy = build_mutation_policy(request, prior)
+        self.assertFalse(policy["allow_mutations"])
+        self.assertTrue(policy["force_abstain"])
+        checks = recommended_tests(
+            prior["strategy_prior"], target_layer="core", mutation_policy=policy
+        )
+        self.assertIn("replay_provisional_candidate_on_exact_published_sha_and_client", checks)
+        self.assertIn(
+            "require_correct_work_season_episode_and_source_independent_identity",
+            checks,
+        )
+        self.assertIn(
+            "verify_compiled_applied_materialized_terminal_replayed_persisted_chain",
+            checks,
+        )
+
+    def test_event_series_split_requires_independent_episode_crosswalk(self):
+        # Spartacus S00E01 can be indexed as Gods of the Arena S01E01.
+        # This is a search hypothesis, not an automatic season remap.
+        request = RepairRequest(
+            provider_id="demo",
+            status="NO PROOF",
+            failure_class="event-miniseries-catalogue-split",
+        )
+        prior = build_causal_prior(request, [])
+        self.assertEqual(prior["target_layer"], "core")
+        policy = build_mutation_policy(request, prior)
+        self.assertFalse(policy["allow_mutations"])
+        checks = recommended_tests(
+            prior["strategy_prior"], target_layer="core", mutation_policy=policy
+        )
+        self.assertIn(
+            "crosscheck_independent_episodic_title_and_original_air_date",
+            checks,
+        )
+        self.assertIn("forbid_unverified_s00_to_s01_or_s02_numeric_fallback", checks)
+        self.assertIn("verify_terminal_media_and_subtitle_episode_provenance", checks)
+
     def test_live_empty_catalogue_is_not_a_positive_repair_oracle(self):
         # A 200 JSON response containing results=[] provides transport proof,
         # not playable episode or repaired-provider evidence.

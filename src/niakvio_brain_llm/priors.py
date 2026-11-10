@@ -39,6 +39,21 @@ STATIC_FAILURE_PRIORS: dict[str, dict[str, Any]] = {
         "confidence": 0.98,
         "strategy_prior": "validate_episode_bound_subtitle_provenance",
     },
+    # A Quick endpoint is provisional even if the network/media URL resolves.
+    # Learning run 42740261560 on UHDMovies proved that a 0->2 gain can
+    # coexist with an independently detected wrong-work identity.
+    "quick-media-identity-proof-gap": {
+        "target_layer": "core",
+        "confidence": 0.99,
+        "strategy_prior": "promote_quick_candidate_only_after_terminal_identity",
+    },
+    # A special can be indexed as a standalone event mini-series on a
+    # provider. Do not infer S00 -> S01 from episode numbers alone.
+    "event-miniseries-catalogue-split": {
+        "target_layer": "core",
+        "confidence": 0.98,
+        "strategy_prior": "discover_verified_event_miniseries_alias",
+    },
     "runtime-compatibility-gap": {
         "target_layer": "core",
         "confidence": 0.96,

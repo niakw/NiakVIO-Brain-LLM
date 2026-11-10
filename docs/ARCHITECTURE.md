@@ -1,3 +1,44 @@
+
+## 2026-11-10 — Quick candidate versus verified provider; event mini-series alias as a search hypothesis
+
+NiakVIO Learning run [42740261560](https://github.com/niakw/NiakVIO/actions/runs/42740261560)
+exposed a **real difference between network progress and media identity**:
+UHDMovies Quick `route_transition_graph_v6` returned 2 endpoint-playable
+streams against 0 before and logged `provisional_quick_runtime_improvement`,
+but separate native-reader evidence found an identity mismatch on *Avatar*;
+the candidate reconstruction count stayed **0**. Source URI/media URLs were
+never positive proof. NiakVIO has now separated exploratory Quick acceptance
+from `provider_base_change_authorized` and `accepted_runtime_program`, and
+its proposal builder requires explicit strict playable identity before proposing
+any executable patch. A sanitized observation is stored as a negative oracle
+under `tests/brain_oracles/uhdmovies/provisional_42740261560.json`, never
+as a repaired provider or a validated positive learning event.
+
+The new Brain-LLM `quick-media-identity-proof-gap` taxonomy routes this
+signature to Core/pipeline. Required checks cover exact-SHA candidate
+replay, independent work/season/episode identity, subtitles, program
+compilation, application, materialization, execution and persistence.
+Neither an HTTP 200 nor a Quick `healthy` label permits provider mutation.
+
+**Special series and event split**: TheTVDB identifies Spartacus
+`S00E01` as *Past Transgressions* (21 January 2011) in *Gods of the
+Arena*, while independent catalogues offer the same six-episode prequel
+as standalone *Spartacus: Gods of the Arena* with `S01E01`.
+References:
+https://thetvdb.com/series/spartacus/seasons/official/0
+and https://www.tvmaze.com/shows/358/spartacus-gods-of-the-arena/episodes
+These listings establish a **catalogue-mapping possibility only**. They do
+not authorize rewriting any user S00 request into S01/S02 without verifying
+the upstream work identity, episode title and original air date, real playable
+media and subtitle identity. The new generic
+`event-miniseries-catalogue-split` strategy has explicit independent
+crosswalk and negative no-numeric-fallback requirements. It applies to any
+event/separate-mini-series family; no Spartacus-specific production override
+or media URL was introduced.
+
+This change remains *structural capability*. There is no new Brain-generated,
+fully materialized, actually decoded episode/subtitle repair confirmed by
+this policy update. Continue representative real provider replay.
 ## 2026-11-10 — Inverse provider oracle to Brain failure-chain diagnosis
 
 The Brain must not treat successful *test-oracle code* as a production repair. A
