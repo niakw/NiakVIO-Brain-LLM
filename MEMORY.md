@@ -1,3 +1,8 @@
+## 2026-11-10 — Keep empty current-causal signature absent from prompt
+
+- First Brain `aa11e9e` CI `42868808877` failed 1/445 regression: old compact initial prompt (with **no live provider evidence**) exceeded 5,600-character soft bound because the new no-observation signature object was serialized unconditionally, so the budget optimizer removed `output_contract` and test `test_force_initial_prompt_is_compact_and_keeps_one_optional_reference` raised KeyError. This was a prompt-contract regression, not a model/provider outcome.
+- Fixed by emitting `current_causal_signatures` only when at least one current evidence-backed signature exists. Exact evidence conditions and media/identity gates unchanged; no-live initial prompt retains its former byte budget and output contract. Run the new exact-SHA 445+ CI and four-family real challenger; do not treat the old in-flight run on `aa11e9e` as tested new code.
+
 ## 2026-11-10 — Current causal evidence mapping across four provider families
 
 - The source-pinned 4-family CPU challenger `42863006579` on Brain `e4d38ab` completed its jobs but generated **zero admissible mutations**: `moviesmod` 10 current events and 2 fixtures, `allanime` 12 and 2, `yflix` 12 and 2; all three abstained `missing_current_causal_evidence` even with RAG (1 same-family historical strategy each). `4khdhub` 0 provider-owned requests and 0 functions is now correctly blocked pre-generation as owner-unresolved. 0 repairs or playable media have been validated.

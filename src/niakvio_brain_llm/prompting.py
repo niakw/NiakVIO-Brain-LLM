@@ -1808,7 +1808,11 @@ def build_force_prompt_payload(
         ),
         "current_network_evidence": network_evidence((context.get("live_runtime_evidence") or {}).get("network_evidence")),
         "current_fixture_evidence": fixture_evidence((context.get("live_runtime_evidence") or {}).get("fixture_evidence")),
-        "current_causal_signatures": current_causal_signatures(context.get("live_runtime_evidence")),
+        **({
+            "current_causal_signatures": causal_signatures,
+        } if (causal_signatures := current_causal_signatures(
+            context.get("live_runtime_evidence")
+        ))["signals"] else {}),
         "terminal_evidence_policy": (
             "A sampled media signature proves bytes reached the terminal probe, not playback or identity. "
             "If that fixture still returns no streams, inspect post-extraction validation, duration and "
