@@ -3460,7 +3460,7 @@ class BrainPlanner:
         compact_force: bool = False,
         allow_deterministic_force: bool = True,
     ) -> tuple[RepairProposal, dict[str, Any], dict[str, Any]]:
-        _, documents, causal_prior, mutation_policy, user = self._prepare(
+        experiences, documents, causal_prior, mutation_policy, user = self._prepare(
             request, compact_force=compact_force,
         )
         if compact_force:
@@ -3519,15 +3519,26 @@ class BrainPlanner:
                     abstain_reason="",
                 )
                 return proposal, causal_prior, mutation_policy
+            force_payload = build_force_prompt_payload(
+                request, causal_prior, mutation_policy, documents,
+                experiences=experiences,
+            )
+            edit_surface = (
+                force_payload.get("new_bloc_target")
+                if "provider_bloc" in request.allowed_mutations
+                else force_payload.get("mutation_target")
+            ) or {}
+            print(
+                "FIELD_BRAIN_FORCE_CONTEXT "
+                f"provider={request.provider_id} "
+                f"editable_units={len(edit_surface.get('editable_units') or [])} "
+                f"reused_strategies={len(force_payload.get('retrieved_strategy_memory') or [])} "
+                f"field_evidence={len(force_payload.get('provider_field_evidence') or [])} "
+                f"policy_abstain={str(bool(mutation_policy.get('force_abstain'))).lower()}",
+                flush=True,
+            )
             user = json.dumps(
-                build_force_prompt_payload(
-                    request,
-                    causal_prior,
-                    mutation_policy,
-                    documents,
-                ),
-                ensure_ascii=True,
-                allow_nan=False,
+                force_payload, ensure_ascii=True, allow_nan=False,
             )
             # Keep the grammar small, but make it scope-specific. The scoped
             # Force cascade normally exposes exactly one mutation family, so

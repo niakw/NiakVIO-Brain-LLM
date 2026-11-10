@@ -1464,11 +1464,54 @@ def _force_edit_units(
         units.append(item)
     return units
 
+
+def _bounded_force_experience_hints(
+    rows: list[dict[str, Any]] | None, failure_class: str
+) -> list[dict[str, Any]]:
+    """Pass reusable mechanisms, never historical routes, identifiers or proof authority."""
+    expected = str(failure_class or "").strip().casefold().replace("-", "_")
+    hints = []
+    for row in rows or []:
+        if not isinstance(row, dict):
+            continue
+        failure = str(row.get("failure_class") or "").strip().casefold().replace("-", "_")
+        if not expected or failure != expected or str(row.get("result") or "").casefold() != "validated":
+            continue
+        def safe(value: Any, limit: int) -> str:
+            value = str(value or "").strip().casefold()
+            return value[:limit] if re.fullmatch(r"[a-z0-9_-]{2,80}", value) else ""
+        strategy = safe(row.get("strategy"), 64)
+        if not strategy:
+            continue
+        signals = [
+            safe(raw, 40) for raw in (row.get("signals") or [])[:8]
+            if isinstance(raw, str)
+        ]
+        avoid = [
+            safe(raw, 40) for raw in (row.get("avoid") or [])[:6]
+            if isinstance(raw, str)
+        ]
+        hints.append({
+            "failure_class": expected,
+            "strategy_hint": strategy,
+            "transferable_signals": [x for x in signals if x][:3],
+            "avoid": [x for x in avoid if x][:2],
+            "role": "historical_strategy_hint_only",
+            "proof_authority": False,
+            "requires_current_network_and_playback_proof": True,
+        })
+        if len(hints) >= 2:
+            break
+    return hints
+
+
 def build_force_prompt_payload(
     request: RepairRequest,
     causal_prior: dict[str, Any] | None = None,
     mutation_policy: dict[str, Any] | None = None,
     documents: list[dict[str, Any]] | None = None,
+    *,
+    experiences: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Minimal provider-local context for CPU-bound Force synthesis.
 
@@ -1753,6 +1796,11 @@ def build_force_prompt_payload(
             "extract_repeated_protocol_into_family_renderer": True,
         },
         "prior_force_sandbox_failures": force_failures,
+        **({
+            "retrieved_strategy_memory": hints
+        } if (hints := _bounded_force_experience_hints(
+            experiences, request.failure_class
+        )) else {}),
         "previous_executed_edits": _compact(
             (context.get("live_runtime_evidence") or {}).get("previous_executed_edits") or [],
             string_limit=1200,

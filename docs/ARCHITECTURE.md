@@ -665,3 +665,14 @@ provider/fixture identities, with no per-fixture regression and identity-matched
 playback in both candidate passes, can set `validated=true` in the **sandbox
 diagnostic**. Actual NiakVIO publication and production acceptance remain
 separate, requiring their own current-SHA proof.
+
+
+### RAG → FORCE generation continuity (2026-11-10)
+Loading memories is insufficient if synthesis receives only the causal prior.
+The compact FORCE prompt now includes up to two bounded, same-failure-class
+strategy hints with safe normalized labels, non-authoritative proof markers and
+explicit revalidation requirements. Raw recovered routes, domains, secrets,
+source files and historical claims of terminal playback are not transferred.
+Numeric-only telemetry reports how many exact editable units, prior strategies
+and same-provider field facts were supplied. Mutation and current-content
+validation policy remains independent of the LLM and prior lessons.

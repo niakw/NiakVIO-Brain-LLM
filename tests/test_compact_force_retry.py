@@ -183,6 +183,41 @@ class CompactForceRetryTest(unittest.TestCase):
         first.assert_not_called()
         second.assert_not_called()
 
+
+    def test_force_rag_memory_is_strategy_only_and_exact_failure_scoped(self):
+        request = RepairRequest(
+            provider_id="demo", failure_class="chain_terminal_gap",
+            status="CHAIN REACHED", allowed_mutations=["provider_bloc"],
+            provider_context={"runtimeMutationSource": "function resolve(){return oldPlayer();}",
+                              "runtimeMutationFilename": "providers/demo.js"},
+        )
+        hints = [
+            {"failure_class": "chain_terminal_gap",
+             "result": "validated", "proof_authority": False,
+             "strategy": "search_detail_player_chain",
+             "signals": ["player_gap", "https://private.example/a?key=SECRET"],
+             "avoid": ["old_route", "cookie=SECRET"]},
+            {"failure_class": "route_proven_gap", "result": "validated",
+             "strategy": "wrong_family_hint"},
+            {"failure_class": "chain_terminal_gap", "result": "rejected",
+             "strategy": "must_not_copy"},
+        ]
+        result = build_force_prompt_payload(
+            request,
+            {"target_layer": "provider"},
+            {"allowed_scopes": ["provider_bloc"], "allow_mutations": True},
+            experiences=hints,
+        )
+        memory = result["retrieved_strategy_memory"]
+        self.assertEqual(len(memory), 1)
+        self.assertEqual(memory[0]["strategy_hint"], "search_detail_player_chain")
+        self.assertFalse(memory[0]["proof_authority"])
+        self.assertEqual(memory[0]["transferable_signals"], ["player_gap"])
+        self.assertEqual(memory[0]["avoid"], ["old_route"])
+        self.assertNotIn("SECRET", json.dumps(memory))
+        self.assertNotIn("https:", json.dumps(memory))
+        self.assertNotIn("wrong_family_hint", json.dumps(memory))
+
     def test_force_prefill_budget_preserves_unit_ids_under_dense_fanout(self):
         # Production 7B samples sent 9k-14k chars for a single edit and hit
         # the 180s deadline. Clip duplicated context, NEVER the source-backed

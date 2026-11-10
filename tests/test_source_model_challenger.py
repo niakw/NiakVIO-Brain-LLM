@@ -6,7 +6,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 from niakvio_brain_llm.contracts import RepairRequest
-from benchmark.source_model_challenger import TOPOLOGIES, classify_proposal, production_first_scope_request, load_challenger_rag
+from benchmark.source_model_challenger import TOPOLOGIES, classify_proposal, production_first_scope_request, load_challenger_rag, safe_abstention_category
 from scripts.publish_niakvio_force_mutations import validate_current_provider_bloc_anchors
 from benchmark.source_replay_evidence import summarize_deep_report
 
@@ -67,6 +67,13 @@ class SourceModelChallengerContract(unittest.TestCase):
         self.assertEqual(result["identityMatchedPlayable"], 1)
         self.assertFalse(result["validated"])
         self.assertTrue(result["candidateMediaVerified"])
+
+    def test_abstention_category_is_bounded_and_cannot_leak_private_reason(self):
+        self.assertEqual(safe_abstention_category(
+            "missing network evidence https://secret.example/token?q=PRIVATE"
+        ), "missing_current_causal_evidence")
+        self.assertEqual(safe_abstention_category("no editable unit"), "no_safe_edit_unit")
+        self.assertEqual(safe_abstention_category("bad cookies PRIVATE"), "other_or_unspecified")
 
     def test_force_rag_input_never_silently_empties_on_missing_corpora(self):
         with tempfile.TemporaryDirectory() as tmp:

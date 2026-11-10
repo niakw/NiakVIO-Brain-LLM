@@ -7,6 +7,7 @@ import contextlib
 import copy
 import hashlib
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -28,6 +29,18 @@ TOPOLOGIES = {
     "moviesmod": "html_player",
     "yflix": "film_series_api",
 }
+
+
+def safe_abstention_category(reason: str) -> str:
+    """Never expose model narrative, URLs, secrets or source bytes in diagnostics."""
+    cleaned = re.sub(r"[^a-z]+", " ", str(reason or "").casefold())
+    if any(token in cleaned for token in ("evidence", "network", "response", "route")):
+        return "missing_current_causal_evidence"
+    if any(token in cleaned for token in ("unit", "syntax", "function", "snippet")):
+        return "no_safe_edit_unit"
+    if any(token in cleaned for token in ("policy", "unsafe", "permission")):
+        return "policy_or_safety"
+    return "other_or_unspecified"
 
 
 def production_first_scope_request(request):
@@ -211,6 +224,10 @@ def main() -> int:
                 request, proposal, niakvio_root=root,
                 experience_store=experience_store,
             ))
+            row["abstentionCategory"] = (
+                safe_abstention_category(getattr(proposal, "abstain_reason", ""))
+                if proposal.abstain else None
+            )
             row["retrievedExperienceCount"] = len(
                 experience_store.search(request.to_dict(), limit=6)
             )
@@ -268,6 +285,7 @@ def main() -> int:
               + " abstained=" + str(row.get("abstained") is True).lower()
               + " scope=" + str(row.get("selectedScope") or "all")
               + " mutation_count=" + str(row.get("mutationCount") or 0)
+              + " abstention_category=" + str(row.get("abstentionCategory") or "none")
               + " current_anchor=" + str(row.get("currentByteAnchorValid"))
               + " publish=false", file=sys.stderr, flush=True)
     return 0 if len(rows) == len(selected) else 1
