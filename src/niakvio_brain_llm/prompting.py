@@ -185,6 +185,7 @@ def compact_request(
             "sha256": _clip(episode_risks.get("sha256"), 64),
             "riskKind": _clip(episode_risks.get("riskKind"), 90),
             "signals": [str(x)[:70] for x in episode_risks.get("signals", [])[:6]],
+            "safeRepairPattern": _clip(episode_risks.get("safeRepairPattern"), 300),
             "diagnosticOnly": True,
             "proofAuthority": False,
             "repairOwner": "shared-core-or-Brain-pipeline-not-provider-local",

@@ -855,6 +855,13 @@ def shared_episode_identity_risk(root: str | Path, template: str) -> dict[str, A
         "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
         "riskKind": "shared-runtime-episode-identity-fallback",
         "signals": findings,
+        # Reusable reverse-oracle strategy; a hint for reasoning only, never
+        # an accepted Brain program, proof of media, or provider mutation.
+        "safeRepairPattern": (
+            "parse season zero without truthy default; "
+            "reject absent exact season/episode instead of first-item fallback; "
+            "source episode coordinates from matched provider detail, not display title"
+        ),
         "diagnosticOnly": True,
         "proofAuthority": False,
         "repairOwner": "shared-core-or-Brain-pipeline-not-provider-local",

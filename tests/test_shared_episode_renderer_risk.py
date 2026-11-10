@@ -50,6 +50,8 @@ class SharedRendererCurrentSourceTests(unittest.TestCase):
             self.assertEqual(len(risk["signals"]), 4)
             self.assertIn("season_zero_coerced_to_one", risk["signals"])
             self.assertIn("missing_episode_falls_back_to_first", risk["signals"])
+            self.assertIn("parse season zero", risk["safeRepairPattern"])
+            self.assertIn("first-item fallback", risk["safeRepairPattern"])
             request = RepairRequest(
                 provider_id="demo", failure_class="episode-coordinate-loss",
                 provider_context=context,
@@ -62,6 +64,8 @@ class SharedRendererCurrentSourceTests(unittest.TestCase):
             ]
             self.assertFalse(model_risks["proofAuthority"])
             self.assertEqual(model_risks["signals"], risk["signals"])
+            self.assertEqual(model_risks["safeRepairPattern"], risk["safeRepairPattern"])
+            self.assertFalse(model_risks["proofAuthority"])
             self.assertNotIn(BROKEN_SHARED, str(model_risks))
 
     def test_safe_shared_code_does_not_create_fake_negative_evidence(self):
