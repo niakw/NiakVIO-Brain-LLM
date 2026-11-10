@@ -1,3 +1,55 @@
+## 2026-11-10 — Inverse provider oracle to Brain failure-chain diagnosis
+
+The Brain must not treat successful *test-oracle code* as a production repair. A
+representative failure was reproduced from NiakVIO's **real shared anime
+runtime generator** (`scripts/provider_patches/anime_catalogue_runtime_common.py`)
+in a deterministic local API harness. Its `season = Number(...) || 1`
+loses S00, and fallback to `seasons[0]` / `eps[0]` silently substitutes
+the wrong episode. A retained reference-only fixed provider in
+`NiakVIO/tests/brain_oracles/animevost_fr/provider_repaired_oracle.cjs`
+selects the exact season/episode and rejects foreign-episode subtitle URLs.
+The oracle is not imported into the published provider, not a Brain accepted
+program, and does not establish actual network playback.
+
+The upstream animevost-fr JSON search endpoint returned HTTP 200 but an
+empty `results` collection for the observed title. Transport status or the
+offline oracle cannot be promoted to an actual repair. The reverse-chain
+findings are:
+
+1. Observation and causal layer: absent S00 identity and foreign captions are
+   **Core/shared-runtime** signatures; an empty live upstream search is
+   separately **provider catalogue/transport** evidence.
+2. Brain source context: the provider wrapper imports a shared generator,
+   but formerly `build_provider_context` exposed only the wrapper and a
+   template *path*, not the code that coerced season zero. The new bounded
+   `shared_episode_identity_risk` scans the actual owned shared renderer,
+   records its SHA-256 and source path, and supplies *diagnostic-only*
+   structural risk indicators to the compact model prompt. It is generic to
+   source patterns and applies to new renderer families, not a provider-ID
+   exception. No proposed code mutation is authorized by the signal alone.
+3. Brain routing/policy: `episode-coordinate-loss` and
+   `subtitle-episode-association-gap` map to Core/pipeline ownership with
+   required oracle, compiler, publication and real-media validation checks.
+   Their `mutation_policy` remains fail-closed for provider-local edits.
+4. Accepted programme compiler in NiakVIO: `{binding:season}` and
+   `{binding:episode}` were rejected or silently filtered, even though the
+   materialized ProviderBase route executor already knows these coordinates.
+   They are now representable on episodic lanes with provider-ID/slug binding,
+   and invalid bindings yield explicit compilation rejection reasons.
+5. Execution proof remains distinct: accepted proposal → compiled route →
+   materialized bytes → exact client invocation → terminal media decoded →
+   correct work/episode and subtitles → persistent positive memory. None of
+   these steps may be inferred from a healthy HTTP status, source tests or a
+   GitHub Actions green conclusion alone.
+
+CI tests `test_episode_oracle_causal_policy.py` and
+`test_shared_episode_renderer_risk.py` validate ownership, no provider
+mutation authorization, correct source evidence flow and fail-closed prompt
+semantics. The current Brain programme has **not** autonomously produced a
+verified new playable provider repair from this experiment. Continue with the
+same run and exact SHA when downstream network evidence allows replay; retain
+this case as a *negative/diagnostic* learning example until that point.
+
 # Architecture
 
 ## Family-first prioritization without cohort truncation
