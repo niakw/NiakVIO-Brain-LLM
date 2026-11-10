@@ -23,6 +23,9 @@ CARD_OPEN_RE = re.compile(
 TITLE_RE = re.compile(
     r"""<[^>]*\bclass\s*=\s*['"][^'"]*\bmovie-card-title\b[^'"]*['"][^>]*>(.*?)</[^>]+>""",re.I|re.S
 )
+FORMAT_RE = re.compile(
+    r"""<[^>]*\bclass\s*=\s*['"][^'"]*\bmovie-card-format\b[^'"]*['"][^>]*>(.*?)</[^>]+>""",re.I|re.S
+)
 HTML_RE = re.compile(r"<(?:!doctype\s+html|html\b)",re.I)
 WORDS = ("movie-card","movie-card-content","movie-card-title",
          "movie-card-format","episode-download-item","wp-block","post-item")
@@ -49,6 +52,14 @@ def shape(text: str, query: str) -> dict:
         bool(query_terms) and all(word in node for word in query_terms)
         for node in title_nodes
     )
+    raw_formats=[re.sub(r"<[^>]*>"," ",part).casefold().strip()
+                 for part in FORMAT_RE.findall(text)]
+    category_counts={
+        "movie":sum(bool(re.search(r"\bmovies?\b|\bfilms?\b",x)) for x in raw_formats),
+        "series":sum(bool(re.search(r"\bseries\b|\bshows?\b|\btv\b",x)) for x in raw_formats),
+        "uncategorized":sum(not re.search(r"\bmovies?\b|\bfilms?\b|\bseries\b|\bshows?\b|\btv\b",x)
+                            for x in raw_formats)
+    }
     classes=[w for val in CLASS_RE.findall(text) for w in val.lower().split()]
     count={w:classes.count(w) for w in WORDS}
     hint={w:(w in text.casefold()) for w in ERRORS}
@@ -67,6 +78,8 @@ def shape(text: str, query: str) -> dict:
         ),
         "title_nodes_matching_query_terms":matching_title_nodes,
         "title_nodes_parsed":len(title_nodes),
+        "format_nodes_parsed":len(raw_formats),
+        "format_category_counts":category_counts,
         "class_token_counts":count,
         "waf_marker_flags":hint,
         "body_sha256_16":hashlib.sha256(text.encode("utf-8")).hexdigest()[:16],
