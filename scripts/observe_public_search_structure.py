@@ -17,12 +17,30 @@ import urllib.request
 MAX_BODY = 256_000
 CLASS_RE = re.compile(r"""class\s*=\s*['"]([^'"]{1,300})['"]""",re.I)
 ANCHOR_RE = re.compile(r"<a\b[^>]*\bhref\s*=",re.I)
+CARD_OPEN_RE = re.compile(
+    r"""<(?:a|div|article|li)\b[^>]*\bclass\s*=\s*['"]([^'"]{1,300})['"][^>]*>""",re.I
+)
+TITLE_RE = re.compile(
+    r"""<[^>]*\bclass\s*=\s*['"][^'"]*\bmovie-card-title\b[^'"]*['"][^>]*>(.*?)</[^>]+>""",re.I|re.S
+)
 HTML_RE = re.compile(r"<(?:!doctype\s+html|html\b)",re.I)
 WORDS = ("movie-card","movie-card-content","movie-card-title",
          "movie-card-format","episode-download-item","wp-block","post-item")
 ERRORS = ("cloudflare","access denied","captcha","just a moment","checking your browser")
 
-def shape(text: str) -> dict:
+def shape(text: str, query: str) -> dict:
+    # Reconstruct only safe structural facts. No titles, links or HTML escape.
+    cards=[m.group(0) for m in CARD_OPEN_RE.finditer(text)
+           if "movie-card" in m.group(1).lower().split()]
+    title_nodes=[re.sub(r"<[^>]*>"," ",part).casefold()
+                 for part in TITLE_RE.findall(text)]
+    query_terms=[word for word in re.findall(r"[a-z0-9]+",query.casefold())
+                 if word not in {"the","a","an","season","episode","of","and"}
+                 and not word.isdigit()]
+    matching_title_nodes=sum(
+        bool(query_terms) and all(word in node for word in query_terms)
+        for node in title_nodes
+    )
     classes=[w for val in CLASS_RE.findall(text) for w in val.lower().split()]
     count={w:classes.count(w) for w in WORDS}
     hint={w:(w in text.casefold()) for w in ERRORS}
@@ -30,6 +48,10 @@ def shape(text: str) -> dict:
         "html":bool(HTML_RE.search(text[:400])),
         "html_class_attributes":len(CLASS_RE.findall(text)),
         "anchors_with_href":len(ANCHOR_RE.findall(text)),
+        "exact_card_open_tags":len(cards),
+        "exact_cards_with_href":sum(bool(re.search(r"\\bhref\\s*=",tag,re.I)) for tag in cards),
+        "title_nodes_matching_query_terms":matching_title_nodes,
+        "title_nodes_parsed":len(title_nodes),
         "class_token_counts":count,
         "waf_marker_flags":hint,
         "body_sha256_16":hashlib.sha256(text.encode("utf-8")).hexdigest()[:16],
@@ -56,7 +78,7 @@ def probe(origin: str, term: str) -> dict:
                 "body_truncated":len(body)>MAX_BODY,
             })
             if len(body)>MAX_BODY:body=body[:MAX_BODY]
-            out["shape"]=shape(body.decode("utf-8",errors="replace"))
+            out["shape"]=shape(body.decode("utf-8",errors="replace"),term)
     except urllib.error.HTTPError as e:
         out.update({"status":e.code,"network_state":"http_error"})
     except (urllib.error.URLError, TimeoutError, OSError) as e:
