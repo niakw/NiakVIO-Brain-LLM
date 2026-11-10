@@ -38,8 +38,16 @@ def write_report(report: dict, path: str | None) -> None:
 
 def aggregate_report(*, model: str, cases: list[dict], rows: list[dict], counts: dict, extra_documents: int) -> dict:
     total = len(cases)
+    schema_valid_rows = sum(row.get("schema_valid") is True for row in rows)
+    timeout_rows = sum(
+        str(row.get("error") or "").startswith("TimeoutError:")
+        for row in rows
+    )
     return {
         "model": model,
+        "validCaseCount": schema_valid_rows,
+        "timeoutCases": timeout_rows,
+        "inferenceUsable": schema_valid_rows > 0,
         "cases": total,
         "completedCases": len(rows),
         "incomplete": len(rows) != total,
@@ -57,6 +65,7 @@ def aggregate_report(*, model: str, cases: list[dict], rows: list[dict], counts:
             "model_tests_present": "diagnostic only; verification planning is owned by deterministic Brain policy",
             "fully_compliant": "does not require the model to invent verification tests",
             "incomplete": "an interrupted model benchmark is not a comparable completed benchmark",
+            "inferenceUsable": "zero JSON-valid model completions invalidates any model-quality ranking",
         },
         "results": rows,
     }
@@ -71,6 +80,10 @@ def main() -> int:
     parser.add_argument("--endpoint", default="http://127.0.0.1:8080")
     parser.add_argument("--model", default="niakvio-local")
     parser.add_argument("--output", help="Atomic JSON report and per-case checkpoint (never telemetry)")
+    parser.add_argument("--case-id", action="append", default=[],
+                        help="Optional exact public gold case(s) for resource-bounded smoke checks")
+    parser.add_argument("--request-timeout-seconds", type=int, default=240)
+    parser.add_argument("--max-tokens", type=int, default=1024)
     args = parser.parse_args()
 
     cases = [
@@ -78,13 +91,24 @@ def main() -> int:
         for line in Path(args.cases).read_text(encoding="utf-8").splitlines()
         if line.strip()
     ]
+    if args.case_id:
+        requested = set(args.case_id)
+        available = {str(case.get("id") or "") for case in cases}
+        if requested - available:
+            parser.error("unknown benchmark case id")
+        cases = [case for case in cases if case.get("id") in requested]
+    if not 30 <= args.request_timeout_seconds <= 900:
+        parser.error("request timeout outside bounded interval 30..900")
+    if not 128 <= args.max_tokens <= 2048:
+        parser.error("max_tokens outside bounded interval 128..2048")
     store = ExperienceStore.from_jsonl(args.experience)
     planner = BrainPlanner(
         LocalOpenAICompatibleBackend(
             base_url=args.endpoint,
             model=args.model,
-            timeout_seconds=240,
+            timeout_seconds=args.request_timeout_seconds,
             temperature=0.0,
+            max_tokens=args.max_tokens,
         ),
         store,
         DocumentStore.from_jsonl_many([args.documents, *args.extra_documents]),

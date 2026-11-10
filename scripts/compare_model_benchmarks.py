@@ -49,19 +49,33 @@ def main() -> int:
     for raw in args.reports:
         path = Path(raw)
         report = load(path)
+        observed = report.get("results")
+        if isinstance(observed, list):
+            valid_count = sum(row.get("schema_valid") is True
+                              for row in observed if isinstance(row, dict))
+        else:
+            valid_count = int(report.get("validCaseCount") or 0)
+            if valid_count == 0 and float((report.get("rates") or {}).get("schema_valid") or 0) > 0:
+                valid_count = 1
+        usable = valid_count > 0
         rows.append({
             "model": report.get("model") or path.stem,
-            "quality_score": round(score(report), 4),
+            "quality_score": round(score(report), 4) if usable else None,
+            "status": "quality_measured" if usable else "inference_unavailable",
+            "valid_case_count": valid_count,
+            "timeout_cases": sum(str(row.get("error") or "").startswith("TimeoutError:")
+                                 for row in (observed or []) if isinstance(row, dict)),
             "rates": report.get("rates") or {},
             "model_tests_present": (report.get("rates") or {}).get("model_tests_present"),
             "path": str(path),
         })
 
-    rows.sort(key=lambda row: row["quality_score"], reverse=True)
+    rows.sort(key=lambda row: (row["quality_score"] is not None,
+                               row["quality_score"] or 0), reverse=True)
     print(json.dumps({
         "weights": WEIGHTS,
         "ranking": rows,
-        "note": "model_tests_present is diagnostic only; deterministic Brain owns verification planning",
+        "note": "Models with zero schema-valid completions are inference_unavailable, NOT quality_score 0; deterministic Brain owns verification planning",
     }, indent=2, ensure_ascii=True))
     return 0
 

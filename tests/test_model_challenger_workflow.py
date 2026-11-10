@@ -7,6 +7,8 @@ import unittest
 import importlib.util
 from tempfile import TemporaryDirectory
 
+from scripts.compare_model_benchmarks import score
+
 ROOT=Path(__file__).resolve().parents[1]
 
 
@@ -37,6 +39,29 @@ class ChallengerCpuWorkflowContract(unittest.TestCase):
             self.assertTrue(json.loads(path.read_text())["incomplete"])
             self.assertEqual(list(Path(td).glob("*.tmp")),[])
 
+    def test_all_timeouts_are_inference_unavailable_not_model_quality_zero(self):
+        failed=[{"id":key,"schema_valid":False,"error":"TimeoutError: timed out"}
+                for key in ("a","b")]
+        report=benchmark.aggregate_report(
+            model="qwen35-9b", cases=[{"id":"a"},{"id":"b"}], rows=failed,
+            counts={"schema_valid":0,"fully_compliant":0}, extra_documents=0)
+        self.assertEqual(report["completedCases"],2)
+        self.assertEqual(report["timeoutCases"],2)
+        self.assertEqual(report["validCaseCount"],0)
+        self.assertFalse(report["inferenceUsable"])
+        self.assertEqual(score(report),0.0)  # raw arithmetic; not a quality ranking
+        with TemporaryDirectory() as td:
+            import subprocess
+            path=Path(td)/"zero.json"
+            path.write_text(json.dumps(report))
+            result=subprocess.run(
+                [sys.executable,str(ROOT/"scripts/compare_model_benchmarks.py"),str(path)],
+                capture_output=True,text=True,check=True)
+            ranked=json.loads(result.stdout)["ranking"][0]
+        self.assertIsNone(ranked["quality_score"])
+        self.assertEqual(ranked["status"],"inference_unavailable")
+        self.assertEqual(ranked["valid_case_count"],0)
+
     def test_no_paid_runner_or_provider_publication(self):
         workflow=(ROOT/'.github/workflows/model-challenger-cpu.yml').read_text()
         self.assertIn('runs-on: ubuntu-latest',workflow)
@@ -50,6 +75,10 @@ class ChallengerCpuWorkflowContract(unittest.TestCase):
         self.assertNotIn('manifest.json',workflow)
         self.assertIn('sha256sum -c -',workflow)
         self.assertIn('--output .challenger/result.json',workflow)
+        self.assertIn('--reasoning off',workflow)
+        self.assertIn('--case-id route-proven',workflow)
+        self.assertIn('CPU challenger inference unavailable',workflow)
+        self.assertIn('CPU challenger unusable: zero schema-valid completions',workflow)
         self.assertIn('benchmark incomplete: do not publish a model quality score',workflow)
         self.assertIn('ef6f244d63abcba4f8d30b7cbd9369e9e798fc33cf21109889373f59af329c93',workflow)
 

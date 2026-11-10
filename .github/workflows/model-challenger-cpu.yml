@@ -63,7 +63,7 @@ jobs:
           chmod +x "$binary"
           "$binary" -m .challenger/qwen35-9b-q4.gguf \
             --alias qwen35-9b --host 127.0.0.1 --port 8080 \
-            -t 4 -c 8192 -np 1 > .challenger/server.log 2>&1 &
+            -t 4 -c 8192 -np 1 --reasoning off > .challenger/server.log 2>&1 &
           for n in $(seq 1 120); do
             if curl -fsS http://127.0.0.1:8080/health >/dev/null 2>&1; then
               echo 'FIELD_BRAIN_CHALLENGER_SERVER available=true'
@@ -74,17 +74,39 @@ jobs:
           echo 'FIELD_BRAIN_CHALLENGER_SERVER available=false'
           tail -40 .challenger/server.log
           exit 1
+      - name: Smoke-test one real public Brain case before spending six CPU inference budgets
+        shell: bash
+        run: |
+          set -euo pipefail
+          : > .challenger/experience.jsonl
+          : > .challenger/documents.jsonl
+          timeout 9m python benchmark/golden_model_benchmark.py \
+            --cases benchmark/golden_cases.jsonl --case-id route-proven \
+            --experience .challenger/experience.jsonl \
+            --documents .challenger/documents.jsonl \
+            --endpoint http://127.0.0.1:8080 --model qwen35-9b \
+            --request-timeout-seconds 420 --max-tokens 512 \
+            --output .challenger/smoke.json
+          python - <<'PY'
+          import json
+          r=json.load(open(".challenger/smoke.json"))
+          print("FIELD_BRAIN_CHALLENGER_SMOKE valid=%d timeout=%d" %
+                (r["validCaseCount"], r["timeoutCases"]))
+          if r["incomplete"] or not r["inferenceUsable"]:
+              raise SystemExit("CPU challenger inference unavailable: smoke produced no schema-valid answer")
+          PY
       - name: Run fixed public six-case causal benchmark (no provider mutation)
         shell: bash
         run: |
           set -euo pipefail
           : > .challenger/experience.jsonl
           : > .challenger/documents.jsonl
-          timeout 50m python benchmark/golden_model_benchmark.py \
+          timeout 55m python benchmark/golden_model_benchmark.py \
             --cases benchmark/golden_cases.jsonl \
             --experience .challenger/experience.jsonl \
             --documents .challenger/documents.jsonl \
             --endpoint http://127.0.0.1:8080 --model qwen35-9b \
+            --request-timeout-seconds 420 --max-tokens 512 \
             --output .challenger/result.json
           python -m json.tool .challenger/result.json > /dev/null
           python - <<'PY'
@@ -92,6 +114,8 @@ jobs:
           r=json.load(open(".challenger/result.json"))
           if r["incomplete"] or r["completedCases"] != r["cases"]:
               raise SystemExit("benchmark incomplete: do not publish a model quality score")
+          if not r["inferenceUsable"]:
+              raise SystemExit("CPU challenger unusable: zero schema-valid completions, do not rank model quality")
           PY
           python scripts/compare_model_benchmarks.py .challenger/result.json > .challenger/quality.json
           python - <<'PY'
@@ -106,6 +130,7 @@ jobs:
         with:
           name: brain-qwen35-9b-cpu-diagnostic
           path: |
+            .challenger/smoke.json
             .challenger/result.json
             .challenger/quality.json
           if-no-files-found: warn
