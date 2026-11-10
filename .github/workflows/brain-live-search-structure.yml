@@ -1,0 +1,37 @@
+name: Brain - Live Public Search Structure
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/brain-live-search-structure.yml'
+      - 'scripts/observe_public_search_structure.py'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: brain-live-search-structure-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  search-shape:
+    name: Read-only current upstream schema, not playback
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.12'
+      - name: Validate structural-only probe syntax
+        run: python -m py_compile scripts/observe_public_search_structure.py
+      - name: Inspect current 4KHDHub WordPress search response
+        run: |
+          python scripts/observe_public_search_structure.py \
+            --origin https://4khdhub.one \
+            --query 'The Colony 2021' \
+            --query 'Breaking Bad Season 1'
