@@ -19,6 +19,13 @@ jobs:
   current-source:
     runs-on: ubuntu-latest
     timeout-minutes: 75
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        provider_id: [4khdhub, allanime, moviesmod, yflix]
+    env:
+      PROVIDER_ID: ${{ matrix.provider_id }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -75,7 +82,7 @@ jobs:
           set -euo pipefail
           timeout 12m python -m benchmark.source_model_challenger \
             --niakvio-root .challenger/niakvio \
-            --provider 4khdhub --canonical-force \
+            --provider "$PROVIDER_ID" --canonical-force \
             --raw-candidates .challenger/private-sandbox-input.jsonl \
             --output .challenger/real-source-report.json \
             --model qwen35-9b --max-tokens 768 --timeout-seconds 420
@@ -101,7 +108,7 @@ jobs:
           fi
           python .challenger/niakvio/scripts/apply_brain_llm_force_mutations.py \
             --input "$(pwd)/.challenger/private-force-payload.json" \
-            --current-sha "$niak_sha" --provider 4khdhub \
+            --current-sha "$niak_sha" --provider "$PROVIDER_ID" \
             --report "$(pwd)/.challenger/private-apply-report.json"
           applied="$(python -c 'import json; print(json.load(open(".challenger/private-apply-report.json"))["appliedProviderCount"])')"
           if [ "$applied" != 1 ]; then
@@ -111,14 +118,15 @@ jobs:
           (
             cd .challenger/niakvio
             npm ci --ignore-scripts --no-audit --no-fund
-            python scripts/materialize_provider_v3_one.py 4khdhub
+            python scripts/materialize_provider_v3_one.py "$PROVIDER_ID"
             python scripts/stage_published.py
-            NUVIO_HEALTH_PROVIDER_FILTER=4khdhub \
+            NUVIO_HEALTH_PROVIDER_FILTER="$PROVIDER_ID" \
               NUVIO_HEALTH_OUTPUT="$GITHUB_WORKSPACE/.challenger/deep-output" \
               node scripts/health_check.mjs --deep
           )
           python - <<'PY'
           import json
+          import os
           from pathlib import Path
           output=Path(".challenger/deep-output/health-results.json")
           report=json.load(output.open())
@@ -129,7 +137,7 @@ jobs:
           playable=sum(int(t.get("streams_playable") or 0) for t in tests)
           identity=sum(int(t.get("identity_verified_streams") or 0) for t in tests)
           summary={"sourceSha":str(report.get("environment",{}).get("commit") or ""),
-                   "provider":"4khdhub",
+                   "provider":os.environ["PROVIDER_ID"],
                    "status":r.get("status"),"playable":playable,"identityVerified":identity,
                    "candidateMaterialized":True,"sandboxExecuted":True,
                    "validated":playable>0 and identity>0,
@@ -142,7 +150,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: brain-qwen35-9b-real-source-diagnostic
+          name: brain-qwen35-9b-real-source-diagnostic-${{ matrix.provider_id }}
           path: |
             .challenger/real-source-report.json
             .challenger/source-sandbox-result.json

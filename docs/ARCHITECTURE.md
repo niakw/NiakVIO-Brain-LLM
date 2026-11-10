@@ -607,3 +607,10 @@ compact_force=True)` instead of the raw-model-only probe. This exercises the
 production FORCE constrained grammar/current-unit converter before the exact
 current-provider anchor preflight and external NiakVIO sandbox materializer.
 The raw-model path remains benchmark-only; it cannot establish executable repair.
+
+### Independent source-family witnesses
+The read-only canonical CPU challenger carries an isolated four-provider matrix
+(download HTML, anime API/player, HTML player, film/series API). Each job owns
+its sandbox, its exact source SHA, its provider-scoped canonical apply and Deep
+check, and its separate artifact. A single case or an inferred family topology
+cannot establish another provider's media/identity success.

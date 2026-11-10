@@ -1,3 +1,8 @@
+## 2026-11-10 — Four independent real-source CPU challenger families
+
+- Previous first-live sandbox used only `4khdhub` (download-HTML) while the read-only source inventory included four distinct architectures. The actual sandbox workflow now runs a bounded four-provider matrix: `4khdhub` (download-HTML), `allanime` (anime API/player), `moviesmod` (HTML/player) and `yflix` (film/series API). Each job uses Brain canonical FORCE, current-byte anchor admission, provider-local NiakVIO apply, materialization and filtered Deep, and emits its own sanitized artifact. Jobs are independent, fail-fast disabled; **none** may count as repaired without its own accepted/current-byte playable+identity proof.
+- This broadens experimentation beyond one atypical download site and preserves provider-source isolation. Production edit authority remains outside the CPU challenger. Watch SHA-specific workflows and distinguish deterministic Brain routing from actual 9B model inference.
+
 ## 2026-11-10 — Real-source challenger false negative for registered provider Blocs
 
 - Run `42843458623` on `c2ef290` completed GitHub SUCCESS but **did not invoke 9B**: canonical planner selected deterministic `exact_class_text_token_boundary` on a `provider_patch`; challenger reported `admissible_mutation=false` and `no_admissible_candidate=true`, so no apply/materialization/Deep. This is zero new provider repair.
