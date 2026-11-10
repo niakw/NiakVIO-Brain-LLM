@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths:
       - 'benchmark/source_model_challenger.py'
+      - 'src/niakvio_brain_llm/live_context_ingest.py'
       - '.github/workflows/source-model-challenger-cpu.yml'
 
 permissions:
@@ -150,7 +151,7 @@ jobs:
           fi
           (
             cd .challenger/niakvio
-            npm ci --ignore-scripts --no-audit --no-fund
+            # Dependencies were installed by the mandatory live preflight.
             python scripts/stage_published.py
             NUVIO_HEALTH_PROVIDER_FILTER="$PROVIDER_ID" \
               NUVIO_HEALTH_OUTPUT="$GITHUB_WORKSPACE/.challenger/baseline-output" \

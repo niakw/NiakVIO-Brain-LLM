@@ -1,3 +1,8 @@
+## 2026-11-10 — Live-preflight regression gate made triggerable
+
+- Brain `a144c3e` four-family run `42860476271` failed *before preflight/inference*: newly introduced test incorrectly invoked `RepairRequest.from_dict` (absent API). Brain `5695452` corrected it to `copy.deepcopy`. The benchmark's push path filter previously did not include test/helper changes; the CPU challenge is now re-triggered by the workflow itself and by the shared live-ingestion helper so future changes cannot leave stale four-family evidence.
+- Avoided a second `npm ci` in post-candidate baseline stage because the same isolated worktree now installs dependencies while capturing the mandatory exact-current source preflight. Sanitize output and preserve 3-stage Deep proof. No successful provider media claims yet.
+
 ## 2026-11-10 — Share live-evidence CI repair
 
 - Brain CI `42860476402` on `a144c3e` failed in **only the newly added unit test**, which called nonexistent `RepairRequest.from_dict()` (RepairRequest supports dataclass construction/to_dict; RepairProposal supports from_dict). 440 tests ran, 3 subtest errors for the same wrong constructor. Fixed test to `copy.deepcopy(base)`; the live ingestion implementation itself was not the source of this failure. Full CI and the actual exact-provider preflight must still pass before declaring the infrastructure validated.
