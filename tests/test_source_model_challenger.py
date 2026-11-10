@@ -8,9 +8,64 @@ from unittest.mock import patch
 from niakvio_brain_llm.contracts import RepairRequest
 from benchmark.source_model_challenger import TOPOLOGIES, classify_proposal
 from scripts.publish_niakvio_force_mutations import validate_current_provider_bloc_anchors
+from benchmark.source_replay_evidence import summarize_deep_report
 
 
 class SourceModelChallengerContract(unittest.TestCase):
+
+
+    def test_deep_replay_real_environment_string_is_not_sha_authority(self):
+        sha = "a" * 40
+        report = {
+            "environment": "github-hosted/ubuntu",
+            "results": [{
+                "key": "published:4khdhub",
+                "status": "provider_unreachable",
+                "tests": [{"streams_playable": 0, "identity_verified_streams": 0}],
+                "evidence": {"failure_classes": ["no_provider_request_observed"]},
+            }],
+        }
+        result = summarize_deep_report(report, provider="4khdhub", source_sha=sha)
+        self.assertEqual(result["sourceSha"], sha)
+        self.assertEqual(result["status"], "provider_unreachable")
+        self.assertEqual(result["playable"], 0)
+        self.assertFalse(result["validated"])
+        self.assertTrue(result["candidateMaterialized"])
+        self.assertTrue(result["sandboxExecuted"])
+        self.assertFalse(result["published"])
+
+    def test_deep_replay_never_merges_playable_and_identity_from_different_fixtures(self):
+        report = {
+            "results": [{
+                "key": "published:allanime",
+                "status": "degraded",
+                "tests": [
+                    {"streams_playable": 1, "identity_verified_streams": 0},
+                    {"streams_playable": 0, "identity_verified_streams": 1},
+                ],
+            }],
+        }
+        result = summarize_deep_report(report, provider="allanime", source_sha="b"*40)
+        self.assertFalse(result["validated"])
+        self.assertEqual(result["identityMatchedPlayable"], 0)
+
+    def test_deep_replay_requires_exact_provider_and_nonempty_fixture(self):
+        source = {"results": [{"key": "published:other", "status": "healthy", "tests": []}]}
+        with self.assertRaisesRegex(ValueError, "provider identity"):
+            summarize_deep_report(source, provider="moviesmod", source_sha="c"*40)
+        with self.assertRaisesRegex(ValueError, "SHA"):
+            summarize_deep_report(source, provider="moviesmod", source_sha="unknown")
+
+    def test_deep_replay_positive_requires_playable_same_fixture_identity(self):
+        report = {
+            "results": [{
+                "key": "published:yflix", "status": "healthy",
+                "tests": [{"streams_playable": 2, "identity_verified_streams": 1}],
+            }],
+        }
+        result = summarize_deep_report(report, provider="yflix", source_sha="d"*40)
+        self.assertEqual(result["identityMatchedPlayable"], 1)
+        self.assertTrue(result["validated"])
 
     def test_real_source_anchor_contract_across_four_independent_families(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -72,6 +127,7 @@ class SourceModelChallengerContract(unittest.TestCase):
         self.assertIn('--provider "$PROVIDER_ID"',workflow)
         self.assertIn('brain-qwen35-9b-real-source-diagnostic-${{ matrix.provider_id }}',workflow)
         self.assertIn("node scripts/health_check.mjs --deep",workflow)
+        self.assertIn("python -m benchmark.source_replay_evidence",workflow)
         uploaded=workflow.split("      - name: Upload sanitized read-only diagnostics",1)[1]
         self.assertNotIn("private-",uploaded)
         self.assertNotIn("provider-overrides.json",uploaded)

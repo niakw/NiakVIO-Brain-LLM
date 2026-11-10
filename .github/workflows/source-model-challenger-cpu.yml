@@ -124,28 +124,10 @@ jobs:
               NUVIO_HEALTH_OUTPUT="$GITHUB_WORKSPACE/.challenger/deep-output" \
               node scripts/health_check.mjs --deep
           )
-          python - <<'PY'
-          import json
-          import os
-          from pathlib import Path
-          output=Path(".challenger/deep-output/health-results.json")
-          report=json.load(output.open())
-          results=report.get("results") or []
-          assert len(results)==1
-          r=results[0]
-          tests=r.get("tests") or []
-          playable=sum(int(t.get("streams_playable") or 0) for t in tests)
-          identity=sum(int(t.get("identity_verified_streams") or 0) for t in tests)
-          summary={"sourceSha":str(report.get("environment",{}).get("commit") or ""),
-                   "provider":os.environ["PROVIDER_ID"],
-                   "status":r.get("status"),"playable":playable,"identityVerified":identity,
-                   "candidateMaterialized":True,"sandboxExecuted":True,
-                   "validated":playable>0 and identity>0,
-                   "published":False}
-          Path(".challenger/source-sandbox-result.json").write_text(json.dumps(summary,indent=2)+"\\n")
-          print("FIELD_BRAIN_REAL_SOURCE_REPLAY materialized=true playback=%d identity=%d publish=false" %
-                (playable,identity))
-          PY
+          NIAKVIO_SOURCE_SHA="$niak_sha" python -m benchmark.source_replay_evidence \
+            --input .challenger/deep-output/health-results.json \
+            --provider "$PROVIDER_ID" \
+            --output .challenger/source-sandbox-result.json
       - name: Upload sanitized read-only diagnostics
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02

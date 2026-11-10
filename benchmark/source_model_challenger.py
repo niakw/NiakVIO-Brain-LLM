@@ -179,6 +179,10 @@ def main() -> int:
         print("FIELD_BRAIN_SOURCE_CHALLENGER provider=" + provider_id
               + " model_json=" + str(row.get("schemaValid") is True).lower()
               + " admissible_mutation=" + str(row.get("canonicalApplyEligible") is True).lower()
+              + " mode=" + str(row.get("generationMode") or "unknown")
+              + " abstained=" + str(row.get("abstained") is True).lower()
+              + " mutation_count=" + str(row.get("mutationCount") or 0)
+              + " current_anchor=" + str(row.get("currentByteAnchorValid"))
               + " publish=false", file=sys.stderr, flush=True)
     return 0 if len(rows) == len(selected) else 1
 
