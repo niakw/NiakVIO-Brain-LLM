@@ -9,10 +9,70 @@ from niakvio_brain_llm.contracts import RepairRequest
 from benchmark.source_model_challenger import TOPOLOGIES, classify_proposal, production_first_scope_request, load_challenger_rag, safe_abstention_category
 from scripts.publish_niakvio_force_mutations import validate_current_provider_bloc_anchors
 from benchmark.source_replay_evidence import summarize_deep_report
+from niakvio_brain_llm.live_context_ingest import attach_live_runtime_evidence
 
 
 class SourceModelChallengerContract(unittest.TestCase):
 
+
+
+    def test_current_live_source_sha_and_provider_are_hard_requirements(self):
+        base = RepairRequest(provider_id="allanime",
+                             failure_class="chain_terminal_gap",
+                             allowed_mutations=["provider_bloc"],
+                             provider_context={
+                                "runtimeMutationSource": "function resolve(){return oldPlayer();}",
+                                "preferredRuntimeMutationSource": "function lookup(){return false;}",
+                             })
+        good = {
+            "sourceSha": "a"*40, "provider": "allanime",
+            "fixture_selection_complete": True,
+            "active_functions": ["resolve", "lookup"],
+            "fixture_evidence": [{"fixture": "One Piece S01E01",
+                                  "category": "anime", "streamsReturned": 0,
+                                  "streamsPlayable": 0}],
+            "network_evidence": [{"fixture": "One Piece S01E01",
+                                  "host": "api.example.org",
+                                  "stage": "episode", "status": 200,
+                                  "response_structure": {
+                                      "kind": "json",
+                                      "graphql": {"dataState": "null",
+                                                  "errorCount": 1},
+                                  }}],
+        }
+        for field, value in (("sourceSha", "b"*40), ("provider", "other"),
+                             ("fixture_selection_complete", False)):
+            with self.subTest(field=field), self.assertRaisesRegex(
+                ValueError, "authority mismatch|fixture set is incomplete"
+            ):
+                attach_live_runtime_evidence(
+                    RepairRequest.from_dict(base.to_dict()),
+                    {**good, field: value}, source_sha="a"*40,
+                    explicit_providers=["allanime"],
+                )
+        result = attach_live_runtime_evidence(
+            base, good, source_sha="a"*40, explicit_providers=["allanime"]
+        )
+        self.assertEqual(result["network_count"], 1)
+        self.assertEqual(result["fixture_count"], 1)
+        self.assertGreaterEqual(result["active_function_count"], 1)
+        self.assertIn("live_runtime_evidence", base.provider_context)
+        self.assertTrue(base.provider_context["live_runtime_evidence"]["network_evidence"])
+        self.assertIn("function resolve()", base.provider_context["preferredRuntimeMutationSource"])
+
+    def test_canonical_challenger_uses_exact_production_live_ingestion(self):
+        from pathlib import Path
+        root = Path(__file__).resolve().parents[1]
+        production = (root / "scripts/plan_batch_from_checkout.py").read_text()
+        challenger = (root / "benchmark/source_model_challenger.py").read_text()
+        function = "attach_live_runtime_evidence("
+        self.assertIn(function, production)
+        self.assertIn(function, challenger)
+        workflow = (root / ".github/workflows/source-model-challenger-cpu.yml").read_text()
+        self.assertIn("capture_brain_live_context.py", workflow)
+        self.assertIn("--live-evidence .challenger/live-context.json", workflow)
+        uploaded = workflow.split("      - name: Upload sanitized read-only diagnostics", 1)[1]
+        self.assertNotIn("live-context.json", uploaded)
 
     def test_deep_replay_real_environment_string_is_not_sha_authority(self):
         sha = "a" * 40

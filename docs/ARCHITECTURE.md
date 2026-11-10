@@ -676,3 +676,16 @@ source files and historical claims of terminal playback are not transferred.
 Numeric-only telemetry reports how many exact editable units, prior strategies
 and same-provider field facts were supplied. Mutation and current-content
 validation policy remains independent of the LLM and prior lessons.
+
+
+### Current provider live-preflight ingestion shared across Brain (2026-11-10)
+Production `plan_batch_from_checkout` and the four-source CPU challenger use the
+same exact SHA/provider-bound `attach_live_runtime_evidence` adapter. A NiakVIO
+read-only preflight must first execute immutable type-correct media fixtures and
+project bounded network/HTTP/GraphQL response **structure** and active function
+names. No raw responses or private credentials are passed to the prompt or
+uploaded. Missing/incomplete preflight fails closed. The shared adapter may
+refine the causal failure and prioritize actually executed provider-owned
+functions before the FORCE scope cascade, but cannot grant source authority,
+media/episode identity, playback or publication. Baseline vs candidate vs
+confirmation remains the separate post-mutation proof.

@@ -57,6 +57,33 @@ jobs:
             --output .challenger/public-documents.jsonl
           test -s .challenger/public-experience.jsonl
           test -s .challenger/public-documents.jsonl
+      - name: Capture exact-current decoded provider execution (pre-generation)
+        run: |
+          set -euo pipefail
+          (
+            cd .challenger/niakvio
+            npm ci --ignore-scripts --no-audit --no-fund
+            timeout 9m python scripts/capture_brain_live_context.py \
+              --provider "$PROVIDER_ID" \
+              --output "$GITHUB_WORKSPACE/.challenger/live-context.json"
+          )
+          python - <<'PY'
+          import json, os, subprocess
+          from pathlib import Path
+          source = Path(".challenger/niakvio")
+          sha = subprocess.check_output(
+              ["git", "-C", str(source), "rev-parse", "HEAD"], text=True
+          ).strip()
+          evidence = json.loads(Path(".challenger/live-context.json").read_text())
+          if (evidence.get("sourceSha") != sha
+                  or evidence.get("provider") != os.environ["PROVIDER_ID"]
+                  or evidence.get("fixture_selection_complete") is not True):
+              raise SystemExit("FIELD_BRAIN_LIVE_CONTEXT_REJECTED exact_sha_or_fixture_incomplete")
+          print("FIELD_BRAIN_LIVE_CONTEXT_READY provider=" + os.environ["PROVIDER_ID"]
+                + " evidence_sha=" + sha[:12]
+                + " fixture_count=" + str(len(evidence.get("fixture_evidence") or []))
+                + " network_count=" + str(len(evidence.get("network_evidence") or [])))
+          PY
       - name: Reuse verified pinned CPU inference runtime
         run: |
           set -euo pipefail
@@ -96,6 +123,7 @@ jobs:
             --niakvio-root .challenger/niakvio \
             --experience .challenger/public-experience.jsonl \
             --documents .challenger/public-documents.jsonl \
+            --live-evidence .challenger/live-context.json \
             --provider "$PROVIDER_ID" --canonical-force --model-only-force \
             --raw-candidates .challenger/private-sandbox-input.jsonl \
             --output .challenger/real-source-report.json \

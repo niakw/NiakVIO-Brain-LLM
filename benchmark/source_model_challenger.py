@@ -15,6 +15,7 @@ from pathlib import Path
 from niakvio_brain_llm.backend import LocalOpenAICompatibleBackend, HostedResponsesBackend
 from niakvio_brain_llm.document_memory import DocumentStore
 from niakvio_brain_llm.force_scope_order import select_force_scopes
+from niakvio_brain_llm.live_context_ingest import attach_live_runtime_evidence
 from niakvio_brain_llm.mutation_guard import validate_mutations
 from niakvio_brain_llm.niakvio_adapter import request_from_checkout
 from niakvio_brain_llm.planner import BrainPlanner
@@ -146,6 +147,8 @@ def main() -> int:
                     help="Production-compatible public experience JSONL (required in FORCE)")
     ap.add_argument("--documents", type=Path, default=None,
                     help="Production-compatible public documents JSONL (required in FORCE)")
+    ap.add_argument("--live-evidence", type=Path, default=None,
+                    help="Source-SHA-bound execution preflight before any model synthesis")
     ap.add_argument("--output", required=True)
     ap.add_argument("--endpoint", default="http://127.0.0.1:8080")
     ap.add_argument("--backend", choices=("local", "hosted"), default="local")
@@ -176,6 +179,17 @@ def main() -> int:
     sha = subprocess.check_output(
         ["git", "-C", str(root), "rev-parse", "HEAD"], text=True).strip()
     assert len(sha) == 40
+    live_context = None
+    if args.live_evidence is not None:
+        live_context = json.loads(args.live_evidence.read_text(encoding="utf-8"))
+        if (not isinstance(live_context, dict)
+                or live_context.get("sourceSha") != sha
+                or live_context.get("provider") not in selected
+                or len(selected) != 1
+                or live_context.get("fixture_selection_complete") is not True):
+            ap.error("current execution evidence must match exact SHA and complete provider fixtures")
+    if args.canonical_force and live_context is None:
+        ap.error("canonical FORCE source challenger requires current execution evidence")
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
     backend = (
@@ -203,6 +217,14 @@ def main() -> int:
             request = request_from_checkout(root, provider_id)
             if request.provider_id.casefold().replace("_", "-") != provider_id:
                 raise ValueError("checkout provider identity mismatch")
+            if live_context is not None:
+                current_live = attach_live_runtime_evidence(
+                    request, live_context, source_sha=sha,
+                    explicit_providers=[provider_id], repair_mode=True,
+                )
+                row["liveNetworkObservations"] = current_live["network_count"]
+                row["liveFixtureObservations"] = current_live["fixture_count"]
+                row["liveActiveFunctionCount"] = current_live["active_function_count"]
             if args.canonical_force:
                 request, chosen_scope = production_first_scope_request(request)
                 row["selectedScope"] = chosen_scope
@@ -286,6 +308,8 @@ def main() -> int:
               + " scope=" + str(row.get("selectedScope") or "all")
               + " mutation_count=" + str(row.get("mutationCount") or 0)
               + " abstention_category=" + str(row.get("abstentionCategory") or "none")
+              + " live_network=" + str(row.get("liveNetworkObservations") or 0)
+              + " live_fixtures=" + str(row.get("liveFixtureObservations") or 0)
               + " current_anchor=" + str(row.get("currentByteAnchorValid"))
               + " publish=false", file=sys.stderr, flush=True)
     return 0 if len(rows) == len(selected) else 1
