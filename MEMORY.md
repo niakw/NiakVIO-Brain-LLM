@@ -1,3 +1,7 @@
+## 2026-11-10 — Scope priority refactor test migrated to single authority
+
+- Brain-LLM CI `42852086359` FAILED on `672aba08`: 433 tests otherwise ran, but historical source-contract test `tests/test_force_retry_budget.py` still looked for `scopes.append("provider_bloc")` inside `scripts/plan_batch_from_checkout.py` after the method correctly moved to `src/niakvio_brain_llm/force_scope_order.py`. This was a stale test fixture expectation, not a runtime failure. Updated the assertion to verify shared module plus production wrapper. Do not count new scope-first inference run until its exact commit CI passes and terminal validation is inspected.
+
 ## 2026-11-10 — Four-scope benchmark mismatch fixed at Brain selection layer
 
 - Live 9B challenger logs for `allanime`, `yflix`, `moviesmod` previously showed `scopes=provider_data,provider_patch,provider_bloc,provider_js` and quick model abstention. **Production** `scripts/plan_batch_from_checkout.py::_force_scope_order` uses a prior-evidence-ranked cascade with **one scope per model call**. The benchmark's unscoped request was not equivalent to the real FORCE route and wasted CPU while misdiagnosing generator quality.

@@ -71,7 +71,10 @@ assert "causally_empty_deletion" in source
 assert '{"chain_terminal_gap", "media_extraction_gap"}' in source
 assert 'failure_key == "route_proven_gap"' in source
 assert 'budget_seconds = min(budget_cap, 600)' in source
-assert 'scopes.append("provider_bloc")' in source
+scope_source = (ROOT / "src" / "niakvio_brain_llm" /
+                "force_scope_order.py").read_text(encoding="utf-8")
+assert 'scopes.append("provider_bloc")' in scope_source
+assert "return select_force_scopes(request)" in source
 
 # Targeted advisor truncation must be retried once with a bounded larger wire budget.
 assert "def _retryable_advisor_error(" in source
