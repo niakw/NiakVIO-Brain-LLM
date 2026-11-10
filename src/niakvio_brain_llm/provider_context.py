@@ -819,6 +819,49 @@ def _runtime_template_prior(root: Path, provider_id: str, context: dict[str, Any
     }
 
 
+def shared_episode_identity_risk(root: str | Path, template: str) -> dict[str, Any]:
+    """Read the actual shared runtime generator, not just a provider wrapper.
+
+    This is read-only and structural: it identifies code patterns already
+    confirmed by an isolated reverse-engineering oracle. It does not classify
+    live network content as good or authorize a provider patch.
+    """
+    relative = str(template or "").strip()
+    if not relative.startswith("scripts/provider_patches/"):
+        return {}
+    path = _owned_checkout_file(
+        Path(root), relative, prefixes=("scripts/provider_patches/",),
+    )
+    if path is None:
+        return {}
+    source = path.read_text(encoding="utf-8", errors="replace")
+    patterns = (
+        ("season_zero_coerced_to_one",
+         r"\bseason\s*=\s*Number\([^;\n]{1,180}\)\s*\|\|\s*1"),
+        ("missing_episode_defaulted_to_one",
+         r"\bepisode\s*=\s*Number\([^;\n]{1,180}\)\s*\|\|\s*1"),
+        ("missing_season_falls_back_to_first",
+         r"if\s*\(\s*!\s*season\s*\)\s*season\s*=\s*seasons\s*\[\s*0\s*\]"),
+        ("missing_episode_falls_back_to_first",
+         r"if\s*\(\s*!\s*ep\s*\)\s*ep\s*=\s*eps\s*\[\s*0\s*\]"),
+    )
+    findings = [
+        key for key, pattern in patterns if re.search(pattern, source)
+    ]
+    if not findings:
+        return {}
+    return {
+        "source": relative,
+        "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+        "riskKind": "shared-runtime-episode-identity-fallback",
+        "signals": findings,
+        "diagnosticOnly": True,
+        "proofAuthority": False,
+        "repairOwner": "shared-core-or-Brain-pipeline-not-provider-local",
+        "verification": "replay-isolated-provider-oracle-then-current-byte-terminal",
+    }
+
+
 def build_provider_context(root: str | Path, provider_id: str) -> dict[str, Any]:
     root = Path(root)
     context: dict[str, Any] = {
@@ -930,4 +973,10 @@ def build_provider_context(root: str | Path, provider_id: str) -> dict[str, Any]
                     context["preferredRuntimeMutationSource"] = exact_blocks[preferred_id]
 
     context["runtime_template_prior"] = _runtime_template_prior(root, provider_id, context)
+    # Provider wrappers often only name a shared renderer. Without inspecting
+    # that renderer, the Brain cannot see an actual season/episode fallback.
+    template = context["runtime_template_prior"].get("template")
+    risks = shared_episode_identity_risk(root, template)
+    if risks:
+        context["runtime_episode_safety_diagnostics"] = risks
     return context
