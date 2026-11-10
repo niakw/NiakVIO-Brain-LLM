@@ -701,3 +701,16 @@ four-family read-only model comparison. When the worker never issues a request,
 the next action is same-byte Nuvio-vs-Deep invocation diagnosis, **not** an
 automatic provider parse patch. Actual model output and replay are independently
 required; synthetic signature tests never count as fixes.
+
+
+### Cross-repository exact-SHA source challenger, TMDB-authenticated preflight (2026-11-10)
+The benchmark is a reusable workflow: the NiakVIO caller supplies immutable
+Niak source and Brain model SHA inputs and passes its own existing TMDB
+credential via GitHub Actions secret scope. Checkout commit identity is
+asserted before execution; the Brain publisher records the Brain checkout
+commit, never the caller GitHub SHA. Keyless preflights fail closed as
+`missing_tmdb_credential` instead of falsely diagnosing zero-request
+provider behavior. Credentials are not exposed to the model, reports or
+artifacts. This is **not** a new paid LLM endpoint: pinned local Qwen remains
+the generator and the same exact-source canonical Deep and identity proof is
+still required to accept a candidate.

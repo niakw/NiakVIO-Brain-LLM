@@ -87,6 +87,14 @@ class SourceModelChallengerContract(unittest.TestCase):
         self.assertIn("NIAKVIO_REQUIRE_DECODE_PROOF=1 timeout 9m", workflow)
         self.assertIn("NIAKVIO_FORCE_CPU_TIGHT_PROMPT: '1'", workflow)
         self.assertIn("--live-evidence .challenger/live-context.json", workflow)
+        self.assertIn("workflow_call:", workflow)
+        self.assertIn("brain_ref:", workflow)
+        self.assertIn("niakvio_ref:", workflow)
+        self.assertIn("TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}", workflow)
+        self.assertIn("TMDB_ACCESS_TOKEN: ${{ secrets.TMDB_ACCESS_TOKEN }}", workflow)
+        self.assertIn("FIELD_BRAIN_LIVE_CONTEXT_INFRA_BLOCKER missing_tmdb_credential", workflow)
+        self.assertIn('brain_sha="$(git rev-parse HEAD)"', workflow)
+        self.assertIn('--niakvio-sha "$niak_sha" --brain-llm-sha "$brain_sha"', workflow)
         uploaded = workflow.split("      - name: Upload sanitized read-only diagnostics", 1)[1]
         self.assertNotIn("live-context.json", uploaded)
 

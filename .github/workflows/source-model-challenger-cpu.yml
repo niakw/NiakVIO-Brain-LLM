@@ -1,15 +1,24 @@
 name: Brain - Real Source CPU Challenger (read-only)
 
 on:
+  # Source-validated inference must run where exact TMDB fixture metadata
+  # credentials are available; the NiakVIO caller passes them explicitly.
+  workflow_call:
+    inputs:
+      brain_ref:
+        required: true
+        type: string
+      niakvio_ref:
+        required: true
+        type: string
+    secrets:
+      TMDB_API_KEY:
+        required: false
+      TMDB_ACCESS_TOKEN:
+        required: false
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - 'benchmark/source_model_challenger.py'
-      - 'src/niakvio_brain_llm/live_context_ingest.py'
-      - 'src/niakvio_brain_llm/current_evidence.py'
-      - 'src/niakvio_brain_llm/prompting.py'
-      - '.github/workflows/source-model-challenger-cpu.yml'
+  # No automatic 9B run on Brain-only push: previously this silently tested
+  # a keyless environment and misclassified live provider execution.
 
 permissions:
   contents: read
@@ -35,11 +44,13 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
+          repository: niakw/NiakVIO-Brain-LLM
+          ref: ${{ inputs.brain_ref || github.sha }}
           persist-credentials: false
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           repository: niakw/NiakVIO
-          ref: main
+          ref: ${{ inputs.niakvio_ref || 'main' }}
           path: .challenger/niakvio
           persist-credentials: false
           fetch-depth: 1
@@ -64,8 +75,19 @@ jobs:
           test -s .challenger/public-experience.jsonl
           test -s .challenger/public-documents.jsonl
       - name: Capture exact-current decoded provider execution (pre-generation)
+        env:
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+          TMDB_ACCESS_TOKEN: ${{ secrets.TMDB_ACCESS_TOKEN }}
         run: |
           set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${{ inputs.brain_ref || github.sha }}"
+          if [ -n "${{ inputs.niakvio_ref }}" ]; then
+            test "$(git -C .challenger/niakvio rev-parse HEAD)" = "${{ inputs.niakvio_ref }}"
+          fi
+          if [ -z "${TMDB_API_KEY:-}" ] && [ -z "${TMDB_ACCESS_TOKEN:-}" ]; then
+            echo "::error::FIELD_BRAIN_LIVE_CONTEXT_INFRA_BLOCKER missing_tmdb_credential"
+            exit 1
+          fi
           (
             cd .challenger/niakvio
             npm ci --ignore-scripts --no-audit --no-fund
@@ -148,11 +170,12 @@ jobs:
             exit 0
           fi
           niak_sha="$(git -C .challenger/niakvio rev-parse HEAD)"
+          brain_sha="$(git rev-parse HEAD)"
           python scripts/publish_niakvio_force_mutations.py \
             --input .challenger/private-sandbox-input.jsonl \
             --output .challenger/private-force-payload.json \
             --niakvio-root .challenger/niakvio \
-            --niakvio-sha "$niak_sha" --brain-llm-sha "$GITHUB_SHA"
+            --niakvio-sha "$niak_sha" --brain-llm-sha "$brain_sha"
           count="$(python -c 'import json; print(json.load(open(".challenger/private-force-payload.json"))["providerCount"])')"
           if [ "$count" != 1 ]; then
             echo "FIELD_BRAIN_REAL_SOURCE_SANDBOX force_sanitizer_rejected=true"
