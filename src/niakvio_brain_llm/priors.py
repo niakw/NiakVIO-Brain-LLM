@@ -25,6 +25,20 @@ STATIC_FAILURE_PRIORS: dict[str, dict[str, Any]] = {
         "target_layer": "core",
         "confidence": 0.96,
     },
+    # A working URL is not proof of the requested episode; tests on a real
+    # shared anime runtime demonstrated S00 -> S01 and missing-episode -> first
+    # episode, while Brain's accepted-program compiler dropped season/episode.
+    # These are Core/pipeline defects, not a license for provider-local patches.
+    "episode-coordinate-loss": {
+        "target_layer": "core",
+        "confidence": 0.98,
+        "strategy_prior": "preserve_episodic_bindings_before_materialization",
+    },
+    "subtitle-episode-association-gap": {
+        "target_layer": "core",
+        "confidence": 0.98,
+        "strategy_prior": "validate_episode_bound_subtitle_provenance",
+    },
     "runtime-compatibility-gap": {
         "target_layer": "core",
         "confidence": 0.96,
