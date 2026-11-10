@@ -118,6 +118,10 @@ jobs:
           done
           exit 1
       - name: Generate a production-normalized Brain FORCE candidate (ephemeral)
+        env:
+          # Preserve exact editable units; shrink duplicate network/helper context
+          # before llama.cpp 8K prefill. Production has an opt-in CPU counterpart.
+          NIAKVIO_FORCE_CPU_TIGHT_PROMPT: '1'
         run: |
           set -euo pipefail
           timeout 12m python -m benchmark.source_model_challenger \

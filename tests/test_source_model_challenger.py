@@ -72,6 +72,7 @@ class SourceModelChallengerContract(unittest.TestCase):
         workflow = (root / ".github/workflows/source-model-challenger-cpu.yml").read_text()
         self.assertIn("capture_brain_live_context.py", workflow)
         self.assertIn("NIAKVIO_REQUIRE_DECODE_PROOF=1 timeout 9m", workflow)
+        self.assertIn("NIAKVIO_FORCE_CPU_TIGHT_PROMPT: '1'", workflow)
         self.assertIn("--live-evidence .challenger/live-context.json", workflow)
         uploaded = workflow.split("      - name: Upload sanitized read-only diagnostics", 1)[1]
         self.assertNotIn("live-context.json", uploaded)

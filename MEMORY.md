@@ -1,3 +1,8 @@
+## 2026-11-10 — Real live context overflows Qwen CPU prompt unless tight mode enabled
+
+- Run `42861059105` on Brain `4ad1dd4`: strict movie fixtures now work for `moviesmod` (`fixture_count=2 network_count=10`, Deep `no_streams`), i.e. previous fixture mismatch resolved. However the first actual network-conditioned model request generated a **27,620-character** user payload + 1,402 system chars, and the local backend rejected it instantly with `FIELD_BRAIN_FORCE_MODEL outcome=error error=RuntimeError`. Zero candidate, no playback; the diagnostic job success was only pipeline completion.
+- Brain already had `NIAKVIO_FORCE_CPU_TIGHT_PROMPT=1` compaction with tests `tests/test_force_cpu_tight_prompt.py`, retaining exact edit unit IDs and bounded GraphQL/media response structures under a 12K-character contract. The new CPU challenger failed to set this opt-in on its generation step. Enabled it locally only for the live-source model step. Do not increase context wildly or truncate executable units; test current exact SHA run and never label a model transport error as a provider failure.
+
 ## 2026-11-10 — Real execution preflight must use immutable strict decoded fixture selector
 
 - Exact Brain run `42860824167` on `285798fa` passed local tests but its 4khdhub live preflight failed **correctly** at fixture identity gate: `expected=2 observed=10 missingCategories=none`, `FIELD_BRAIN_LIVE_CONTEXT_REJECTED exact_sha_or_fixture_incomplete`, with `provider_unreachable / no_provider_request_observed / 0 streams`. The model wasn't invoked, which is the correct fail-closed result rather than a provider repair failure.
