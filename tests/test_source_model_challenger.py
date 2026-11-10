@@ -7,7 +7,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 from niakvio_brain_llm.contracts import RepairRequest
-from benchmark.source_model_challenger import TOPOLOGIES, classify_proposal, production_first_scope_request, load_challenger_rag, safe_abstention_category
+from benchmark.source_model_challenger import TOPOLOGIES, classify_proposal, production_first_scope_request, load_challenger_rag, safe_abstention_category, missing_provider_execution_evidence
 from scripts.publish_niakvio_force_mutations import validate_current_provider_bloc_anchors
 from benchmark.source_replay_evidence import summarize_deep_report
 from niakvio_brain_llm.live_context_ingest import attach_live_runtime_evidence
@@ -16,6 +16,19 @@ from niakvio_brain_llm.live_context_ingest import attach_live_runtime_evidence
 class SourceModelChallengerContract(unittest.TestCase):
 
 
+
+    def test_no_observed_execution_is_diagnostic_not_a_model_or_provider_failure(self):
+        preflight = {"preflight_status": "provider_unreachable", "preflight_playable": 0}
+        evidence = {"network_count": 0, "active_function_count": 0}
+        self.assertTrue(missing_provider_execution_evidence(preflight, evidence))
+        self.assertFalse(missing_provider_execution_evidence(
+            preflight, {"network_count": 1, "active_function_count": 0}))
+        self.assertFalse(missing_provider_execution_evidence(
+            preflight, {"network_count": 0, "active_function_count": 1}))
+        self.assertFalse(missing_provider_execution_evidence(
+            {"preflight_status": "no_streams", "preflight_playable": 0}, evidence))
+        self.assertFalse(missing_provider_execution_evidence(
+            {"preflight_status": "provider_unreachable", "preflight_playable": 1}, evidence))
 
     def test_current_live_source_sha_and_provider_are_hard_requirements(self):
         base = RepairRequest(provider_id="allanime",

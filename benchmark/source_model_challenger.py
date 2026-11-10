@@ -32,6 +32,23 @@ TOPOLOGIES = {
 }
 
 
+class UnobservedProviderExecution(RuntimeError):
+    """Current decoded preflight did not demonstrate any provider execution."""
+
+
+def missing_provider_execution_evidence(live: dict, observed: dict) -> bool:
+    """Withhold CPU generation when no provider request or owned function ran.
+
+    Owner remains UNKNOWN: routing, harness, runtime or provider can explain it.
+    """
+    return bool(
+        live.get("preflight_status") == "provider_unreachable"
+        and int(live.get("preflight_playable") or 0) == 0
+        and observed.get("network_count") == 0
+        and observed.get("active_function_count") == 0
+    )
+
+
 def safe_abstention_category(reason: str) -> str:
     """Never expose model narrative, URLs, secrets or source bytes in diagnostics."""
     cleaned = re.sub(r"[^a-z]+", " ", str(reason or "").casefold())
@@ -225,11 +242,20 @@ def main() -> int:
                 row["liveNetworkObservations"] = current_live["network_count"]
                 row["liveFixtureObservations"] = current_live["fixture_count"]
                 row["liveActiveFunctionCount"] = current_live["active_function_count"]
+                if missing_provider_execution_evidence(live_context, current_live):
+                    print(
+                        "FIELD_BRAIN_SOURCE_PREFLIGHT_BLOCKED "
+                        f"provider={provider_id} reason=unobserved_provider_execution "
+                        "owner=unresolved brain_model_invoked=false",
+                        file=sys.stderr, flush=True,
+                    )
+                    raise UnobservedProviderExecution("no current provider execution proof")
             if args.canonical_force:
                 request, chosen_scope = production_first_scope_request(request)
                 row["selectedScope"] = chosen_scope
             # The proposal has no side effects. No output includes prompt,
             # evidence values, edits, media, URLs, headers or tokens.
+            row["modelInvoked"] = True
             with contextlib.redirect_stdout(sys.stderr):
                 proposal = (
                     planner.plan(
@@ -274,9 +300,16 @@ def main() -> int:
                 )
                 destination.chmod(0o600)
         except Exception as exc:
-            row.update({"schemaValid": False, "errorType": type(exc).__name__,
-                        "materialized": False, "executed": False,
-                        "validated": False, "published": False})
+            row.update({
+                "schemaValid": False, "errorType": type(exc).__name__,
+                "blockedBy": (
+                    "unobserved_provider_execution"
+                    if isinstance(exc, UnobservedProviderExecution) else None
+                ),
+                "modelInvoked": bool(row.get("modelInvoked")),
+                "materialized": False, "executed": False,
+                "validated": False, "published": False,
+            })
         rows.append(row)
         report = {
             "schemaVersion": 1, "model": args.model,

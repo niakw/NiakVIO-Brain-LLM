@@ -1,3 +1,9 @@
+## 2026-11-10 — Fast fail for unobserved provider execution; still not a repair
+
+- Live preflight `42861059105` on Brain `4ad1dd4` confirmed 4khdhub strict 2 fixtures / `provider_unreachable`, 0 observed network events, 0 provider-owned functions; Qwen used ~172 sec then abstained for missing current causal evidence. By contrast other families produced network observations. This is not evidence the provider itself is responsible; dispatch/harness/runtime are still possible.
+- CPU source challenger now **withholds model inference** for that exact conjunction only and emits `blockedBy=unobserved_provider_execution` / `modelInvoked=false` / owner unresolved. Observed provider requests or owned functions retain full model evaluation. Negative/positive contract tests prevent classifying ordinary `no_streams` as the same failure. No provider code or Core changed, no stream claimed repaired.
+- The bounded CPU-tight prompt is a separate response to real network context exceeding the model window. Current exact-SHA runs must still pass compilation/application/materialization and baseline/candidate/confirmation Deep and identity to count.
+
 ## 2026-11-10 — Real live context overflows Qwen CPU prompt unless tight mode enabled
 
 - Run `42861059105` on Brain `4ad1dd4`: strict movie fixtures now work for `moviesmod` (`fixture_count=2 network_count=10`, Deep `no_streams`), i.e. previous fixture mismatch resolved. However the first actual network-conditioned model request generated a **27,620-character** user payload + 1,402 system chars, and the local backend rejected it instantly with `FIELD_BRAIN_FORCE_MODEL outcome=error error=RuntimeError`. Zero candidate, no playback; the diagnostic job success was only pipeline completion.
