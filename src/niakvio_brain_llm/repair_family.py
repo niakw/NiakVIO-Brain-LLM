@@ -135,6 +135,66 @@ def _observation_signals(observations: Any) -> tuple[list[str], list[str]]:
     return sorted(signals), sorted(stages)
 
 
+
+def observed_source_topologies(observations: Any) -> list[str]:
+    """Classify actual 2xx response shapes, never provider names or WAF pages.
+
+    This is sampling metadata, NOT a repaired-provider verdict. In particular,
+    a challenged HTML page must not make an API or player topology seem proven.
+    """
+    topologies: set[str] = set()
+    current_sources = {
+        "targeted-regression-current", "census-sharded-current",
+        "census-current", "waf-client-differential-current",
+    }
+    for observation in observations or []:
+        if not isinstance(observation, dict) or _canon(observation.get("source")) not in current_sources:
+            continue
+        value = observation.get("value")
+        if not isinstance(value, dict):
+            continue
+        network = value.get("network")
+        if not isinstance(network, dict):
+            continue
+        for responses in network.values():
+            if not isinstance(responses, list):
+                continue
+            for response in responses[:12]:
+                if not isinstance(response, dict):
+                    continue
+                try:
+                    status = int(response.get("status") or 0)
+                except (ValueError, TypeError):
+                    continue
+                if not 200 <= status < 300:
+                    continue
+                shape = response.get("shape")
+                if not isinstance(shape, dict):
+                    continue
+                kind = _canon(shape.get("kind"))
+                if kind == "json":
+                    topologies.add("json-api")
+                elif kind == "javascript":
+                    topologies.add("javascript-app")
+                elif kind == "html":
+                    markers = {
+                        _canon(marker)
+                        for marker in shape.get("markers") or []
+                        if isinstance(marker, str)
+                    }
+                    if "download" in markers:
+                        topologies.add("html-download")
+                    if markers & {"player", "embed", "hls-literal", "mp4-literal"} or (
+                        isinstance(shape.get("iframes"), int) and shape["iframes"] > 0
+                    ):
+                        topologies.add("html-player")
+                    if not (markers & {"download", "player", "embed", "hls-literal", "mp4-literal"}) and not (
+                        isinstance(shape.get("iframes"), int) and shape["iframes"] > 0
+                    ):
+                        topologies.add("html-catalogue")
+    return sorted(topologies)
+
+
 def repair_family_descriptor(value: Any) -> dict[str, Any]:
     raw = _mapping(value)
     existing = raw.get("repair_family") or raw.get("repairFamily")
@@ -191,6 +251,7 @@ def repair_family_descriptor(value: Any) -> dict[str, Any]:
         "signals": signals,
         "stages": stages[:8],
         "mutationSurfaces": allowed,
+        "sourceTopologies": observed_source_topologies(raw.get("observations") or []),
         "archetype": archetype,
     }
     # Family identity must describe causal repair shape, not product/catalogue
@@ -263,6 +324,7 @@ def select_family_wave(
     validated_family_keys: set[str] | None = None,
     provider_failure_burden: dict[str, int] | None = None,
     provider_execution_burden: dict[str, int] | None = None,
+    ensure_topology_coverage: bool = False,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """Select one rotating representative per unresolved repair family.
 
@@ -338,6 +400,35 @@ def select_family_wave(
 
         representative = min(candidate_members, key=witness_key)
         selected_indexes.add(representative[0])
+        if ensure_topology_coverage:
+            # A family-level parser may transfer, but a download index, API,
+            # and embedded player are not interchangeable reverse witnesses.
+            # Add ONLY independently observed 2xx topologies, not inferred
+            # provider types, historical status or HTTP challenge pages.
+            def topologies(item: tuple[int, dict[str, Any]]) -> set[str]:
+                family = item[1].get("repair_family") or item[1].get("repairFamily") or {}
+                return {
+                    str(x) for x in family.get("sourceTopologies") or []
+                    if str(x) in {
+                        "json-api", "javascript-app", "html-download",
+                        "html-player", "html-catalogue",
+                    }
+                }
+
+            covered = topologies(representative)
+            available = set().union(*(topologies(item) for item in members))
+            for topology in sorted(available - covered):
+                if topology in covered:
+                    continue
+                witnesses = [
+                    item for item in members
+                    if item[0] not in selected_indexes and topology in topologies(item)
+                ]
+                if not witnesses:
+                    continue
+                extra = min(witnesses, key=witness_key)
+                selected_indexes.add(extra[0])
+                covered.update(topologies(extra))
 
     selected = [
         row for index, row in enumerate(rows)

@@ -1226,3 +1226,26 @@
 - Independent **live network** differential [42749440797](https://github.com/niakw/NiakVIO/actions/runs/42749440797) SUCCESS as probe: The Colony (movie) and Breaking Bad S01E01 (TV) on original and repaired sandbox each made exactly 1 network request to `4khdhub.one`, received HTTP 200, **0 returned streams and no detail/media requests**. No terminal media / correct episode / subtitles verified. This isolates a second failure **after CSS repair**, at real upstream search response/content/fixture matching, not an accepted provider fix; do not count HTTP 200 or mock media URLs as positive.
 - Infrastructure handoff: NiakVIO `scripts/apply_provider_overrides.py` now applies only the reusable CSS token fix **within the matching PROVIDER.* Lego** on materialization (not manual provider patch). `scripts/reapply_published_overrides.py` fingerprints the shared helper. The exact published-byte regression now fails until release finalization updates the 4KHDHub bundle. [Release 42749743207](https://github.com/niakw/NiakVIO/actions/runs/42749743207) was started on SHA `846297e` but later evidence-only census advanced main. A later infrastructure fix `5834580a` pins source SHA and permits only explicitly classified evidence-only drift via `domain_refresh_publication_drift_gate.py`, never executable drift. Current release [42750321161](https://github.com/niakw/NiakVIO/actions/runs/42750321161) queued at SHA `0a51edf7` (result not yet known).
 - Correct next Brain strategy: request/response **structural search shape** on real provider with privacy-safe logging, differentiate changed site HTML, soft-block/empty search, request headers/cookies and category aliases. Treat the CSS repair as a validated parser contract that may be reused only after exact source-signature applicability, but retain old live failure and experiment identity (no false positive skill). For actual 4KHDHub, require search hits→matching detail→media terminal→correct episode and subtitles→publication→replay before positive memory. Current user-facing Spartacus S00E01 and mismatched subtitles remain unproven; 46 total, 14 carried FULL / 1 carried PARTIAL / 26 repairQueue, no new fully functional Brain repair.
+
+## 2026-11-10 — Multi-topology Brain reverse-selection (no playback promotion)
+
+- A causal repair family can contain independently evidenced JSON/API, HTML download,
+  HTML embedded player, HTML catalogue and JavaScript application sources. The
+  family's transferable mechanism fingerprint remains unchanged; **reverse testing
+  no longer reduces the entire family to one download-style witness** when exact
+  current 2xx response shapes prove another topology.
+- Brain's normal family-wave selection and batch-planning path now retain an
+  additional witness per observed topology; unknown topologies do not manufacture
+  diversity. WAF/403 and historical/untrusted responses cannot label the source.
+  Selected providers still undergo the same independent compile, sandbox,
+  materialization, decoded media identity and non-regression gates.
+- This is a *selection/coverage* improvement, not a repaired provider: as of the
+  2026-11-10 census, NiakVIO has 46 providers, 26 in repairQueue, 0 new
+  strictly accepted Brain fixes. Local 7B inference on the latest Learning run
+  did not produce an executable provider proposal; CI must be checked on the
+  exact new Brain commit.
+- Model decision: public GitHub Actions' normal ubuntu runner provides 4 vCPU/
+  16 GiB RAM, not a free GPU; GitHub Models inference retired 2026-07-30.
+  Keep existing local model and paid API off by default. Benchmark an upgraded
+  generator on the same independent topology+episode corpus before selecting it.
+  Source: https://docs.github.com/en/github-models

@@ -130,6 +130,7 @@ def select_wave(
         validated_family_keys=validated_keys,
         provider_failure_burden=burden,
         provider_execution_burden=execution_burden,
+        ensure_topology_coverage=True,
     )
     selected_ids = [str(row["provider"]) for row in selected]
     deferred_ids = [str(row["provider"]) for row in deferred]
@@ -148,6 +149,8 @@ def select_wave(
         "selectedProviderCount": len(selected_ids),
         "deferredProviderCount": len(deferred_ids),
         "repairFamilyCount": len(families),
+        "observedSourceTopologies": sorted({t for row in rows for t in (row["repair_family"].get("sourceTopologies") or [])}),
+        "selectedSourceTopologies": sorted({t for row in selected for t in ((row.get("repair_family") or {}).get("sourceTopologies") or [])}),
         "validatedReplayableFamilyCount": len(validated_keys),
         "executionBlockedProviders": sorted(execution_burden),
         "providerExecutionBurden": dict(sorted(execution_burden.items())),

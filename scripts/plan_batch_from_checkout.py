@@ -267,6 +267,7 @@ def main() -> int:
             wave_rows,
             validated_family_keys=validated_family_keys,
             provider_failure_burden=provider_failure_burden,
+            ensure_topology_coverage=True,
         )
         print(
             "FIELD_BRAIN_REPAIR_FAMILY_WAVE "
