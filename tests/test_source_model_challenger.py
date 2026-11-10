@@ -65,7 +65,8 @@ class SourceModelChallengerContract(unittest.TestCase):
         }
         result = summarize_deep_report(report, provider="yflix", source_sha="d"*40)
         self.assertEqual(result["identityMatchedPlayable"], 1)
-        self.assertTrue(result["validated"])
+        self.assertFalse(result["validated"])
+        self.assertTrue(result["candidateMediaVerified"])
 
     def test_force_rag_input_never_silently_empties_on_missing_corpora(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -104,6 +105,35 @@ class SourceModelChallengerContract(unittest.TestCase):
                    return_value={"target_layer": "provider"}) as prior:
             classify_proposal(request, proposal, experience_store=store)
         self.assertTrue(prior.call_args[0][1], "classifier must receive the same RAG results as planner")
+
+
+    def test_playable_causality_requires_matched_baseline_and_confirmation(self):
+        def report(tmdb, matched, status="healthy"):
+            return {"results": [{
+                "key": "published:yflix", "status": status,
+                "tests": [{
+                    "fixture": {"tmdbId": tmdb, "label": "movie sample", "category": "movie"},
+                    "streams_playable": matched, "identity_verified_streams": matched,
+                }],
+            }]}
+        before = report("100", 0, "provider_unreachable")
+        after = report("100", 1)
+        args = dict(provider="yflix", source_sha="a"*40)
+        good = summarize_deep_report(
+            after, baseline_report=before, confirmation_report=after, **args
+        )
+        self.assertTrue(good["validated"])
+        self.assertTrue(good["fixtureComparable"])
+        self.assertEqual(good["baselineIdentityMatchedPlayable"], 0)
+        for baseline, confirmation in [
+            (after, after),  # original already worked
+            (before, before),  # transient candidate playback
+            (before, report("101", 1)),  # different movie
+        ]:
+            self.assertFalse(summarize_deep_report(
+                after, baseline_report=baseline, confirmation_report=confirmation, **args
+            )["validated"])
+        self.assertFalse(summarize_deep_report(after, **args)["validated"])
 
     def test_real_source_anchor_contract_across_four_independent_families(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -190,6 +220,9 @@ class SourceModelChallengerContract(unittest.TestCase):
         self.assertIn('brain-qwen35-9b-real-source-diagnostic-${{ matrix.provider_id }}',workflow)
         self.assertIn("node scripts/health_check.mjs --deep",workflow)
         self.assertIn("python -m benchmark.source_replay_evidence",workflow)
+        self.assertIn("--baseline .challenger/baseline-output/health-results.json",workflow)
+        self.assertIn("--confirmation .challenger/confirmation-output/health-results.json",workflow)
+        self.assertEqual(workflow.count("node scripts/health_check.mjs --deep"), 3)
         uploaded=workflow.split("      - name: Upload sanitized read-only diagnostics",1)[1]
         self.assertNotIn("private-",uploaded)
         self.assertNotIn("provider-overrides.json",uploaded)

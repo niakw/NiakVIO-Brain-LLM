@@ -654,3 +654,14 @@ receive the same retrieval store. Reports contain record counts only; private
 project memory remains unavailable in this public CI and must not be assumed
 equivalent to the full production Brain context. The generated candidate still
 requires exact anchor / canonical apply / materialize / real media identity.
+
+
+### Brain benchmark baseline and reproducibility gate (2026-11-10)
+A single playable result after a generated patch is not causal repair. The
+isolated FORCE challenger must now replay the exact source baseline, apply and
+materialize the candidate, then perform two independent candidate Deep probes.
+Only an improvement over a non-healthy baseline on comparable exact
+provider/fixture identities, with no per-fixture regression and identity-matched
+playback in both candidate passes, can set `validated=true` in the **sandbox
+diagnostic**. Actual NiakVIO publication and production acceptance remain
+separate, requiring their own current-SHA proof.

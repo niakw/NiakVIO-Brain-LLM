@@ -120,6 +120,14 @@ jobs:
             echo "FIELD_BRAIN_REAL_SOURCE_SANDBOX force_sanitizer_rejected=true"
             exit 0
           fi
+          (
+            cd .challenger/niakvio
+            npm ci --ignore-scripts --no-audit --no-fund
+            python scripts/stage_published.py
+            NUVIO_HEALTH_PROVIDER_FILTER="$PROVIDER_ID" \
+              NUVIO_HEALTH_OUTPUT="$GITHUB_WORKSPACE/.challenger/baseline-output" \
+              node scripts/health_check.mjs --deep
+          )
           python .challenger/niakvio/scripts/apply_brain_llm_force_mutations.py \
             --input "$(pwd)/.challenger/private-force-payload.json" \
             --current-sha "$niak_sha" --provider "$PROVIDER_ID" \
@@ -131,15 +139,19 @@ jobs:
           fi
           (
             cd .challenger/niakvio
-            npm ci --ignore-scripts --no-audit --no-fund
             python scripts/materialize_provider_v3_one.py "$PROVIDER_ID"
             python scripts/stage_published.py
             NUVIO_HEALTH_PROVIDER_FILTER="$PROVIDER_ID" \
               NUVIO_HEALTH_OUTPUT="$GITHUB_WORKSPACE/.challenger/deep-output" \
               node scripts/health_check.mjs --deep
+            NUVIO_HEALTH_PROVIDER_FILTER="$PROVIDER_ID" \
+              NUVIO_HEALTH_OUTPUT="$GITHUB_WORKSPACE/.challenger/confirmation-output" \
+              node scripts/health_check.mjs --deep
           )
           NIAKVIO_SOURCE_SHA="$niak_sha" python -m benchmark.source_replay_evidence \
             --input .challenger/deep-output/health-results.json \
+            --baseline .challenger/baseline-output/health-results.json \
+            --confirmation .challenger/confirmation-output/health-results.json \
             --provider "$PROVIDER_ID" \
             --output .challenger/source-sandbox-result.json
       - name: Upload sanitized read-only diagnostics
