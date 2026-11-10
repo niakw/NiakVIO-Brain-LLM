@@ -176,6 +176,19 @@ def compact_request(
     runtime_template_prior = context.get("runtime_template_prior")
     if isinstance(runtime_template_prior, dict) and runtime_template_prior:
         bounded_context["runtime_template_prior"] = _compact(runtime_template_prior, string_limit=260)
+    episode_risks = context.get("runtime_episode_safety_diagnostics")
+    if isinstance(episode_risks, dict) and episode_risks:
+        # Bounded current-source structural facts outrank generic historical
+        # advice, without claiming an offline oracle is production playback.
+        bounded_context["runtime_episode_safety_diagnostics"] = {
+            "source": _clip(episode_risks.get("source"), 150),
+            "sha256": _clip(episode_risks.get("sha256"), 64),
+            "riskKind": _clip(episode_risks.get("riskKind"), 90),
+            "signals": [str(x)[:70] for x in episode_risks.get("signals", [])[:6]],
+            "diagnosticOnly": True,
+            "proofAuthority": False,
+            "repairOwner": "shared-core-or-Brain-pipeline-not-provider-local",
+        }
     runtime_variant_coverage = context.get("runtime_variant_coverage")
     if isinstance(runtime_variant_coverage, dict) and runtime_variant_coverage:
         bounded_context["runtime_variant_coverage"] = _compact(
