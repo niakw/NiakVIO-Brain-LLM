@@ -15,7 +15,7 @@ def fixture(kind, *, markers=(), status=200, iframes=0):
         "supported_types": ["movie", "tv"],
         "observations": [{
             "source": "census-sharded-current",
-            "value": {"network": {"movie": [{"status": status, "shape": shape}]}},
+            "value": {"network": {"movie": [{"status": status, "host": "provider.example", "shape": shape}]}},
         }],
     }
 
@@ -51,10 +51,24 @@ class CrossTopologyFamilyWaveTests(unittest.TestCase):
         challenged["observations"][0]["value"]["network"]["movie"][0]["status"] = 200
         self.assertEqual(observed_source_topologies(challenged["observations"]), [])
 
+    def test_tmdb_metadata_json_never_mislabels_html_provider_as_api(self):
+        html = fixture("html", markers=("download",))
+        html["observations"][0]["value"]["network"]["movie"].insert(0, {
+            "status": 200, "host": "api.themoviedb.org",
+            "shape": {"kind": "json", "top": "object"}
+        })
+        self.assertEqual(
+            observed_source_topologies(html["observations"]), ["html-download"]
+        )
+
+    def test_no_unverified_html_challenge_as_player(self):
+        page = fixture("html", markers=("player", "turnstile"))
+        self.assertEqual(observed_source_topologies(page["observations"]), [])
+
     def test_overlapping_topologies_do_not_force_redundant_provider(self):
         mixed = fixture("html", markers=("download",))
         mixed["observations"][0]["value"]["network"]["movie"].append({
-            "status": 200, "shape": {"kind": "json"}
+            "status": 200, "host": "provider.example", "shape": {"kind": "json"}
         })
         raws = [mixed, fixture("json"), fixture("html", markers=("download",))]
         desc = [repair_family_descriptor(x) for x in raws]

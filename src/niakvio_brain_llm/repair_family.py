@@ -168,10 +168,24 @@ def observed_source_topologies(observations: Any) -> list[str]:
                     continue
                 if not 200 <= status < 300:
                     continue
+                # A TMDB lookup preceding a provider fetch is not provider
+                # API evidence. Require an actual host and ignore metadata
+                # infrastructure and HTML challenge pages.
+                host = str(response.get("host") or "").strip().casefold()
+                if not host or host in {
+                    "api.themoviedb.org", "www.themoviedb.org",
+                    "image.tmdb.org",
+                } or str(response.get("challenge") or "").strip():
+                    continue
                 shape = response.get("shape")
                 if not isinstance(shape, dict):
                     continue
                 kind = _canon(shape.get("kind"))
+                if kind == "html" and "turnstile" in {
+                    _canon(marker) for marker in shape.get("markers") or []
+                    if isinstance(marker, str)
+                }:
+                    continue
                 if kind == "json":
                     topologies.add("json-api")
                 elif kind == "javascript":
