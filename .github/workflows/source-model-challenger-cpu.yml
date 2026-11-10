@@ -1,0 +1,88 @@
+name: Brain - Real Source CPU Challenger (read-only)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'benchmark/source_model_challenger.py'
+      - '.github/workflows/source-model-challenger-cpu.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: niakvio-source-cpu-challenger
+  cancel-in-progress: false
+
+jobs:
+  current-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: niakw/NiakVIO
+          ref: main
+          path: .challenger/niakvio
+          persist-credentials: false
+          fetch-depth: 1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.12'
+      - name: Install only public, local Brain
+        run: |
+          set -euo pipefail
+          python -m pip install -e .
+          python -m unittest tests.test_no_paid_api tests.test_source_model_challenger -v
+      - name: Reuse verified pinned CPU inference runtime
+        run: |
+          set -euo pipefail
+          mkdir -p .challenger/runtime
+          curl -fLsS --retry 4 --retry-all-errors --connect-timeout 20 --max-time 180 \
+            https://github.com/ggml-org/llama.cpp/releases/download/b11140/llama-b11140-bin-ubuntu-x64.tar.gz \
+            -o .challenger/llama.tar.gz
+          printf '%s  %s\n' '460c45fa8a9ebc36c9b08e3a15c06dbdbeb312c6308599521c84d9e7f92a268b' '.challenger/llama.tar.gz' | sha256sum -c -
+          tar -xf .challenger/llama.tar.gz -C .challenger/runtime
+      - name: Reuse verified pinned public 9B weights
+        run: |
+          set -euo pipefail
+          curl -fLsS --retry 4 --retry-all-errors --retry-delay 5 --connect-timeout 30 --max-time 2100 \
+            'https://huggingface.co/SoAIHQ/Qwen3.5-9B-GGUF/resolve/main/Qwen3.5-9B-Q4_K_M.gguf' \
+            -o .challenger/qwen35-9b-q4.gguf
+          printf '%s  %s\n' 'ef6f244d63abcba4f8d30b7cbd9369e9e798fc33cf21109889373f59af329c93' '.challenger/qwen35-9b-q4.gguf' | sha256sum -c -
+      - name: Start local model (no paid or remote inference)
+        run: |
+          set -euo pipefail
+          binary="$(find .challenger/runtime -type f -name llama-server -print -quit)"
+          test -n "$binary"
+          chmod +x "$binary"
+          "$binary" -m .challenger/qwen35-9b-q4.gguf \
+            --alias qwen35-9b --host 127.0.0.1 --port 8080 \
+            -t 4 -c 8192 -np 1 --reasoning off > .challenger/server.log 2>&1 &
+          for n in $(seq 1 120); do
+            if curl -fsS http://127.0.0.1:8080/health >/dev/null 2>&1; then
+              exit 0
+            fi
+            sleep 2
+          done
+          exit 1
+      - name: Inspect four actual current families; DO NOT apply patches
+        run: |
+          set -euo pipefail
+          timeout 55m python benchmark/source_model_challenger.py \
+            --niakvio-root .challenger/niakvio \
+            --output .challenger/real-source-report.json \
+            --model qwen35-9b --max-tokens 768 --timeout-seconds 420
+          python -m json.tool .challenger/real-source-report.json >/dev/null
+      - name: Upload sanitized read-only diagnostics
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: brain-qwen35-9b-real-source-diagnostic
+          path: .challenger/real-source-report.json
+          retention-days: 7
+          if-no-files-found: warn
