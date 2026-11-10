@@ -1,3 +1,9 @@
+## 2026-11-10 — Hosted workflow CI guard upheld, no paid key in Actions
+
+- CI `42853646509` on Brain `59db34a20` correctly FAILed existing safety contract `tests/test_no_paid_api.py`: GitHub workflows must contain neither `secrets.NIAKVIO_OPENAI_API_KEY` nor `NIAKVIO_ALLOW_PAID_API=1`. The attempted manual-only hosted workflow violated that strict repository-wide policy even though it was not executed.
+- Removed the offending hosted Actions workflow instead of weakening tests. Retained only an **operator CLI** hosted backend selector, still guarded by existing `NIAKVIO_ALLOW_PAID_API`, explicit credentials, one-provider scope and the `BudgetLedger`. Documentation states no executable hosted workflow and no billing. A paid model remains blocked until separate operator-controlled execution and spending authorization; none performed.
+- All four actual read-only Qwen3.5-9B production-scope cases in run `42852086843` abstained (0 mutations), so upgrading CPU prompting alone has not proved repair. Do not misclassify no-op/abstain workflows as provider successes.
+
 ## 2026-11-10 — Manual stronger hosted model route prepared, not run or billed
 
 - Four-family canonical CPU Qwen3.5-9B challenger `42852086843` on executable Brain `672aba08`: all four independent representatives (`4khdhub`, `allanime`, `moviesmod`, `yflix`) routed their first production-priority mutation scope (`provider_bloc`) to local 9B; all four returned schema-valid **abstentions with 0 mutations**. No provider was repaired, rematerialized or stream-validated by this model-only run. `a6483bd` fixed a stale test, and exact Brain main CI became green.

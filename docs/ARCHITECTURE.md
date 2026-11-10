@@ -633,16 +633,13 @@ substitute for the retired GitHub Models inference API. Keep the common
 compiler/materializer/playable-media validation regardless of model chosen.
 
 
-### Explicit hosted challenger, no automatic spending (2026-11-10)
+### Hosted model evaluation is intentionally not wired into GitHub Actions
 
-A separate manual-only `Brain - Hosted Source Challenger` workflow can compare
-GPT-6.1 Sol or GPT-6 Astra against one provider from the independent family
-representatives. It is disabled without the repository secret
-`NIAKVIO_OPENAI_API_KEY`, uses the production FORCE source-scope selector,
-current edit-unit compiler, exact source anchors, isolated NiakVIO materialization,
-Deep playback and content-identity proof. The workflow budget is **$0.50 per
-explicit invocation**, with the existing locked `BudgetLedger` and
-`NIAKVIO_ALLOW_PAID_API=1` only inside that manual job. Because separate
-runner ledgers are not a global account-wide cap, users also need a provider
-billing cap. No production publication is possible from this benchmark.
-No hosted API call was made when this workflow was added.
+The source challenger supports an explicit `--backend hosted` CLI path using
+the existing budgeted `HostedResponsesBackend`. It requires a paid-API opt-in,
+a manually provided credential and a shared budget ledger. No GitHub workflow
+receives an API key or enables paid calls; the pre-existing repository contract
+(`tests/test_no_paid_api.py`) forbids this. GitHub Actions' hosted-API check
+remains deliberately disabled. The stronger model experiment is **not run**
+and requires a separate operator-controlled deployment and spending consent.
+No provider publication is possible from the benchmark.
