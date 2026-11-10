@@ -99,11 +99,15 @@ def main() -> int:
                     help="Exact family ID(s) for first live sandbox proof")
     ap.add_argument("--canonical-force", action="store_true",
                     help="Use the real Brain FORCE planner, grammar and exact edit-unit converter")
+    ap.add_argument("--model-only-force", action="store_true",
+                    help="Read-only test: preserve FORCE grammar but skip deterministic short-circuit")
     ap.add_argument("--raw-candidates", default="",
                     help="Runner-local only, never upload this file as an artifact")
     ap.add_argument("--max-tokens", type=int, default=768)
     ap.add_argument("--timeout-seconds", type=int, default=420)
     args = ap.parse_args()
+    if args.model_only_force and not args.canonical_force:
+        ap.error("--model-only-force requires --canonical-force")
     if not 128 <= args.max_tokens <= 2048 or not 30 <= args.timeout_seconds <= 900:
         ap.error("outside bounded inference limits")
     selected = list(dict.fromkeys(args.provider)) if args.provider else list(TOPOLOGIES)
@@ -133,10 +137,16 @@ def main() -> int:
             # evidence values, edits, media, URLs, headers or tokens.
             with contextlib.redirect_stdout(sys.stderr):
                 proposal = (
-                    planner.plan(request, compact_force=True)
+                    planner.plan(
+                        request, compact_force=True,
+                        allow_deterministic_force=not args.model_only_force,
+                    )
                     if args.canonical_force else planner.propose_raw(request)
                 )
-            row["generationMode"] = "canonical_force" if args.canonical_force else "raw_model_probe"
+            row["generationMode"] = (
+                "canonical_model_force" if args.model_only_force else
+                "canonical_force" if args.canonical_force else "raw_model_probe"
+            )
             row.update(classify_proposal(request, proposal, niakvio_root=root))
             if (args.raw_candidates and row.get("canonicalApplyEligible")
                     and row.get("mutationPolicyCompliant")
@@ -170,7 +180,10 @@ def main() -> int:
             "policyValidMutationProposals": sum(bool(x.get("mutationDslValid")) for x in rows),
             "repairAcceptanceProof": False,
             "mode": "read_only_public_current_source_diagnostic",
-            "generationMode": "canonical_force" if args.canonical_force else "raw_model_probe",
+            "generationMode": (
+                "canonical_model_force" if args.model_only_force else
+                "canonical_force" if args.canonical_force else "raw_model_probe"
+            ),
             "results": rows,
         }
         temporary = output.with_suffix(".tmp")

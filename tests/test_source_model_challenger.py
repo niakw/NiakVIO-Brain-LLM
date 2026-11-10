@@ -115,12 +115,12 @@ class SourceModelChallengerContract(unittest.TestCase):
         from pathlib import Path
         workflow=(Path(__file__).resolve().parents[1]/
                   ".github/workflows/source-model-challenger-cpu.yml").read_text()
-        self.assertIn('--provider "$PROVIDER_ID" --canonical-force',workflow)
+        self.assertIn('--provider "$PROVIDER_ID" --canonical-force --model-only-force',workflow)
         self.assertIn("provider_id: [4khdhub, allanime, moviesmod, yflix]", workflow)
         self.assertIn("python -m benchmark.source_model_challenger", workflow)
         from benchmark import source_model_challenger as source_challenger
         import inspect
-        self.assertIn("planner.plan(request, compact_force=True)",
+        self.assertIn("allow_deterministic_force=not args.model_only_force",
                       inspect.getsource(source_challenger.main))
         self.assertIn("apply_brain_llm_force_mutations.py",workflow)
         self.assertIn('materialize_provider_v3_one.py "$PROVIDER_ID"',workflow)

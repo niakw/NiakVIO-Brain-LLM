@@ -3458,17 +3458,21 @@ class BrainPlanner:
         *,
         constrained: bool,
         compact_force: bool = False,
+        allow_deterministic_force: bool = True,
     ) -> tuple[RepairProposal, dict[str, Any], dict[str, Any]]:
         _, documents, causal_prior, mutation_policy, user = self._prepare(
             request, compact_force=compact_force,
         )
         if compact_force:
             try:
-                deterministic_mutation = _deterministic_variant_coverage_mutation(
-                    request,
-                    mutation_policy,
+                # The production default retains deterministic-first FORCE.
+                # A read-only model challenger can explicitly suppress this
+                # short circuit and exercise the same constrained model path.
+                deterministic_mutation = (
+                    _deterministic_variant_coverage_mutation(request, mutation_policy)
+                    if allow_deterministic_force else None
                 )
-                if deterministic_mutation is None:
+                if deterministic_mutation is None and allow_deterministic_force:
                     deterministic_mutation = _deterministic_structural_force_mutation(
                         request,
                         mutation_policy,
@@ -3640,11 +3644,13 @@ class BrainPlanner:
         request: RepairRequest,
         *,
         compact_force: bool = False,
+        allow_deterministic_force: bool = True,
     ) -> RepairProposal:
         proposal, causal_prior, mutation_policy = self._generate(
             request,
             constrained=True,
             compact_force=compact_force,
+            allow_deterministic_force=allow_deterministic_force,
         )
 
         if proposal.provider_id and proposal.provider_id != request.provider_id:

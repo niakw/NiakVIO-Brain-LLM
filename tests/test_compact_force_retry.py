@@ -153,6 +153,36 @@ class CompactForceRetryTest(unittest.TestCase):
                 planner._prepare(request)
             generic_advisor.assert_called_once()
 
+
+    def test_model_only_force_uses_constrained_planner_without_deterministic_shortcut(self):
+        request = RepairRequest(
+            provider_id="demo",
+            failure_class="chain_terminal_gap",
+            status="CHAIN REACHED",
+            allowed_mutations=["provider_bloc"],
+            provider_context={
+                "runtimeMutationSource": "function resolve(){return oldPlayer();}",
+                "runtimeMutationFilename": "providers/demo.js",
+            },
+        )
+        planner = BrainPlanner(StaticBackend(json.dumps({
+            "edit": None, "abstain_reason": "model safely abstained",
+        })))
+        with patch("niakvio_brain_llm.planner._deterministic_variant_coverage_mutation",
+                   side_effect=AssertionError("deterministic generation executed")) as first:
+            with patch("niakvio_brain_llm.planner._deterministic_structural_force_mutation",
+                       side_effect=AssertionError("deterministic generation executed")) as second:
+                result, prior, policy = planner._generate(
+                    request, constrained=True, compact_force=True,
+                    allow_deterministic_force=False,
+                )
+        self.assertTrue(result.abstain)
+        self.assertEqual(result.abstain_reason, "model safely abstained")
+        self.assertEqual(prior.get("target_layer"), "provider")
+        self.assertIn("allowed_scopes", policy)
+        first.assert_not_called()
+        second.assert_not_called()
+
     def test_force_prefill_budget_preserves_unit_ids_under_dense_fanout(self):
         # Production 7B samples sent 9k-14k chars for a single edit and hit
         # the 180s deadline. Clip duplicated context, NEVER the source-backed

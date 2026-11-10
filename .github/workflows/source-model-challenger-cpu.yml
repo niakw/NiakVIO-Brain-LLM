@@ -82,7 +82,7 @@ jobs:
           set -euo pipefail
           timeout 12m python -m benchmark.source_model_challenger \
             --niakvio-root .challenger/niakvio \
-            --provider "$PROVIDER_ID" --canonical-force \
+            --provider "$PROVIDER_ID" --canonical-force --model-only-force \
             --raw-candidates .challenger/private-sandbox-input.jsonl \
             --output .challenger/real-source-report.json \
             --model qwen35-9b --max-tokens 768 --timeout-seconds 420
