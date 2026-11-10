@@ -433,11 +433,19 @@ def select_family_wave(
             # website must not stand in for an unrelated streaming/API site.
             # Add at most one different provider for each *observed* topology.
             # No invented topology or automatic publication authority.
+            representative_topologies = topologies(representative)
             available = set().union(*(topologies(item) for item in members))
             for topology in sorted(available):
+                # Identical single-format siblings are redundant. A mixed
+                # download+API witness needs independent, differently shaped
+                # examples, not several copies of the same multi-format site.
+                if topology in representative_topologies and len(representative_topologies) == 1:
+                    continue
                 witnesses = [
                     item for item in members
-                    if item[0] not in selected_indexes and topology in topologies(item)
+                    if item[0] not in selected_indexes
+                    and topology in topologies(item)
+                    and topologies(item) != representative_topologies
                 ]
                 if not witnesses:
                     continue

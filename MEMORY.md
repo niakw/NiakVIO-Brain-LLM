@@ -1261,3 +1261,13 @@ observed topology where available, even if a multi-format provider already
 emits those shapes. This is bounded *diagnostic breadth*, not four functional
 repairs. Cross-topology tests require independent provider selection, no
 TMDB contamination, and negative WAF controls. No provider bytes mutated.
+
+### 2026-11-10 — Topology wave regression iteration
+
+The first independent-witness selector caused an unnecessary two-provider
+fan-out when both had the *same single* JSON topology. GitHub Brain CI
+[42794724588](https://github.com/niakw/NiakVIO-Brain-LLM/actions/runs/42794724588)
+correctly failed the negative duplication test (416 tests, 1 failure). The
+selection now skips identical mono-topology siblings and insists that extra
+witnesses differ structurally from the chosen representative. Recheck the
+latest exact-SHA CI before claiming this correction validated.
