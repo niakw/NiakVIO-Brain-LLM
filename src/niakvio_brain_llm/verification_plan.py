@@ -3,6 +3,16 @@ from __future__ import annotations
 from typing import Any
 
 STRATEGY_TESTS: dict[str, list[str]] = {
+    "preserve_episodic_bindings_before_materialization": [
+        "replay_shared_provider_runtime_against_isolated_strict_episode_oracle",
+        "verify_compiler_preserves_season_zero_and_provider_correlated_id",
+        "replay_materialized_current_provider_bytes_against_real_terminal_media",
+    ],
+    "validate_episode_bound_subtitle_provenance": [
+        "reject_explicit_foreign_episode_caption_without_dropping_valid_media",
+        "verify_all_published_core_guards_current_byte_parity",
+        "replay_real_media_and_external_subtitles_with_episode_identity",
+    ],
     "discover_api_from_current_page_and_bundles": [
         "probe_current_provider_page_and_bundles",
         "validate_discovered_provider_owned_api",
