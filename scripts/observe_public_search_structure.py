@@ -60,6 +60,26 @@ def shape(text: str, query: str) -> dict:
         "uncategorized":sum(not re.search(r"\bmovies?\b|\bfilms?\b|\bseries\b|\bshows?\b|\btv\b",x)
                             for x in raw_formats)
     }
+    def kind(label: str) -> str:
+        if re.search(r"\\bseries\\b|\\bshows?\\b|\\btv\\b", label):
+            return "series"
+        if re.search(r"\\bmovies?\\b|\\bfilms?\\b", label):
+            return "movie"
+        return "other"
+    card_badges=[
+        [kind(re.sub(r"<[^>]*>"," ",part).casefold())
+         for part in FORMAT_RE.findall(region)]
+        for region in card_regions
+    ]
+    first_badges=[badges[0] if badges else "missing" for badges in card_badges]
+    card_formats={
+        "first_badge_movie":first_badges.count("movie"),
+        "first_badge_series":first_badges.count("series"),
+        "first_badge_other":first_badges.count("other"),
+        "first_badge_missing":first_badges.count("missing"),
+        "any_movie":sum("movie" in badges for badges in card_badges),
+        "any_series":sum("series" in badges for badges in card_badges),
+    }
     classes=[w for val in CLASS_RE.findall(text) for w in val.lower().split()]
     count={w:classes.count(w) for w in WORDS}
     hint={w:(w in text.casefold()) for w in ERRORS}
@@ -80,6 +100,7 @@ def shape(text: str, query: str) -> dict:
         "title_nodes_parsed":len(title_nodes),
         "format_nodes_parsed":len(raw_formats),
         "format_category_counts":category_counts,
+        "card_format_type_evidence":card_formats,
         "class_token_counts":count,
         "waf_marker_flags":hint,
         "body_sha256_16":hashlib.sha256(text.encode("utf-8")).hexdigest()[:16],
