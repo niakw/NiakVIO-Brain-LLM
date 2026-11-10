@@ -1,3 +1,9 @@
+## 2026-11-10 — Real-source challenger false negative for registered provider Blocs
+
+- Run `42843458623` on `c2ef290` completed GitHub SUCCESS but **did not invoke 9B**: canonical planner selected deterministic `exact_class_text_token_boundary` on a `provider_patch`; challenger reported `admissible_mutation=false` and `no_admissible_candidate=true`, so no apply/materialization/Deep. This is zero new provider repair.
+- A verified mismatch in the Brain test harness: `classify_proposal()` called `validate_mutations()` without `allowed_patch_paths`, which makes **every** `provider_patch` invalid even when the candidate targets the provider's already-registered Bloc. The canonical FORCE sanitizer *does* pass registered paths. Corrected the challenger to pass the exact `registered_patch_scripts` from its current request; positive and negative unit tests verify registered versus unregistered candidate behavior. Source ownership and downstream canonical apply still gate every mutation.
+- This fixes an incorrectly rejected valid DSL scope, not whether the deterministic patch actually applies, produces media or solves title identity. On next exact SHA review canonical apply/materialization and Deep, and do not interpret a passing workflow as a stream.
+
 ## 2026-11-10 — CPU challenger entrypoint import fix
 
 - Source challenger run `42842746224` failed **before inference** with `ModuleNotFoundError: No module named 'scripts'`: workflow launched `python benchmark/source_model_challenger.py`, which places the `benchmark/` directory, not the checkout root, on `sys.path`; CI imports used `python -m unittest` and did not catch the workflow entrypoint mismatch. Corrected workflow to `python -m benchmark.source_model_challenger` and asserted the exact entrypoint in the contract test. This is an execution harness fix, **not** provider repair. Run `42843282751` on prior `e53d27d7` can still fail with the same import issue and cannot prove the new entrypoint.

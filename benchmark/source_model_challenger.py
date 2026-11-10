@@ -44,7 +44,14 @@ def classify_proposal(request, proposal, *, niakvio_root: Path | None = None) ->
     syntax_valid = False
     if mutations and policy_ok:
         try:
-            validate_mutations(request.provider_id, mutations)
+            registered = {
+                str(path).strip()
+                for path in (request.provider_context or {}).get("registered_patch_scripts") or []
+                if str(path).strip().startswith("scripts/provider_patches/")
+            }
+            validate_mutations(
+                request.provider_id, mutations, allowed_patch_paths=registered
+            )
             syntax_valid = True
         except Exception:
             pass

@@ -74,6 +74,42 @@ class SourceModelChallengerContract(unittest.TestCase):
         self.assertNotIn("provider-overrides.json",uploaded)
         self.assertNotIn("providers/",uploaded)
 
+    def test_registered_provider_patch_is_not_a_false_negative(self):
+        from benchmark.source_model_challenger import classify_proposal
+        path = "scripts/provider_patches/already_registered.py"
+        request = RepairRequest(
+            provider_id="4khdhub", failure_class="route_proven_gap",
+            provider_context={"registered_patch_scripts": [path]},
+            allowed_mutations=["provider_patch"],
+        )
+        diff = (
+            f"--- a/{path}\\n+++ b/{path}\\n@@ -1 +1 @@\\n"
+            "-old\\n+new\\n"
+        )
+        proposal = SimpleNamespace(
+            mutations=[{"scope": "provider_patch", "operation": "unified_diff",
+                        "path": path, "diff": diff}],
+            target_layer="provider", strategy="repair", abstain=False,
+        )
+        with patch("benchmark.source_model_challenger.build_causal_prior",
+                   return_value={"target_layer": "provider", "strategy_prior": "repair"}):
+            with patch("benchmark.source_model_challenger.build_mutation_policy",
+                       return_value={"allow_mutations": True,
+                                     "allowed_scopes": ["provider_patch"]}):
+                with tempfile.TemporaryDirectory() as tmp:
+                    allowed = classify_proposal(request, proposal,
+                                                niakvio_root=Path(tmp))
+                    forbidden = classify_proposal(
+                        RepairRequest(provider_id="4khdhub",
+                                      failure_class="route_proven_gap",
+                                      allowed_mutations=["provider_patch"],
+                                      provider_context={"registered_patch_scripts": []}),
+                        proposal, niakvio_root=Path(tmp))
+        self.assertTrue(allowed["mutationDslValid"])
+        self.assertTrue(allowed["canonicalApplyEligible"])
+        self.assertFalse(forbidden["mutationDslValid"])
+        self.assertFalse(forbidden["canonicalApplyEligible"])
+
     def test_invalid_unbound_mutation_not_counted_as_admissible(self):
         request = RepairRequest(provider_id="moviesmod", failure_class="route_proven_gap",
                                 provider_context={})
