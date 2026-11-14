@@ -74,6 +74,7 @@ _ADVISOR_PROFILE_BY_STRATEGY = {
     "same-provider-candidate-program-replay": "retained_candidate_replay_v1",
     "proven-request-program-and-terminal-extraction": "player_media_extractor_v1",
     "discover-api-from-current-page-and-bundles": "search_contract_inference_v1",
+    "bind-catalogue-result-to-requested-identity": "identity_alias_search_traversal_v1",
 }
 
 
