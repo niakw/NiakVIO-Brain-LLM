@@ -1,3 +1,10 @@
+## 2026-11-14 — Explicit lifecycle-disabled recovery is now an opt-in Brain target, never a global queue expansion
+
+- NiakVIO's new Disabled Provider Recovery Lab exposed a cross-repository contract gap: an explicit lifecycle-disabled provider such as wookafr could be staged for observation locally, but Brain-LLM select_batch_targets() still filtered it out because DISABLED rows normally have brainCheckRequired=false and repairEligible=false. The workflow could therefore run local Learning while never sending the requested provider through Brain synthesis.
+- Brain commits 93d0aa6, abdbca0 and 609f3c3 add a narrowly scoped allow_disabled_explicit opt-in to the selector and both checkout CLIs. It is effective only when an explicit provider set is supplied and only for mode=brain; ordinary repair/diagnostic/global Brain queues retain their prior lifecycle filtering.
+- Test commit 4900ab1 proves a disabled provider is excluded by default, included only with provider={disabled}+allow_disabled_explicit=true, and still excluded from an unscoped Brain queue even if the flag is present. Brain LLM CI run 43630155063 on 4900ab1 completed SUCCESS.
+- NiakVIO must pair this with a non-publishing disabled-byte sandbox, exact current Brain main pin, public RAG, advisor synthesis and downstream current-byte execution. This Brain change grants target selection only; it grants no publication, mutation or playback authority.
+
 ## 2026-11-10 — Privacy audit false positive on workflow_call secret declaration
 
 - Brain `e835b68` CI `42871048764` failed the strict public-repository privacy audit only because the new GitHub Actions `workflow_call.secrets.TMDB_API_KEY\nrequired: false` **declaration** (not a credential value) matched the scanner's multiline `api_key_value` regex. No secret text was committed. Switched the two secret *schema declarations* to inline YAML mappings `{ required: false }`, preserving GitHub Actions semantics while avoiding the false match. The genuine API key/credential scanner remains untouched. Re-run exact Brain SHA CI before using it as a pinned reusable workflow.
