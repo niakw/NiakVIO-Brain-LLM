@@ -18,6 +18,7 @@ def main() -> int:
     parser.add_argument("--extra-experience", action="append", default=[])
     parser.add_argument("--mode", choices=("repair", "diagnostic", "brain"), default="repair")
     parser.add_argument("--provider", action="append", default=[])
+    parser.add_argument("--allow-disabled-explicit", action="store_true")
     parser.add_argument("--limit", type=int, default=0)
     parser.add_argument("--advisor-only", action="store_true")
     parser.add_argument("--output", required=True)
@@ -28,6 +29,7 @@ def main() -> int:
         load_census(args.niakvio_root),
         mode=args.mode,
         providers=set(args.provider) or None,
+        allow_disabled_explicit=bool(args.allow_disabled_explicit),
     )
     if args.limit > 0:
         selected = selected[: args.limit]
