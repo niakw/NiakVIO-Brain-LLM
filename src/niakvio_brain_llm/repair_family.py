@@ -247,6 +247,8 @@ def repair_family_descriptor(value: Any) -> dict[str, Any]:
         mechanism_archetype = "variant-coverage"
     elif failure in {"chain-terminal-gap", "media-extraction-gap"}:
         mechanism_archetype = "terminal-extraction"
+    elif failure == "content-identity-gap":
+        mechanism_archetype = "content-identity"
     elif failure in {"route-proven-gap", "candidate-replay-gap"}:
         mechanism_archetype = "route-parser"
     elif failure in {"provider-transport-gap", "transport-environment-gap"}:
