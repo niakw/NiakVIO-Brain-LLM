@@ -92,6 +92,11 @@ STATIC_FAILURE_PRIORS: dict[str, dict[str, Any]] = {
         "target_layer": "provider",
         "confidence": 0.96,
     },
+    "content-identity-gap": {
+        "target_layer": "provider",
+        "confidence": 0.99,
+        "strategy_prior": "bind_catalogue_result_to_requested_identity",
+    },
     "media-validation-gap": {
         "target_layer": "core",
         "confidence": 0.96,
