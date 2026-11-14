@@ -37,6 +37,12 @@ ROWS = [
         "repairEligible": False,
     },
     {
+        "provider": "disabled",
+        "status": "DISABLED",
+        "brainCheckRequired": False,
+        "repairEligible": False,
+    },
+    {
         "provider": "coverage",
         "status": "FULL OK",
         "brainCheckRequired": False,
@@ -71,6 +77,23 @@ class BatchTests(unittest.TestCase):
         self.assertEqual([row["provider"] for row in explicit], ["coverage"])
         brain = select_batch_targets(ROWS, mode="brain", providers={"coverage"})
         self.assertEqual([row["provider"] for row in brain], ["coverage"])
+
+    def test_disabled_provider_requires_explicit_recovery_opt_in(self):
+        self.assertEqual(
+            select_batch_targets(ROWS, mode="brain", providers={"disabled"}),
+            [],
+        )
+        explicit = select_batch_targets(
+            ROWS,
+            mode="brain",
+            providers={"disabled"},
+            allow_disabled_explicit=True,
+        )
+        self.assertEqual([row["provider"] for row in explicit], ["disabled"])
+        self.assertNotIn(
+            "disabled",
+            {row["provider"] for row in select_batch_targets(ROWS, mode="brain", allow_disabled_explicit=True)},
+        )
 
     def test_summary_counts_statuses(self):
         summary = batch_summary(ROWS[:2])
