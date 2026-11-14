@@ -29,6 +29,7 @@ TECHNICAL_TOKENS = (
 FAMILY_REFERENCE_TOKENS = {
     "provider_transport_gap": {"fetch", "headers", "cookie", "user-agent", "referer", "origin", "redirect", "timeout", "session"},
     "route_proven_gap": {"search", "detail", "episode", "watch", "player", "iframe", "embed", "fetch", "resolve"},
+    "content_identity_gap": {"search", "detail", "episode", "fetch", "json", "regex", "source", "stream"},
     "chain_terminal_gap": {"confirm", "internal", "player", "iframe", "resolve", "m3u8", "mp4", "playlist", "source"},
     "variant_coverage_gap": {"player", "server", "mirror", "source", "variant", "quality", "resolution", "language", "audio", "stream"},
 }
