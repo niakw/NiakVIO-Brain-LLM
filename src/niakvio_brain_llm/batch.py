@@ -55,6 +55,7 @@ def select_batch_targets(
     *,
     mode: str,
     providers: set[str] | None = None,
+    allow_disabled_explicit: bool = False,
 ) -> list[dict[str, Any]]:
     if mode not in {"repair", "diagnostic", "brain"}:
         raise ValueError("mode must be repair, diagnostic or brain")
@@ -74,11 +75,18 @@ def select_batch_targets(
             and str(row.get("runtimeVariantCoverageRisk") or "").strip().casefold() == "high"
         )
 
+        explicit_disabled_recovery = bool(
+            allow_disabled_explicit
+            and wanted
+            and provider.casefold() in wanted
+            and "disabled" in str(row.get("status") or "").strip().casefold()
+        )
+
         if mode == "repair" and (repair_eligible or explicit_coverage_debt):
             selected.append(row)
         elif mode == "diagnostic" and brain_required and not repair_eligible:
             selected.append(row)
-        elif mode == "brain" and (brain_required or explicit_coverage_debt):
+        elif mode == "brain" and (brain_required or explicit_coverage_debt or explicit_disabled_recovery):
             selected.append(row)
 
     return sorted(selected, key=target_priority)
