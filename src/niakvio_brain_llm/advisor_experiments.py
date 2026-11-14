@@ -51,6 +51,14 @@ DEFAULTS: dict[str, dict[str, Any]] = {
         "document_request_mining": False, "session_bootstrap": False,
         "max_depth": 5, "max_pages": 18, "max_embeds": 28, "max_recipe_passes": 5,
     },
+    "bind-catalogue-result-to-requested-identity": {
+        "route_policy": "owned_plus_peer_generic",
+        "recipe_policy": "current_plus_provider_peer",
+        "role_order": ["search", "detail", "api", "episode", "player", "source", "other"],
+        "terminal_only": False, "alias_search": True, "response_salvage": True,
+        "document_request_mining": True, "session_bootstrap": False,
+        "max_depth": 5, "max_pages": 28, "max_embeds": 18, "max_recipe_passes": 5,
+    },
     "discover-api-from-current-page-and-bundles": {
         "route_policy": "owned_plus_peer_generic",
         "recipe_policy": "current_plus_provider_peer",
@@ -169,7 +177,7 @@ def _targeted_variants(base: dict[str, Any], issue: str) -> list[dict[str, Any]]
         )
     # Zero-result/search failures need identity aliases and current document
     # request mining before merely widening the crawl budget.
-    if any(token in issue for token in ("zero_result", "search", "lookup", "no proof")):
+    if any(token in issue for token in ("zero_result", "search", "lookup", "no proof", "wrong_content", "identity")):
         add(
             route_policy="owned_plus_peer_generic",
             recipe_policy="current_plus_provider_peer",
