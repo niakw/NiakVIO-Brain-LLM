@@ -12,6 +12,7 @@ STRATEGY_TO_PROFILE={
  "same-provider-candidate-program-replay":"retained_candidate_replay_v1",
  "proven-request-program-and-terminal-extraction":"player_media_extractor_v1",
  "discover-api-from-current-page-and-bundles":"search_contract_inference_v1",
+ "bind-catalogue-result-to-requested-identity":"identity_alias_search_traversal_v1",
 }
 ALLOWED_PROFILES=frozenset(STRATEGY_TO_PROFILE.values())
 PROVIDER_ID=re.compile(r"^[a-z0-9][a-z0-9._-]{0,159}$"); SHA40=re.compile(r"^[0-9a-f]{40}$")
@@ -26,6 +27,7 @@ DEFAULTS={
  "same-provider-candidate-program-replay":{"route_policy":"owned_only","recipe_policy":"current_plus_provider","role_order":["player","api","source","detail","episode","other"],"max_depth":4,"max_pages":18,"max_embeds":24,"max_recipe_passes":4},
  "proven-request-program-and-terminal-extraction":{"route_policy":"owned_only","recipe_policy":"current_plus_provider","role_order":["api","source","player","episode","detail","other"],"terminal_only":True,"response_salvage":True,"max_depth":5,"max_pages":18,"max_embeds":28,"max_recipe_passes":5},
  "discover-api-from-current-page-and-bundles":{"route_policy":"owned_plus_peer_generic","recipe_policy":"current_plus_provider_peer","role_order":["search","api","detail","player","source","episode","other"],"document_request_mining":True,"max_depth":4,"max_pages":28,"max_embeds":20,"max_recipe_passes":4},
+ "bind-catalogue-result-to-requested-identity":{"route_policy":"owned_plus_peer_generic","recipe_policy":"current_plus_provider_peer","role_order":["search","detail","api","episode","player","source","other"],"alias_search":True,"response_salvage":True,"document_request_mining":True,"max_depth":5,"max_pages":28,"max_embeds":18,"max_recipe_passes":5},
 }
 def canon(v): return str(v or "").strip().casefold().replace("_","-")
 def load_jsonl(path):
