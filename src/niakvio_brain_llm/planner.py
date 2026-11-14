@@ -229,6 +229,7 @@ def _reject_causally_empty_deletion(failure_class: str, find: str, replace: str)
     failure = str(failure_class or "").strip().casefold().replace("-", "_")
     if failure not in {
         "route_proven_gap",
+        "content_identity_gap",
         "chain_terminal_gap",
         "media_extraction_gap",
         "provider_transport_gap",
