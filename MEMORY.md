@@ -1,3 +1,8 @@
+## 2026-11-15 — Explicit observed fixture counts, not display defaults
+
+- The Brain evidence projection historically converted missing, non-integer or inconsistent stream counters into numeric defaults. The new fail-closed receipt check separates display from observation, preserves a negative observation marker through repeated projection, rejects duplicates/overlong cohorts and requires explicit consistent integer counters before classifying empty results. Network-free synthetic tests cover invalid, mixed and already-projected receipts. No provider, access mechanism, publication policy or live test is changed. Full CI pending.
+- NiakVIO main `d03ca3de6a7ad8a487b8dbca0d386da5a048781b` Learning run 43768412945 staged 12/12 published identities, then lost nine in clean ProviderBase reconstruction. ProviderBase is a derived artifact of the structured model, not a manually authored prerequisite. Preserve the distinction between staging/compilation failure and an executed repair failure; do not generate provider source from absent observations.
+
 ## 2026-11-14 — Explicit lifecycle-disabled recovery is now an opt-in Brain target, never a global queue expansion
 
 - NiakVIO's new Disabled Provider Recovery Lab exposed a cross-repository contract gap: an explicit lifecycle-disabled provider such as wookafr could be staged for observation locally, but Brain-LLM select_batch_targets() still filtered it out because DISABLED rows normally have brainCheckRequired=false and repairEligible=false. The workflow could therefore run local Learning while never sending the requested provider through Brain synthesis.

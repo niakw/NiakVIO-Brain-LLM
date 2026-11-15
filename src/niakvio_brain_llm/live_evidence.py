@@ -98,8 +98,7 @@ def domain_reference_focus(live):
     trace = live.get('network_evidence')
     if not isinstance(trace, list) or len(trace) > 12:
         return {}
-    failed = {row['fixture'] for row in fixture_evidence(live.get('fixture_evidence'))
-              if row['streamsReturned'] == 0 and row['streamsPlayable'] == 0}
+    failed = {row['fixture'] for row in _observed_empty_fixtures(live.get('fixture_evidence'))}
     events = [row for row in network_evidence(live.get('network_evidence'))
               if row['fixture'] in failed]
     return {'references': references, 'fixtures': sorted(failed)} \
@@ -546,20 +545,50 @@ def reader_user_agent_probe(value):
     }
 
 
+def _valid_stream_counts(row):
+    if not isinstance(row, dict) or row.get('streamCountsObserved') is False:
+        return False
+    returned, playable = row.get('streamsReturned'), row.get('streamsPlayable')
+    return (type(returned) is int and type(playable) is int
+            and 0 <= playable <= returned <= 100000)
+
+
 def fixture_evidence(values):
+    """Bound display facts without turning missing counters into observations."""
     result = [{
         'fixture': re.sub(r'[\x00-\x1f\x7f]', '', str(row.get('fixture') or ''))[:120],
-        'category': row.get('category') if row.get('category') in {'movie', 'tv', 'anime'} else '',
+        'category': row.get('category') if isinstance(row.get('category'), str) and row.get('category') in {'movie', 'tv', 'anime'} else '',
         'status': re.sub(r'[^a-z_]', '', str(row.get('status') or ''))[:64],
         'streamsPlayable': count(row.get('streamsPlayable')),
         'streamsReturned': count(row.get('streamsReturned')),
     } for row in rows(values, 8) if isinstance(row, dict)]
     for output, row in zip(result, [row for row in rows(values, 8) if isinstance(row, dict)]):
+        if not _valid_stream_counts(row):
+            output['streamCountsObserved'] = False
         if type(row.get('expectedDurationSeconds')) is int and 0 < row['expectedDurationSeconds'] <= 1209600:
             output['expectedDurationSeconds'] = row['expectedDurationSeconds']
         if 'decodedMediaControls' in row:
             output['decodedMediaControls'] = count(row.get('decodedMediaControls'), 8)
     return result
+
+
+def _observed_empty_fixtures(values):
+    """Require explicit consistent counters and an unambiguous receipt group."""
+    if not isinstance(values, list) or not 0 < len(values) <= 8:
+        return []
+    labels = set()
+    empty = []
+    for row in values:
+        if not _valid_stream_counts(row):
+            return []
+        label = row.get('fixture')
+        if (not isinstance(label, str) or not label.strip() or len(label) > 120
+                or re.search(r'[\x00-\x1f\x7f]', label) or label in labels):
+            return []
+        labels.add(label)
+        if row['streamsReturned'] == row['streamsPlayable'] == 0:
+            empty.append(row)
+    return fixture_evidence(empty)
 
 
 def verification_feedback(value):
@@ -589,8 +618,8 @@ def verification_feedback(value):
 def _short_media_fixtures(live, observations):
     """Same-fixture evidence of a completely observed short terminal prefix."""
     expected = {row['fixture']: row['expectedDurationSeconds']
-                for row in fixture_evidence(live.get('fixture_evidence'))
-                if row['streamsReturned'] == 0 and row.get('expectedDurationSeconds', 0) >= 600}
+                for row in _observed_empty_fixtures(live.get('fixture_evidence'))
+                if row.get('expectedDurationSeconds', 0) >= 600}
     failed = {}
     for row in observations:
         media = row.get('media_observation') or {}
@@ -731,8 +760,7 @@ def observed_failure_class(current, live):
     """Refine broad census labels using the source-validated current preflight."""
     if current not in {'variant_coverage_gap', 'candidate_replay_gap'}:
         return current
-    failed = {row['fixture'] for row in fixture_evidence(live.get('fixture_evidence'))
-              if row['streamsReturned'] == 0}
+    failed = {row['fixture'] for row in _observed_empty_fixtures(live.get('fixture_evidence'))}
     if not failed:
         return current
     observations = [row for row in network_evidence(live.get('network_evidence'))

@@ -354,7 +354,7 @@ class LiveFunctionContextTests(unittest.TestCase):
                   'return terminalCrawl(await openPlayer(players[0]));}'
                   '/* STARTFIX:CORE.TEST */function corePlayer(){return 1;}')
         live = {'active_functions': ['terminalCrawl', 'resolve', 'openPlayer'],
-                'fixture_evidence': [{'fixture': 'Missing', 'streamsReturned': 0, 'expectedDurationSeconds': 1440}],
+                'fixture_evidence': [{'fixture': 'Missing', 'streamsReturned': 0, 'streamsPlayable': 0, 'expectedDurationSeconds': 1440}],
                 'network_evidence': [
                     {'fixture': 'Missing', 'stage': 'media', 'status': 206,
                      'media_observation': {'signature': 'mp4', 'durationSeconds': 5, 'bytesSampled': 32768,
