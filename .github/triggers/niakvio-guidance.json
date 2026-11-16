@@ -1,12 +1,12 @@
 {
   "schema_version": 1,
   "niakvio_sha": "7c546e451e20bf80934ac6a573ddaac4505d54f2",
-  "reason": "Fresh current-byte guidance for the three current repair-eligible representative families after Global+France projection-union fix. movy is excluded from provider Repair because current census classifies it HARNESS MISMATCH. Guidance remains prior-only until NiakVIO canonical apply/materialize/current-byte terminal identity replay.",
+  "reason": "Replay current repair-eligible representative families with Brain provider_bloc primary output cap 512 after live 7B truncation evidence. Keep frenchstream fail-closed unless current provider-owned causal evidence establishes an editable surface. Guidance remains sandbox/prior-only until canonical NiakVIO apply, materialize, terminal identity replay and persistence.",
   "requested_repair_queue": [
     "frenchstream",
     "hianime",
     "stigstream"
   ],
-  "retry": 45,
+  "retry": 46,
   "require_deterministic_force": false
 }
