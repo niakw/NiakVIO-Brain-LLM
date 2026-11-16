@@ -1,3 +1,11 @@
+## 2026-11-16 — Exact-byte sandbox frontier can cross a census only with current provider-owned evidence
+
+- Current NiakVIO targeted run `43854495472` is on census `43852026874`, while useful historical Fast Repair sandbox progress can belong to an older census even when the published provider bytes have not changed. Treating census ID alone as the reuse boundary forced Brain to discard executed causal progress and rediscover the same provider path.
+- Brain commits `419dbef1`, `dff533d4` and `585d7bcc` add a fail-closed cross-census bridge. Reuse requires the exact current published provider SHA256 to equal the historical generated attempt's parent SHA256, a current-census targeted observation with successful provider-owned HTTP traffic (TMDB-only traffic is rejected), and independent sandbox memory proving execution/progress. Reused evidence is rebound with `currentCensusRunId` and `reuseAuthority=exact-byte-current-evidence`; it remains `proofAuthority=false` / `publicationAuthority=false`.
+- The routing bridge can let a NO PROOF provider re-enter LLM repair only when that exact-byte/current-evidence frontier reached provider player logic. Lookup-only progress still routes to Recognition/probe. Changed provider bytes or failed current provider HTTP reject the reuse.
+- Test `tests/test_exact_byte_frontier_reuse.py` covers exact-byte + HTTP-200 reuse, changed-byte rejection, failed-provider-HTTP rejection, and the shallow-frontier NO PROOF guard. Brain CI on `585d7bcc` passed. Architecture commit `221bc1bf` records the authority boundary.
+- This is causal-memory reuse, not a provider repair. The next guidance replay must still generate an admissible current-byte mutation, then NiakVIO must apply/materialize/replay terminal media + identity and persist independently.
+
 ## 2026-11-16 — Exact provider bytes preserve sandbox frontier across census epochs
 
 - Current NiakVIO targeted run `43854495472` persisted provider-owned HTTP evidence on census `43852026874`: `frenchstream` reaches `fs16.lol` with HTTP 200 on anime/movie/TV and current HTML shapes include a `player` marker, while terminal streams remain zero. This is execution evidence, not route or playback proof.
