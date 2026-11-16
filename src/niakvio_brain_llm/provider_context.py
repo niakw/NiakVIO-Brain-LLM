@@ -953,11 +953,9 @@ def _same_provider_execution_prior(root: Path, provider_id: str) -> dict[str, An
         route = _safe_route(value)
         if not route or len(route) > 180:
             return ""
-        # Parameterized routes are reusable only through their placeholders.
-        if re.search(r"\{[A-Za-z][A-Za-z0-9_]{0,31}\}", route):
-            return route
         # Literal fixture IDs, cache busters and opaque embed/player IDs must
-        # never become a historical route prior.
+        # never become a historical route prior, even when the same route also
+        # happens to contain a reusable placeholder.
         if re.search(r"\d{3,}", route):
             return ""
         if re.search(
@@ -966,6 +964,10 @@ def _same_provider_execution_prior(root: Path, provider_id: str) -> dict[str, An
             re.IGNORECASE,
         ):
             return ""
+        # Parameterized routes are reusable only through their placeholders;
+        # simple identifier-free endpoints such as /index.php are also safe.
+        if re.search(r"\{[A-Za-z][A-Za-z0-9_]{0,31}\}", route):
+            return route
         return route
 
     sensitive_headers = {
