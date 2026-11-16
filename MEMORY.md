@@ -1,3 +1,10 @@
+## 2026-11-16 — Current player frontier now survives FORCE evidence compaction
+
+- Exact Frenchstream targeted evidence contains provider-owned fs16.lol HTTP 200 HTML with `markers=["player"]`, but the raw generated `structureHints` string is 328 characters and `markers=player` begins at offset 314. `_compact_force_observation` clipped each hint to 240 characters, so the model could lose the causal player frontier even though the adapter had correctly derived it.
+- Commit `9042364b` adds bounded structured `networkShapes` to targeted FORCE observations and deliberately orders those shape signals before verbose titles/classes. It preserves lane, response kind, safe marker names and bounded structural counts (forms/iframes/sources/videos), never response bodies or URLs. `1151af9c` makes shape counters fail-safe on malformed input.
+- Regression `9abc84fd` recreates a verbose hint whose player marker appears after character 240 and requires `networkShapes.markers=["player"]` to survive; it also verifies the marker is still inside the first 520 serialized characters used by the later FORCE soft-limit projection.
+- This is current-evidence transport only. It adds no route, host authority, media proof or mutation. The complete Frenchstream oracle must be replayed on a descendant SHA containing this evidence bridge; prior retry 59 is superseded for evaluating model behavior.
+
 ## 2026-11-16 — CPU prompt compaction preserves same-provider execution topology
 
 - The new same-provider execution prior could still lose its usefulness under the existing FORCE soft-limit path: once the prompt exceeded 5,600 characters, every structured prior was flattened to a single JSON string clipped at 450 characters. That can hide later media-type recipes and leave the CPU model with a partial/non-structural hint exactly on the large real-provider cases where the bridge matters.
