@@ -1,3 +1,10 @@
+## 2026-11-16 — Media-extraction FORCE focus now matches the causal frontier
+
+- The Frenchstream oracle has current provider-owned HTTP 200 and a persisted player frontier, while terminal media remains zero. Brain already classifies this as `media_extraction_gap`, but that failure family was missing from both provider reference-family tokens and compact FORCE source-keyword ranking. FORCE therefore fell through to the generic order `resolve -> fetch -> search -> player -> embed -> source`, which can spend a bounded edit window on discovery code even after discovery/player reach is already established.
+- Commits `3ada69ac` and `5453a8b3` add a generic media-extraction focus: extract/player/iframe/embed/source/media/unpack/m3u8/mp4/playlist/resolve. This changes edit/reference locality only; it does not add a provider route, media URL, proof or publication authority.
+- Regression `036ac177` uses a large synthetic runtime with early search code and a later terminal extractor. It requires the first media-extraction window to center on `extractPlayers` and requires that function to survive into provider-Bloc editable units.
+- Guidance retry 57 predates this causal-locality correction and is superseded for the next oracle comparison. The next trigger must pin a descendant of `036ac177` while keeping NiakVIO source/evidence unchanged, so any difference is attributable to Brain planning rather than provider-byte drift.
+
 ## 2026-11-16 — Same-provider prior bridge syntax defect corrected before replay
 
 - Inspection of the exact `main` bytes after the first execution-prior bridge found a generated-source defect in `provider_context.py`: the insertion between preferred runtime selection and `runtime_template_prior` contained literal `\\n` text instead of Python newlines. That makes the affected module syntactically invalid, so guidance trigger `e036e360` cannot be treated as a Brain inference result even if its workflow surface later reports a generic failure.
