@@ -654,24 +654,53 @@ def _provider_current_repair_execution(
             return {}
         reuse_authority = "exact-byte-current-evidence"
 
+    # Execution memory can legitimately carry the taxonomy that existed when
+    # the sandbox first entered exploration (for example search_gap), while the
+    # same Repair transaction later refines its current plan to
+    # media_extraction_gap. Do not require those labels to be byte-identical:
+    # bind the memory to this provider's explicit sandbox progress instead.
+    safe_progress_memory_failures = CURRENT_REPAIR_PROVIDER_FAILURES | {"search-gap"}
     memory_rows = []
     for value in memory_payload.get("entries") or []:
         if not isinstance(value, dict) or _canon(value.get("providerId")) != wanted:
             continue
         memory_failure = "-".join(_canon(value.get("failureClass")).split())
-        if memory_failure != failure_key or value.get("executionObserved") is not True:
+        if memory_failure not in safe_progress_memory_failures:
+            continue
+        if value.get("executionObserved") is not True:
             continue
         if str(value.get("lastOutcome") or "").strip().casefold() != "exploration_progress_nonpublishable":
+            continue
+        last_reason = str(value.get("lastReason") or "").strip().casefold()
+        if not last_reason.startswith("sandbox_diagnostic_progress:"):
             continue
         memory_rows.append(value)
     if not memory_rows:
         return {}
 
-    stages = sorted({
+    # observedPipelineStage can lag the actual frontier (the real sandbox may
+    # record "episode" while lastReason records provider-frontier:player).
+    # Recover only a small allowlist of explicit persisted frontier tokens.
+    stage_tokens = {
+        "search", "lookup", "detail", "episode", "watch",
+        "player", "embed", "source", "api", "terminal",
+    }
+    stages = {
         str(value.get("observedPipelineStage") or "").strip().casefold()[:40]
         for value in memory_rows
         if str(value.get("observedPipelineStage") or "").strip()
-    })
+    }
+    for value in memory_rows:
+        last_reason = str(value.get("lastReason") or "").strip().casefold()
+        marker = "provider-frontier:"
+        if marker not in last_reason:
+            continue
+        suffix = last_reason.split(marker, 1)[1]
+        for token in suffix.split(","):
+            token = token.strip()
+            if token in stage_tokens:
+                stages.add(token)
+    stages = sorted(stages)
     generated = sum(
         1 for row in diagnostics
         if str(row.get("phase") or "").strip().casefold() == "attempts"
