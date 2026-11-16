@@ -1,7 +1,8 @@
+import json
 import unittest
 
 from niakvio_brain_llm.contracts import RepairRequest
-from niakvio_brain_llm.prompting import _compact_same_provider_execution_prior, build_force_prompt_payload, build_prompt_payload
+from niakvio_brain_llm.prompting import _compact_force_observation, _compact_same_provider_execution_prior, build_force_prompt_payload, build_prompt_payload
 
 class PromptingTests(unittest.TestCase):
     def test_large_context_is_bounded(self):
@@ -1163,6 +1164,49 @@ class PromptingTests(unittest.TestCase):
         self.assertFalse(compacted["executionAuthority"])
         self.assertFalse(compacted["publicationAuthority"])
         self.assertTrue(compacted["mustRevalidateCurrentNetwork"])
+
+
+
+    def test_targeted_force_compaction_preserves_player_shape_before_verbose_hints(self):
+        verbose_hint = (
+            "movie:classes=" + ",".join(["class-token-" + str(i) for i in range(18)])
+            + ";ids=" + ",".join(["vote-num-id-" + str(15000000 + i) for i in range(12)])
+            + ";markers=player"
+        )
+        self.assertGreater(verbose_hint.index("markers=player"), 240)
+        compacted = _compact_force_observation({
+            "source": "targeted-regression-current",
+            "value": {
+                "debugStages": {"movie": "provider_network_zero_result"},
+                "statuses": {"movie": "NO_PROOF"},
+                "verifiedLanes": [],
+                "playableLanes": [],
+                "sampleTitles": {"movie": ["Example"]},
+                "structureHints": [verbose_hint],
+                "network": {
+                    "movie": [{
+                        "host": "current.example",
+                        "status": 200,
+                        "shape": {
+                            "kind": "html",
+                            "markers": ["player"],
+                            "forms": 3,
+                            "iframes": 0,
+                            "sources": 0,
+                            "videos": 0,
+                        },
+                    }],
+                },
+            },
+        })
+        shapes = compacted["value"]["networkShapes"]
+        self.assertEqual(shapes[0]["markers"], ["player"])
+        self.assertEqual(shapes[0]["forms"], 3)
+        # The later FORCE soft-limit serializes this value before clipping to
+        # 520 chars; the causal frontier must remain ahead of verbose hints.
+        prefix = json.dumps(compacted["value"], ensure_ascii=True)[:520]
+        self.assertIn("player", prefix)
+        self.assertIn("networkShapes", prefix)
 
 
 if __name__ == "__main__":
