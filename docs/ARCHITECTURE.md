@@ -1,3 +1,7 @@
+## Executed frontier memory across taxonomy refinement
+
+A sandbox frontier is execution evidence, not positive provider proof. Brain may carry that frontier across a later provider-local taxonomy refinement (for example `search_gap` to `media_extraction_gap`) only when the Repair report still identifies the same provider progress, execution memory records `executionObserved=true` with `exploration_progress_nonpublishable` and explicit `sandbox_diagnostic_progress`, and the failure labels remain inside the bounded provider-local family. When the census epoch also changed, the exact current published provider SHA-256 must match the progress-producing parent bytes and current provider-owned network evidence must independently confirm execution. The explicit `provider-frontier:` reason may restore allowlisted pipeline stages such as `player` when the older summary stage lags behind. None of this grants route, terminal-media, identity, mutation-acceptance or publication authority.
+
 ## Global+France publication authority for NiakVIO guidance
 
 NiakVIO's executable provider authority is a projection union: Global providers are referenced by `manifest.json`, while strict France-only providers remain first-class executable identities in `provider_catalog.json` with `projections.general=false` and `projections.vf=true`. Brain-LLM must not infer current-provider scope from the Global manifest alone.
