@@ -15,6 +15,9 @@ assert 'FIELD_BRAIN_FORCE_CANDIDATE_BUDGET_EXHAUSTED' in batch
 assert 'remaining_candidates = max(1, max_hypotheses - candidate_index + 1)' in batch
 assert '"variant_coverage_gap",' in batch
 assert 'future_reserve = max(0, remaining_candidates - 1) * 45.0' in batch
+assert 'structural_bloc_first = bool(' in batch
+assert 'normal_first_cap = 300.0 if structural_bloc_first else 180.0' in batch
+assert 'else (300 if scope == "provider_bloc" else 180)' in batch
 assert 'max(\n                            90.0,' in batch
 assert 'candidate_deadline = min(' in batch
 assert 'FIELD_BRAIN_FORCE_PORTFOLIO_FEEDBACK' in batch
@@ -24,7 +27,7 @@ assert 'negative_memory_rows=' in batch
 assert '60 if speculative_portfolio_slot else 180' in batch
 # New CPU-long-call mode must only raise the first single-provider slot.
 assert 'NIAKVIO_FORCE_CPU_LONG_CALL' in batch
-assert '330.0 if cpu_long_call and max_hypotheses == 1 else 180.0' in batch
+assert '330.0 if cpu_long_call and max_hypotheses == 1 else normal_first_cap' in batch
 assert 'min(300, int(args.timeout_seconds))' in batch
 assert 'if cpu_long_call and not speculative_portfolio_slot:' in batch
 assert 'FIELD_BRAIN_FORCE_SPECULATIVE_FAST_FAIL' in batch
@@ -48,7 +51,7 @@ assert 'Qwen/Qwen2.5-Coder-7B-Instruct-GGUF:Q4_K_M' in workflow
 assert '--model qwen2.5-coder-7b' in workflow
 assert '-c 16384' in workflow
 assert '--max-tokens 512' in workflow
-assert '--timeout-seconds 240' in workflow
+assert '--timeout-seconds 300' in workflow
 assert 'qwen25-coder-7b-q4-km-v1' in workflow
 assert 'Qwen/Qwen2.5-Coder-3B-Instruct-GGUF:Q4_K_M' not in workflow
 print("FORCE provider budget contract passed")
