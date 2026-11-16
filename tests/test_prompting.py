@@ -1049,5 +1049,68 @@ class PromptingTests(unittest.TestCase):
         self.assertNotIn("required_tests", payload["mutation_policy"])
         self.assertTrue(payload["verification_owned_by_brain"])
 
+
+    def test_same_provider_execution_prior_survives_advisor_and_force_compaction(self):
+        prior = {
+            "role": "same-provider-historical-execution-prior",
+            "source": "automation/brain-repair-experience.json",
+            "provider": "demo",
+            "recipes": [
+                {
+                    "route": "/engine/ajax/film_api.php?id={id}",
+                    "method": "GET",
+                    "role": "detail",
+                    "semanticType": "movie",
+                    "response": "json",
+                },
+                {
+                    "route": "/index.php",
+                    "method": "POST",
+                    "role": "detail",
+                    "semanticType": "tv",
+                    "bodyTemplate": {"story": "{query}"},
+                },
+            ],
+            "proofAuthority": False,
+            "executionAuthority": False,
+            "publicationAuthority": False,
+            "mustRevalidateCurrentNetwork": True,
+        }
+        request = RepairRequest(
+            provider_id="demo",
+            failure_class="chain_terminal_gap",
+            status="CHAIN REACHED",
+            provider_context={"same_provider_execution_prior": prior},
+        )
+        advisor = build_prompt_payload(
+            request,
+            [],
+            [],
+            {"target_layer": "provider", "confidence": 0.96, "strategy_prior": "terminal"},
+            {"allow_mutations": False, "allowed_scopes": [], "advisor_only": True},
+        )
+        advisor_prior = advisor["request"]["provider_context"]["same_provider_execution_prior"]
+        self.assertFalse(advisor_prior["proofAuthority"])
+        self.assertEqual(
+            advisor_prior["recipes"][0]["route"],
+            "/engine/ajax/film_api.php?id={id}",
+        )
+
+        force = build_force_prompt_payload(
+            request,
+            {"target_layer": "provider", "confidence": 0.96, "strategy_prior": "terminal"},
+            {"allow_mutations": True, "allowed_scopes": ["provider_bloc"]},
+        )
+        force_prior = force["same_provider_execution_prior"]
+        self.assertFalse(force_prior["proofAuthority"])
+        self.assertTrue(force_prior["mustRevalidateCurrentNetwork"])
+        self.assertEqual(force_prior["recipes"][1]["bodyTemplate"]["story"], "{query}")
+        self.assertTrue(
+            force["same_provider_execution_prior_policy"][
+                "must_revalidate_current_network_and_playback"
+            ]
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
