@@ -1,12 +1,12 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "7c546e451e20bf80934ac6a573ddaac4505d54f2",
-  "reason": "Replay current repair-eligible representative families with Brain provider_bloc primary output cap 512 after live 7B truncation evidence. Keep frenchstream fail-closed unless current provider-owned causal evidence establishes an editable surface. Guidance remains sandbox/prior-only until canonical NiakVIO apply, materialize, terminal identity replay and persistence.",
+  "niakvio_sha": "89bf37f1920e889f825b5033ececd6b3377d16c6",
+  "reason": "Parallel current-source replay after two generic Brain corrections: normal provider_bloc synthesis cap 512 and same-census Fast Repair sandbox frontier reuse. Frenchstream current Fast evidence reached player/provider-requests and may now establish provider-local media_extraction_gap without granting proof; hianime/stigstream exercise complete Bloc synthesis. Targeted network evidence refresh is running independently. Guidance remains non-authoritative until canonical NiakVIO apply/materialize/terminal identity replay.",
   "requested_repair_queue": [
     "frenchstream",
     "hianime",
     "stigstream"
   ],
-  "retry": 46,
+  "retry": 47,
   "require_deterministic_force": false
 }
