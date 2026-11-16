@@ -548,6 +548,12 @@ class ProviderContextTests(unittest.TestCase):
                                 {
                                     "executable": True,
                                     "method": "GET",
+                                    "route": "/data/eps_9561.txt?v={cache}",
+                                    "role": "detail",
+                                },
+                                {
+                                    "executable": True,
+                                    "method": "GET",
                                     "route": "/embed-lwa4enepfqwt.html",
                                     "role": "player",
                                 },
@@ -575,6 +581,7 @@ class ProviderContextTests(unittest.TestCase):
             self.assertIn("/engine/ajax/film_api.php?id={id}", routes)
             self.assertIn("/index.php", routes)
             self.assertNotIn("/data/eps_9561.txt?v=59636093", routes)
+            self.assertNotIn("/data/eps_9561.txt?v={cache}", routes)
             self.assertNotIn("/embed-lwa4enepfqwt.html", routes)
             self.assertNotIn("/other/{id}", routes)
             film = next(
