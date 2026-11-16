@@ -334,6 +334,7 @@ class CompactForceRetryTest(unittest.TestCase):
         self.assertIn('_compact_edit_to_mutation(', planner)
         self.assertIn("COMPACT_FORCE_SYSTEM_PROMPT", planner)
         self.assertIn("One edit max", planner)
+        self.assertIn("same_provider_execution_prior is the only bounded historical implementation exception", planner)
         workflow = (ROOT / ".github" / "workflows" / "niakvio-private-guidance.yml").read_text(encoding="utf-8")
         self.assertIn("--max-tokens 512", workflow)
         self.assertIn("--timeout-seconds 300", workflow)
