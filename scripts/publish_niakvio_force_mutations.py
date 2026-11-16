@@ -11,6 +11,7 @@ from typing import Any
 
 from niakvio_brain_llm.mutation_guard import validate_mutations
 from niakvio_brain_llm.niakvio_adapter import request_from_checkout
+from niakvio_brain_llm.provider_context import published_provider_row
 from niakvio_brain_llm.repair_family import repair_family_descriptor
 
 PROVIDER_ID = re.compile(r"^[a-z0-9][a-z0-9._-]{0,159}$")
@@ -58,19 +59,16 @@ def _provider_override(root: Path, provider: str) -> Any:
 
 def _provider_runtime_surface(root: Path, provider: str) -> tuple[str, str]:
     try:
-        manifest = json.loads((root / "manifest.json").read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        raise ValueError(f"{provider}: manifest unavailable for provider_bloc context")
-    rows = manifest.get("scrapers") if isinstance(manifest, dict) else None
-    if not isinstance(rows, list):
-        raise ValueError(f"{provider}: manifest scrapers unavailable for provider_bloc context")
-    wanted = canon(provider)
-    row = next((value for value in rows if isinstance(value, dict) and canon(value.get("id")) == wanted), None)
+        row = published_provider_row(root, provider, active_only=True)
+    except ValueError as exc:
+        raise ValueError(f"{provider}: invalid published projection authority: {exc}") from exc
     filename = str((row or {}).get("filename") or "").strip()
     if not filename.startswith(("providers/", "provider-disabled/")):
         raise ValueError(f"{provider}: current provider runtime filename unavailable")
-    path = root / filename
-    if not path.is_file():
+    path = (root / filename).resolve()
+    base = root.resolve()
+    owned_roots = ((base / "providers").resolve(), (base / "provider-disabled").resolve())
+    if not path.is_file() or not any(path.is_relative_to(owned) for owned in owned_roots):
         raise ValueError(f"{provider}: current provider runtime bytes unavailable: {filename}")
     return filename, hashlib.sha256(path.read_bytes()).hexdigest()
 
