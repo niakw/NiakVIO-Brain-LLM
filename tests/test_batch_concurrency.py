@@ -28,7 +28,7 @@ for token in (
     '"provider_data": 192',
     '"provider_patch": 640',
     '"provider_js": 640',
-    '"provider_bloc": 320',
+    '"provider_bloc": 512',
     "recovery_token_cap = {",
     '"provider_patch": 768',
     '"provider_js": 768',

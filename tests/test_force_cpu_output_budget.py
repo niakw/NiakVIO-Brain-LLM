@@ -6,7 +6,7 @@ normal = {
     "provider_data": (192, 256),
     "provider_patch": (640, 768),
     "provider_js": (640, 768),
-    "provider_bloc": (320, 256),
+    "provider_bloc": (512, 256),
     "other": (320, 384),
 }
 for scope, caps in normal.items():

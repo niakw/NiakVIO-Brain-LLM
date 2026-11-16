@@ -1,3 +1,10 @@
+## 2026-11-16 — Live 7B Force evidence raises normal provider_bloc primary output to 512
+
+- Private-guidance run `43791753495` on the three representative Repair families reached current-source `provider_bloc` synthesis for `hianime` and `stigstream`, but multiple Qwen2.5-Coder-7B completions terminated exactly at the Brain's 320-token primary cap and were rejected as `local model completion truncated by max_tokens`. The same calls already consumed roughly 125–176 seconds, so repeating a 320-token ceiling cannot produce a compilable candidate.
+- This is a generic Brain synthesis-budget defect, not a provider patch. The normal `provider_bloc` primary cap is raised only from 320 to 512, matching the private-guidance workflow's existing global `--max-tokens 512` ceiling. Recovery remains 256; provider_data/provider_patch/provider_js budgets, schema validation, exact current-byte unit IDs, mutation guards, materialization, playback/identity proof and publication authority are unchanged. The isolated one-provider CPU proof keeps its separate 1024/1408 opt-in.
+- `frenchstream` remains a separate evidence problem: that run had causal layer unknown, zero editable units and policy abstention, so no mutation is authorized until current execution supplies a provider-owned causal surface. No provider is declared repaired by this token-budget change.
+- Fresh Brain CI and a new exact-source private-guidance run are required. The in-flight guidance run `43851115007` is pinned to pre-change Brain `0c53daef` and cannot validate this correction.
+
 ## 2026-11-16 — Brain-LLM no longer drops France-only providers before guidance
 
 - Live `niakvio-guidance` branch was stale and empty: `providerCount=0`, `rows=[]`, source NiakVIO SHA `2ac06197...`; main trigger still targeted only `4khdhub`. None of the current representative France-only Repair providers (`frenchstream`, `hianime`, `stigstream`) appeared in published guidance.

@@ -25,18 +25,20 @@ from niakvio_brain_llm.repair_family import repair_family_descriptor, select_fam
 from niakvio_brain_llm.routing import REPLAYABLE_FAMILY_MECHANISMS
 
 def force_output_token_caps(scope: str, cpu_local_single: bool = False) -> tuple[int, int]:
-    """Bounded synthesis output, with opt-in CPU first-candidate headroom.
+    """Bounded synthesis output with evidence-backed provider Bloc headroom.
 
-    A 3B CPU model can finish its prefill and still be cut off at the old
-    320-token provider_bloc ceiling. Larger output is admitted ONLY for one
-    isolated local provider candidate. Constrained schema, current-byte
-    validation and external playback/identity gates remain mandatory.
+    Live three-family Qwen2.5-Coder-7B guidance showed provider_bloc replies
+    reaching the 320-token ceiling and being rejected as truncated before the
+    exact-byte compiler could inspect them. Normal provider_bloc synthesis gets
+    512 tokens; recovery stays tighter at 256. The isolated single-provider CPU
+    proof path retains its explicit 1024/1408 headroom. Constrained schema,
+    current-byte validation and external playback/identity gates remain mandatory.
     """
     scope_token_cap = {
         "provider_data": 192,
         "provider_patch": 640,
         "provider_js": 640,
-        "provider_bloc": 320,
+        "provider_bloc": 512,
     }.get(scope, 320)
     recovery_token_cap = {
         "provider_data": 256,

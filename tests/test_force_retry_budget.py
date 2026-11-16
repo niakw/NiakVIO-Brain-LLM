@@ -8,7 +8,7 @@ assert "scope_token_cap = {" in source
 assert '"provider_data": 192' in source
 assert '"provider_patch": 640' in source
 assert '"provider_js": 640' in source
-assert '"provider_bloc": 320' in source
+assert '"provider_bloc": 512' in source
 assert "recovery_token_cap = {" in source
 assert '"provider_data": 256' in source
 assert '"provider_patch": 768' in source
