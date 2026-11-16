@@ -92,7 +92,9 @@ def _compact_same_provider_execution_prior(
     def priority(item: tuple[int, dict[str, Any]]) -> tuple[int, int, int]:
         index, row = item
         route = str(row.get("route") or "")
-        parameterized = ("{" in route and "}" in route) or bool(row.get("bodyTemplate"))
+        route_parameterized = "{" in route and "}" in route
+        body_parameterized = bool(row.get("bodyTemplate"))
+        mechanism_rank = 0 if route_parameterized else (1 if body_parameterized else 2)
         role = str(row.get("role") or "").strip().casefold()
         role_rank = {
             "player": 0,
@@ -102,7 +104,7 @@ def _compact_same_provider_execution_prior(
             "detail": 4,
             "search": 5,
         }.get(role, 6)
-        return (0 if parameterized else 1, role_rank, index)
+        return (mechanism_rank, role_rank, index)
 
     ranked = sorted(enumerate(raw_recipes), key=priority)
     selected: list[dict[str, Any]] = []
