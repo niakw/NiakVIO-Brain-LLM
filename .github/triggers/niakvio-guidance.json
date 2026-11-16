@@ -1,12 +1,12 @@
 {
   "schema_version": 1,
   "niakvio_sha": "ba752be6836f02246540ade3e5ffe012d31efba2",
-  "reason": "Fresh exact-source replay on the complete structural FORCE budget change including architecture contract. Prior run 43853913152 proved hianime provider_bloc was killed at 179.05s despite a 600s provider budget. Current Brain grants first structural Bloc up to 300s, workflow timeout 300s, provider budget 600s; targeted evidence remains run 43854495472. Guidance remains sandbox-only until NiakVIO apply, exact-byte materialization, terminal media+identity replay, non-regression and persistence.",
+  "reason": "Exact-source representative replay on complete Brain HEAD: structural provider_bloc receives up to 300s within 600s provider budget, and exact-byte/current-network frontier reuse can rebind historical executed player progress to census 43852026874 without granting proof authority. Frenchstream current bytes match its historical player-frontier parent and targeted run 43854495472 has provider-owned HTTP 200. Require sanitized candidate only; NiakVIO still owns apply/materialize/terminal+identity replay/non-regression/persistence.",
   "requested_repair_queue": [
     "frenchstream",
     "hianime",
     "stigstream"
   ],
-  "retry": 51,
+  "retry": 52,
   "require_deterministic_force": false
 }
