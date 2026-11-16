@@ -463,7 +463,7 @@ jobs:
             --model qwen2.5-coder-7b \
             --workers 1 \
             --max-tokens 512 \
-            --timeout-seconds 240 \
+            --timeout-seconds 300 \
             --force-provider-budget-seconds 600 \
             --output private-force-batch.jsonl
           python brain/scripts/plan_batch_from_checkout.py \
