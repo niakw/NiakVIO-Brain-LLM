@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
   "niakvio_sha": "36571d22293b2f00bb003c01bfcbd8e7ec73b00d",
-  "reason": "Single-oracle exact-current Frenchstream replay after the same-provider execution-prior bridge and Force policy alignment. Current NiakVIO evidence remains census 43855893372 / targeted verdict 43857227000 with provider-owned fs16.lol HTTP 200 and player-shaped HTML, while published bytes remain exact 1c415541... . Historical provider recipes are sanitized implementation hints only; Force may use their mechanism shape but current provider-owned network, canonical materialization, terminal playable media and identity remain mandatory proof.",
+  "reason": "Single-oracle exact-current Frenchstream replay after correcting the provider_context execution-prior bridge syntax (7067c4af) and retaining safe-prior Force policy. Retry 56 is superseded as pre-inference invalid. Current NiakVIO evidence remains census 43855893372 / targeted run 43857227000 with provider-owned fs16.lol HTTP 200 and player-shaped HTML; published bytes remain 1c415541... . Historical recipes are same-provider sanitized implementation hints only; current provider network, canonical apply/materialize, terminal playable media and identity remain mandatory proof.",
   "requested_repair_queue": [
     "frenchstream"
   ],
-  "retry": 56,
+  "retry": 57,
   "require_deterministic_force": false
 }
