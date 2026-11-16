@@ -2,6 +2,14 @@
 
 A sandbox frontier is execution evidence, not positive provider proof. Brain may carry that frontier across a later provider-local taxonomy refinement (for example `search_gap` to `media_extraction_gap`) only when the Repair report still identifies the same provider progress, execution memory records `executionObserved=true` with `exploration_progress_nonpublishable` and explicit `sandbox_diagnostic_progress`, and the failure labels remain inside the bounded provider-local family. When the census epoch also changed, the exact current published provider SHA-256 must match the progress-producing parent bytes and current provider-owned network evidence must independently confirm execution. The explicit `provider-frontier:` reason may restore allowlisted pipeline stages such as `player` when the older summary stage lags behind. None of this grants route, terminal-media, identity, mutation-acceptance or publication authority.
 
+## Same-provider execution prior boundary
+
+NiakVIO already persists provider-local execution recipes in `automation/brain-repair-experience.json`. Brain may reuse those recipes as a **historical implementation prior** for the same provider instead of rediscovering an already observed request topology from zero.
+
+The projection is deliberately narrower than the stored experience. It retains bounded method/role/media/response metadata, identifier-free generic endpoints and parameterized routes/body templates. It removes hosts, response bodies, credential-bearing headers, literal fixture/cache IDs and opaque player/embed identifiers. Generic historical RAG remains route-free; this channel is same-provider only.
+
+This prior has `proofAuthority=false`, `executionAuthority=false` and `publicationAuthority=false`. It can guide advisor/FORCE synthesis only. Current provider-owned network evidence, canonical application/materialization, terminal playable media, identity checks, non-regression and normal publication gates remain mandatory before any repair can be accepted.
+
 ## Global+France publication authority for NiakVIO guidance
 
 NiakVIO's executable provider authority is a projection union: Global providers are referenced by `manifest.json`, while strict France-only providers remain first-class executable identities in `provider_catalog.json` with `projections.general=false` and `projections.vf=true`. Brain-LLM must not infer current-provider scope from the Global manifest alone.
