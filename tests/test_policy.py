@@ -155,5 +155,76 @@ class PolicyTests(unittest.TestCase):
         self.assertFalse(policy["allow_mutations"])
         self.assertFalse(policy["force_abstain"])
 
+
+    def test_same_census_fast_repair_frontier_satisfies_provider_evidence_gate(self):
+        request = RepairRequest(
+            provider_id="demo",
+            failure_class="media_extraction_gap",
+            status="NO PROOF",
+            allowed_mutations=["provider_bloc"],
+            census_prior={"sourceCensusRunId": "run-fast"},
+            provider_context={"runtimeMutationSource": "async function getStreams(){return [];}"},
+            observations=[
+                {"source": "census_current", "value": {
+                    "sourceCensusRunId": "run-fast",
+                    "testedThisRun": True,
+                    "status": "NO PROOF",
+                }},
+                {"source": "fast-repair-current", "value": {
+                    "sourceCensusRunId": "run-fast",
+                    "failureClass": "media_extraction_gap",
+                    "executionObserved": True,
+                    "explorationProgress": True,
+                    "observedPipelineStages": ["player"],
+                    "proofAuthority": False,
+                    "publicationAuthority": False,
+                }},
+            ],
+        )
+        policy = build_mutation_policy(
+            request,
+            {
+                "target_layer": "provider",
+                "strategy_prior": "proven_request_program_and_terminal_extraction",
+            },
+        )
+        self.assertTrue(policy["allow_mutations"])
+        self.assertFalse(policy["force_abstain"])
+        self.assertEqual(policy["allowed_scopes"], ["provider_bloc"])
+
+    def test_fast_repair_frontier_from_other_census_does_not_satisfy_gate(self):
+        request = RepairRequest(
+            provider_id="demo",
+            failure_class="media_extraction_gap",
+            status="NO PROOF",
+            allowed_mutations=["provider_bloc"],
+            census_prior={"sourceCensusRunId": "run-current"},
+            provider_context={"runtimeMutationSource": "async function getStreams(){return [];}"},
+            observations=[
+                {"source": "census_current", "value": {
+                    "sourceCensusRunId": "run-current",
+                    "testedThisRun": True,
+                    "status": "NO PROOF",
+                }},
+                {"source": "fast-repair-current", "value": {
+                    "sourceCensusRunId": "run-old",
+                    "failureClass": "media_extraction_gap",
+                    "executionObserved": True,
+                    "explorationProgress": True,
+                }},
+            ],
+        )
+        policy = build_mutation_policy(
+            request,
+            {
+                "target_layer": "provider",
+                "strategy_prior": "proven_request_program_and_terminal_extraction",
+            },
+        )
+        self.assertFalse(policy["allow_mutations"])
+        self.assertTrue(policy["force_abstain"])
+        self.assertIn("current-census provider evidence", policy["reason"])
+
+
 if __name__ == "__main__":
     unittest.main()

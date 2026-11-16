@@ -75,6 +75,30 @@ def _has_current_census_provider_evidence(observations: Any) -> bool:
     return False
 
 
+
+def _has_current_fast_repair_provider_evidence(request: RepairRequest) -> bool:
+    """Accept only exact-census, executed, non-publishable sandbox frontier evidence."""
+    expected_run = str((request.census_prior or {}).get("sourceCensusRunId") or "")
+    expected_failure = _canon_failure(request.failure_class)
+    for row in request.observations or []:
+        if not isinstance(row, dict):
+            continue
+        if str(row.get("source") or "").strip().casefold() != "fast-repair-current":
+            continue
+        value = row.get("value")
+        if not isinstance(value, dict):
+            continue
+        source_run = str(value.get("sourceCensusRunId") or "")
+        if expected_run and source_run != expected_run:
+            continue
+        if value.get("executionObserved") is not True or value.get("explorationProgress") is not True:
+            continue
+        if _canon_failure(value.get("failureClass")) != expected_failure:
+            continue
+        return True
+    return False
+
+
 def _is_checkout_evidence_request(observations: Any) -> bool:
     return any(
         isinstance(row, dict)
@@ -138,6 +162,7 @@ def build_mutation_policy(
         and not (
             _has_targeted_provider_evidence(request.observations)
             or _has_current_census_provider_evidence(request.observations)
+            or _has_current_fast_repair_provider_evidence(request)
             or verified_live_failure(request)
         )
     ):

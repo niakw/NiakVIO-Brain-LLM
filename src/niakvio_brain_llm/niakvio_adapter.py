@@ -533,6 +533,111 @@ def _provider_refined_groups(payload: Any, provider_id: str, *, census_run_id: s
         })
     return out[:4]
 
+CURRENT_REPAIR_PROVIDER_FAILURES = {
+    "provider-transport-gap",
+    "route-proven-gap",
+    "chain-terminal-gap",
+    "media-extraction-gap",
+}
+
+
+def _provider_current_repair_execution(
+    payload: Any,
+    memory_payload: Any,
+    provider_id: str,
+    *,
+    census_run_id: str,
+) -> dict[str, Any]:
+    """Project same-census sandbox frontier progress back into Brain causality.
+
+    Fast Repair may discover a deeper provider-owned execution frontier without
+    producing a publishable stream. That is diagnostic evidence, not positive
+    proof. Reuse it only when the persisted Repair report belongs to the exact
+    current census epoch and the sanitized execution memory independently says
+    that the provider was actually executed.
+    """
+    if not isinstance(payload, dict) or not isinstance(memory_payload, dict):
+        return {}
+    source_run = str(payload.get("sourceCensusRunId") or "")
+    if not census_run_id or source_run != census_run_id:
+        return {}
+    wanted = _canon(provider_id)
+    selected = {
+        _canon(value)
+        for value in payload.get("selectedProviders") or []
+        if str(value or "").strip()
+    }
+    if wanted not in selected:
+        return {}
+
+    plan: dict[str, Any] = {}
+    diagnostics: list[dict[str, Any]] = []
+    for wave in payload.get("waves") or []:
+        if not isinstance(wave, dict):
+            continue
+        for batch in wave.get("batches") or []:
+            if not isinstance(batch, dict):
+                continue
+            brain = batch.get("brain") if isinstance(batch.get("brain"), dict) else {}
+            plans = brain.get("plans") if isinstance(brain.get("plans"), dict) else {}
+            for key, value in plans.items():
+                key_provider = str(key or "").split(":", 1)[-1]
+                if _canon(key_provider) == wanted and isinstance(value, dict):
+                    plan = value
+            diagnostics.extend(
+                value
+                for value in (brain.get("attemptDiagnostics") or [])
+                if isinstance(value, dict) and _canon(value.get("provider")) == wanted
+            )
+
+    raw_failure = str(plan.get("failureClass") or "").strip()
+    failure_key = "-".join(_canon(raw_failure).split())
+    if failure_key not in CURRENT_REPAIR_PROVIDER_FAILURES:
+        return {}
+    progress = [
+        row for row in diagnostics
+        if str(row.get("phase") or "").strip().casefold() == "exploration_progress"
+        and str(row.get("reasonCode") or "").strip().casefold() == "sandbox_diagnostic_progress"
+    ]
+    if not progress:
+        return {}
+
+    memory_rows = []
+    for value in memory_payload.get("entries") or []:
+        if not isinstance(value, dict) or _canon(value.get("providerId")) != wanted:
+            continue
+        memory_failure = "-".join(_canon(value.get("failureClass")).split())
+        if memory_failure != failure_key or value.get("executionObserved") is not True:
+            continue
+        if str(value.get("lastOutcome") or "").strip().casefold() != "exploration_progress_nonpublishable":
+            continue
+        memory_rows.append(value)
+    if not memory_rows:
+        return {}
+
+    stages = sorted({
+        str(value.get("observedPipelineStage") or "").strip().casefold()[:40]
+        for value in memory_rows
+        if str(value.get("observedPipelineStage") or "").strip()
+    })
+    generated = sum(
+        1 for row in diagnostics
+        if str(row.get("phase") or "").strip().casefold() == "attempts"
+        and str(row.get("status") or "").strip().casefold() == "generated"
+    )
+    return {
+        "role": "current-fast-repair-sandbox-observation",
+        "sourceCensusRunId": source_run,
+        "failureClass": raw_failure[:120],
+        "executionObserved": True,
+        "explorationProgress": True,
+        "observedPipelineStages": stages[:8],
+        "generatedAttemptCount": min(generated, 32),
+        "proofAuthority": False,
+        "publicationAuthority": False,
+    }
+
+
 def _provider_negative_memory(payload: Any, provider_id: str) -> list[dict[str, Any]]:
     """Keep the provider's sanitized ledger intact for deterministic exclusions.
 
@@ -792,6 +897,7 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
     experience = _load(root / "automation" / "brain-repair-experience.json", {})
     memory = _load(root / "automation" / "brain-repair-memory.json", {})
     force_memory = _load(root / "automation" / "brain-llm-force-memory.json", {})
+    current_repair = _load(root / "automation" / "provider-brain-repair-latest.json", {})
     targeted = _load(root / "automation" / "provider-targeted-regression-recovery-latest.json", {})
     waf = _load(root / "automation" / "provider-waf-browser-session-latest.json", {})
     refined = _load(root / "automation" / "provider-repair-batch-refined-latest.json", {})
@@ -828,6 +934,14 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
 
     negative_memory = _provider_negative_memory(memory, provider_id)
     force_negative_memory = _provider_force_negative_memory(force_memory, provider_id)
+    current_repair_observation = _provider_current_repair_execution(
+        current_repair,
+        memory,
+        provider_id,
+        census_run_id=census_run,
+    )
+    if current_repair_observation and status_key not in {"full ok", "partial ok", "candidate ok"}:
+        failure = str(current_repair_observation.get("failureClass") or failure)
 
     supported = (
         row.get("declaredLanes")
@@ -965,6 +1079,7 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
     )
 
     census_prior = {
+        "sourceCensusRunId": census_run,
         "status": row.get("status"),
         "underlyingStatus": row.get("underlyingStatus"),
         "dominantIssue": row.get("dominantIssue"),
@@ -1030,6 +1145,10 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
         census_prior=census_prior,
         observations=[
             {"source": "census_current", "value": census_prior},
+            *(
+                [{"source": "fast-repair-current", "value": current_repair_observation}]
+                if current_repair_observation else []
+            ),
             *(
                 [{"source": "runtime-variant-coverage-current", "value": coverage}]
                 if coverage else []

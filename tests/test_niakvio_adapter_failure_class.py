@@ -686,5 +686,147 @@ class AdapterFailureClassTests(unittest.TestCase):
         }
         self.assertEqual(classify_census_failure(row), "candidate_replay_gap")
 
+
+    def test_same_census_fast_repair_frontier_refines_no_proof_failure(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "automation").mkdir(parents=True)
+            (root / "automation" / "provider-census-status.json").write_text(
+                json.dumps({
+                    "runId": "run-fast",
+                    "providers": [{
+                        "provider": "demo",
+                        "status": "NO PROOF",
+                        "dominantIssue": "provider_network_zero_result",
+                        "declaredLanes": ["movie", "tv"],
+                        "repairEligible": True,
+                        "testedThisRun": True,
+                    }],
+                }),
+                encoding="utf-8",
+            )
+            (root / "automation" / "provider-brain-repair-latest.json").write_text(
+                json.dumps({
+                    "sourceCensusRunId": "run-fast",
+                    "selectedProviders": ["demo"],
+                    "waves": [{"batches": [{"brain": {
+                        "plans": {
+                            "published:demo": {
+                                "action": "probe-targeted-repair",
+                                "failureClass": "media_extraction_gap",
+                            }
+                        },
+                        "attemptDiagnostics": [
+                            {
+                                "provider": "demo",
+                                "phase": "attempts",
+                                "status": "generated",
+                                "reasonCode": "",
+                            },
+                            {
+                                "provider": "demo",
+                                "phase": "exploration_progress",
+                                "status": "",
+                                "reasonCode": "sandbox_diagnostic_progress",
+                            },
+                        ],
+                    }}]}],
+                }),
+                encoding="utf-8",
+            )
+            (root / "automation" / "brain-repair-memory.json").write_text(
+                json.dumps({"entries": [{
+                    "providerId": "demo",
+                    "failureClass": "media_extraction_gap",
+                    "profile": "adaptive_runtime_recovery",
+                    "observedPipelineStage": "player",
+                    "lastOutcome": "exploration_progress_nonpublishable",
+                    "lastReason": "sandbox_diagnostic_progress:provider-frontier:player,provider-requests",
+                    "executionObserved": True,
+                }]}),
+                encoding="utf-8",
+            )
+            for name in (
+                "brain-repair-experience.json",
+                "brain-llm-force-memory.json",
+                "provider-targeted-regression-recovery-latest.json",
+                "provider-waf-browser-session-latest.json",
+                "provider-repair-batch-refined-latest.json",
+            ):
+                (root / "automation" / name).write_text("{}", encoding="utf-8")
+            (root / "provider-overrides.json").write_text("{}", encoding="utf-8")
+            (root / "provider-hubs.json").write_text("{}", encoding="utf-8")
+            (root / "manifest.json").write_text(json.dumps({"scrapers": []}), encoding="utf-8")
+
+            request = request_from_checkout(root, "demo")
+            self.assertEqual(request.failure_class, "media_extraction_gap")
+            self.assertEqual(request.census_prior["sourceCensusRunId"], "run-fast")
+            by_source = {row["source"]: row["value"] for row in request.observations}
+            current = by_source["fast-repair-current"]
+            self.assertTrue(current["executionObserved"])
+            self.assertTrue(current["explorationProgress"])
+            self.assertFalse(current["proofAuthority"])
+            self.assertFalse(current["publicationAuthority"])
+            self.assertEqual(current["observedPipelineStages"], ["player"])
+            self.assertEqual(current["generatedAttemptCount"], 1)
+
+    def test_stale_fast_repair_frontier_does_not_refine_current_census(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "automation").mkdir(parents=True)
+            (root / "automation" / "provider-census-status.json").write_text(
+                json.dumps({
+                    "runId": "run-new",
+                    "providers": [{
+                        "provider": "demo",
+                        "status": "NO PROOF",
+                        "dominantIssue": "provider_network_zero_result",
+                    }],
+                }),
+                encoding="utf-8",
+            )
+            (root / "automation" / "provider-brain-repair-latest.json").write_text(
+                json.dumps({
+                    "sourceCensusRunId": "run-old",
+                    "selectedProviders": ["demo"],
+                    "waves": [{"batches": [{"brain": {
+                        "plans": {"published:demo": {"failureClass": "media_extraction_gap"}},
+                        "attemptDiagnostics": [{
+                            "provider": "demo",
+                            "phase": "exploration_progress",
+                            "reasonCode": "sandbox_diagnostic_progress",
+                        }],
+                    }}]}],
+                }),
+                encoding="utf-8",
+            )
+            (root / "automation" / "brain-repair-memory.json").write_text(
+                json.dumps({"entries": [{
+                    "providerId": "demo",
+                    "failureClass": "media_extraction_gap",
+                    "lastOutcome": "exploration_progress_nonpublishable",
+                    "executionObserved": True,
+                }]}),
+                encoding="utf-8",
+            )
+            for name in (
+                "brain-repair-experience.json",
+                "brain-llm-force-memory.json",
+                "provider-targeted-regression-recovery-latest.json",
+                "provider-waf-browser-session-latest.json",
+                "provider-repair-batch-refined-latest.json",
+            ):
+                (root / "automation" / name).write_text("{}", encoding="utf-8")
+            (root / "provider-overrides.json").write_text("{}", encoding="utf-8")
+            (root / "provider-hubs.json").write_text("{}", encoding="utf-8")
+            (root / "manifest.json").write_text(json.dumps({"scrapers": []}), encoding="utf-8")
+            request = request_from_checkout(root, "demo")
+            self.assertNotIn(
+                "fast-repair-current",
+                {row["source"] for row in request.observations},
+            )
+            self.assertNotEqual(request.failure_class, "media_extraction_gap")
+
+
 if __name__ == "__main__":
     unittest.main()
