@@ -46,6 +46,13 @@ def _compact_force_observation(row: dict[str, Any]) -> dict[str, Any]:
     network_summary: list[str] = []
     network_shapes: list[dict[str, Any]] = []
     seen_shapes: set[tuple[Any, ...]] = set()
+
+    def shape_count(shape: dict[str, Any], key: str) -> int:
+        try:
+            return max(0, int(shape.get(key) or 0))
+        except (TypeError, ValueError):
+            return 0
+
     network = value.get("network") if isinstance(value.get("network"), dict) else {}
     for lane, rows in list(network.items())[:6]:
         if not isinstance(rows, list):
@@ -68,10 +75,10 @@ def _compact_force_observation(row: dict[str, Any]) -> dict[str, Any]:
                     str(lane)[:32],
                     str(shape.get("kind") or "")[:16],
                     markers,
-                    int(shape.get("forms") or 0),
-                    int(shape.get("iframes") or 0),
-                    int(shape.get("sources") or 0),
-                    int(shape.get("videos") or 0),
+                    shape_count(shape, "forms"),
+                    shape_count(shape, "iframes"),
+                    shape_count(shape, "sources"),
+                    shape_count(shape, "videos"),
                 )
                 if signal not in seen_shapes:
                     seen_shapes.add(signal)
