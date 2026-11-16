@@ -1,10 +1,12 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "2ac06197f200b451b23dedec84e05def0cc601e5",
-  "reason": "Replay representative 4KHDHub after correcting Brain Force publisher/selector fake negative memory. Previous run 42382482886 generated three exact concrete mutations but dropped all in exporter despite executionObserved=false prior rejections. Generate and export candidate with current provider bytes; then NiakVIO sandbox must prove movie and tv correct-identity terminal media before any publication. No hand-edited provider, no fixture-only acceptance.",
+  "niakvio_sha": "82cf3ed55f1845ffba804316ff8426f084016b95",
+  "reason": "Fresh representative guidance after Global+France projection-union fix. Target every current Repair family witness: frenchstream learning/mixed, hianime terminal/mixed, stigstream terminal/html. Preserve provider-local mutation gates; guidance is prior-only until NiakVIO canonical apply/materialize/current-byte terminal identity replay.",
   "requested_repair_queue": [
-    "4khdhub"
+    "frenchstream",
+    "hianime",
+    "stigstream"
   ],
-  "retry": 43,
+  "retry": 44,
   "require_deterministic_force": false
 }
