@@ -1,3 +1,9 @@
+## 2026-11-16 — Same-provider prior bridge syntax defect corrected before replay
+
+- Inspection of the exact `main` bytes after the first execution-prior bridge found a generated-source defect in `provider_context.py`: the insertion between preferred runtime selection and `runtime_template_prior` contained literal `\\n` text instead of Python newlines. That makes the affected module syntactically invalid, so guidance trigger `e036e360` cannot be treated as a Brain inference result even if its workflow surface later reports a generic failure.
+- Commit `7067c4af` replaces the literal escapes with real Python line breaks and re-fetch inspection confirms a valid statement block. This is a correction of the Brain bridge itself, not a provider repair.
+- The next Frenchstream replay must be triggered from a descendant SHA containing `7067c4af`; any lack of publication from retry 56 is superseded as a pre-inference syntax failure, not evidence that the new same-provider prior was ineffective.
+
 ## 2026-11-16 — Brain now reuses sanitized same-provider execution recipes instead of rediscovering them
 
 - The current Frenchstream oracle exposed a generic memory/RAG join gap. NiakVIO already persists provider-local request topology in `automation/brain-repair-experience.json > providers[provider]` (for Frenchstream this includes parameterized movie/detail search/API structure and historical player/episode observations), but the public experience importer only indexes generic `historicalCases`. The adapter did carry the raw provider object as a generic observation, where large recipe arrays are aggressively compacted; advisor/FORCE had no dedicated bounded same-provider execution contract.
