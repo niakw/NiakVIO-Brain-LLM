@@ -168,6 +168,12 @@ def compact_request(
     route_contract = context.get("route_contract")
     if isinstance(route_contract, dict) and route_contract:
         bounded_context["route_contract"] = _compact(route_contract, string_limit=260)
+    same_provider_prior = context.get("same_provider_execution_prior")
+    if isinstance(same_provider_prior, dict) and same_provider_prior:
+        bounded_context["same_provider_execution_prior"] = _compact(
+            same_provider_prior,
+            string_limit=220,
+        )
     current_structure = context.get("current_structure_evidence")
     if isinstance(current_structure, dict) and current_structure:
         bounded_context["current_structure_evidence"] = _compact(
@@ -373,6 +379,7 @@ def build_prompt_payload(
                 if key in {
                     "source_repo", "read_only", "provider_id",
                     "registered_patch_scripts", "route_contract",
+                    "same_provider_execution_prior",
                     "current_structure_evidence", "runtime_variant_coverage",
                     "runtime_template_prior", "advisor_experiment_history",
                 }
@@ -400,6 +407,7 @@ def build_prompt_payload(
             ("runtime_variant_coverage", 140),
             ("current_structure_evidence", 140),
             ("route_contract", 140),
+            ("same_provider_execution_prior", 130),
             ("runtime_template_prior", 120),
         ):
             value = current_context.get(key)
@@ -505,6 +513,7 @@ def build_prompt_payload(
                 "runtime_variant_coverage",
                 "current_structure_evidence",
                 "route_contract",
+                "same_provider_execution_prior",
             }
         }
         payload["causal_prior"] = tiny(payload.get("causal_prior") or {})
@@ -1780,6 +1789,17 @@ def build_force_prompt_payload(
             if isinstance(context.get("route_contract"), dict)
             else {}
         ),
+        "same_provider_execution_prior": (
+            _compact(context.get("same_provider_execution_prior"), string_limit=260)
+            if isinstance(context.get("same_provider_execution_prior"), dict)
+            else {}
+        ),
+        "same_provider_execution_prior_policy": {
+            "historical_hint_not_current_proof": True,
+            "same_provider_only": True,
+            "fixture_literals_removed": True,
+            "must_revalidate_current_network_and_playback": True,
+        },
         "current_provider_structure": (
             _compact(context.get("current_structure_evidence"), string_limit=320)
             if isinstance(context.get("current_structure_evidence"), dict)
@@ -1944,6 +1964,7 @@ def build_force_prompt_payload(
         payload["prior_force_sandbox_failures"] = payload["prior_force_sandbox_failures"][:1]
         payload["force_portfolio_reservations"] = payload["force_portfolio_reservations"][:1]
         for field in ("runtime_variant_coverage", "current_route_contract",
+                      "same_provider_execution_prior",
                       "current_provider_structure", "runtime_template_prior"):
             value = payload.get(field)
             if value:
