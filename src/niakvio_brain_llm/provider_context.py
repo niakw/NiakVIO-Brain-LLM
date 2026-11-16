@@ -1162,7 +1162,11 @@ def build_provider_context(root: str | Path, provider_id: str) -> dict[str, Any]
                     context["preferredRuntimeMutationBlockId"] = preferred_id
                     context["preferredRuntimeMutationSource"] = exact_blocks[preferred_id]
 
-    same_provider_prior = _same_provider_execution_prior(root, provider_id)\n    if same_provider_prior:\n        context["same_provider_execution_prior"] = same_provider_prior\n\n    context["runtime_template_prior"] = _runtime_template_prior(root, provider_id, context)
+    same_provider_prior = _same_provider_execution_prior(root, provider_id)
+    if same_provider_prior:
+        context["same_provider_execution_prior"] = same_provider_prior
+
+    context["runtime_template_prior"] = _runtime_template_prior(root, provider_id, context)
     # Provider wrappers often only name a shared renderer. Without inspecting
     # that renderer, the Brain cannot see an actual season/episode fallback.
     template = context["runtime_template_prior"].get("template")
