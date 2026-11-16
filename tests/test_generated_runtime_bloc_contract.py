@@ -147,6 +147,43 @@ with tempfile.TemporaryDirectory() as tmp:
     fp = publisher.mutation_context_fingerprint(root, "demo", [mutation])
     assert len(fp) == 64
 
+# France-only FORCE surface must use provider_catalog projection authority rather
+# than silently requiring the provider to leak into Global manifest.json.
+with tempfile.TemporaryDirectory() as tmp:
+    root = Path(tmp)
+    (root / "providers").mkdir()
+    (root / "automation").mkdir()
+    (root / "providers/fronly.js").write_text(runtime_source, encoding="utf-8")
+    (root / "manifest.json").write_text(
+        json.dumps({"scrapers": []}), encoding="utf-8"
+    )
+    (root / "provider_catalog.json").write_text(
+        json.dumps({
+            "providers": [{
+                "canonicalId": "fronly",
+                "scraper": {
+                    "id": "fronly",
+                    "enabled": True,
+                    "filename": "providers/fronly.js",
+                },
+                "projections": {"general": False, "vf": True},
+            }]
+        }),
+        encoding="utf-8",
+    )
+    (root / "provider-overrides.json").write_text(
+        json.dumps({"provider_patches": {"fronly": {"patch_scripts": []}}}),
+        encoding="utf-8",
+    )
+    filename, digest = publisher._provider_runtime_surface(root, "fronly")
+    assert filename == "providers/fronly.js"
+    assert len(digest) == 64
+    assert publisher.validate_current_provider_bloc_anchors(
+        root, "fronly", [mutation]
+    )
+    fp = publisher.mutation_context_fingerprint(root, "fronly", [mutation])
+    assert len(fp) == 64
+
 
 budget_request = RepairRequest(
     provider_id="budget-demo",
