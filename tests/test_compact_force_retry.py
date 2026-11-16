@@ -336,7 +336,7 @@ class CompactForceRetryTest(unittest.TestCase):
         self.assertIn("One edit max", planner)
         workflow = (ROOT / ".github" / "workflows" / "niakvio-private-guidance.yml").read_text(encoding="utf-8")
         self.assertIn("--max-tokens 512", workflow)
-        self.assertIn("--timeout-seconds 240", workflow)
+        self.assertIn("--timeout-seconds 300", workflow)
         self.assertIn("--force-provider-budget-seconds 600", workflow)
         self.assertIn("retry_tokens = max(", script)
         self.assertIn("prefill_prompt=False", script)
