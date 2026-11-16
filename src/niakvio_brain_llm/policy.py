@@ -88,8 +88,12 @@ def _has_current_fast_repair_provider_evidence(request: RepairRequest) -> bool:
         value = row.get("value")
         if not isinstance(value, dict):
             continue
-        source_run = str(value.get("sourceCensusRunId") or "")
-        if expected_run and source_run != expected_run:
+        current_run = str(
+            value.get("currentCensusRunId")
+            or value.get("sourceCensusRunId")
+            or ""
+        )
+        if expected_run and current_run != expected_run:
             continue
         if value.get("executionObserved") is not True or value.get("explorationProgress") is not True:
             continue
