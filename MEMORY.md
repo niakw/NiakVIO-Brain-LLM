@@ -1,3 +1,10 @@
+## 2026-11-16 — Brain-LLM no longer drops France-only providers before guidance
+
+- Live `niakvio-guidance` branch was stale and empty: `providerCount=0`, `rows=[]`, source NiakVIO SHA `2ac06197...`; main trigger still targeted only `4khdhub`. None of the current representative France-only Repair providers (`frenchstream`, `hianime`, `stigstream`) appeared in published guidance.
+- Generic root cause: `.github/workflows/niakvio-private-guidance.yml` rebuilt its `current` provider set from Global `manifest.json` only. `src/niakvio_brain_llm/provider_context.py::_published_provider_context` and `scripts/publish_niakvio_force_mutations.py::_provider_runtime_surface` had the same Global-only assumption. A valid France-only Repair handoff could therefore be filtered before model routing, lack published-byte RAG context, or be rejected by FORCE export.
+- `138e4cf2` adds one common Global+France projection resolver in provider context; `ba38b3f4` makes FORCE current-byte surfaces use it with owned-path confinement; `db9f762d` makes private-guidance cohort resolution use the same active union and emit `FIELD_NIAKVIO_GUIDANCE_PROJECTION_AUTHORITY`. Tests `fdd0e8e3`, `0d4dcfa3`, `ac3ae6ea` cover France-only context, workflow authority and FORCE surfaces.
+- No provider has been declared repaired by these commits. A fresh source-pinned private guidance run on current NiakVIO must prove cohort inclusion, model/deterministic candidate generation, sanitized export and then NiakVIO must independently apply/materialize/replay any candidate.
+
 ## 2026-11-16 — Advisor family-wave supports NiakVIO brain mode
 
 - The opt-in family-wave selector now covers the exact caller shape used by NiakVIO: `--mode brain --advisor-only --advisor-family-wave`. Ordinary advisor-only behavior remains unchanged without the flag; diagnostic mode remains excluded.
