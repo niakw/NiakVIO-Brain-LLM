@@ -74,6 +74,72 @@ def _compact_force_observation(row: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _compact_same_provider_execution_prior(
+    value: Any,
+    *,
+    max_recipes: int = 3,
+) -> dict[str, Any]:
+    """Keep executable topology structured when FORCE is under prompt pressure."""
+    if not isinstance(value, dict):
+        return {}
+    raw_recipes = [
+        row for row in (value.get("recipes") or [])
+        if isinstance(row, dict)
+    ]
+    if not raw_recipes:
+        return {}
+
+    def priority(item: tuple[int, dict[str, Any]]) -> tuple[int, int, int]:
+        index, row = item
+        route = str(row.get("route") or "")
+        parameterized = ("{" in route and "}" in route) or bool(row.get("bodyTemplate"))
+        role = str(row.get("role") or "").strip().casefold()
+        role_rank = {
+            "player": 0,
+            "source": 1,
+            "api": 2,
+            "episode": 3,
+            "detail": 4,
+            "search": 5,
+        }.get(role, 6)
+        return (0 if parameterized else 1, role_rank, index)
+
+    ranked = sorted(enumerate(raw_recipes), key=priority)
+    selected: list[dict[str, Any]] = []
+    seen_types: set[str] = set()
+
+    # First preserve media-type diversity, then fill with the next strongest
+    # mechanism. This prevents a movie-heavy history from hiding TV/anime
+    # request topology under the CPU soft limit.
+    for _, row in ranked:
+        media_type = str(row.get("semanticType") or "").strip().casefold()
+        if media_type and media_type in seen_types:
+            continue
+        selected.append(_compact(row, string_limit=150))
+        if media_type:
+            seen_types.add(media_type)
+        if len(selected) >= max(1, int(max_recipes)):
+            break
+    if len(selected) < max(1, int(max_recipes)):
+        for _, row in ranked:
+            compacted = _compact(row, string_limit=150)
+            if compacted in selected:
+                continue
+            selected.append(compacted)
+            if len(selected) >= max(1, int(max_recipes)):
+                break
+
+    return {
+        "role": "same-provider-historical-execution-prior",
+        "strategy": _clip(value.get("strategy"), 80),
+        "recipes": selected,
+        "proofAuthority": False,
+        "executionAuthority": False,
+        "publicationAuthority": False,
+        "mustRevalidateCurrentNetwork": True,
+    }
+
+
 def compact_request(
     request: RepairRequest,
     *,
@@ -1968,11 +2034,16 @@ def build_force_prompt_payload(
         payload["prior_force_sandbox_failures"] = payload["prior_force_sandbox_failures"][:1]
         payload["force_portfolio_reservations"] = payload["force_portfolio_reservations"][:1]
         for field in ("runtime_variant_coverage", "current_route_contract",
-                      "same_provider_execution_prior",
                       "current_provider_structure", "runtime_template_prior"):
             value = payload.get(field)
             if value:
                 payload[field] = {"summary": _clip(json.dumps(value, ensure_ascii=True), 450)}
+        prior_value = payload.get("same_provider_execution_prior")
+        if prior_value:
+            payload["same_provider_execution_prior"] = _compact_same_provider_execution_prior(
+                prior_value,
+                max_recipes=3,
+            )
     if prompt_chars() > soft_limit:
         # Targeted regression details can contain arbitrarily deep response
         # shapes. Keep the failure/source/stage, but bound nested fanout.
