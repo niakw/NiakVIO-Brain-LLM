@@ -1,3 +1,9 @@
+## 2026-11-16 — Exact-source representative guidance replay triggered after NiakVIO Fast Repair refresh
+
+- NiakVIO refreshed the representative Fast Repair trigger on commit `43d783ef07170b3b2ec7cd11adc20591ccddb42c`, pinned to census `43852026874` for `frenchstream`, `hianime`, and `stigstream`. `movy` is intentionally excluded because current census ownership is harness-compatibility, not provider Repair.
+- Refreshed `.github/triggers/niakvio-guidance.json` in Brain commit `275460a8afd37fb9338a99636fd54a53d46cd71b` to that exact NiakVIO SHA. This replay exercises Global+France provider context, same-census Fast sandbox frontier reuse, and the 512-token provider_bloc synthesis budget.
+- Guidance remains non-authoritative. A useful completion still must survive NiakVIO canonical apply, exact-byte rematerialization, terminal media + identity replay, non-regression and persistence before any repair is counted.
+
 ## 2026-11-16 — Same-census Fast sandbox frontier now feeds the next Brain causal request
 
 - NiakVIO Fast Repair run `43851017412` on source `7c546e45` proved the corrected Global+France stage executes all three representatives (`frenchstream`, `hianime`, `stigstream`) instead of dropping France-only rows. It produced 0 accepted/validated providers, but `frenchstream` made real non-publishable sandbox progress to `provider-frontier:player,provider-requests`; the persisted current-run plan classified it `media_extraction_gap` and the execution memory records `executionObserved=true`.
