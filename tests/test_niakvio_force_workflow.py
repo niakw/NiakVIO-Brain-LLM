@@ -57,7 +57,11 @@ assert "dynamic_high" in workflow
 assert "audit_current_dynamic_variant_coverage" in workflow
 assert "niakvio-dynamic-variant-coverage.json" in workflow
 assert "repair_set|coverage_high|dynamic_high" in workflow
-assert 'Path("niakvio/manifest.json")' in workflow
+assert "published_provider_ids" in workflow
+assert "FIELD_NIAKVIO_GUIDANCE_PROJECTION_AUTHORITY" in workflow
+assert "source=global-plus-france" in workflow
+assert 'PYTHONPATH=brain/src python - "$RUNNER_TEMP/niakvio-guidance-targets.txt"' in workflow
+assert 'manifest=json.loads(Path("niakvio/manifest.json")' not in workflow
 assert "coverage_high &= current" in workflow
 assert "dynamic_high &= current" in workflow
 assert "*sorted(dynamic_high)" in workflow
