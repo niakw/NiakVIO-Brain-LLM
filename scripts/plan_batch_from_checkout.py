@@ -239,9 +239,15 @@ def main() -> int:
     family_wave_deferred: list[dict] = []
     request_cache: dict[str, object] = {}
     family_wave_enabled = (
-        args.mode == "repair"
-        and len(selected) > 1
-        and (not args.advisor_only or args.advisor_family_wave)
+        len(selected) > 1
+        and (
+            (args.mode == "repair" and not args.advisor_only)
+            or (
+                args.advisor_only
+                and args.advisor_family_wave
+                and args.mode in {"repair", "brain"}
+            )
+        )
     )
     if family_wave_enabled:
         wave_rows: list[dict] = []

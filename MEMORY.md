@@ -1,3 +1,8 @@
+## 2026-11-16 — Advisor family-wave supports NiakVIO brain mode
+
+- The opt-in family-wave selector now covers the exact caller shape used by NiakVIO: `--mode brain --advisor-only --advisor-family-wave`. Ordinary advisor-only behavior remains unchanged without the flag; diagnostic mode remains excluded.
+- This prepares the next Fast-Handoff run to generate LLM guidance for one representative per repair family before sandbox execution, instead of paying for every sibling first. Deferred siblings remain unmodified and still require independent validation/replay. Current NiakVIO run 43782282464 remains pinned to the prior Brain SHA, so its evidence is unaffected.
+
 ## 2026-11-16 — Optional one-oracle-per-family advisor planning
 
 - NiakVIO Fast-Handoff currently invokes Brain planning with `--advisor-only`, which bypasses the existing repair-family wave selector and can spend one local LLM call per cohort member before the execution queue later reduces the cohort to one oracle per causal family.
