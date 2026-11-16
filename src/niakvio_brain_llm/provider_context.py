@@ -659,21 +659,86 @@ def _provider_entry(data: Any, provider_id: str) -> Any:
                         return value
     return None
 
-def _published_provider_context(root: Path, provider_id: str) -> dict[str, Any] | None:
+def _projection_provider_id(value: object) -> str:
+    return str(value or "").strip().casefold().replace("_", "-")
+
+
+def published_projection_rows(
+    root: str | Path,
+    *,
+    active_only: bool = False,
+) -> dict[str, dict[str, Any]]:
+    """Resolve the executable Global+France publication union.
+
+    Global providers remain authoritative in manifest.json. Strict France-only
+    providers remain authoritative in provider_catalog.json with
+    projections.general=false and projections.vf=true. The Brain must consume
+    the same projection union as NiakVIO's census/Repair pipeline; otherwise a
+    France-only provider can enter Repair and disappear before RAG/FORCE.
+    """
+    root = Path(root)
+    result: dict[str, dict[str, Any]] = {}
+
     manifest = _load_json(root / "manifest.json")
-    rows = manifest.get("scrapers") if isinstance(manifest, dict) else None
-    if not isinstance(rows, list):
-        return None
-    wanted = provider_id.strip().casefold()
-    row = next(
-        (
-            value
-            for value in rows
-            if isinstance(value, dict)
-            and str(value.get("id") or "").strip().casefold() == wanted
-        ),
-        None,
+    global_rows = manifest.get("scrapers") if isinstance(manifest, dict) else None
+    if isinstance(global_rows, list):
+        for raw in global_rows:
+            if not isinstance(raw, dict):
+                continue
+            provider = _projection_provider_id(raw.get("id"))
+            if not provider or (active_only and raw.get("enabled") is False):
+                continue
+            if provider in result:
+                raise ValueError(f"duplicate Global provider projection: {provider}")
+            result[provider] = dict(raw)
+
+    catalog = _load_json(root / "provider_catalog.json")
+    catalog_rows = catalog.get("providers") if isinstance(catalog, dict) else None
+    if isinstance(catalog_rows, list):
+        for record in catalog_rows:
+            if not isinstance(record, dict):
+                continue
+            scraper = record.get("scraper")
+            projections = record.get("projections")
+            if not isinstance(scraper, dict) or not isinstance(projections, dict):
+                continue
+            if projections.get("general") is not False or projections.get("vf") is not True:
+                continue
+            provider = _projection_provider_id(
+                record.get("canonicalId") or scraper.get("id")
+            )
+            if not provider or (active_only and scraper.get("enabled") is False):
+                continue
+            if provider in result:
+                raise ValueError(
+                    f"France-only provider projection collides with Global: {provider}"
+                )
+            result[provider] = dict(scraper)
+
+    return result
+
+
+def published_provider_ids(
+    root: str | Path,
+    *,
+    active_only: bool = True,
+) -> set[str]:
+    return set(published_projection_rows(root, active_only=active_only))
+
+
+def published_provider_row(
+    root: str | Path,
+    provider_id: str,
+    *,
+    active_only: bool = False,
+) -> dict[str, Any] | None:
+    return published_projection_rows(root, active_only=active_only).get(
+        _projection_provider_id(provider_id)
     )
+
+
+def _published_provider_context(root: Path, provider_id: str) -> dict[str, Any] | None:
+    row = published_provider_row(root, provider_id)
     if not isinstance(row, dict):
         return None
     filename = str(row.get("filename") or "").strip()
