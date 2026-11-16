@@ -1,12 +1,12 @@
 {
   "schema_version": 1,
   "niakvio_sha": "ba752be6836f02246540ade3e5ffe012d31efba2",
-  "reason": "Fresh exact-source replay after confirmed FORCE scheduler fix: prior run 43853913152 gave hianime 600s provider budget but killed provider_bloc candidate 1 at 179.05s. Structural chain/media/route Bloc first candidates now receive up to 300s with workflow timeout 300; targeted evidence remains run 43854495472. Guidance stays non-authoritative until NiakVIO canonical apply, exact-byte materialization, terminal media+identity replay, non-regression and persistence.",
+  "reason": "Fresh exact-source replay on the complete structural FORCE budget change including architecture contract. Prior run 43853913152 proved hianime provider_bloc was killed at 179.05s despite a 600s provider budget. Current Brain grants first structural Bloc up to 300s, workflow timeout 300s, provider budget 600s; targeted evidence remains run 43854495472. Guidance remains sandbox-only until NiakVIO apply, exact-byte materialization, terminal media+identity replay, non-regression and persistence.",
   "requested_repair_queue": [
     "frenchstream",
     "hianime",
     "stigstream"
   ],
-  "retry": 50,
+  "retry": 51,
   "require_deterministic_force": false
 }
