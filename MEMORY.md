@@ -1,3 +1,10 @@
+## 2026-11-16 — Structural FORCE Bloc no longer loses a 600s provider budget to a 180s first-candidate cap
+
+- Private-guidance run `43853913152` provided exact executor evidence after the normal `provider_bloc` output cap had already been raised to 512 tokens: `hianime` received `budget_seconds=600` / `portfolio=4`, but candidate 1 was bounded to `seconds=180.0`; the 7B Bloc request then failed at `179.05s` with `TimeoutError` and no mutation. This proves the remaining blocker was the FORCE candidate scheduler, not the output-token cap.
+- Commit `c7fd42ac` gives the first non-speculative `provider_bloc` candidate up to 300 seconds when the current failure is a structural traversal gap (`chain_terminal_gap`, `media_extraction_gap`, `route_proven_gap`, or equivalent CHAIN/ROUTE status) and the provider already has >=300 seconds available. Later speculative hypotheses retain their short bounded reserve; unrelated providers retain the 180-second first-candidate ceiling. The isolated single-provider CPU-long mode remains separately capped at 330 seconds.
+- Commit `5d9720ed` raises the private-guidance FORCE caller timeout from 240 to 300 seconds so the scheduler's structural allowance is reachable. Contract commits `770c1bfc`, `33ba3944`, `ccc9ac7d`, `0830185f`, and `30d9acdd` pin the new timeout and candidate-budget rules.
+- This is executor-budget repair only. No provider is repaired by these commits. A fresh exact-source private-guidance run must prove the model returns an admissible current-byte candidate; NiakVIO must still apply, materialize, independently replay terminal media + identity, check non-regression and persist before any repair is accepted.
+
 ## 2026-11-16 — Exact-source representative guidance replay triggered after NiakVIO Fast Repair refresh
 
 - NiakVIO refreshed the representative Fast Repair trigger on commit `43d783ef07170b3b2ec7cd11adc20591ccddb42c`, pinned to census `43852026874` for `frenchstream`, `hianime`, and `stigstream`. `movy` is intentionally excluded because current census ownership is harness-compatibility, not provider Repair.
