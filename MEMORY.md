@@ -1,3 +1,9 @@
+## 2026-11-16 — Optional one-oracle-per-family advisor planning
+
+- NiakVIO Fast-Handoff currently invokes Brain planning with `--advisor-only`, which bypasses the existing repair-family wave selector and can spend one local LLM call per cohort member before the execution queue later reduces the cohort to one oracle per causal family.
+- Add an explicit, default-off `--advisor-family-wave` option. When combined with repair mode + advisor-only, the existing Brain family selector can choose one representative per repair family before LLM calls. Deferred siblings remain unmodified and still require independent Repair validation; this is an efficiency/generalization primitive, not publication authority.
+- No caller enables the flag in this commit. Existing advisor behavior is unchanged until NiakVIO opts in after validating the current family-oracle run.
+
 ## 2026-11-15 — Explicit observed fixture counts, not display defaults
 
 - The Brain evidence projection historically converted missing, non-integer or inconsistent stream counters into numeric defaults. The new fail-closed receipt check separates display from observation, preserves a negative observation marker through repeated projection, rejects duplicates/overlong cohorts and requires explicit consistent integer counters before classifying empty results. Network-free synthetic tests cover invalid, mixed and already-projected receipts. No provider, access mechanism, publication policy or live test is changed. Full CI pending.

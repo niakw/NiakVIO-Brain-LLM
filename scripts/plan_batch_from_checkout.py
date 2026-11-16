@@ -140,6 +140,11 @@ def main() -> int:
         help="Ask the LLM only for sanitized strategy/experiment guidance; deterministic NiakVIO owns mutations and proof.",
     )
     parser.add_argument(
+        "--advisor-family-wave",
+        action="store_true",
+        help="In advisor-only batches, select one representative per repair family before LLM calls; deferred siblings keep deterministic/cached guidance and still require independent validation.",
+    )
+    parser.add_argument(
         "--stop-after-first-mutation",
         action="store_true",
         help="In sequential Force mode, publish the first executable mutation immediately instead of waiting for later providers.",
@@ -233,7 +238,11 @@ def main() -> int:
     selected_before_family_wave = list(selected)
     family_wave_deferred: list[dict] = []
     request_cache: dict[str, object] = {}
-    family_wave_enabled = args.mode == "repair" and not args.advisor_only and len(selected) > 1
+    family_wave_enabled = (
+        args.mode == "repair"
+        and len(selected) > 1
+        and (not args.advisor_only or args.advisor_family_wave)
+    )
     if family_wave_enabled:
         wave_rows: list[dict] = []
         validated_family_keys = {
