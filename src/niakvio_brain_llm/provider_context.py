@@ -784,6 +784,7 @@ def _published_provider_context(root: Path, provider_id: str) -> dict[str, Any] 
             break
     return {
         "filename": filename,
+        "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
         "version": str(row.get("version") or ""),
         "supportedTypes": list(row.get("supportedTypes") or []),
         "formats": list(row.get("formats") or []),
