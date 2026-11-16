@@ -1,12 +1,12 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "82cf3ed55f1845ffba804316ff8426f084016b95",
-  "reason": "Fresh representative guidance after Global+France projection-union fix. Target every current Repair family witness: frenchstream learning/mixed, hianime terminal/mixed, stigstream terminal/html. Preserve provider-local mutation gates; guidance is prior-only until NiakVIO canonical apply/materialize/current-byte terminal identity replay.",
+  "niakvio_sha": "7c546e451e20bf80934ac6a573ddaac4505d54f2",
+  "reason": "Fresh current-byte guidance for the three current repair-eligible representative families after Global+France projection-union fix. movy is excluded from provider Repair because current census classifies it HARNESS MISMATCH. Guidance remains prior-only until NiakVIO canonical apply/materialize/current-byte terminal identity replay.",
   "requested_repair_queue": [
     "frenchstream",
     "hianime",
     "stigstream"
   ],
-  "retry": 44,
+  "retry": 45,
   "require_deterministic_force": false
 }
