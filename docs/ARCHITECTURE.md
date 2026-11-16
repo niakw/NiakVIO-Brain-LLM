@@ -507,6 +507,8 @@ A current targeted-regression observation may authorize synthesis when it contai
 
 A standalone WAF/browser/replay file without a source census/SHA pin is never used by itself as mutation-freshness authority. It may inform causality, but current census integration is required before it can unlock provider mutation.
 
+An older Fast Repair sandbox frontier may be reused across census epochs only as **diagnostic causality**, never as positive proof, when all of the following hold: the current published provider artifact SHA256 exactly matches the parent bytes of the historical generated attempt; the current targeted-regression artifact belongs to the current census and contains a successful provider-owned HTTP observation (TMDB-only traffic is insufficient); the historical memory independently records actual sandbox execution/progress; and the resulting observation is rebound to the current census with `reuseAuthority=exact-byte-current-evidence`. Changed bytes, failed/challenged current provider transport, or a shallow frontier fail closed. In particular, a `NO PROOF` row may bypass another recognition-only cycle only when the rebound frontier actually reached provider player logic; lookup-only progress remains probe-only.
+
 ## Guidance publication monotonicity
 
 The `niakvio-guidance` branch is a current-state transport, not an eventually-consistent log. Publication must be monotonic in Brain history. A run whose Brain SHA is an ancestor of the Brain SHA already published is stale and must not overwrite the branch or dispatch another page. Divergent Brain histories fail closed. `force-with-lease` remains a byte-level race guard but is not sufficient by itself because a stale run can legally refetch a newer branch immediately before pushing.
