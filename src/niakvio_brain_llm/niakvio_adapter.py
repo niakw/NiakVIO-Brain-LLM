@@ -541,25 +541,51 @@ CURRENT_REPAIR_PROVIDER_FAILURES = {
 }
 
 
+def _targeted_provider_execution_current(observation: Any) -> bool:
+    """Require current provider-owned successful HTTP evidence, never TMDB-only traffic."""
+    if not isinstance(observation, dict):
+        return False
+    network = observation.get("network")
+    if not isinstance(network, dict):
+        return False
+    for rows in network.values():
+        if not isinstance(rows, list):
+            continue
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            host = str(row.get("host") or "").strip().casefold()
+            if not host or host in {"api.themoviedb.org", "www.themoviedb.org"}:
+                continue
+            try:
+                status = int(row.get("status") or 0)
+            except (TypeError, ValueError):
+                continue
+            if 200 <= status < 400:
+                return True
+    return False
+
+
 def _provider_current_repair_execution(
     payload: Any,
     memory_payload: Any,
     provider_id: str,
     *,
     census_run_id: str,
+    current_artifact_sha256: str = "",
+    current_targeted_observation: Any = None,
 ) -> dict[str, Any]:
-    """Project same-census sandbox frontier progress back into Brain causality.
+    """Reuse executed sandbox progress without confusing it with positive proof.
 
-    Fast Repair may discover a deeper provider-owned execution frontier without
-    producing a publishable stream. That is diagnostic evidence, not positive
-    proof. Reuse it only when the persisted Repair report belongs to the exact
-    current census epoch and the sanitized execution memory independently says
-    that the provider was actually executed.
+    Same-census progress is reusable directly. Cross-census progress is reusable
+    only when the exact current published provider SHA256 equals the parent bytes
+    of the attempt that produced diagnostic progress and the new census has fresh
+    provider-owned successful network evidence.
     """
     if not isinstance(payload, dict) or not isinstance(memory_payload, dict):
         return {}
     source_run = str(payload.get("sourceCensusRunId") or "")
-    if not census_run_id or source_run != census_run_id:
+    if not census_run_id or not source_run:
         return {}
     wanted = _canon(provider_id)
     selected = {
@@ -602,6 +628,32 @@ def _provider_current_repair_execution(
     if not progress:
         return {}
 
+    same_census = source_run == census_run_id
+    reuse_authority = "same-census"
+    current_sha = str(current_artifact_sha256 or "").strip().casefold()
+    if not same_census:
+        progress_repairs = {
+            str(row.get("repairSha256") or "").strip().casefold()
+            for row in progress
+            if len(str(row.get("repairSha256") or "").strip()) == 64
+        }
+        progress_parents = {
+            str(row.get("parentSha256") or "").strip().casefold()
+            for row in diagnostics
+            if str(row.get("phase") or "").strip().casefold() == "attempts"
+            and str(row.get("status") or "").strip().casefold() == "generated"
+            and str(row.get("repairSha256") or "").strip().casefold() in progress_repairs
+            and len(str(row.get("parentSha256") or "").strip()) == 64
+        }
+        if (
+            len(current_sha) != 64
+            or not all(ch.isdigit() or ch in "abcdef" for ch in current_sha)
+            or current_sha not in progress_parents
+            or not _targeted_provider_execution_current(current_targeted_observation)
+        ):
+            return {}
+        reuse_authority = "exact-byte-current-evidence"
+
     memory_rows = []
     for value in memory_payload.get("entries") or []:
         if not isinstance(value, dict) or _canon(value.get("providerId")) != wanted:
@@ -628,6 +680,9 @@ def _provider_current_repair_execution(
     return {
         "role": "current-fast-repair-sandbox-observation",
         "sourceCensusRunId": source_run,
+        "currentCensusRunId": census_run_id,
+        "reuseAuthority": reuse_authority,
+        **({"providerArtifactSha256": current_sha} if current_sha else {}),
         "failureClass": raw_failure[:120],
         "executionObserved": True,
         "explorationProgress": True,
@@ -934,11 +989,30 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
 
     negative_memory = _provider_negative_memory(memory, provider_id)
     force_negative_memory = _provider_force_negative_memory(force_memory, provider_id)
+
+    targeted_source_run = str(targeted.get("sourceCensusRunId") or "") if isinstance(targeted, dict) else ""
+    targeted_current = (
+        not targeted_source_run
+        or not census_run
+        or targeted_source_run == census_run
+    )
+    targeted_observation = (
+        _provider_targeted_observation(targeted, provider_id)
+        if targeted_current
+        else {}
+    )
+    published_bundle = (
+        provider_context.get("published_bundle")
+        if isinstance(provider_context.get("published_bundle"), dict)
+        else {}
+    )
     current_repair_observation = _provider_current_repair_execution(
         current_repair,
         memory,
         provider_id,
         census_run_id=census_run,
+        current_artifact_sha256=str(published_bundle.get("sha256") or ""),
+        current_targeted_observation=targeted_observation,
     )
     if current_repair_observation and status_key not in {"full ok", "partial ok", "candidate ok"}:
         failure = str(current_repair_observation.get("failureClass") or failure)
@@ -955,17 +1029,6 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
     if not isinstance(supported, list):
         supported = []
 
-    targeted_source_run = str(targeted.get("sourceCensusRunId") or "") if isinstance(targeted, dict) else ""
-    targeted_current = (
-        not targeted_source_run
-        or not census_run
-        or targeted_source_run == census_run
-    )
-    targeted_observation = (
-        _provider_targeted_observation(targeted, provider_id)
-        if targeted_current
-        else {}
-    )
     census_sharded_observation = _provider_sharded_observation(census_sharded, provider_id)
     dynamic_variant_gap = _dynamic_variant_coverage_gap(census_sharded_observation)
     if dynamic_variant_gap and status_key in {"full ok", "partial ok", "candidate ok"}:
