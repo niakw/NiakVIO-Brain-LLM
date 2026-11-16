@@ -31,6 +31,7 @@ Use mutation_policy as an execution boundary, not a suggestion.
 Verification tests are owned and enforced by the deterministic Brain after your proposal. Do not use test names as the repair strategy.
 NiakVIO tests are the only proof authority.
 Retrieved experiences and documents are memory/context, not proof.
+provider_context.same_provider_execution_prior is a bounded same-provider historical implementation prior, not proof. It may guide mechanism shape only when current provider-owned evidence supports replay; current network/media/identity must still be revalidated.
 Respect document authority: current census/state > recent MEMORY > field evidence > historical docs.
 Never let stale historical text override current repository state.
 Never mutate outside allowed_mutations or touch forbidden_mutations.
@@ -56,7 +57,8 @@ Abstain only if current evidence cannot justify a distinct bounded experiment.""
 
 COMPACT_FORCE_SYSTEM_PROMPT = """NiakVIO Brain Force. JSON only:
 {"edit":<one provider-local edit or null>,"abstain_reason":"<short>"}
-Use only current evidence and editable_units. Never invent network facts, URLs, routes, hosts, headers, tokens, cookies or placeholders.
+Use current evidence and editable_units for proof. same_provider_execution_prior is the only bounded historical implementation exception: it may guide mechanism shape for this same provider when current provider-owned observations show progress, but it never proves a route, host, response or media is current. Current replay must revalidate it.
+Never invent network facts, URLs, routes, hosts, headers, tokens, cookies or placeholders.
 One edit max:
 - provider_data: {scope,operation,path,value?}
 - provider_patch/provider_js: {scope,path,unit_id,replace}
