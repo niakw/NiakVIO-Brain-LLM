@@ -404,12 +404,18 @@ Current generated-token ceilings are:
 | provider_data | 192 | 256 |
 | provider_patch | 640 | 768 |
 | provider_js | 640 | 768 |
-| provider_bloc | 448 | 768 |
+| provider_bloc | 512 | 256 |
 
-The workflow hard wall-clock ceiling is 240 seconds per provider, but effective
-budgets depend on evidence depth: chain/terminal extraction cases may consume the
-full cap, route-proven cases up to 180 seconds, ordinary unresolved cases 150
-seconds, and transport/environment cases 120 seconds.
+The production private-guidance workflow grants a bounded 600-second Force budget
+per provider. Effective budgets still depend on evidence depth: chain-terminal,
+media-extraction and route-proven structural cases may consume up to that 600-second
+cap; ordinary unresolved cases remain capped at 150 seconds, provider-transport
+cases at 300 seconds, and transport-environment cases at 180 seconds.
+
+Within that provider-wide budget, the first non-speculative `provider_bloc`
+candidate for a current CHAIN/ROUTE structural gap may consume up to 300 seconds.
+Later speculative hypotheses keep their short reserved slots, so one difficult
+provider cannot turn every portfolio candidate into a long model call.
 
 No proof gate is weakened by these budgets. Novel Bloc synthesis remains first-class;
 the scheduler only decides how much compute a causally justified attempt receives.
@@ -465,9 +471,9 @@ Rows without a response shape are not deduplicated by this rule because distinct
 
 ## Force model timeout versus provider budget
 
-Model-call timeout and total provider budget are separate controls. `--timeout-seconds` can now grant up to 180 seconds to a primary or transport-retry generation; the workflow's existing 120-second argument therefore preserves its prior default, while a local hard-case run may explicitly grant more time.
+Model-call timeout and total provider budget are separate controls. The production workflow passes `--timeout-seconds 300`. A non-speculative structural `provider_bloc` primary call may therefore use up to 300 seconds; other primary calls remain capped at 180 seconds. Transport retries remain capped at 180 seconds, while validation-feedback calls keep their smaller scope-specific ceilings (up to 150 seconds for `provider_bloc`).
 
-Route-proven providers may consume up to 360 seconds of an explicitly granted provider budget; the current GitHub workflow still grants only 240 seconds. Chain-terminal/media-extraction cases may consume the caller's full bounded provider budget. Validation-feedback calls stay focused and keep their smaller scope-specific timeout.
+Chain-terminal, media-extraction and route-proven providers may consume up to the workflow's 600-second provider budget. That larger provider deadline is shared across the portfolio; it does not grant 300 seconds independently to every hypothesis.
 
 This distinction prevents long but structurally valid function replacements from being cut off solely by a hard-coded model ceiling while retaining a finite provider-level compute budget.
 
@@ -475,7 +481,7 @@ This distinction prevents long but structurally valid function replacements from
 
 The GitHub `niakvio-private-guidance.yml` workflow is the canonical executable-advisor producer. It runs current Brain in provider `repair` mode before advisor-only generation, sanitizes concrete mutations through `publish_niakvio_force_mutations.py`, and publishes them with exact NiakVIO/Brain SHA and mutation-context fingerprints.
 
-Structural generation uses a single Qwen slot with 768 tokens, a 180-second model timeout and a 360-second per-provider Force budget. These limits match the current compact Force planner and are intentionally larger than advisor-only guidance.
+Structural generation uses a single Qwen 7B slot with a 512-token primary `provider_bloc` ceiling, a 300-second structural Bloc model-call ceiling and a 600-second per-provider Force budget. The candidate scheduler reserves time for later hypotheses, so those are not equivalent to four independent 300-second calls. These limits match the current compact Force planner and are intentionally larger than advisor-only guidance.
 
 The resulting `niakvio-force-mutations.json` has sandbox authority only. NiakVIO owns baseline/candidate Deep proof, identity validation, negative memory, materialization and publication.
 
