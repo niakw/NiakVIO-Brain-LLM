@@ -111,9 +111,10 @@ jobs:
               f"dynamic_high={len(dynamic.get('highRiskProviders') or [])}"
           )
           PY
-          python - "$RUNNER_TEMP/niakvio-guidance-targets.txt" "$INPUT_TARGETS" "niakvio-runtime-variant-coverage.json" "niakvio-dynamic-variant-coverage.json" <<'PY'
+          PYTHONPATH=brain/src python - "$RUNNER_TEMP/niakvio-guidance-targets.txt" "$INPUT_TARGETS" "niakvio-runtime-variant-coverage.json" "niakvio-dynamic-variant-coverage.json" <<'PY'
           import json,sys
           from pathlib import Path
+          from niakvio_brain_llm.provider_context import published_provider_ids
 
           out=Path(sys.argv[1])
           raw=str(sys.argv[2] or "").strip()
@@ -140,12 +141,11 @@ jobs:
               values=list(trigger_values)
 
           census=json.loads(Path("niakvio/automation/provider-census-status.json").read_text(encoding="utf-8"))
-          manifest=json.loads(Path("niakvio/manifest.json").read_text(encoding="utf-8"))
-          current={
-              str(row.get("id") or "").strip().lower().replace("_","-")
-              for row in manifest.get("scrapers") or []
-              if isinstance(row,dict) and str(row.get("id") or "").strip()
-          }
+          current=published_provider_ids("niakvio",active_only=True)
+          print(
+              "FIELD_NIAKVIO_GUIDANCE_PROJECTION_AUTHORITY "
+              f"providers={len(current)} source=global-plus-france"
+          )
           repair=[
               str(v or "").strip().lower().replace("_","-")
               for v in census.get("repairQueue") or []
