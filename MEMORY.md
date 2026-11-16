@@ -1,3 +1,10 @@
+## 2026-11-16 — CPU prompt compaction preserves same-provider execution topology
+
+- The new same-provider execution prior could still lose its usefulness under the existing FORCE soft-limit path: once the prompt exceeded 5,600 characters, every structured prior was flattened to a single JSON string clipped at 450 characters. That can hide later media-type recipes and leave the CPU model with a partial/non-structural hint exactly on the large real-provider cases where the bridge matters.
+- Commit `7fb47bd7` adds a dedicated compact same-provider execution prior that stays structured, keeps authority flags false, and preserves up to three diverse recipe mechanisms instead of a clipped JSON string. `bb98927e` ranks parameterized routes ahead of parameterized request bodies and generic endpoints; media-type diversity is then preserved before filling extra recipes.
+- Regression `b97f4921` requires movie/tv/anime diversity, preservation of the parameterized movie API route, and the same proof/execution/publication false boundary.
+- This is prompt transport/preservation only. It does not make historical routes current, does not create a provider mutation and does not weaken replay/playback/identity gates. The next Frenchstream oracle must pin a descendant of `bb98927e`; earlier retries are superseded for evaluating the complete bridge.
+
 ## 2026-11-16 — Media-extraction FORCE focus now matches the causal frontier
 
 - The Frenchstream oracle has current provider-owned HTTP 200 and a persisted player frontier, while terminal media remains zero. Brain already classifies this as `media_extraction_gap`, but that failure family was missing from both provider reference-family tokens and compact FORCE source-keyword ranking. FORCE therefore fell through to the generic order `resolve -> fetch -> search -> player -> embed -> source`, which can spend a bounded edit window on discovery code even after discovery/player reach is already established.
