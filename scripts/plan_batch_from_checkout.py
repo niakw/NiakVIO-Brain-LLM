@@ -470,7 +470,9 @@ def main() -> int:
             45,
             min(
                 int(args.timeout_seconds),
-                60 if speculative_portfolio_slot else 180,
+                60
+                if speculative_portfolio_slot
+                else (300 if scope == "provider_bloc" else 180),
             ),
         )
         # A single CPU-Qwen proof may need longer than 180 s even with exact
@@ -872,8 +874,22 @@ def main() -> int:
                 elif not planned:
                     future_reserve = max(0, remaining_candidates - 1) * 45.0
                     cpu_long_call = os.environ.get("NIAKVIO_FORCE_CPU_LONG_CALL") == "1"
+                    structural_bloc_first = bool(
+                        scopes
+                        and scopes[0] == "provider_bloc"
+                        and (
+                            failure_key in {
+                                "chain_terminal_gap",
+                                "media_extraction_gap",
+                                "route_proven_gap",
+                            }
+                            or status_key in {"CHAIN REACHED", "ROUTE PROVEN"}
+                        )
+                        and budget_seconds >= 300
+                    )
+                    normal_first_cap = 300.0 if structural_bloc_first else 180.0
                     candidate_budget_seconds = min(
-                        330.0 if cpu_long_call and max_hypotheses == 1 else 180.0,
+                        330.0 if cpu_long_call and max_hypotheses == 1 else normal_first_cap,
                         remaining_provider_seconds,
                         max(
                             90.0,
