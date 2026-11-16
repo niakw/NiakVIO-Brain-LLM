@@ -1,12 +1,10 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "7150251d9883e23cc3b4d9708159c0a5f0197f3d",
-  "reason": "Exact current-census representative replay on persisted targeted evidence run 43857227000 / census 43855893372. Frenchstream has provider-owned fs16.lol HTTP 200 plus player-shaped HTML on anime/movie/tv and exact bytes matching the prior executed player frontier; allow only bounded exact-byte provider reasoning. Hianime and stigstream currently timeout with zero provider-origin requests, so guidance must diagnose/abstain from provider mutation unless stronger current evidence establishes provider ownership. NiakVIO remains sole apply/materialize/terminal+identity validation authority.",
+  "niakvio_sha": "36571d22293b2f00bb003c01bfcbd8e7ec73b00d",
+  "reason": "Single-oracle exact-current replay for frenchstream after fixing sandbox frontier taxonomy refinement. Current census 43855893372 and targeted run 43857227000 prove provider-owned fs16.lol HTTP 200 with player-shaped HTML on anime/movie/tv; exact published bytes still match the historical progress-producing parent SHA. Brain must reuse the executed player frontier, route to bounded provider synthesis, and remain advisory until NiakVIO apply/materialize/terminal media+identity validation.",
   "requested_repair_queue": [
-    "frenchstream",
-    "hianime",
-    "stigstream"
+    "frenchstream"
   ],
-  "retry": 53,
+  "retry": 54,
   "require_deterministic_force": false
 }
