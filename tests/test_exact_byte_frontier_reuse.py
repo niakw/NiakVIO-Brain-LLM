@@ -77,9 +77,13 @@ class ExactByteFrontierReuseTests(unittest.TestCase):
         (root / "automation" / "brain-repair-memory.json").write_text(
             json.dumps({"entries": [{
                 "providerId": "demo",
-                "failureClass": "media_extraction_gap",
-                "observedPipelineStage": "player",
+                # Match the real Fast transaction shape: execution progress was
+                # persisted under the earlier search taxonomy before the plan
+                # refined the same provider to media_extraction_gap.
+                "failureClass": "search_gap",
+                "observedPipelineStage": "episode",
                 "lastOutcome": "exploration_progress_nonpublishable",
+                "lastReason": "sandbox_diagnostic_progress:provider-frontier:player,provider-requests",
                 "executionObserved": True,
             }]}),
             encoding="utf-8",
@@ -125,7 +129,7 @@ class ExactByteFrontierReuseTests(unittest.TestCase):
         self.assertEqual(current["currentCensusRunId"], "run-new")
         self.assertEqual(current["reuseAuthority"], "exact-byte-current-evidence")
         self.assertEqual(current["providerArtifactSha256"], provider_sha)
-        self.assertEqual(current["observedPipelineStages"], ["player"])
+        self.assertEqual(current["observedPipelineStages"], ["episode", "player"])
         self.assertFalse(current["proofAuthority"])
         self.assertFalse(current["publicationAuthority"])
 
@@ -133,6 +137,18 @@ class ExactByteFrontierReuseTests(unittest.TestCase):
         self.assertEqual(decision.mode, "llm_repair")
         self.assertTrue(decision.requires_llm)
         self.assertEqual(decision.allowed_mutations, ["provider_bloc"])
+
+    def test_non_provider_memory_taxonomy_cannot_authorize_frontier_reuse(self):
+        root, _ = self._checkout()
+        memory_path = root / "automation" / "brain-repair-memory.json"
+        memory = json.loads(memory_path.read_text(encoding="utf-8"))
+        memory["entries"][0]["failureClass"] = "transport_environment_gap"
+        memory_path.write_text(json.dumps(memory), encoding="utf-8")
+        request = request_from_checkout(root, "demo")
+        self.assertNotIn(
+            "fast-repair-current",
+            {row["source"] for row in request.observations},
+        )
 
     def test_changed_current_bytes_reject_old_frontier(self):
         root, _ = self._checkout(parent_sha_matches=False)
