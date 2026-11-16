@@ -936,6 +936,120 @@ def shared_episode_identity_risk(root: str | Path, template: str) -> dict[str, A
     }
 
 
+def _same_provider_execution_prior(root: Path, provider_id: str) -> dict[str, Any]:
+    """Project reusable same-provider execution knowledge without importing stale proof.
+
+    NiakVIO persists richer provider-local request recipes than the generic
+    historicalCases corpus. Keep only parameterized or obviously generic routes;
+    fixture IDs, opaque player identifiers, credentials, hosts and response
+    bodies never cross this boundary.
+    """
+    payload = _load_json(root / "automation" / "brain-repair-experience.json")
+    raw = _provider_entry(payload, provider_id)
+    if not isinstance(raw, dict):
+        return {}
+
+    def safe_route(value: Any) -> str:
+        route = _safe_route(value)
+        if not route or len(route) > 180:
+            return ""
+        # Parameterized routes are reusable only through their placeholders.
+        if re.search(r"\{[A-Za-z][A-Za-z0-9_]{0,31}\}", route):
+            return route
+        # Literal fixture IDs, cache busters and opaque embed/player IDs must
+        # never become a historical route prior.
+        if re.search(r"\d{3,}", route):
+            return ""
+        if re.search(
+            r"/(?:embed|player|watch|play|e|v)[-_/]?[A-Za-z0-9_-]{8,}(?:[./?#]|$)",
+            route,
+            re.IGNORECASE,
+        ):
+            return ""
+        return route
+
+    sensitive_headers = {
+        "authorization", "proxy-authorization", "cookie", "set-cookie",
+        "x-api-key", "api-key", "apikey", "access-token", "refresh-token",
+    }
+    recipes: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for item in raw.get("requestRecipes") or []:
+        if not isinstance(item, dict) or item.get("executable") is False:
+            continue
+        route = safe_route(item.get("route"))
+        if not route:
+            continue
+        method = str(item.get("method") or "GET").strip().upper()
+        if method not in {"GET", "POST", "HEAD"}:
+            continue
+        role = str(item.get("role") or "").strip().casefold()
+        semantic = str(item.get("semanticType") or "").strip().casefold()
+        response = str(item.get("response") or "").strip().casefold()
+
+        row: dict[str, Any] = {
+            "route": route,
+            "method": method,
+        }
+        if role:
+            row["role"] = role[:40]
+        if semantic in {"movie", "tv", "anime"}:
+            row["semanticType"] = semantic
+        if response in {"json", "html", "html-or-text", "text"}:
+            row["response"] = response
+
+        body = item.get("body")
+        if isinstance(body, dict) and body:
+            body_template: dict[str, str] = {}
+            for key, value in list(body.items())[:12]:
+                key_text = str(key or "").strip()
+                value_text = str(value or "").strip()
+                if (
+                    not re.fullmatch(r"[A-Za-z0-9_.:-]{1,48}", key_text)
+                    or key_text.casefold() in sensitive_headers
+                    or len(value_text) > 160
+                    or re.search(r"\d{3,}", value_text)
+                    or OPAQUE.search(value_text)
+                ):
+                    continue
+                body_template[key_text] = value_text
+            if body_template:
+                row["bodyTemplate"] = body_template
+
+        header_names = []
+        for value in item.get("headerNames") or []:
+            name = str(value or "").strip()
+            if (
+                re.fullmatch(r"[A-Za-z0-9-]{1,48}", name)
+                and name.casefold() not in sensitive_headers
+            ):
+                header_names.append(name[:48])
+        if header_names:
+            row["headerNames"] = list(dict.fromkeys(header_names))[:8]
+
+        identity = json.dumps(row, ensure_ascii=True, sort_keys=True)
+        if identity in seen:
+            continue
+        seen.add(identity)
+        recipes.append(row)
+        if len(recipes) >= 8:
+            break
+
+    if not recipes:
+        return {}
+    return {
+        "role": "same-provider-historical-execution-prior",
+        "source": "automation/brain-repair-experience.json",
+        "provider": str(provider_id or "").strip().casefold().replace("_", "-")[:120],
+        "strategy": str(raw.get("strategy") or "")[:80],
+        "recipes": recipes,
+        "proofAuthority": False,
+        "executionAuthority": False,
+        "publicationAuthority": False,
+        "mustRevalidateCurrentNetwork": True,
+    }
+
+
 def build_provider_context(root: str | Path, provider_id: str) -> dict[str, Any]:
     root = Path(root)
     context: dict[str, Any] = {
@@ -1046,7 +1160,7 @@ def build_provider_context(root: str | Path, provider_id: str) -> dict[str, Any]
                     context["preferredRuntimeMutationBlockId"] = preferred_id
                     context["preferredRuntimeMutationSource"] = exact_blocks[preferred_id]
 
-    context["runtime_template_prior"] = _runtime_template_prior(root, provider_id, context)
+    same_provider_prior = _same_provider_execution_prior(root, provider_id)\n    if same_provider_prior:\n        context["same_provider_execution_prior"] = same_provider_prior\n\n    context["runtime_template_prior"] = _runtime_template_prior(root, provider_id, context)
     # Provider wrappers often only name a shared renderer. Without inspecting
     # that renderer, the Brain cannot see an actual season/episode fallback.
     template = context["runtime_template_prior"].get("template")
