@@ -103,6 +103,32 @@ def _exhausted_executed_advisor_family(request: RepairRequest, strategy: str) ->
     return False
 
 
+def _has_current_executed_player_frontier(request: RepairRequest) -> bool:
+    """Recognize a current/exact-byte sandbox traversal to provider player logic."""
+    expected_run = str((request.census_prior or {}).get("sourceCensusRunId") or "")
+    expected_failure = _canon(request.failure_class)
+    if expected_failure not in {"media-extraction-gap", "chain-terminal-gap", "route-proven-gap"}:
+        return False
+    for row in request.observations or []:
+        if not isinstance(row, dict) or _canon(row.get("source")) != "fast-repair-current":
+            continue
+        value = row.get("value")
+        if not isinstance(value, dict):
+            continue
+        current_run = str(value.get("currentCensusRunId") or value.get("sourceCensusRunId") or "")
+        if expected_run and current_run != expected_run:
+            continue
+        if value.get("executionObserved") is not True or value.get("explorationProgress") is not True:
+            continue
+        if _canon(value.get("failureClass")) != expected_failure:
+            continue
+        if str(value.get("reuseAuthority") or "") not in {"same-census", "exact-byte-current-evidence"}:
+            continue
+        if "player" in {_canon(stage) for stage in value.get("observedPipelineStages") or []}:
+            return True
+    return False
+
+
 def route_request(
     request: RepairRequest,
     store: ExperienceStore | None = None,
@@ -190,10 +216,11 @@ def route_request(
     )
     route_mode = _canon(route_policy.get("mode"))
 
-    # NO PROOF means route authority is missing. Runtime synthesis cannot create
-    # the missing network facts: NiakVIO Recognition must traverse the current
-    # provider first and feed the observed route contract back into Brain.
-    if status == "no-proof" or route_mode == "rediscover-by-traversal":
+    # NO PROOF normally requires Recognition. Avoid repeating that probe only
+    # when the sandbox already executed player logic on same-census or exact
+    # current bytes. This does not promote route/playback/publication proof.
+    executed_player_frontier = _has_current_executed_player_frontier(request)
+    if (status == "no-proof" or route_mode == "rediscover-by-traversal") and not executed_player_frontier:
         return RoutingDecision(
             mode="probe",
             reason="current provider route is not proven; recognition traversal must precede runtime synthesis",
