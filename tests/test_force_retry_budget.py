@@ -19,6 +19,9 @@ assert "retry_tokens = max(128, min(int(args.max_tokens), recovery_token_cap))" 
 assert '(60 if speculative_portfolio_slot else 150)' in source
 assert "validation_timeout = max(" in source
 assert "primary_timeout = max(" in source
+assert 'else (300 if scope == "provider_bloc" else 180)' in source
+assert "structural_bloc_first = bool(" in source
+assert "normal_first_cap = 300.0 if structural_bloc_first else 180.0" in source
 assert "transport_timeout = max(" in source
 assert "60 if speculative_portfolio_slot else 180" in source
 assert "timeout_seconds=primary_timeout" in source
@@ -48,7 +51,7 @@ assert "prefill_prompt=False" in source
 assert 'prefill_prompt=(args.mode == "repair" and not args.advisor_only)' in source
 
 assert "--max-tokens 512" in workflow
-assert "--timeout-seconds 240" in workflow
+assert "--timeout-seconds 300" in workflow
 assert "--force-provider-budget-seconds 600" in workflow
 assert "FIELD_NIAKVIO_FORCE_MUTATIONS_READY ready=false" in workflow
 assert "raise SystemExit(f\"Force routing requested" not in workflow
