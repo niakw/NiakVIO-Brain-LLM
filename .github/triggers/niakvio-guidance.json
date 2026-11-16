@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
   "niakvio_sha": "36571d22293b2f00bb003c01bfcbd8e7ec73b00d",
-  "reason": "Single-oracle exact-current Frenchstream replay after the safe same-provider execution-prior bridge, its syntax correction, Force prior-policy alignment, and media_extraction_gap terminal-unit focus. Retry 57 is superseded because it predates the causal source-ranking fix. Hold NiakVIO source/evidence constant at 36571d / census 43855893372 / targeted 43857227000. Brain must prefer terminal extraction units after current provider-owned fs16.lol HTTP 200 + player frontier; historical recipes remain non-proof implementation hints. Canonical apply/materialize, terminal playable media and identity are still mandatory.",
+  "reason": "Single-oracle exact-current Frenchstream replay with the complete Brain bridge: syntax-fixed same-provider execution prior, Force prior policy, media_extraction_gap terminal-unit focus, and structured CPU prior compaction. Earlier retries are superseded for this comparison. Hold NiakVIO source/evidence constant at 36571d / census 43855893372 / targeted 43857227000. Historical recipes are non-proof implementation hints only. Brain must produce a bounded provider-local candidate, then NiakVIO must independently apply/materialize/replay terminal playable media + identity before any repair is accepted.",
   "requested_repair_queue": [
     "frenchstream"
   ],
-  "retry": 58,
+  "retry": 59,
   "require_deterministic_force": false
 }
