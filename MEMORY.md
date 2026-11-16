@@ -1,3 +1,10 @@
+## 2026-11-16 — Retry 60 isolates missing complete edit-unit granularity
+
+- Private guidance retry 60 published complete exact-source artifacts on Brain `7caa8dced1082c2a6efc948e9044f99c50299068` and NiakVIO `36571d22293b2f00bb003c01bfcbd8e7ec73b00d`. The cohort is exactly `frenchstream`, state is complete, and publication/proof authority remain false.
+- The evidence/memory bridge changed the failure from the older unspecified provider-Bloc abstention to an explicit model diagnosis: `provider_bloc -> abstain: No_complete_syntax-safe_unit_can_carry_the_repair.` The fallback `provider_data` still timed out. FORCE exported 0 mutations, so no provider repair exists yet.
+- Current Frenchstream runtime confirms why this is a Brain edit-surface defect rather than a provider-specific reason to patch manually: terminal player/form/POST traversal lives inside large provider-owned helpers such as `_crawlDirectMedia`, while FORCE currently offers statements/sequences and whole functions capped at 1,800 characters. A useful internal `if (formRequest ...)` control block is bounded and complete but is not represented as its own editable unit.
+- Next Brain correction: add a bounded exact `block_unit` for complete provider-owned control blocks inside large functions, preserve one such causal block for structural media/chain gaps, keep one-edit/provider-local/syntax/Node/sandbox authority unchanged, then replay the same Frenchstream oracle. Do not widen provider publication or bypass terminal playback/identity validation.
+
 ## 2026-11-16 — Current player frontier now survives FORCE evidence compaction
 
 - Exact Frenchstream targeted evidence contains provider-owned fs16.lol HTTP 200 HTML with `markers=["player"]`, but the raw generated `structureHints` string is 328 characters and `markers=player` begins at offset 314. `_compact_force_observation` clipped each hint to 240 characters, so the model could lose the causal player frontier even though the adapter had correctly derived it.
