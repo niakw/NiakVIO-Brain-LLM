@@ -2177,5 +2177,45 @@ class PlannerGuardTests(unittest.TestCase):
             )
 
 
+
+    def test_media_extraction_gap_prioritizes_terminal_extractor_units(self):
+        source = (
+            "async function searchCatalog(q){return fetch('/search/'+q);}\n"
+            + "/*" + ("x" * 7000) + "*/\n"
+            + "async function extractPlayers(html){const out=[];"
+              "const m=/https?:\\/\\/[^\\\"']+\\.(?:m3u8|mp4)/gi;"
+              "let x;while((x=m.exec(html))!==null)out.push(x[0]);return out;}\n"
+            + "async function resolvePlayer(url){return extractPlayers(await (await fetch(url)).text());}\n"
+        )
+        windows = _force_source_windows(source, "media_extraction_gap")
+        self.assertTrue(windows)
+        self.assertEqual(windows[0]["reason"], "extract")
+        self.assertIn("extractPlayers", windows[0]["source"])
+        self.assertNotIn("searchCatalog", windows[0]["source"])
+
+        request = RepairRequest(
+            provider_id="demo",
+            failure_class="media_extraction_gap",
+            status="NO PROOF",
+            allowed_mutations=["provider_bloc"],
+            provider_context={
+                "runtimeMutationFilename": "providers/demo.js",
+                "runtimeMutationSource": source,
+            },
+        )
+        payload = build_force_prompt_payload(
+            request,
+            {"target_layer": "provider", "confidence": 0.96,
+             "strategy_prior": "proven_request_program_and_terminal_extraction"},
+            {"allow_mutations": True, "allowed_scopes": ["provider_bloc"]},
+        )
+        units = payload["new_bloc_target"]["editable_units"]
+        self.assertTrue(any(
+            row.get("kind") == "function_unit"
+            and "extractPlayers" in str(row.get("source") or "")
+            for row in units
+        ))
+
+
 if __name__ == "__main__":
     unittest.main()
