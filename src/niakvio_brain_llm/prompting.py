@@ -44,6 +44,8 @@ def _compact_force_observation(row: dict[str, Any]) -> dict[str, Any]:
         return _compact(row, string_limit=260)
     value = row.get("value") if isinstance(row.get("value"), dict) else {}
     network_summary: list[str] = []
+    network_shapes: list[dict[str, Any]] = []
+    seen_shapes: set[tuple[Any, ...]] = set()
     network = value.get("network") if isinstance(value.get("network"), dict) else {}
     for lane, rows in list(network.items())[:6]:
         if not isinstance(rows, list):
@@ -60,6 +62,28 @@ def _compact_force_observation(row: dict[str, Any]) -> dict[str, Any]:
                     str(shape.get("kind") or "")[:16],
                 ])
             )
+            if shape:
+                markers = tuple(str(x)[:32] for x in (shape.get("markers") or [])[:6])
+                signal = (
+                    str(lane)[:32],
+                    str(shape.get("kind") or "")[:16],
+                    markers,
+                    int(shape.get("forms") or 0),
+                    int(shape.get("iframes") or 0),
+                    int(shape.get("sources") or 0),
+                    int(shape.get("videos") or 0),
+                )
+                if signal not in seen_shapes:
+                    seen_shapes.add(signal)
+                    network_shapes.append({
+                        "lane": signal[0],
+                        "kind": signal[1],
+                        "markers": list(markers),
+                        "forms": signal[3],
+                        "iframes": signal[4],
+                        "sources": signal[5],
+                        "videos": signal[6],
+                    })
     return {
         "source": source,
         "value": {
@@ -67,9 +91,12 @@ def _compact_force_observation(row: dict[str, Any]) -> dict[str, Any]:
             "statuses": _compact(value.get("statuses") or {}, string_limit=120),
             "verifiedLanes": [str(x)[:32] for x in (value.get("verifiedLanes") or [])[:6]],
             "playableLanes": [str(x)[:32] for x in (value.get("playableLanes") or [])[:6]],
+            # Keep causal response-shape signals before verbose title/class
+            # hints so later JSON clipping cannot erase a player/media frontier.
+            "networkShapes": network_shapes[:6],
+            "networkSummary": network_summary[:12],
             "sampleTitles": _compact(value.get("sampleTitles") or {}, string_limit=100),
             "structureHints": [str(x)[:240] for x in (value.get("structureHints") or [])[:6]],
-            "networkSummary": network_summary[:12],
         },
     }
 
