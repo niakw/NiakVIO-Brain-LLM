@@ -3,9 +3,92 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from niakvio_brain_llm.provider_context import build_provider_context
+from niakvio_brain_llm.provider_context import build_provider_context, published_provider_ids
 
 class ProviderContextTests(unittest.TestCase):
+    def test_france_only_projection_is_current_published_context(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "providers").mkdir(parents=True)
+            global_source = (
+                "/* STARTFIX:PROVIDER.GLOBAL.RUNTIME.V1 */\n"
+                "const globalRuntime = true;\n"
+                "/* CLOSEFIX:PROVIDER.GLOBAL.RUNTIME.V1 */\n"
+            )
+            france_source = (
+                "/* BEGIN NIAKVIO_PROVIDER */\n"
+                "/* STARTFIX:PROVIDER.FRONLY.RUNTIME.V1 */\n"
+                "const franceRuntime = 'current';\n"
+                "/* CLOSEFIX:PROVIDER.FRONLY.RUNTIME.V1 */\n"
+                "/* END NIAKVIO_PROVIDER */\n"
+            )
+            (root / "providers/global.js").write_text(global_source, encoding="utf-8")
+            (root / "providers/fronly.js").write_text(france_source, encoding="utf-8")
+            (root / "manifest.json").write_text(json.dumps({
+                "scrapers": [
+                    {"id": "global", "enabled": True, "filename": "providers/global.js"},
+                ]
+            }), encoding="utf-8")
+            (root / "provider_catalog.json").write_text(json.dumps({
+                "providers": [
+                    {
+                        "canonicalId": "fronly",
+                        "scraper": {
+                            "id": "fronly",
+                            "enabled": True,
+                            "version": "2.0.0",
+                            "filename": "providers/fronly.js",
+                            "supportedTypes": ["movie", "tv"],
+                            "formats": ["m3u8"],
+                        },
+                        "projections": {"general": False, "vf": True},
+                    },
+                    {
+                        "canonicalId": "frdisabled",
+                        "scraper": {
+                            "id": "frdisabled",
+                            "enabled": False,
+                            "filename": "providers/frdisabled.js",
+                        },
+                        "projections": {"general": False, "vf": True},
+                    },
+                ]
+            }), encoding="utf-8")
+            (root / "provider-overrides.json").write_text(
+                json.dumps({"provider_patches": {}}), encoding="utf-8"
+            )
+            (root / "provider-hubs.json").write_text("{}", encoding="utf-8")
+
+            self.assertEqual(
+                published_provider_ids(root, active_only=True),
+                {"global", "fronly"},
+            )
+            context = build_provider_context(root, "fronly")
+            self.assertEqual(
+                context["published_bundle"]["filename"],
+                "providers/fronly.js",
+            )
+            self.assertEqual(context["published_bundle"]["version"], "2.0.0")
+            self.assertIn("franceRuntime", context["runtimeMutationSource"])
+
+            # The same canonical identity may never be both Global and strict
+            # France-only; fail closed instead of arbitrarily picking bytes.
+            catalog = json.loads((root / "provider_catalog.json").read_text(encoding="utf-8"))
+            catalog["providers"].append({
+                "canonicalId": "global",
+                "scraper": {
+                    "id": "global",
+                    "enabled": True,
+                    "filename": "providers/global.js",
+                },
+                "projections": {"general": False, "vf": True},
+            })
+            (root / "provider_catalog.json").write_text(
+                json.dumps(catalog), encoding="utf-8"
+            )
+            with self.assertRaisesRegex(ValueError, "collides with Global"):
+                published_provider_ids(root, active_only=True)
+
     def test_omits_fixdata_blob_and_selects_provider_only(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
