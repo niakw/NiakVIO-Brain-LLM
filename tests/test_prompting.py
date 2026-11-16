@@ -1,7 +1,7 @@
 import unittest
 
 from niakvio_brain_llm.contracts import RepairRequest
-from niakvio_brain_llm.prompting import build_force_prompt_payload, build_prompt_payload
+from niakvio_brain_llm.prompting import _compact_same_provider_execution_prior, build_force_prompt_payload, build_prompt_payload
 
 class PromptingTests(unittest.TestCase):
     def test_large_context_is_bounded(self):
@@ -1110,6 +1110,59 @@ class PromptingTests(unittest.TestCase):
                 "must_revalidate_current_network_and_playback"
             ]
         )
+
+
+
+    def test_cpu_execution_prior_compaction_stays_structured_and_media_diverse(self):
+        prior = {
+            "role": "same-provider-historical-execution-prior",
+            "strategy": "mixed_embed_resolver",
+            "recipes": [
+                {
+                    "route": "/index.php",
+                    "method": "POST",
+                    "role": "detail",
+                    "semanticType": "movie",
+                    "bodyTemplate": {"story": "{query}"},
+                },
+                {
+                    "route": "/engine/ajax/film_api.php?id={id}",
+                    "method": "GET",
+                    "role": "detail",
+                    "semanticType": "movie",
+                    "response": "json",
+                },
+                {
+                    "route": "/index.php?newsid={id}",
+                    "method": "GET",
+                    "role": "detail",
+                    "semanticType": "tv",
+                },
+                {
+                    "route": "/index.php",
+                    "method": "POST",
+                    "role": "detail",
+                    "semanticType": "anime",
+                    "bodyTemplate": {"story": "{query}"},
+                },
+            ],
+            "proofAuthority": False,
+            "executionAuthority": False,
+            "publicationAuthority": False,
+            "mustRevalidateCurrentNetwork": True,
+        }
+        compacted = _compact_same_provider_execution_prior(prior, max_recipes=3)
+        self.assertIsInstance(compacted["recipes"], list)
+        self.assertEqual(
+            {row["semanticType"] for row in compacted["recipes"]},
+            {"movie", "tv", "anime"},
+        )
+        movie = next(row for row in compacted["recipes"] if row["semanticType"] == "movie")
+        self.assertEqual(movie["route"], "/engine/ajax/film_api.php?id={id}")
+        self.assertFalse(compacted["proofAuthority"])
+        self.assertFalse(compacted["executionAuthority"])
+        self.assertFalse(compacted["publicationAuthority"])
+        self.assertTrue(compacted["mustRevalidateCurrentNetwork"])
 
 
 if __name__ == "__main__":
