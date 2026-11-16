@@ -502,5 +502,89 @@ class ProviderContextTests(unittest.TestCase):
             self.assertIn("FIXDATA blob omitted", source)
             self.assertNotIn("C" * 100, source)
 
+
+    def test_same_provider_execution_prior_keeps_templates_and_rejects_fixture_literals(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "automation").mkdir(parents=True)
+            (root / "provider-overrides.json").write_text("{}", encoding="utf-8")
+            (root / "provider-hubs.json").write_text("{}", encoding="utf-8")
+            (root / "manifest.json").write_text(
+                json.dumps({"scrapers": []}), encoding="utf-8"
+            )
+            (root / "automation" / "brain-repair-experience.json").write_text(
+                json.dumps({
+                    "providers": {
+                        "demo": {
+                            "strategy": "mixed_embed_resolver",
+                            "requestRecipes": [
+                                {
+                                    "executable": True,
+                                    "method": "GET",
+                                    "route": "/engine/ajax/film_api.php?id={id}",
+                                    "role": "detail",
+                                    "semanticType": "movie",
+                                    "response": "json",
+                                    "headerNames": ["Accept", "Cookie", "Authorization"],
+                                },
+                                {
+                                    "executable": True,
+                                    "method": "POST",
+                                    "route": "/index.php",
+                                    "role": "detail",
+                                    "semanticType": "tv",
+                                    "body": {
+                                        "do": "search",
+                                        "story": "{query}",
+                                        "subaction": "search",
+                                    },
+                                },
+                                {
+                                    "executable": True,
+                                    "method": "GET",
+                                    "route": "/data/eps_9561.txt?v=59636093",
+                                    "role": "detail",
+                                },
+                                {
+                                    "executable": True,
+                                    "method": "GET",
+                                    "route": "/embed-lwa4enepfqwt.html",
+                                    "role": "player",
+                                },
+                            ],
+                        },
+                        "other": {
+                            "requestRecipes": [{
+                                "executable": True,
+                                "method": "GET",
+                                "route": "/other/{id}",
+                            }],
+                        },
+                    },
+                }),
+                encoding="utf-8",
+            )
+
+            context = build_provider_context(root, "demo")
+            prior = context["same_provider_execution_prior"]
+            self.assertEqual(prior["role"], "same-provider-historical-execution-prior")
+            self.assertFalse(prior["proofAuthority"])
+            self.assertFalse(prior["executionAuthority"])
+            self.assertTrue(prior["mustRevalidateCurrentNetwork"])
+            routes = [row["route"] for row in prior["recipes"]]
+            self.assertIn("/engine/ajax/film_api.php?id={id}", routes)
+            self.assertIn("/index.php", routes)
+            self.assertNotIn("/data/eps_9561.txt?v=59636093", routes)
+            self.assertNotIn("/embed-lwa4enepfqwt.html", routes)
+            self.assertNotIn("/other/{id}", routes)
+            film = next(
+                row for row in prior["recipes"]
+                if row["route"] == "/engine/ajax/film_api.php?id={id}"
+            )
+            self.assertEqual(film["headerNames"], ["Accept"])
+            search = next(row for row in prior["recipes"] if row["route"] == "/index.php")
+            self.assertEqual(search["bodyTemplate"]["story"], "{query}")
+
+
 if __name__ == "__main__":
     unittest.main()
