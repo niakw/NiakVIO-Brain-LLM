@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
   "niakvio_sha": "36571d22293b2f00bb003c01bfcbd8e7ec73b00d",
-  "reason": "Single-oracle exact-current replay for frenchstream after fixing sandbox frontier taxonomy refinement. Current census 43855893372 and targeted run 43857227000 prove provider-owned fs16.lol HTTP 200 with player-shaped HTML on anime/movie/tv; exact published bytes still match the historical progress-producing parent SHA. Brain must reuse the executed player frontier, route to bounded provider synthesis, and remain advisory until NiakVIO apply/materialize/terminal media+identity validation.",
+  "reason": "Single-oracle exact-current replay for frenchstream after adding the safe same-provider execution-prior bridge. Current NiakVIO targeted evidence remains census 43855893372 / verdict 43857227000 with provider-owned fs16.lol HTTP 200 and player-shaped HTML; exact published bytes remain the same 1c415541... artifact. Brain must consume only sanitized generic/parameterized historical execution recipes, generate a bounded candidate, and remain non-authoritative until NiakVIO apply/materialize/terminal media+identity validation.",
   "requested_repair_queue": [
     "frenchstream"
   ],
-  "retry": 54,
+  "retry": 55,
   "require_deterministic_force": false
 }
