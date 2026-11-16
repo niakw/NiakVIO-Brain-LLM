@@ -1,12 +1,12 @@
 {
   "schema_version": 1,
   "niakvio_sha": "ba752be6836f02246540ade3e5ffe012d31efba2",
-  "reason": "Exact current-census guidance after persisted targeted evidence run 43854495472. Frenchstream now has provider-owned HTTP-200 HTML search/xfsearch observations with player marker on anime/movie/tv; hianime has HTTP-200 provider HTML on anime; stigstream remains timeout/no provider-network observation. Use Brain 512-token provider_bloc budget and current-evidence routing. Guidance is advisory only until NiakVIO canonical apply, materialization, terminal media+identity replay and persistence.",
+  "reason": "Fresh exact-source replay after confirmed FORCE scheduler fix: prior run 43853913152 gave hianime 600s provider budget but killed provider_bloc candidate 1 at 179.05s. Structural chain/media/route Bloc first candidates now receive up to 300s with workflow timeout 300; targeted evidence remains run 43854495472. Guidance stays non-authoritative until NiakVIO canonical apply, exact-byte materialization, terminal media+identity replay, non-regression and persistence.",
   "requested_repair_queue": [
     "frenchstream",
     "hianime",
     "stigstream"
   ],
-  "retry": 49,
+  "retry": 50,
   "require_deterministic_force": false
 }
