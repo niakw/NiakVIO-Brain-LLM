@@ -36,6 +36,8 @@ for token in (
     "primary_tokens = max(128, min(int(args.max_tokens), scope_token_cap))",
     "retry_tokens = max(128, min(int(args.max_tokens), recovery_token_cap))",
     "FIELD_BRAIN_FORCE_PROVIDER_BUDGET ",
+    "structural_bloc_first = bool(",
+    "normal_first_cap = 300.0 if structural_bloc_first else 180.0",
     '(60 if speculative_portfolio_slot else 150)',
     "60 if speculative_portfolio_slot else 180",
     "FIELD_BRAIN_FORCE_CANDIDATE_BUDGET",
@@ -70,7 +72,7 @@ assert "-np 1" in wf
 assert "--workers 1" in wf
 assert "--advisor-only" in wf
 assert "--max-tokens 512" in wf
-assert "--timeout-seconds 240" in wf
+assert "--timeout-seconds 300" in wf
 assert "--force-provider-budget-seconds 600" in wf
 assert wf.index("-np 1") < wf.index("--workers 1")
 
