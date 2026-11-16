@@ -31,6 +31,7 @@ FAMILY_REFERENCE_TOKENS = {
     "route_proven_gap": {"search", "detail", "episode", "watch", "player", "iframe", "embed", "fetch", "resolve"},
     "content_identity_gap": {"search", "detail", "episode", "fetch", "json", "regex", "source", "stream"},
     "chain_terminal_gap": {"confirm", "internal", "player", "iframe", "resolve", "m3u8", "mp4", "playlist", "source"},
+    "media_extraction_gap": {"extract", "player", "iframe", "embed", "source", "media", "unpack", "m3u8", "mp4", "playlist", "resolve"},
     "variant_coverage_gap": {"player", "server", "mirror", "source", "variant", "quality", "resolution", "language", "audio", "stream"},
 }
 
