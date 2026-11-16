@@ -1,3 +1,11 @@
+## Global+France publication authority for NiakVIO guidance
+
+NiakVIO's executable provider authority is a projection union: Global providers are referenced by `manifest.json`, while strict France-only providers remain first-class executable identities in `provider_catalog.json` with `projections.general=false` and `projections.vf=true`. Brain-LLM must not infer current-provider scope from the Global manifest alone.
+
+`provider_context.published_projection_rows()` is the common read-only authority for current published identities. The private-guidance cohort resolver, RAG/current-byte provider context and FORCE publisher all reuse this union. Duplicate Global/France-only identities fail closed. Active-cohort selection excludes `enabled=false`; read-only context can still inspect an explicitly requested published row when appropriate.
+
+This only grants current-byte context and cohort membership. It does not grant mutation, publication or playback proof. FORCE candidates still require exact owned bytes, mutation-policy validation, canonical NiakVIO application/materialization, terminal identity replay and downstream publication gates.
+
 
 ## 2026-11-10 — Quick candidate versus verified provider; event mini-series alias as a search hypothesis
 
