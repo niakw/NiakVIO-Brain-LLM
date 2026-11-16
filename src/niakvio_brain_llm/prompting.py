@@ -695,6 +695,10 @@ _FORCE_SOURCE_KEYWORDS: dict[str, tuple[str, ...]] = {
     "chain_terminal_gap": (
         "confirm", "internal", "resolve", "m3u8", "iframe", "terminal", "crawl", "source",
     ),
+    "media_extraction_gap": (
+        "extract", "player", "iframe", "embed", "source", "media", "unpack",
+        "m3u8", "mp4", "playlist", "resolve",
+    ),
     "variant_coverage_gap": (
         "out.length", "maxstreams", "targetstreams", "slice(", "break",
         "player", "server", "mirror", "embed", "source", "variant", "quality",
