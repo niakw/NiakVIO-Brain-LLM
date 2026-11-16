@@ -1,12 +1,12 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "89bf37f1920e889f825b5033ececd6b3377d16c6",
-  "reason": "Parallel current-source replay after two generic Brain corrections: normal provider_bloc synthesis cap 512 and same-census Fast Repair sandbox frontier reuse. Frenchstream current Fast evidence reached player/provider-requests and may now establish provider-local media_extraction_gap without granting proof; hianime/stigstream exercise complete Bloc synthesis. Targeted network evidence refresh is running independently. Guidance remains non-authoritative until canonical NiakVIO apply/materialize/terminal identity replay.",
+  "niakvio_sha": "43d783ef07170b3b2ec7cd11adc20591ccddb42c",
+  "reason": "Parallel exact-source guidance replay on the latest NiakVIO representative Fast Repair trigger after Global+France stage/materialization fixes, projection-only targeted recovery, same-census causal-frontier reuse and 512-token provider_bloc budget. Guidance is diagnostic/advisory only until canonical NiakVIO application, exact-byte rematerialization, terminal media plus identity replay and persistence.",
   "requested_repair_queue": [
     "frenchstream",
     "hianime",
     "stigstream"
   ],
-  "retry": 47,
+  "retry": 48,
   "require_deterministic_force": false
 }
