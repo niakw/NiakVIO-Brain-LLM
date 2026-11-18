@@ -3633,6 +3633,11 @@ class BrainPlanner:
                 f"editable_units={len(edit_surface.get('editable_units') or [])} "
                 f"reused_strategies={len(force_payload.get('retrieved_strategy_memory') or [])} "
                 f"field_evidence={len(force_payload.get('provider_field_evidence') or [])} "
+                f"documents_retrieved={len(documents)} "
+                f"public_md_hints={sum(h.get('source_kind') == 'public_markdown' for h in (force_payload.get('retrieved_document_hints') or []))} "
+                f"private_chat_hints={sum(h.get('source_kind') == 'private_chat' for h in (force_payload.get('retrieved_document_hints') or []))} "
+                f"executed_negative_hints={len(force_payload.get('retrieved_executed_negative_memory') or [])} "
+                f"memory_proof_authority=false "
                 f"policy_abstain={str(bool(mutation_policy.get('force_abstain'))).lower()}",
                 flush=True,
             )
