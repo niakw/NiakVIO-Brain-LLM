@@ -211,6 +211,75 @@ def _reject_semantic_identity_edit(find: str, replace: str) -> None:
         raise ValueError("compact Force edit is a semantic no-op")
 
 
+
+_JS_SIMPLE_STRING = re.compile(r'''("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')''')
+_JS_PRESENTATION_ASSIGNMENT = re.compile(
+    r"\b([A-Za-z_$][A-Za-z0-9_$]*)\."
+    r"(name|title|language|provider|player|sourceLabel|sourceName)"
+    r"\s*=\s*[^;{}]+;?"
+)
+
+
+def _terminal_causal_js_identity(value: str) -> str:
+    """Canonicalize extraction logic while ignoring presentation-only metadata.
+
+    This intentionally keeps URLs, selectors, request parameters, x.url and
+    control flow exact. It only erases stream display-label assignments that
+    cannot repair a route/media terminal gap. If JavaScript contains an
+    ASI-sensitive newline after a control keyword, fail open and keep the raw
+    source so this helper cannot collapse a behaviorally meaningful newline.
+    """
+    text = str(value or "")
+    if re.search(r"\b(?:return|throw|break|continue)\s*\n", text):
+        return text
+
+    def normalize_string(match: re.Match[str]) -> str:
+        token = match.group(0)
+        try:
+            decoded = ast.literal_eval(token)
+        except (SyntaxError, ValueError):
+            return token
+        if not isinstance(decoded, str):
+            return token
+        return json.dumps(decoded, ensure_ascii=True)
+
+    text = _JS_SIMPLE_STRING.sub(normalize_string, text)
+    text = _JS_PRESENTATION_ASSIGNMENT.sub(
+        lambda match: f"{match.group(1)}.{match.group(2)}=<presentation>;",
+        text,
+    )
+    # Renaming an unused empty catch binding is not a repair mechanism.
+    text = re.sub(
+        r"catch\s*\(\s*[A-Za-z_$][A-Za-z0-9_$]*\s*\)\s*\{\s*\}",
+        "catch{}",
+        text,
+    )
+    # Optional semicolons and pretty-printing are not causal changes in this
+    # bounded, syntax-checked comparison. ASI-sensitive cases returned above.
+    return re.sub(r"\s+", "", text).replace(";", "")
+
+
+def _reject_causally_irrelevant_stream_metadata_edit(
+    failure_class: str,
+    find: str,
+    replace: str,
+) -> None:
+    failure = str(failure_class or "").strip().casefold().replace("-", "_")
+    if failure not in {
+        "route_proven_gap",
+        "chain_terminal_gap",
+        "media_extraction_gap",
+    }:
+        return
+    if find == replace:
+        return
+    if _terminal_causal_js_identity(find) == _terminal_causal_js_identity(replace):
+        raise ValueError(
+            "compact Force edit is a causally irrelevant no-op "
+            "(presentation metadata/formatting only)"
+        )
+
+
 def _reject_partial_function_anchor(
     find: str,
     replace: str,
@@ -504,6 +573,9 @@ def _resolve_structured_anchor(
         absolute_start = source.index(find)
 
     _reject_semantic_identity_edit(find, replace)
+    _reject_causally_irrelevant_stream_metadata_edit(
+        failure_class, find, replace
+    )
     # Preserve declaration identity before minimization can strip common
     # "function _" prefixes or closing braces. Otherwise a full-function edit
     # such as _routeKind -> _extractUrls can collapse to routeKind -> extractUrls
