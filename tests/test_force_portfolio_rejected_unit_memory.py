@@ -6,6 +6,7 @@ import hashlib
 import unittest
 
 from niakvio_brain_llm.contracts import RepairRequest
+from niakvio_brain_llm.planner import RejectedForceUnitError
 from niakvio_brain_llm.prompting import selectable_force_units
 
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "plan_batch_from_checkout.py"
@@ -102,6 +103,55 @@ class ForcePortfolioRejectedUnitMemoryTests(unittest.TestCase):
                 "rotate_unit": True,
             }
         ]), [])
+
+
+    def test_failed_correction_chain_carries_only_exact_unit_hashes(self):
+        first = "a" * 64
+        second = "b" * 64
+        error = RejectedForceUnitError(
+            "private provider URL and model output must not be persisted", second
+        )
+        error.rejected_unit_sha256s = [first, "not-a-sha", first]
+        carried = mod.force_rejected_error_hashes(error)
+        self.assertEqual(carried, [first, second])
+        self.assertEqual(mod.force_rejected_error_hashes(None), [])
+
+        # Even when there was no successful proposal row, this sanitized
+        # error is enough to rank rejected units behind fresh units next time.
+        rows = mod.force_portfolio_rejected_feedback(carried)
+        self.assertEqual([row["rejected_unit_sha256"] for row in rows],
+                         [first, second])
+        self.assertNotIn("private provider URL", repr(rows))
+        self.assertNotIn("model output", repr(rows))
+
+    def test_later_portfolio_hypothesis_retains_prior_hashes(self):
+        first = "a" * 64
+        second = "b" * 64
+        already = mod.force_portfolio_rejected_feedback([first])
+        combined = mod.force_portfolio_rejected_feedback([
+            *mod.force_rejected_unit_hashes(already), second,
+        ])
+        self.assertEqual(
+            [row["rejected_unit_sha256"] for row in combined],
+            [first, second],
+        )
+        fresh = {"id": "w1u3", "source": "return newTerminalRoute;"}
+        previously_rejected = [
+            {"id": "w1u1", "source": "return candidateOne;"},
+            {"id": "w1u2", "source": "return candidateTwo;"},
+        ]
+        original_hashes = [
+            hashlib.sha256(row["source"].encode("utf-8")).hexdigest()
+            for row in previously_rejected
+        ]
+        request = RepairRequest(
+            provider_id="synthetic", failure_class="route_proven_gap",
+            observations=mod.force_portfolio_rejected_feedback(original_hashes),
+        )
+        self.assertEqual(
+            selectable_force_units(request, [*previously_rejected, fresh]),
+            [fresh],
+        )
 
 
 if __name__ == "__main__":
