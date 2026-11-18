@@ -219,7 +219,7 @@ class CompactForceRetryTest(unittest.TestCase):
         self.assertNotIn("wrong_family_hint", json.dumps(memory))
 
     def test_force_prefill_budget_preserves_unit_ids_under_dense_fanout(self):
-        # Production 7B samples sent 9k-14k chars for a single edit and hit
+        # Production CPU samples sent 9k-14k chars for a single edit and hit
         # the 180s deadline. Clip duplicated context, NEVER the source-backed
         # IDs that the constrained grammar and current-byte converter use.
         source = (
@@ -337,7 +337,7 @@ class CompactForceRetryTest(unittest.TestCase):
         self.assertIn("same_provider_execution_prior is the only bounded historical implementation exception", planner)
         workflow = (ROOT / ".github" / "workflows" / "niakvio-private-guidance.yml").read_text(encoding="utf-8")
         self.assertIn("--max-tokens 512", workflow)
-        self.assertIn("--timeout-seconds 300", workflow)
+        self.assertIn("--timeout-seconds 180", workflow)
         self.assertIn("--force-provider-budget-seconds 600", workflow)
         self.assertIn("retry_tokens = max(", script)
         self.assertIn("prefill_prompt=False", script)
