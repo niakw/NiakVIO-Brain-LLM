@@ -30,7 +30,7 @@ permissions:
 
 concurrency:
   # New trigger pushes supersede older unpinned advisor cycles instead of
-  # burning 7B compute on stale architecture. Explicit continuation pages keep
+  # burning local-model compute on stale architecture. Explicit continuation pages keep
   # their pinned Brain SHA and serialize independently until the semantic
   # publication guard accepts or rejects them.
   group: niakvio-private-guidance-v4-${{ (github.event_name == 'workflow_dispatch' && inputs.brain_sha) || 'current' }}
@@ -430,8 +430,13 @@ jobs:
           path: |
             ~/.cache/llama.cpp
             ~/.cache/huggingface
-          key: qwen25-coder-7b-q4-km-v1
+          key: qwen25-coder-3b-q4-km-v1
 
+          # Exact-provider FORCE uses the measured CPU default: 3B matched 9B
+          # on the fixed diagnostics and completed far faster, while the real
+          # private 7B Sekai oracle exhausted two long inference budgets.
+          # Keep larger models as explicit challengers; memory quality and
+          # current evidence are evaluated independently of parameter count.
       - name: Start bounded local Qwen advisor
         if: steps.route.outputs.llm_needed == 'true' && steps.deterministic_force.outputs.ready != 'true'
         run: |
@@ -443,7 +448,7 @@ jobs:
           # making every Force request hit its timeout before returning a patch.
           # Compact Force source windows are bounded so prompt ingestion stays
           # cheap; a single larger retry handles truncated JSON/code.
-          "$SERVER"             -hf Qwen/Qwen2.5-Coder-7B-Instruct-GGUF:Q4_K_M             --host 127.0.0.1             --port 8080             -c 16384             -np 1             > llama-server.log 2>&1 &
+          "$SERVER"             -hf Qwen/Qwen2.5-Coder-3B-Instruct-GGUF:Q4_K_M             --host 127.0.0.1             --port 8080             -c 8192             -np 1             > llama-server.log 2>&1 &
           for i in $(seq 1 180); do
             curl -fsS http://127.0.0.1:8080/health >/dev/null 2>&1 && exit 0
             sleep 2
@@ -456,7 +461,7 @@ jobs:
         env:
           # Already tested in source-model-challenger; keep exact selected JS
           # units and network causality while shrinking duplicate text before
-          # CPU-heavy 7B inference and each subsequent validation retry.
+          # CPU-bound 3B inference and each subsequent validation retry.
           NIAKVIO_FORCE_CPU_TIGHT_PROMPT: '1'
         run: |
           set -euo pipefail
@@ -484,10 +489,10 @@ jobs:
             --max-hypotheses 4 \
             "${provider_args[@]}" \
             --endpoint http://127.0.0.1:8080 \
-            --model qwen2.5-coder-7b \
+            --model qwen2.5-coder-3b \
             --workers 1 \
             --max-tokens 512 \
-            --timeout-seconds 300 \
+            --timeout-seconds 180 \
             --force-provider-budget-seconds 600 \
             --output private-force-batch.jsonl
           python brain/scripts/plan_batch_from_checkout.py \

@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "74e19c84ea366114fcdd2b413f07e486af27ce03",
-  "reason": "2026-11-18 second one-provider Sekai current-source FORCE oracle. Previous private 7B #44338977378 loaded 202/167/6620 ChatGPT private docs and returned no executable edits: two long CPU timeout calls and a no-op body. Generic tested NIAKVIO_FORCE_CPU_TIGHT_PROMPT=1 is now enabled for actual private-guidance 7B, preserves exact JS mutation units and causal network evidence. Source provider bytes unchanged from c8f10ff1 per exact NiakVIO compare, but current main contains new negative experiment receipts. Require real generated+compiled+selected+applied+materialized+executed+terminal decoded identity-correct media for success; zero executable is negative learning not repair; keep 7B challenger rather than default.",
+  "niakvio_sha": "d7b6ccd2054636be69faedefd5448d01dc05e926",
+  "reason": "2026-11-18 memory-isolation oracle: use exact current NiakVIO repair-eligible Sekai with the existing unified Markdown + old ChatGPT + executed-negative RAG, but switch production private FORCE from 7B to the measured 3B CPU default. 3B and 9B both scored 5/6 on comparable diagnostics; the real private 7B Sekai run received all three memory channels yet exhausted two long CPU calls and ended no-op. This run tests whether existing memory plus current evidence produces an executable causal mutation without conflating memory quality with model size. Require generated+compiled+selected+applied+materialized+executed+terminal decoded identity-correct media; no publication on failure.",
   "requested_repair_queue": [
     "sekai"
   ],
-  "retry": 62,
+  "retry": 63,
   "require_deterministic_force": false
 }
