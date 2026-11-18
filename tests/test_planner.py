@@ -2300,5 +2300,30 @@ class PlannerGuardTests(unittest.TestCase):
             )
 
 
+    def test_node_syntax_feedback_does_not_leak_source_and_classifies_illegal_continue(self):
+        from niakvio_brain_llm.planner import _node_check_javascript
+        import shutil
+        if shutil.which("node") is None:
+            self.skipTest("Node required for actual JS syntax verification")
+        secret = "SENSITIVE_PROVIDER_OWNED_VALUE"
+        invalid = (
+            'function resolve(){const ' + secret + ' = true;'
+            'if (' + secret + ') {continue;}return [];}\n'
+        )
+        with self.assertRaisesRegex(
+            ValueError, "illegal_continue_outside_loop"
+        ) as caught:
+            _node_check_javascript(invalid)
+        self.assertNotIn(secret, str(caught.exception))
+        self.assertNotIn("/tmp/", str(caught.exception))
+        with self.assertRaisesRegex(
+            ValueError, "unexpected_token"
+        ):
+            _node_check_javascript("function broken( {")
+        _node_check_javascript(
+            "function legal(items){for(const item of items){if(item)continue;}return [];}"
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
