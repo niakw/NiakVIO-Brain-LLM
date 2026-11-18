@@ -128,7 +128,28 @@ jobs:
               r"/Users/[^/\s]+|/home/[^/\s]+",
               re.I,
           )
-          assert not any(sensitive.search(str(row.get("text") or "")) for row in store.rows)
+          # Never log private matches or snippets: report categories and
+          # aggregate counts only, then fail closed if anything remains.
+          leftover = {}
+          for row in store.rows:
+              for match in sensitive.finditer(str(row.get("text") or "")):
+                  token = match.group(0)
+                  if token.startswith(("/Users/", "/home/")):
+                      category = "local_path"
+                  elif "@" in token:
+                      category = "email"
+                  elif token.lower().startswith("bearer "):
+                      category = "bearer"
+                  elif token.lower().startswith(("github_pat_", "ghp_", "gho_", "ghu_", "ghs_", "ghr_")):
+                      category = "github_credential"
+                  elif re.fullmatch(r"[0-9.]+", token):
+                      category = "ipv4"
+                  else:
+                      category = "phone_or_other"
+                  leftover[category] = leftover.get(category, 0) + 1
+          if leftover:
+              raise AssertionError("private corpus contains unresolved redaction categories: "
+                                   + json.dumps(leftover, sort_keys=True))
 
           print(json.dumps({
               "private_documents": len(store.rows),
