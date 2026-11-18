@@ -67,7 +67,7 @@ assert "FIELD_NIAKVIO_FORCE_MUTATIONS_READY ready=false" in wf
 
 assert "-c 8192" in wf
 assert "Qwen/Qwen2.5-Coder-3B-Instruct-GGUF:Q4_K_M" in wf
-assert "--model qwen2.5-coder-7b" in wf
+assert "--model qwen2.5-coder-3b" in wf
 assert "-np 1" in wf
 assert "--workers 1" in wf
 assert "--advisor-only" in wf
