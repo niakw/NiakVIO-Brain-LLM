@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "6bde9436444c748f4de8f76b9b33bd2321837770",
-  "reason": "2026-11-18 exact-current Sekai private-memory FORCE oracle after structured provider reverse bridge. Brain 7d636b8a/3e064670 imports NiakVIO's existing brain-repair-experience providers map into the same ExperienceStore as provider-structured-knowledge; same-provider FORCE may use only strategy, Lego basename, route/recipe family shape and media types, never old hosts/routes/raw code or proof authority. It also uses corrected portfolio rejected-unit fallback from 3f1cfb46. Compare selected units/mechanisms against prior no-op cycles. Success still requires canonical current-byte application/materialization and independent decoded playable identity proof in NiakVIO; private/public/history memory is planning context only.",
+  "niakvio_sha": "3a9496816368bae3e893514201be8a534aef6b21",
+  "reason": "2026-11-18 rerun exact-current Sekai private-guided FORCE after Brain b1e25f82 green CI and d3ffa25c Lego mechanism distillation. Existing RAG planes must be used together: public Markdown/MEMORY, historical ChatGPT project, manual reverse cases, same-provider structured ProviderBase/Lego recipe shape, and executed-negative memory. Compare against prior d1b7d454 private run where all four hypotheses collapsed to no-op. No historical route/host/raw code may become current proof; success still requires generated mutation, exact-byte application/materialization and independent decoded playable identity proof.",
   "requested_repair_queue": [
     "sekai"
   ],
-  "retry": 68,
+  "retry": 69,
   "require_deterministic_force": false
 }
