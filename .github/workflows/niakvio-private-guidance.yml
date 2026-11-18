@@ -265,6 +265,25 @@ jobs:
       - name: Install Brain package
         run: python -m pip install -e brain
 
+      - name: Mark private ChatGPT mirror as historical when upstream sync is stale
+        shell: bash
+        run: |
+          python - <<'PY'
+          import datetime as dt, subprocess
+          updated = dt.datetime.fromisoformat(subprocess.check_output(
+              ["git", "-C", "private", "log", "-1", "--format=%cI"],
+              text=True,
+          ).strip())
+          age = max(0, (dt.datetime.now(dt.timezone.utc) - updated).days)
+          print(f"FIELD_NIAKVIO_PRIVATE_MEMORY_FRESHNESS age_days={age} "
+                f"stale={str(age > 14).lower()} "
+                "historical_only=true current_proof=false")
+          if age > 14:
+              print("::warning::The NiakVIO ChatGPT mirror is stale. "
+                    "Historical context is still allowed, but current "
+                    "replay evidence must override it.")
+          PY
+
       - name: Build bounded public and private memory
         shell: bash
         run: |
