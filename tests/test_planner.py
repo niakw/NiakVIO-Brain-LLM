@@ -2325,5 +2325,60 @@ class PlannerGuardTests(unittest.TestCase):
         )
 
 
+
+    def test_terminal_gap_rejects_presentation_only_reformat_but_keeps_causal_changes(self):
+        from niakvio_brain_llm.planner import (
+            _reject_causally_irrelevant_stream_metadata_edit,
+        )
+
+        current = (
+            'ref){ps=ps.slice().sort(function(a,b){return rank(a)-rank(b)});'
+            'var out=[],seen={};for(var i=0;i<ps.length&&i<8&&out.length<8;i++){'
+            'try{var playerUrl=ps[i],player="Lecteur "+(i+1);'
+            'try{player=new URL(playerUrl).hostname||player}catch(_e){}'
+            'var rows=await crawl([playerUrl],ref,2);'
+            'if(!Array.isArray(rows))continue;for(var j=0;j<rows.length;j++){'
+            'var x=rows[j];if(!x||!x.url||seen[x.url])continue;seen[x.url]=1;'
+            'x.name=x.name||"Demo";x.title=x.title||"Demo VF";'
+            'x.language=x.language||"VF";x.provider=x.provider||"demo";'
+            'x.player=x.player||player;x.sourceLabel=x.sourceLabel||player;'
+            'x.sourceName=x.sourceName||("Demo · "+player);out.push(x)}}'
+            'catch(_e){}}return out'
+        )
+        cosmetic = (
+            " ref) { ps = ps.slice().sort(function (a, b) { return rank(a) - rank(b); });"
+            " var out = [], seen = {}; for (var i = 0; i < ps.length && i < 8 && out.length < 8; i++) {"
+            " try { var playerUrl = ps[i], player = 'Lecteur ' + (i + 1);"
+            " try { player = new URL(playerUrl).hostname || player; } catch (_) {}"
+            " var rows = await crawl([playerUrl], ref, 2);"
+            " if (!Array.isArray(rows)) continue; for (var j = 0; j < rows.length; j++) {"
+            " var x = rows[j]; if (!x || !x.url || seen[x.url]) continue; seen[x.url] = 1;"
+            " x.name = x.name || 'Demo'; x.title = x.title || 'Demo VF';"
+            " x.language = x.language || 'VF'; x.provider = x.provider || 'demo';"
+            " x.player = x.player || player; x.sourceLabel = x.sourceLabel || player;"
+            " x.sourceName = x.sourceName || ('Demo ' + player); out.push(x); } }"
+            " catch (_) {} } return out; "
+        )
+        with self.assertRaisesRegex(ValueError, "causally irrelevant no-op"):
+            _reject_causally_irrelevant_stream_metadata_edit(
+                "chain_terminal_gap", current, cosmetic
+            )
+
+        # A different request/traversal operation must remain eligible.
+        causal = cosmetic.replace(
+            "await crawl([playerUrl], ref, 2)",
+            "await crawl([playerUrl], ref, 3)",
+            1,
+        )
+        _reject_causally_irrelevant_stream_metadata_edit(
+            "chain_terminal_gap", current, causal
+        )
+
+        # Metadata may itself be the target of a different future failure class.
+        _reject_causally_irrelevant_stream_metadata_edit(
+            "language_metadata_gap", current, cosmetic
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
