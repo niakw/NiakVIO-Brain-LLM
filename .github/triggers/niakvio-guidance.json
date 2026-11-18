@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "ecf071cdc017b24afc144601783217d4a4fc4cb0",
-  "reason": "2026-11-18 exact-current private-memory FORCE oracle after portfolio rejected-unit persistence. Brain 57c8956f has green CI 44357071456 and now carries only SHA256 fingerprints of exact rejected units across hypotheses, preventing the prior 4x repetition of the same Sekai no-op units. Use unified historical Markdown + old ChatGPT Project + source-pinned executed-negative memory as non-authoritative strategy context. NiakVIO source is exact current main. Publish only sanitized executable mutations; canonical NiakVIO Repair V6 owns apply/materialization/decoded playback/identity and production authority.",
+  "niakvio_sha": "f2b15568b14d78f13281fd0f1c140a387580d315",
+  "reason": "2026-11-18 rerun private-memory Sekai FORCE after live evidence showed portfolio-level unit bans exhausted all editable units. Brain 3f1cfb46 keeps immediate correction-chain rotation strict, but treats cross-hypothesis rejected-unit hashes as preference memory: use fresh causal units first and reopen a portfolio-only exact unit only when every fresh unit is exhausted, requiring a materially different edit/mechanism. Preserve existing Markdown/architecture/census memory, historical reverse cases, sanitized old ChatGPT Project context and exact executed-negative evidence as proof_authority=false. Canonical NiakVIO sandbox still owns application, materialization, decoded playback, identity and promotion.",
   "requested_repair_queue": [
     "sekai"
   ],
-  "retry": 66,
+  "retry": 67,
   "require_deterministic_force": false
 }
