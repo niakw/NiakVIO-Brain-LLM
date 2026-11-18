@@ -248,11 +248,43 @@ guidance bridge**.
 - A rejected Brain candidate is feedback to the synthesis layer, not permission
   to move provider-specific reasoning into NiakVIO.
 
-## Private memory
+## Private memory and current-source FORCE retrieval
 
-A private repository may enrich RAG using sanitized NiakVIO-only technical
-experiences. Raw conversations never become a runtime dependency and never enter
-this public repository.
+The project already has one coherent memory system: canonical current Census,
+Repair/FORCE evidence ledgers, 34+ historical reverse/repair solution classes,
+Markdown/architecture `DocumentStore` RAG, `ExperienceStore` RAG, and a
+read-only, sanitized `niakvio-private` conversation index. Do not build a
+parallel store or imply historical chat text is training truth.
+
+The authenticated private-guidance workflow uses `NIAKVIO_PRIVATE_READ_TOKEN`
+to index only the NiakVIO ChatGPT Project, scope-checked by Project ID. Raw
+transcripts never enter this public repository; the private JSONL is ephemeral,
+excludes tool messages, and has `private_memory=true`,
+`proof_authority=false`. The public hosted FORCE sandbox intentionally has
+only public Markdown and experience data, not this private credential.
+
+The actual FORCE path previously queried Markdown/chat RAG but did not include
+most document hits in its compact model prompt, and its historical top-six
+experience ranking could exclude exact provider executed-negative results.
+The unified fix uses the *existing* stores: reserve at most one
+provider-mentioned private-chat document in `BrainPlanner._prepare`, exclude
+private notes about other providers, preserve the ordinary public Markdown
+ranking, and reserve up to two same-provider, actual materialized+executed
+failed candidate records alongside causal historical cases. The compact FORCE
+prompt receives at most one redacted private-chat and one public Markdown
+excerpt, plus bounded negative mechanism identifiers. It carries no private
+conversation path, credentials, full raw snippet, replay authority or
+publication authority. The context is optional and trimmed before any exact
+editable JS unit is clipped if CPU budgets are tight.
+
+The full private project contract has now been tested against 202
+conversations, 167 indexed technical conversations and 6,620 documents.
+The current-source FORCE preparation probe asserts a real provider-specific
+old-chat hint reaches the compact prompt. This is retrieval/integration proof,
+**not** a learned model weight, an applied provider repair or decoded playback.
+Current network observation, exact executed bytes, terminal identity,
+languages/audio/quality, non-regression, and NiakVIO proof gates always override
+historical memory.
 
 
 ## Validated implementation reference library
