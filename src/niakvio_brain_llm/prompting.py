@@ -1810,22 +1810,93 @@ _FORCE_MEMORY_MECHANISM_FOCUS = {
     "terminal_media_crawl": ("crawl", "media"),
 }
 
+# Provider construction memory describes every mechanism ever owned by a
+# provider. Those mechanisms are not equally causal for today's failure.
+# Current live functions/call stacks still outrank this mapping and exact
+# current bytes remain the only mutation authority.
+_FORCE_MEMORY_MECHANISMS_BY_FAILURE = {
+    "route_proven_gap": (
+        "sitemap_slug_discovery",
+        "inline_script_parse",
+        "embed_player_traversal",
+        "json_response_parse",
+        "request_header_replay",
+    ),
+    "chain_terminal_gap": (
+        "terminal_media_crawl",
+        "embed_player_traversal",
+        "packed_script_unpack",
+        "base64_decode",
+        "form_post",
+        "hls_playlist_validation",
+        "direct_media_files",
+        "json_response_parse",
+        "request_header_replay",
+    ),
+    "media_extraction_gap": (
+        "terminal_media_crawl",
+        "embed_player_traversal",
+        "packed_script_unpack",
+        "base64_decode",
+        "form_post",
+        "hls_playlist_validation",
+        "direct_media_files",
+        "json_response_parse",
+        "request_header_replay",
+    ),
+    "provider_transport_gap": (
+        "request_header_replay",
+        "form_post",
+        "json_response_parse",
+    ),
+    "variant_coverage_gap": (
+        "hls_playlist_validation",
+        "direct_media_files",
+        "embed_player_traversal",
+        "terminal_media_crawl",
+    ),
+    "playback_identity_gap": (
+        "tmdb_identity",
+        "season_episode_identity",
+        "alias_title_matching",
+    ),
+    "identity_mismatch": (
+        "tmdb_identity",
+        "season_episode_identity",
+        "alias_title_matching",
+    ),
+}
+
 
 def _force_structured_memory_focus_keywords(
     hints: list[dict[str, Any]] | None,
+    failure_class: str = "",
 ) -> tuple[str, ...]:
-    """Turn route-free same-provider mechanisms into secondary source-ranking hints.
+    """Turn same-provider mechanisms into failure-scoped ranking hints.
 
-    The memory: prefix keeps them out of hard structural function-name
-    narrowing. Current live function/call-stack evidence remains authoritative;
-    these tokens only break ties or improve fallback ranking among exact units.
+    Live Sekai replay 44373031124 proved that blindly taking the alphabetically
+    first provider mechanisms fed title/alias hints into a route gap and kept
+    the model around the wrong sibling helper. Known failure families therefore
+    expose only causally compatible mechanism tags. Unknown families retain the
+    historical broad behavior. All outputs remain non-authoritative memory:
+    tie-breakers; they never become current source, network or playback proof.
     """
+    failure = str(failure_class or "").strip().casefold().replace("-", "_")
+    preferred = _FORCE_MEMORY_MECHANISMS_BY_FAILURE.get(failure)
     out: list[str] = []
     for hint in hints or []:
         if not isinstance(hint, dict) or hint.get("proof_authority") is not False:
             continue
-        for mechanism in hint.get("mechanisms") or []:
-            for token in _FORCE_MEMORY_MECHANISM_FOCUS.get(str(mechanism), ()):
+        available = {
+            str(value or "").strip().casefold()
+            for value in (hint.get("mechanisms") or [])
+            if str(value or "").strip()
+        }
+        mechanisms = preferred if preferred is not None else tuple(sorted(available))
+        for mechanism in mechanisms:
+            if mechanism not in available:
+                continue
+            for token in _FORCE_MEMORY_MECHANISM_FOCUS.get(mechanism, ()):
                 value = "memory:" + token
                 if value not in out:
                     out.append(value)
@@ -1986,7 +2057,7 @@ def build_force_prompt_payload(
         experiences, request.provider_id
     )
     memory_focus_keywords = _force_structured_memory_focus_keywords(
-        structured_provider_hints
+        structured_provider_hints, request.failure_class
     )
     structural_focus_keywords = tuple(dict.fromkeys((
         *_force_structural_focus_keywords(request),
