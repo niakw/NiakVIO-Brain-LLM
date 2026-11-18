@@ -125,6 +125,90 @@ def collect_local_force(root: Path) -> list[dict[str, Any]]:
     return rows
 
 
+
+def collect_provider_structured_priors(root: Path) -> list[dict[str, Any]]:
+    """Project existing NiakVIO provider knowledge into non-authoritative RAG.
+
+    This deliberately excludes hostnames, routes, request bodies and raw Lego
+    source. Those values may be stale and current exact execution must always
+    outrank historical construction knowledge.
+    """
+    import re
+    data = load_json(root / "automation" / "brain-repair-experience.json", {})
+    if not isinstance(data, dict) or data.get("role") != "repair-prior-only":
+        return []
+    source_sha = str(data.get("sourceSha") or "").strip().casefold()
+    if not re.fullmatch(r"[a-f0-9]{40}", source_sha):
+        return []
+    providers = data.get("providers")
+    if not isinstance(providers, dict):
+        return []
+
+    def safe_tokens(values: Any, *, limit: int = 12) -> list[str]:
+        out = []
+        for raw in values or []:
+            value = str(raw or "").strip().casefold()
+            if re.fullmatch(r"[a-z0-9][a-z0-9_.-]{0,79}", value) and value not in out:
+                out.append(value)
+            if len(out) >= limit:
+                break
+        return out
+
+    rows: list[dict[str, Any]] = []
+    for raw_provider, raw in sorted(providers.items()):
+        provider = str(raw_provider or "").strip().casefold().replace("_", "-")
+        if not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,63}", provider) or not isinstance(raw, dict):
+            continue
+        strategy = str(raw.get("strategy") or "").strip().casefold().replace("-", "_")
+        if not re.fullmatch(r"[a-z0-9][a-z0-9_]{1,79}", strategy):
+            strategy = "provider_owned_runtime"
+        lego_families = []
+        for value in raw.get("providerLegoScripts") or []:
+            name = Path(str(value or "")).name.casefold()
+            if not re.fullmatch(r"[a-z0-9][a-z0-9_.-]{0,100}\.py", name):
+                continue
+            stem = name[:-3]
+            if stem not in lego_families:
+                lego_families.append(stem)
+            if len(lego_families) >= 6:
+                break
+        recipe = {
+            "strategy": strategy,
+            "lego_families": lego_families,
+            "route_families": safe_tokens(raw.get("routeFamilies"), limit=8),
+            "recipe_roles": safe_tokens(raw.get("recipeRoles"), limit=8),
+            "recipe_methods": safe_tokens(raw.get("recipeMethods"), limit=6),
+            "recipe_responses": safe_tokens(raw.get("recipeResponses"), limit=6),
+            "media_types": safe_tokens(raw.get("mediaTypes"), limit=4),
+            "has_api_recipe": raw.get("hasApiRecipe") is True,
+            "has_provider_value_plan": raw.get("hasProviderValuePlan") is True,
+            "has_search_request_plan": raw.get("hasSearchRequestPlan") is True,
+        }
+        if not any((
+            recipe["lego_families"], recipe["route_families"],
+            recipe["recipe_roles"], recipe["recipe_methods"],
+            recipe["has_api_recipe"], recipe["has_provider_value_plan"],
+            recipe["has_search_request_plan"],
+        )):
+            continue
+        rows.append({
+            "experience_id": f"provider-knowledge:{source_sha[:12]}:{provider}",
+            "source": "provider-structured-knowledge",
+            "providers": [provider],
+            "failure_class": "provider_structured_recipe_prior",
+            "symptom_families": ["historical_provider_construction"],
+            "signals": ["provider_owned_lego_or_recipe"],
+            "strategy": strategy,
+            "result": "provider_recipe_prior",
+            "provider_recipe": recipe,
+            "provider_source_sha": source_sha,
+            "proof_authority": False,
+            "prior_only": True,
+            "current_execution_proof": False,
+            "current_network_proof": False,
+        })
+    return rows
+
 def collect_hosted_replay_negatives(root: Path) -> list[dict[str, Any]]:
     """Retain executed *negative* Brain experience, never raw provider edits.
 
@@ -230,7 +314,11 @@ def collect(root: Path) -> list[dict[str, Any]]:
             seen.add(identity)
             rows.append(row)
 
-    for row in [*collect_local_force(root), *collect_hosted_replay_negatives(root)]:
+    for row in [
+        *collect_provider_structured_priors(root),
+        *collect_local_force(root),
+        *collect_hosted_replay_negatives(root),
+    ]:
         identity = str(row.get("experience_id") or "")
         if not identity or identity in seen:
             continue

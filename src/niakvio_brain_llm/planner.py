@@ -3602,6 +3602,13 @@ class BrainPlanner:
             # of successful historical strategies or different providers.
             # These are bounded, non-authoritative hints only.
             selected = {str(row.get("experience_id") or "") for row in experiences}
+            for row in self.store.same_provider_structured_priors(
+                request.provider_id, limit=1
+            ):
+                identity = str(row.get("experience_id") or "")
+                if not identity or identity not in selected:
+                    experiences.append(row)
+                    selected.add(identity)
             for row in self.store.same_provider_executed_negatives(
                 request.provider_id, limit=2
             ):
@@ -3708,6 +3715,7 @@ class BrainPlanner:
                 f"documents_retrieved={len(documents)} "
                 f"public_md_hints={sum(h.get('source_kind') == 'public_markdown' for h in (force_payload.get('retrieved_document_hints') or []))} "
                 f"private_chat_hints={sum(h.get('source_kind') == 'private_chat' for h in (force_payload.get('retrieved_document_hints') or []))} "
+                f"structured_provider_hints={len(force_payload.get('retrieved_structured_provider_memory') or [])} "
                 f"executed_negative_hints={len(force_payload.get('retrieved_executed_negative_memory') or [])} "
                 f"memory_proof_authority=false "
                 f"policy_abstain={str(bool(mutation_policy.get('force_abstain'))).lower()}",

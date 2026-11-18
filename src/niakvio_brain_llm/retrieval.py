@@ -119,6 +119,41 @@ class ExperienceStore:
 
         return cls(rows)
 
+    def same_provider_structured_priors(
+        self, provider_id: str, *, limit: int = 1
+    ) -> list[dict[str, Any]]:
+        """Reserve sanitized manual/provider-owned construction knowledge.
+
+        These rows come from NiakVIO's existing repair-prior registry. They are
+        provider-specific historical hints only: never current network proof,
+        executable mutation authority or a substitute for exact bytes.
+        """
+        provider = str(provider_id or "").strip().casefold()
+        if not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,63}", provider):
+            return []
+        found = []
+        for row in reversed(self.rows):
+            if row.get("source") != "provider-structured-knowledge":
+                continue
+            if provider not in [
+                str(value).strip().casefold()
+                for value in (row.get("providers") or [])[:16]
+            ]:
+                continue
+            if (
+                row.get("result") != "provider_recipe_prior"
+                or row.get("proof_authority") is not False
+                or row.get("prior_only") is not True
+                or row.get("current_execution_proof") is not False
+                or row.get("current_network_proof") is not False
+                or not isinstance(row.get("provider_recipe"), dict)
+            ):
+                continue
+            found.append(row)
+            if len(found) >= max(0, min(limit, 2)):
+                break
+        return found
+
     def same_provider_executed_negatives(
         self, provider_id: str, *, limit: int = 2
     ) -> list[dict[str, Any]]:

@@ -1726,6 +1726,63 @@ def _bounded_force_experience_hints(
 
 
 
+def _bounded_force_structured_provider_hints(
+    rows: list[dict[str, Any]] | None, provider_id: str
+) -> list[dict[str, Any]]:
+    """Expose only sanitized same-provider construction shape to FORCE."""
+    expected = str(provider_id or "").strip().casefold()
+    hints = []
+    for row in reversed(rows or []):
+        if not isinstance(row, dict) or row.get("source") != "provider-structured-knowledge":
+            continue
+        if expected not in [
+            str(value).strip().casefold() for value in (row.get("providers") or [])[:16]
+        ]:
+            continue
+        if (
+            row.get("result") != "provider_recipe_prior"
+            or row.get("prior_only") is not True
+            or row.get("proof_authority") is not False
+        ):
+            continue
+        recipe = row.get("provider_recipe")
+        if not isinstance(recipe, dict):
+            continue
+
+        def tokens(name: str, limit: int) -> list[str]:
+            out = []
+            for raw in recipe.get(name) or []:
+                value = str(raw or "").strip().casefold()
+                if re.fullmatch(r"[a-z0-9][a-z0-9_.-]{0,100}", value):
+                    out.append(value)
+                if len(out) >= limit:
+                    break
+            return out
+
+        strategy = str(recipe.get("strategy") or "").strip().casefold()
+        if not re.fullmatch(r"[a-z0-9][a-z0-9_]{1,79}", strategy):
+            strategy = "provider_owned_runtime"
+        hints.append({
+            "strategy": strategy,
+            "lego_families": tokens("lego_families", 4),
+            "route_families": tokens("route_families", 6),
+            "recipe_roles": tokens("recipe_roles", 6),
+            "recipe_methods": tokens("recipe_methods", 4),
+            "recipe_responses": tokens("recipe_responses", 4),
+            "media_types": tokens("media_types", 4),
+            "has_api_recipe": recipe.get("has_api_recipe") is True,
+            "has_provider_value_plan": recipe.get("has_provider_value_plan") is True,
+            "has_search_request_plan": recipe.get("has_search_request_plan") is True,
+            "scope": "same_provider_only",
+            "role": "historical_structured_provider_construction",
+            "proof_authority": False,
+            "historical_source_sha_not_current_proof": True,
+            "requires_current_exact_source_network_and_playback": True,
+        })
+        break
+    return hints
+
+
 def _bounded_force_hosted_negative_hints(
     rows: list[dict[str, Any]] | None, provider_id: str
 ) -> list[dict[str, Any]]:
@@ -2140,6 +2197,11 @@ def build_force_prompt_payload(
             "retrieved_strategy_memory": hints
         } if (hints := _bounded_force_experience_hints(
             experiences, request.failure_class
+        )) else {}),
+        **({
+            "retrieved_structured_provider_memory": structured_provider_hints
+        } if (structured_provider_hints := _bounded_force_structured_provider_hints(
+            experiences, request.provider_id
         )) else {}),
         **({
             "retrieved_executed_negative_memory": negative_hints

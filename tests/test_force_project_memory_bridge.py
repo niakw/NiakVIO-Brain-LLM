@@ -69,6 +69,30 @@ class ForceProjectMemoryBridgeTests(unittest.TestCase):
             "proof_authority": False,
             "mutation_fingerprint": "c" * 64,
         }
+        structured = {
+            "experience_id": "provider-knowledge:aaaaaaaaaaaa:sekai",
+            "source": "provider-structured-knowledge",
+            "providers": [provider],
+            "failure_class": "provider_structured_recipe_prior",
+            "strategy": "html_scraper",
+            "result": "provider_recipe_prior",
+            "prior_only": True,
+            "proof_authority": False,
+            "current_execution_proof": False,
+            "current_network_proof": False,
+            "provider_recipe": {
+                "strategy": "html_scraper",
+                "lego_families": ["sekai_runtime_v1"],
+                "route_families": ["api", "detail", "episode", "player"],
+                "recipe_roles": ["detail"],
+                "recipe_methods": ["get"],
+                "recipe_responses": ["html-or-text"],
+                "media_types": ["anime"],
+                "has_api_recipe": False,
+                "has_provider_value_plan": False,
+                "has_search_request_plan": False,
+            },
+        }
         request = RepairRequest(
             provider_id=provider,
             failure_class="route_proven_gap",
@@ -84,7 +108,7 @@ class ForceProjectMemoryBridgeTests(unittest.TestCase):
             },
         )
         planner = BrainPlanner(
-            object(), store=ExperienceStore(historical + [negative]),
+            object(), store=ExperienceStore(historical + [negative, structured]),
             documents=DocumentStore(documents),
         )
         experiences, retrieved, prior, policy, unused = planner._prepare(
@@ -104,6 +128,13 @@ class ForceProjectMemoryBridgeTests(unittest.TestCase):
         self.assertEqual(len(negative_hints), 1)
         self.assertEqual(negative_hints[0]["mechanism"], "slug_saga_inline_media")
         self.assertFalse(negative_hints[0]["proof_authority"])
+        structured_hints = payload.get("retrieved_structured_provider_memory") or []
+        self.assertEqual(len(structured_hints), 1)
+        self.assertEqual(structured_hints[0]["lego_families"], ["sekai_runtime_v1"])
+        self.assertEqual(structured_hints[0]["route_families"], ["api", "detail", "episode", "player"])
+        self.assertFalse(structured_hints[0]["proof_authority"])
+        self.assertNotIn("host", json.dumps(structured_hints))
+        self.assertNotIn("routeTemplates", json.dumps(structured_hints))
         md_and_chat = payload.get("retrieved_document_hints") or []
         self.assertTrue(any(row["source_kind"] == "private_chat" for row in md_and_chat))
         self.assertTrue(any(row["source_kind"] == "public_markdown" for row in md_and_chat))
@@ -135,6 +166,12 @@ class ForceProjectMemoryBridgeTests(unittest.TestCase):
                 "result": "rejected_executed_no_improvement",
                 "prior_only": True, "proof_authority": False,
                 "mutation_fingerprint": "c" * 64,
+            }, {
+                "source": "provider-structured-knowledge", "providers": ["sekai"],
+                "result": "provider_recipe_prior", "prior_only": True,
+                "proof_authority": False, "current_execution_proof": False,
+                "current_network_proof": False,
+                "provider_recipe": {"strategy": "html_scraper", "lego_families": ["sekai_runtime_v1"]},
             }]),
             documents=store,
         )
@@ -147,6 +184,7 @@ class ForceProjectMemoryBridgeTests(unittest.TestCase):
         )
         self.assertNotIn("retrieved_executed_negative_memory", payload)
         self.assertNotIn("retrieved_document_hints", payload)
+        self.assertNotIn("retrieved_structured_provider_memory", payload)
 
 
 if __name__ == "__main__":
