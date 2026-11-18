@@ -686,7 +686,13 @@ class RejectedForceUnitError(ValueError):
         self.rejected_unit_sha256 = source_sha256
 
 
-def tagged_force_deletion(request: RepairRequest, edit: dict[str, Any] | None, exc: ValueError) -> ValueError:
+def tagged_force_deletion(
+    request: RepairRequest,
+    edit: dict[str, Any] | None,
+    exc: ValueError,
+    *,
+    focus_keywords: tuple[str, ...] = (),
+) -> ValueError:
     """Bind failed Bloc edits to exact source for causal retry diversification."""
     if (
         not isinstance(edit, dict)
@@ -700,7 +706,9 @@ def tagged_force_deletion(request: RepairRequest, edit: dict[str, Any] | None, e
     context = request.provider_context or {}
     source = str(context.get("preferredRuntimeMutationSource") or context.get("runtimeMutationSource") or "")
     try:
-        unit, _ = _force_unit_for_edit(request, source, unit_id)
+        unit, _ = _force_unit_for_edit(
+            request, source, unit_id, focus_keywords=focus_keywords
+        )
     except ValueError:
         return exc
     exact = str(unit.get("source") or "")
@@ -3878,7 +3886,9 @@ class BrainPlanner:
                     request, raw_edit, focus_keywords=force_focus_keywords
                 )
             except ValueError as exc:
-                tagged = tagged_force_deletion(request, raw_edit, exc)
+                tagged = tagged_force_deletion(
+                    request, raw_edit, exc, focus_keywords=force_focus_keywords
+                )
                 if tagged is exc:
                     raise
                 raise tagged from exc
