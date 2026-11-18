@@ -2034,8 +2034,11 @@ function resolve(){return []}'''
                 },
             )
 
-    def test_compact_force_provider_bloc_normalizes_explicit_helper_wrapper_to_selected_unit(self):
-        source = "function _routeKind(route){return route;} function _extractUrls(text){return [text];}"
+    def test_compact_force_provider_bloc_rejects_explicit_sibling_helper_wrapper(self):
+        source = (
+            "function _routeKind(route){return route&&route.kind||'detail';} "
+            "function _extractUrls(text){const out=[text];return out.filter(Boolean);}"
+        )
         request = RepairRequest(
             provider_id="demo",
             failure_class="route_proven_gap",
@@ -2055,18 +2058,61 @@ function resolve(){return []}'''
             row for row in payload["new_bloc_target"]["editable_units"]
             if row.get("kind") == "function_unit" and "_routeKind" in row.get("source", "")
         )
-        mutation = _compact_edit_to_mutation(
-            request,
-            {
-                "scope": "provider_bloc",
-                "family": "route_proven_gap",
-                "unit_id": unit["id"],
-                "replace": "function _extractUrls(text){return [text,text];}",
+        with self.assertRaisesRegex(ValueError, "declaration/signature changed"):
+            _compact_edit_to_mutation(
+                request,
+                {
+                    "scope": "provider_bloc",
+                    "family": "route_proven_gap",
+                    "unit_id": unit["id"],
+                    "replace": "function _extractUrls(text){const out=[text,text];return out.filter(Boolean);}",
+                },
+            )
+
+    def test_compact_force_provider_bloc_rejects_raw_sibling_helper_body_transplant(self):
+        source = (
+            "function aliases(meta){var md=meta&&meta.raw;if(!md)return[];"
+            "var out=[md.name,md.title,md.original_name,md.original_title];"
+            "return out.filter(Boolean).slice(0,7)} "
+            "function episodeCandidates(q,meta){var out=[q.episode],offset=0,ok=true;"
+            "for(var sn=1;sn<q.season;sn++){var count=Number(meta&&meta.seasonCounts&&meta.seasonCounts[sn]);"
+            "if(!count){ok=false;break}offset+=count}"
+            "if(ok&&offset+q.episode!==q.episode)out.push(offset+q.episode);return out}"
+        )
+        request = RepairRequest(
+            provider_id="sekai",
+            failure_class="route_proven_gap",
+            status="REGRESSION PROVIDER",
+            allowed_mutations=["provider_bloc"],
+            provider_context={
+                "runtimeMutationSource": source,
+                "runtimeMutationFilename": "providers/sekai.js",
             },
         )
-        updated = source.replace(mutation["find"], mutation["replace"], 1)
-        self.assertIn("function _routeKind(route){return [text,text];}", updated)
-        self.assertIn("function _extractUrls(text){return [text];}", updated)
+        payload = build_force_prompt_payload(
+            request,
+            {"target_layer": "provider", "confidence": 0.96, "strategy_prior": "route"},
+            {"allow_mutations": True, "allowed_scopes": ["provider_bloc"]},
+        )
+        unit = next(
+            row for row in payload["new_bloc_target"]["editable_units"]
+            if "episodeCandidates" in str(row.get("source") or "")
+        )
+        alias_body = (
+            "var md=meta&&meta.raw;if(!md)return[];"
+            "var out=[md.name,md.title,md.original_name,md.original_title];"
+            "return out.filter(Boolean).slice(0,7)"
+        )
+        with self.assertRaisesRegex(ValueError, "different current helper body"):
+            _compact_edit_to_mutation(
+                request,
+                {
+                    "scope": "provider_bloc",
+                    "family": "slug_saga_inline_media",
+                    "unit_id": unit["id"],
+                    "replace": alias_body,
+                },
+            )
 
     def test_compact_force_provider_bloc_allows_long_exact_function_anchor(self):
         old_body = "a" * 900
