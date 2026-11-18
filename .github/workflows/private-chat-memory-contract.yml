@@ -53,6 +53,28 @@ jobs:
       - name: Install Brain package
         run: python -m pip install -e brain
 
+      - name: Check ChatGPT source freshness without reading conversation text
+        shell: bash
+        run: |
+          python - <<'PY'
+          import datetime as dt
+          import subprocess
+          source = subprocess.check_output(
+              ["git", "-C", "private", "log", "-1", "--format=%cI"],
+              text=True,
+          ).strip()
+          captured = dt.datetime.fromisoformat(source)
+          days = max(0, (dt.datetime.now(dt.timezone.utc) - captured).days)
+          print(f"FIELD_BRAIN_CHATGPT_SNAPSHOT_AGE age_days={days} "
+                f"stale={str(days > 14).lower()} "
+                "scope=historical_rag publication_authority=false")
+          if days > 14:
+              print("::warning::NiakVIO private ChatGPT mirror is older than "
+                    "14 days. Historical conversations remain usable but are "
+                    "not current source truth. Check upstream NiakGPT export "
+                    "before treating this as recent experience.")
+          PY
+
       - name: Build ephemeral private chat memory
         run: |
           python brain/scripts/import_private_chat_project.py \
