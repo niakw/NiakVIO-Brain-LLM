@@ -533,6 +533,11 @@ jobs:
         env:
           TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
           TMDB_ACCESS_TOKEN: ${{ secrets.TMDB_ACCESS_TOKEN }}
+          # health_provider only selects immutable category-matched repair
+          # fixtures when this comparison gate is enabled. Without it the
+          # observer runs broad activation fixtures, which the Brain must
+          # (correctly) reject as an incomplete current-source repair contract.
+          NIAKVIO_REQUIRE_DECODE_PROOF: '1'
         run: |
           set -euo pipefail
           target="$(head -n 1 "$RUNNER_TEMP/niakvio-guidance-page.txt")"
@@ -559,6 +564,7 @@ jobs:
           assert row.get("provider")==sys.argv[2], "wrong provider preflight"
           assert row.get("sourceSha")==sys.argv[3], "stale source preflight"
           assert row.get("publicationAuthority") is False, "preflight cannot publish"
+          assert row.get("fixture_selection_complete") is True, "incomplete strict repair fixture contract"
           assert isinstance(row.get("network_evidence"),list), "missing structured network evidence"
           print(
               "FIELD_BRAIN_LIVE_PREFLIGHT provider="+sys.argv[2]+
