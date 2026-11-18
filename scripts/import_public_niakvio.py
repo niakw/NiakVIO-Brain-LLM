@@ -124,6 +124,84 @@ def collect_local_force(root: Path) -> list[dict[str, Any]]:
         )
     return rows
 
+
+def collect_hosted_replay_negatives(root: Path) -> list[dict[str, Any]]:
+    """Retain executed *negative* Brain experience, never raw provider edits.
+
+    Hosted reports are untrusted archival observations. Only same-run,
+    source-pinned and executed+materialized reports become negative priors.
+    They do not grant proof, provider authority, or transfer their source code.
+    """
+    import re
+    directory = root / "automation" / "hosted-repair-evidence"
+    if not directory.is_dir():
+        return []
+    rows = []
+    for path in sorted(directory.glob("*.json"))[-500:]:
+        if not re.fullmatch(r"[0-9]{8,14}\.json", path.name):
+            continue
+        report = load_json(path, {})
+        if not isinstance(report, dict) or report.get("publicationAuthority") is not False:
+            continue
+        if int(report.get("acceptedProviderCount") or 0) != 0:
+            continue
+        provider = str(report.get("provider") or "").strip().casefold()
+        if not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,63}", provider):
+            continue
+        source_sha = str(report.get("sourceNiakvioSha") or "").lower()
+        brain_sha = str(report.get("sourceBrainLlmSha") or "").lower()
+        if not re.fullmatch(r"[a-f0-9]{40}", source_sha) or not re.fullmatch(r"[a-f0-9]{40}", brain_sha):
+            continue
+        exact = load_json(directory / (path.stem + "-evaluation.json"), {})
+        if not isinstance(exact, dict) or exact.get("currentSha") != source_sha:
+            continue
+        evidence = [
+            item for item in (exact.get("rows") or [])
+            if isinstance(item, dict)
+            and item.get("provider") == provider
+            and item.get("accepted") is False
+            and item.get("executionObserved") is True
+            and item.get("materializedMutationObserved") is True
+            and str(item.get("reason") or "") in {
+                "decoded_repair_no_new_fixture_control",
+                "decoded_repair_no_improvement",
+                "no_new_decoded_media",
+            }
+        ]
+        if not evidence:
+            continue
+        for item in evidence[:1]:
+            reason = str(item["reason"])
+            mechanism = [
+                str(value.get("family") or "").strip().casefold()
+                for value in (item.get("mutationSummary") or [])[:2]
+                if isinstance(value, dict)
+                and re.fullmatch(r"[a-z0-9_-]{2,80}", str(value.get("family") or "").strip().casefold())
+            ]
+            fingerprint = str(item.get("mutationFingerprint") or "").lower()
+            if not re.fullmatch(r"[a-f0-9]{64}", fingerprint):
+                continue
+            rows.append({
+                "experience_id": f"hosted-negative:{path.stem}:{fingerprint[:16]}",
+                "source": "hosted-executed-negative",
+                "providers": [provider],
+                "failure_class": "executed_provider_no_improvement",
+                "symptom_families": ["materialized_no_decoded_gain"],
+                "signals": ["exact_source_replay", "materialized_execution",
+                            "zero_new_decoded_fixture_control"],
+                "strategy": mechanism[0] if mechanism else "discard_rejected_mutation",
+                "avoid": ["repeat_same_mutation_fingerprint"],
+                "lesson": "The exact mutation executed but added no independently decoded playable fixture. Do not treat this provider/plan as a validated repair.",
+                "result": "rejected_executed_no_improvement",
+                "provider_source_sha": source_sha,
+                "brain_source_sha": brain_sha,
+                "mutation_fingerprint": fingerprint,
+                "proof_authority": False,
+                "prior_only": True,
+            })
+    return rows[-24:]
+
+
 def collect(root: Path) -> list[dict[str, Any]]:
     sources = [
         ("brain-repair-experience", root / "automation" / "brain-repair-experience.json"),
@@ -149,7 +227,7 @@ def collect(root: Path) -> list[dict[str, Any]]:
             seen.add(identity)
             rows.append(row)
 
-    for row in collect_local_force(root):
+    for row in [*collect_local_force(root), *collect_hosted_replay_negatives(root)]:
         identity = str(row.get("experience_id") or "")
         if not identity or identity in seen:
             continue
