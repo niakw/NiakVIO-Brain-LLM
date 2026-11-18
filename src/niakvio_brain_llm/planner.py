@@ -3493,6 +3493,19 @@ class BrainPlanner:
         # cap rejects large current-provider structures before FORCE can run.
         # Retain RAG, prior and mutation policy; skip only the unused prompt.
         if compact_force:
+            # Keep the six causally relevant history rows *and* the most
+            # recent exact-executed negative mechanism for this provider.
+            # A zero-gain replay must not be crowded out by a larger corpus
+            # of successful historical strategies or different providers.
+            # These are bounded, non-authoritative hints only.
+            selected = {str(row.get("experience_id") or "") for row in experiences}
+            for row in self.store.same_provider_executed_negatives(
+                request.provider_id, limit=2
+            ):
+                identity = str(row.get("experience_id") or "")
+                if not identity or identity not in selected:
+                    experiences.append(row)
+                    selected.add(identity)
             return experiences, documents, causal_prior, mutation_policy, ""
         user = json.dumps(
             build_prompt_payload(
