@@ -1106,12 +1106,20 @@ def _force_edit_units(
     ranked = []
     seen = set()
     family_key = str(failure_class or "").strip().casefold()
+    memory_keywords = tuple(
+        str(keyword).split(":", 1)[1].strip().casefold()
+        for keyword in focus_keywords
+        if str(keyword).startswith("memory:")
+        and str(keyword).split(":", 1)[1].strip()
+    )
     family_keywords = tuple(dict.fromkeys([
         *(
             str(keyword or "").strip().casefold()
             for keyword in focus_keywords
             if str(keyword or "").strip()
+            and not str(keyword).startswith("memory:")
         ),
+        *memory_keywords,
         *(
             str(keyword or "").strip().casefold()
             for keyword in _FORCE_SOURCE_KEYWORDS.get(family_key, ())
@@ -1427,7 +1435,7 @@ def _force_edit_units(
     structural_focus_name_tokens = [
         re.sub(r"[^a-z0-9_$]+", "", str(token or "").casefold())
         for token in focus_keywords
-        if not str(token).startswith(("function:", "avoid_function:"))
+        if not str(token).startswith(("function:", "avoid_function:", "memory:"))
         if re.sub(r"[^a-z0-9_$]+", "", str(token or "").casefold())
         not in {"selector", "class"}
     ][:4]
@@ -1784,6 +1792,48 @@ def _bounded_force_structured_provider_hints(
     return hints
 
 
+
+_FORCE_MEMORY_MECHANISM_FOCUS = {
+    "sitemap_slug_discovery": ("sitemap", "slug"),
+    "inline_script_parse": ("script", "html"),
+    "base64_decode": ("decode", "atob"),
+    "packed_script_unpack": ("unpack", "decode"),
+    "form_post": ("form", "post"),
+    "hls_playlist_validation": ("hls", "m3u8"),
+    "direct_media_files": ("media", "mp4"),
+    "tmdb_identity": ("tmdb", "identity"),
+    "season_episode_identity": ("season", "episode"),
+    "embed_player_traversal": ("embed", "player"),
+    "json_response_parse": ("json", "parse"),
+    "alias_title_matching": ("title", "alias"),
+    "request_header_replay": ("referer", "header"),
+    "terminal_media_crawl": ("crawl", "media"),
+}
+
+
+def _force_structured_memory_focus_keywords(
+    hints: list[dict[str, Any]] | None,
+) -> tuple[str, ...]:
+    """Turn route-free same-provider mechanisms into secondary source-ranking hints.
+
+    The memory: prefix keeps them out of hard structural function-name
+    narrowing. Current live function/call-stack evidence remains authoritative;
+    these tokens only break ties or improve fallback ranking among exact units.
+    """
+    out: list[str] = []
+    for hint in hints or []:
+        if not isinstance(hint, dict) or hint.get("proof_authority") is not False:
+            continue
+        for mechanism in hint.get("mechanisms") or []:
+            for token in _FORCE_MEMORY_MECHANISM_FOCUS.get(str(mechanism), ()):
+                value = "memory:" + token
+                if value not in out:
+                    out.append(value)
+                if len(out) >= 8:
+                    return tuple(out)
+    return tuple(out)
+
+
 def _bounded_force_hosted_negative_hints(
     rows: list[dict[str, Any]] | None, provider_id: str
 ) -> list[dict[str, Any]]:
@@ -1932,7 +1982,16 @@ def build_force_prompt_payload(
         runtime_template_prior.get("reuseBeforeNovelBloc")
         and context.get("preferredRuntimeMutationSource")
     )
-    structural_focus_keywords = _force_structural_focus_keywords(request)
+    structured_provider_hints = _bounded_force_structured_provider_hints(
+        experiences, request.provider_id
+    )
+    memory_focus_keywords = _force_structured_memory_focus_keywords(
+        structured_provider_hints
+    )
+    structural_focus_keywords = tuple(dict.fromkeys((
+        *_force_structural_focus_keywords(request),
+        *memory_focus_keywords,
+    )))
     # Editable units are derived from the full bounded causal windows, but the
     # model does not need those same bytes duplicated verbatim as context.
     # Keep a smaller context view to reduce CPU prompt ingestion at fleet scale.
@@ -2201,9 +2260,7 @@ def build_force_prompt_payload(
         )) else {}),
         **({
             "retrieved_structured_provider_memory": structured_provider_hints
-        } if (structured_provider_hints := _bounded_force_structured_provider_hints(
-            experiences, request.provider_id
-        )) else {}),
+        } if structured_provider_hints else {}),
         **({
             "retrieved_executed_negative_memory": negative_hints
         } if (negative_hints := _bounded_force_hosted_negative_hints(
