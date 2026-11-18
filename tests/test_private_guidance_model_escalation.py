@@ -22,4 +22,26 @@ assert '-f model_profile="${{ steps.model_profile.outputs.profile || \'qwen25-co
 assert 'assert force.get("publicationAuthority") is False' in workflow
 assert 'assert force.get("proofAuthority") is False' in workflow
 assert 'assert d["directMutationAuthority"] is False' in workflow
-print("PRIVATE_GUIDANCE_MODEL_ESCALATION_OK default=3B challenger=9B pinned=true")
+
+# The same exact-SHA live observer used by NiakVIO's hosted repair must
+# be bridged to private FORCE, not silently replaced with old MD/chat priors.
+# Keep the first provider proof bounded; larger pages must remain read-only
+# and use the current census without running a fleet of network probes.
+assert "Capture exact-current provider live preflight for one representative" in workflow
+assert "steps.page.outputs.count == '1'" in workflow
+assert 'python scripts/capture_brain_live_context.py' in workflow
+assert 'sourceSha' in workflow and 'steps.source.outputs.sha' in workflow
+assert 'wrong provider preflight' in workflow
+assert 'stale source preflight' in workflow
+assert 'preflight cannot publish' in workflow
+assert 'structured network evidence' in workflow
+assert 'provider=$target ready=false reason=capture_failed_or_timeout' in workflow
+assert 'FIELD_BRAIN_LIVE_PREFLIGHT' in workflow
+assert 'live_args=(--live-evidence' in workflow
+assert workflow.count('"
+ + '{live_args[@]}"') == 2, "both repair + advisor must consume the exact same live context"
+assert 'rm -f "$RUNNER_TEMP/niakvio-brain-live-evidence.json"' in workflow
+assert 'proof_authority=false' in workflow
+assert 'npm ci --prefix niakvio --ignore-scripts --no-audit --no-fund' in workflow
+
+print("PRIVATE_GUIDANCE_MODEL_ESCALATION_OK default=3B challenger=9B pinned=true live-source=conditional-exact-sha")
