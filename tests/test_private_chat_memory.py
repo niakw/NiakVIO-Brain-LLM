@@ -102,6 +102,30 @@ class PrivateChatMemoryTests(unittest.TestCase):
         self.assertNotIn("82.10.20.30", value)
         self.assertNotIn("/Users/tommy", value)
         self.assertNotIn("supersecret", value)
+        # The redaction marker must not itself match the exact private
+        # corpus privacy scanner. Otherwise a correctly hidden path still
+        # fails the contract or leaks its presence as a path.
+        self.assertNotRegex(value, r"/Users/[^/\\s]+|/home/[^/\\s]+")
+        self.assertIn("[REDACTED_LOCAL_USER_PATH]", value)
+        import re
+        sentinel = re.compile(
+            r"github_pat_[A-Za-z0-9_]+|gh[pousr]_[A-Za-z0-9]{20,}|"
+            r"Bearer\\s+[A-Za-z0-9._~+/=-]{12,}|"
+            r"[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}|"
+            r"(?<!\\d)(?:\\+33[ .-]?|0)[1-9](?:[ .-]?\\d{2}){4}(?!\\d)|"
+            r"(?<![\\d.])(?:\\d{1,3}\\.){3}\\d{1,3}(?![\\d.])|"
+            r"/Users/[^/\\s]+|/home/[^/\\s]+", re.I,
+        )
+        for original in (
+            "/Users/example/workspace", "/home/example/workspace",
+            "Bearer aabbccddeeff00112233=", "Bearer aabbccddeeff00112233/",
+            "token=abcdefghijklmnop123", "mail sample@example.org",
+            "github_pat_abcdefghijklmnopqrstuvwxyz",
+        ):
+            with self.subTest(original=original):
+                sanitized = redact_sensitive(original)
+                self.assertIsNone(sentinel.search(sanitized), sanitized)
+
 
 
 if __name__ == "__main__":
