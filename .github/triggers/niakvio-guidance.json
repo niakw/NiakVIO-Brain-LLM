@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
   "niakvio_sha": "f3b8c8d98bc4a2b02f2aab0d899b565f4c1fdb15",
-  "reason": "2026-11-18 regenerate Sekai after candidate 8cfb3a40 revealed cross-helper body transplant (episode index helper replaced by title-alias helper body). Brain ffa1d723532f9408e0f9167903fa688272c26e29 now rejects explicit sibling-wrapper identity changes and raw sibling helper-body transplants under exact unit authority; CI green. Generate a materially different exact-current candidate only. Source NiakVIO f3b8c8d98bc4a2b02f2aab0d899b565f4c1fdb15. No publication/proof authority; canonical sandbox required.",
+  "reason": "2026-11-18 retry 73 after live Sekai FORCE 44373031124 proved provider memory contamination: route_proven_gap received memory:title/alias/decode/media first, then every correction converged on a wrong explicit sibling helper and was correctly rejected by the new identity guard. Brain 27b63587 scopes historical Lego mechanisms to the active failure family; route gaps now rank sitemap/script/embed/json/header mechanisms and exclude alias/title/season/media-only memory unless current live evidence independently selects them. Preserve all existing Markdown, historical ChatGPT, manual reverse, executed-negative and structured provider memory as proof_authority=false. Require materially different exact-current mutation, then canonical isolated apply/materialize/decoded playback/identity proof.",
   "requested_repair_queue": [
     "sekai"
   ],
-  "retry": 72,
+  "retry": 73,
   "require_deterministic_force": false
 }
