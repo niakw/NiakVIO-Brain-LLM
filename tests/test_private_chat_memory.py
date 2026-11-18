@@ -118,6 +118,7 @@ class PrivateChatMemoryTests(unittest.TestCase):
         )
         for original in (
             "/Users/example/workspace", "/home/example/workspace",
+            "/users/example/workspace", "/HOME/example/workspace",
             "Bearer aabbccddeeff00112233=", "Bearer aabbccddeeff00112233/",
             "token=abcdefghijklmnop123", "mail sample@example.org",
             "github_pat_abcdefghijklmnopqrstuvwxyz",
