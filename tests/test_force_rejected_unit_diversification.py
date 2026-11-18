@@ -213,10 +213,12 @@ class ForceRejectedUnitDiversification(unittest.TestCase):
     def test_full_block_body_repeat_is_tagged_as_exact_noop_and_rotates(self):
         source = (
             "async function crawl(q){\n"
-            "if (q && q.player) { const rows = parse(q); return rows; }\n"
-            "if (q && q.embed) { return embeds(q); }\n"
-            "return [];\n}\n"
+            + "".join(f"const observed{i}=q;\n" for i in range(130))
+            + "if (q && q.player) { const rows = parse(q); return rows; }\n"
+            + "if (q && q.embed) { return embeds(q); }\n"
+            + "return [];\n}\n"
         )
+        self.assertGreater(len(source), 1800)
         request = RepairRequest(
             provider_id="synthetic", status="CHAIN REACHED",
             failure_class="chain_terminal_gap",
