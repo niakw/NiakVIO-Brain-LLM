@@ -2270,5 +2270,35 @@ class PlannerGuardTests(unittest.TestCase):
             )
 
 
+    def test_block_unit_replayed_wrapper_is_normalized_not_nested(self):
+        from niakvio_brain_llm.planner import _preserve_selected_block_envelope
+
+        current = (
+            'if (formRequest && requests < requestBudget) {'
+            'const media = oldExtractor(query); return media;}'
+        )
+        replacement = (
+            'const media = newExtractor(query); return media;'
+        )
+        candidate = _preserve_selected_block_envelope(current, replacement)
+        self.assertEqual(candidate.count('if (formRequest'), 1)
+        self.assertIn('newExtractor(query)', candidate)
+        wrapped = _preserve_selected_block_envelope(
+            current, 'if (formRequest && requests < requestBudget) {' + replacement + '}'
+        )
+        self.assertEqual(wrapped, candidate)
+        # This exact no-op wrapper was emitted in live FORCE 44327993359.
+        with self.assertRaisesRegex(ValueError, "repeats current body"):
+            _preserve_selected_block_envelope(current, current)
+        with self.assertRaisesRegex(ValueError, "condition changed"):
+            _preserve_selected_block_envelope(
+                current, 'if (formRequest || requests < requestBudget) {' + replacement + '}'
+            )
+        with self.assertRaisesRegex(ValueError, "repeats current body"):
+            _preserve_selected_block_envelope(
+                current, 'const media = oldExtractor(query); return media;'
+            )
+
+
 if __name__ == "__main__":
     unittest.main()
