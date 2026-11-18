@@ -394,6 +394,8 @@ def main() -> int:
             ("no-op", "no_op"),
             ("truncated source fragment", "truncated_fragment"),
             ("function anchor is structurally incomplete", "truncated_fragment"),
+            ("illegal_continue_outside_loop", "illegal_continue_outside_loop"),
+            ("illegal_break_outside_loop", "illegal_break_outside_loop"),
             ("javascript syntax validation failed", "syntax_error"),
             ("python syntax validation failed", "syntax_error"),
             ("duplicated javascript control tokens", "duplicated_tokens"),
@@ -533,6 +535,18 @@ def main() -> int:
                     "previous edit broke syntax; change only one complete expression "
                     "or statement copied from the selected window, preserve surrounding "
                     "quotes/braces/parentheses and never emit a partial function declaration"
+                ),
+                "illegal_continue_outside_loop": (
+                    "previous edit introduced continue outside a surrounding for/while "
+                    "loop. The selected exact block is NOT a loop body; never add "
+                    "break/continue to this unit. Modify a bounded expression or "
+                    "return a valid value from its existing function, otherwise abstain"
+                ),
+                "illegal_break_outside_loop": (
+                    "previous edit introduced break outside a surrounding loop or "
+                    "switch. Never add break/continue to this selected block unless "
+                    "its exact current source already proves an enclosing construct; "
+                    "propose an expression edit or abstain"
                 ),
                 "window_mismatch": (
                     "previous find was not present in the chosen causal window; copy the "
