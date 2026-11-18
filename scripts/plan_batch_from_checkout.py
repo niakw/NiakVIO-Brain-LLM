@@ -70,6 +70,51 @@ def force_feedback_temperature(request) -> float:
     return 0.0
 
 
+def force_rejected_unit_hashes(observations) -> list[str]:
+    """Return bounded exact-source hashes that must stay rotated across a FORCE portfolio."""
+    values = []
+    seen = set()
+    for row in observations or []:
+        if not isinstance(row, dict):
+            continue
+        if str(row.get("stage") or "") != "force_validation_feedback":
+            continue
+        if row.get("rotate_unit") is not True:
+            continue
+        reason = str(row.get("reason") or "").strip().casefold()
+        if reason not in {"no_op", "causally_empty_deletion", "removed_live_binding"}:
+            continue
+        value = str(row.get("rejected_unit_sha256") or "").strip().casefold()
+        if not re.fullmatch(r"[0-9a-f]{64}", value) or value in seen:
+            continue
+        seen.add(value)
+        values.append(value)
+    return values[-4:]
+
+
+def force_portfolio_rejected_feedback(hashes) -> list[dict]:
+    """Carry only source fingerprints, never rejected provider bytes, to later hypotheses."""
+    rows = []
+    seen = set()
+    for raw in hashes or []:
+        value = str(raw or "").strip().casefold()
+        if not re.fullmatch(r"[0-9a-f]{64}", value) or value in seen:
+            continue
+        seen.add(value)
+        rows.append({
+            "stage": "force_validation_feedback",
+            "source": "brain-force-portfolio-rejected-unit",
+            "reason": "no_op",
+            "rejected_unit_sha256": value,
+            "rotate_unit": True,
+            "instruction": (
+                "this exact current-source unit already produced a rejected same-run edit; "
+                "exclude it from later portfolio hypotheses and choose another causal unit or scope"
+            ),
+        })
+    return rows[-4:]
+
+
 def _reserve_advisor_experiment(request, outcome) -> bool:
     proposal = outcome.proposal
     if proposal is None or not isinstance(proposal.experiment, dict) or not proposal.experiment:
@@ -300,7 +345,7 @@ def main() -> int:
 
     def _row(position: int, hypothesis_index: int, provider: str, request, outcome) -> dict:
         family = repair_family_descriptor(request)
-        return {
+        row = {
             "position": position,
             "hypothesis_index": hypothesis_index,
             "provider": provider,
@@ -311,6 +356,10 @@ def main() -> int:
             "routing": outcome.routing.to_dict(),
             "proposal": outcome.proposal.to_dict() if outcome.proposal else None,
         }
+        rejected = force_rejected_unit_hashes(request.observations)
+        if rejected:
+            row["_force_rejected_unit_sha256s"] = rejected
+        return row
 
     def _reserve_force_portfolio_candidate(request, row: dict) -> str:
         proposal = row.get("proposal") if isinstance(row, dict) else None
@@ -829,6 +878,7 @@ def main() -> int:
                 reason: str,
                 candidate_index: int,
                 scope_trace: list[dict[str, object]],
+                rejected_hashes: list[str] | None = None,
             ) -> None:
                 feedback = {
                     "stage": "force_validation_feedback",
@@ -859,7 +909,8 @@ def main() -> int:
                         }
                     )
                 ][:12]
-                request.observations = [feedback, *retained]
+                rejected_feedback = force_portfolio_rejected_feedback(rejected_hashes)
+                request.observations = [feedback, *rejected_feedback, *retained]
                 negative_memory_rows = sum(
                     1
                     for row in retained
@@ -869,7 +920,8 @@ def main() -> int:
                 print(
                     "FIELD_BRAIN_FORCE_PORTFOLIO_FEEDBACK "
                     f"provider={provider} after_index={candidate_index} reason={reason or 'rejected'} "
-                    f"negative_memory_rows={negative_memory_rows}",
+                    f"negative_memory_rows={negative_memory_rows} "
+                    f"rejected_units_carried={len(rejected_feedback)}",
                     flush=True,
                 )
 
@@ -1023,10 +1075,15 @@ def main() -> int:
                             if last_error is not None
                             else "abstain"
                         )
+                        rejected_hashes = (
+                            list(last_row.get("_force_rejected_unit_sha256s") or [])
+                            if isinstance(last_row, dict) else []
+                        )
                         _carry_force_portfolio_feedback(
                             continuation_reason,
                             candidate_index,
                             scope_trace,
+                            rejected_hashes,
                         )
                         print(
                             "FIELD_BRAIN_FORCE_PORTFOLIO_CONTINUE "
@@ -1038,6 +1095,13 @@ def main() -> int:
                     break
 
                 planned.append(selected_row)
+                selected_rejected = list(selected_row.get("_force_rejected_unit_sha256s") or [])
+                if selected_rejected:
+                    request.observations = [
+                        *force_portfolio_rejected_feedback(selected_rejected),
+                        *[copy.deepcopy(row) for row in (request.observations or [])
+                          if isinstance(row, dict)],
+                    ]
                 mutation_fp = _reserve_force_portfolio_candidate(request, selected_row)
                 print(
                     "FIELD_BRAIN_FORCE_PORTFOLIO_RESERVED "
