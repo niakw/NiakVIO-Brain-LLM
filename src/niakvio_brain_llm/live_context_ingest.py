@@ -46,7 +46,19 @@ def attach_live_runtime_evidence(
     recent_edits = live.get("previous_executed_edits")
     if not isinstance(recent_edits, list):
         recent_edits = []
+    status = str(live.get("preflight_status") or "").strip().casefold()
+    if status not in {
+        "healthy", "unavailable", "provider_unreachable", "blocked",
+        "runtime_error", "no_streams", "partial",
+    }:
+        status = ""
+    playable = live.get("preflight_playable")
+    if type(playable) is not int or not 0 <= playable <= 100000:
+        playable = 0
     current = {
+        "preflight_status": status,
+        "preflight_playable": playable,
+        "fixture_selection_complete": live.get("fixture_selection_complete") is True,
         "network_evidence": network_evidence(live.get("network_evidence")),
         "public_domain_references": public_domain_references(live.get("public_domain_references")),
         "fixture_evidence": fixture_evidence(live.get("fixture_evidence")),
