@@ -98,8 +98,16 @@ class ForceCpuRetryBudgetTests(unittest.TestCase):
         self.assertTrue(compact["new_bloc_target"]["editable_units"])
         self.assertEqual(compact["output_contract"]["validation_retry_context"], "focused")
         self.assertTrue(compact["mutation_policy"]["allow_mutations"])
-        self.assertEqual(compact["current_fixture_evidence"][0]["tmdbId"], "1001")
-        self.assertEqual(compact["current_fixture_evidence"][0]["episode"], 1)
+        # The fixture projection intentionally excludes literal catalogue
+        # coordinates: NiakVIO's exact-identity verification owns those.
+        # Preserve the category, tested fixture and negative playback counters.
+        fixture = compact["current_fixture_evidence"][0]
+        self.assertEqual(fixture["fixture"], "Sekai S01E01")
+        self.assertEqual(fixture["category"], "anime")
+        self.assertEqual(fixture["streamsReturned"], 0)
+        self.assertEqual(fixture["streamsPlayable"], 0)
+        self.assertNotIn("tmdbId", fixture)
+        self.assertNotIn("episode", fixture)
 
 
 if __name__ == "__main__":
