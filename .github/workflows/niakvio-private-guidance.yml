@@ -515,6 +515,69 @@ jobs:
             '.brain-models/qwen35-9b-q4.gguf' | sha256sum -c -
           echo 'FIELD_BRAIN_LOCAL_MODEL_WEIGHTS profile=qwen35-9b verified=true'
 
+      # Existing NiakVIO live-capture + Brain --live-evidence contract was
+      # previously disconnected in this private guidance lane. For a single
+      # exact-source representative, observe current provider bytes and network
+      # responses before spending the CPU FORCE budget. Never stage nine network
+      # probes inside a bounded multi-provider guidance page.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        if: steps.page.outputs.count == '1' && steps.route.outputs.force_llm_needed == 'true' && steps.deterministic_force.outputs.ready != 'true'
+        with:
+          node-version: '24'
+
+      - name: Capture exact-current provider live preflight for one representative
+        id: live_preflight
+        if: steps.page.outputs.count == '1' && steps.route.outputs.force_llm_needed == 'true' && steps.deterministic_force.outputs.ready != 'true'
+        timeout-minutes: 9
+        shell: bash
+        env:
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+          TMDB_ACCESS_TOKEN: ${{ secrets.TMDB_ACCESS_TOKEN }}
+        run: |
+          set -euo pipefail
+          target="$(head -n 1 "$RUNNER_TEMP/niakvio-guidance-page.txt")"
+          evidence="$RUNNER_TEMP/niakvio-brain-live-evidence.json"
+          # No raw site response or private route may be printed or archived.
+          if ! npm ci --prefix niakvio --ignore-scripts --no-audit --no-fund \
+              > "$RUNNER_TEMP/niakvio-live-npm.log" 2>&1; then
+            echo "FIELD_BRAIN_LIVE_PREFLIGHT provider=$target ready=false reason=tooling_unavailable"
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if ! (cd niakvio && timeout --kill-after=15s 390s \
+              python scripts/capture_brain_live_context.py \
+                --provider "$target" --output "$evidence") \
+              > "$RUNNER_TEMP/niakvio-live-capture.log" 2>&1; then
+            rm -f "$evidence"
+            echo "FIELD_BRAIN_LIVE_PREFLIGHT provider=$target ready=false reason=capture_failed_or_timeout"
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if ! python - "$evidence" "$target" "${{ steps.source.outputs.sha }}" <<'PY'
+          import json,sys
+          row=json.load(open(sys.argv[1],encoding="utf-8"))
+          assert row.get("provider")==sys.argv[2], "wrong provider preflight"
+          assert row.get("sourceSha")==sys.argv[3], "stale source preflight"
+          assert row.get("publicationAuthority") is False, "preflight cannot publish"
+          assert isinstance(row.get("network_evidence"),list), "missing structured network evidence"
+          print(
+              "FIELD_BRAIN_LIVE_PREFLIGHT provider="+sys.argv[2]+
+              " ready=true exact_source=true network_events="+
+              str(len(row["network_evidence"]))+
+              " fixture_count="+str(len(row.get("fixture_evidence") or []))+
+              " preflight_status="+str(row.get("preflight_status") or "unknown")[:48]+
+              " proof_authority=false"
+          )
+          PY
+          then
+            rm -f "$evidence"
+            echo "FIELD_BRAIN_LIVE_PREFLIGHT provider=$target ready=false reason=invalid_source_or_schema"
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+          echo "path=$evidence" >> "$GITHUB_OUTPUT"
+
       - name: Start bounded local Qwen advisor
         if: steps.route.outputs.llm_needed == 'true' && steps.deterministic_force.outputs.ready != 'true'
         shell: bash
@@ -560,6 +623,10 @@ jobs:
           while IFS= read -r provider; do
             [ -z "$provider" ] || provider_args+=(--provider "$provider")
           done < "$RUNNER_TEMP/niakvio-guidance-page.txt"
+          live_args=()
+          if [ "${{ steps.live_preflight.outputs.ready }}" = "true" ]; then
+            live_args=(--live-evidence "${{ steps.live_preflight.outputs.path }}")
+          fi
           if [ "${{ steps.deterministic_force.outputs.ready }}" = "true" ]; then
             cp private-force-deterministic.jsonl private-force-batch.jsonl
             : > private-guided-batch.jsonl
@@ -571,6 +638,7 @@ jobs:
             --experience public-experience.jsonl \
             --documents public-documents.jsonl \
             --extra-documents private-documents.jsonl \
+            "${live_args[@]}" \
             --mode repair \
             --max-hypotheses 4 \
             "${provider_args[@]}" \
@@ -586,6 +654,7 @@ jobs:
             --experience public-experience.jsonl \
             --documents public-documents.jsonl \
             --extra-documents private-documents.jsonl \
+            "${live_args[@]}" \
             --mode brain \
             "${provider_args[@]}" \
             --endpoint http://127.0.0.1:8080 \
@@ -670,6 +739,7 @@ jobs:
         if: always()
         run: |
           rm -f private-documents.jsonl private-guided-batch.jsonl private-force-batch.jsonl private-force-deterministic.jsonl public-documents.jsonl public-experience.jsonl
+          rm -f "$RUNNER_TEMP/niakvio-brain-live-evidence.json" "$RUNNER_TEMP/niakvio-live-npm.log" "$RUNNER_TEMP/niakvio-live-capture.log"
           rm -rf private
 
       - name: Publish merged paged guidance ref
