@@ -232,7 +232,10 @@ class ForceProjectMemoryBridgeTests(unittest.TestCase):
         prompt_units = prompt["new_bloc_target"]["editable_units"]
         self.assertTrue(prompt_units)
         self.assertIn("parseSitemapSlug", prompt_units[0]["source"])
-        self.assertIn("memory:sitemap", _force_structural_focus_keywords(request))
+        self.assertIn("memory:sitemap", prompt["structural_focus"])
+        # Base structural focus stays current-evidence-only; memory ranking is
+        # explicitly carried from this prompt into schema/converter instead.
+        self.assertNotIn("memory:sitemap", _force_structural_focus_keywords(request))
 
         # Wire schema must constrain exactly the IDs produced by the prompt.
         exact_focus = tuple(prompt["structural_focus"])
