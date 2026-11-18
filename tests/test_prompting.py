@@ -1209,5 +1209,41 @@ class PromptingTests(unittest.TestCase):
         self.assertIn("networkShapes", prefix)
 
 
+    def test_oversized_media_helper_offers_complete_braced_block_unit(self):
+        from niakvio_brain_llm.prompting import _force_edit_units
+        from niakvio_brain_llm.source_units import javascript_if_block_span
+
+        # The complete helper exceeds FORCE's function-unit ceiling. Its
+        # control body remains a real, exact, separately editable JS unit.
+        source = (
+            "async function crawlDirectMedia(query){\n"
+            + "".join(f"const observed{i}=query;\n" for i in range(125))
+            + "if (query && String(query).includes(')')) {\n"
+            + "const mediaSources = extractPlayers(query);\n"
+            + "return mediaSources.filter(Boolean);\n"
+            + "}\nreturn [];\n}\n"
+        )
+        self.assertGreater(len(source), 1800)
+        units = _force_edit_units(
+            source, "media_extraction_gap",
+            focus_keywords=("function:crawlDirectMedia",),
+            max_units=4,
+        )
+        blocks = [item for item in units if item["kind"] == "block_unit"]
+        self.assertTrue(blocks, "complete if-block inside large executed helper was lost")
+        selected = blocks[0]
+        self.assertEqual(
+            source[selected["offset"]:selected["end_offset"]],
+            selected["source"],
+        )
+        self.assertIn("mediaSources.filter(Boolean)", selected["source"])
+        self.assertEqual(
+            javascript_if_block_span(selected["source"], 0)[1],
+            len(selected["source"]),
+        )
+        self.assertIsNone(javascript_if_block_span("if (a) return a;", 0))
+        self.assertIsNone(javascript_if_block_span("if (a) { return a;", 0))
+
+
 if __name__ == "__main__":
     unittest.main()
