@@ -143,7 +143,10 @@ def collect_hosted_replay_negatives(root: Path) -> list[dict[str, Any]]:
         report = load_json(path, {})
         if not isinstance(report, dict) or report.get("publicationAuthority") is not False:
             continue
-        if int(report.get("acceptedProviderCount") or 0) != 0:
+        # Archived reports are untrusted inputs. Reject malformed counters
+        # instead of letting one historical file abort all subsequent imports.
+        accepted_count = report.get("acceptedProviderCount")
+        if type(accepted_count) is not int or accepted_count != 0:
             continue
         provider = str(report.get("provider") or "").strip().casefold()
         if not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,63}", provider):
