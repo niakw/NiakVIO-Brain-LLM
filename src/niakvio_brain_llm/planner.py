@@ -713,6 +713,8 @@ def _force_unit_for_edit(
     request: RepairRequest,
     source: str,
     unit_id: str,
+    *,
+    focus_keywords: tuple[str, ...] = (),
 ) -> tuple[dict[str, Any], dict[str, int]]:
     if not unit_id:
         raise ValueError("compact Force unit_id is missing")
@@ -720,11 +722,11 @@ def _force_unit_for_edit(
     # previously failed units, even if a backend ignores the schema.
 
     edit_kwargs = _force_window_kwargs_for_request(request)
-    focus_keywords = _force_structural_focus_keywords(request)
+    selected_focus = tuple(focus_keywords) or _force_structural_focus_keywords(request)
     units = _force_edit_units(
         source,
         request.failure_class,
-        focus_keywords=focus_keywords,
+        focus_keywords=selected_focus,
         **edit_kwargs,
     )
     window_kwargs = {
@@ -750,6 +752,8 @@ def _force_unit_for_edit(
 def _compact_edit_to_mutation(
     request: RepairRequest,
     edit: dict[str, Any] | None,
+    *,
+    focus_keywords: tuple[str, ...] = (),
 ) -> dict[str, Any] | None:
     if not isinstance(edit, dict):
         return None
@@ -780,7 +784,9 @@ def _compact_edit_to_mutation(
         }
         absolute_start_hint = None
         if unit_id:
-            unit, window_kwargs = _force_unit_for_edit(request, source, unit_id)
+            unit, window_kwargs = _force_unit_for_edit(
+                request, source, unit_id, focus_keywords=focus_keywords
+            )
             window_id = str(unit.get("window_id") or "")
             find = str(unit.get("source") or "")
             absolute_start_hint = int(unit.get("offset") or 0)
@@ -863,7 +869,9 @@ def _compact_edit_to_mutation(
     max_find = 320
     max_replace = 640
     if unit_id:
-        unit, window_kwargs = _force_unit_for_edit(request, source, unit_id)
+        unit, window_kwargs = _force_unit_for_edit(
+                request, source, unit_id, focus_keywords=focus_keywords
+            )
         window_id = str(unit.get("window_id") or "")
         find = str(unit.get("source") or "")
         absolute_start_hint = int(unit.get("offset") or 0)
@@ -3418,6 +3426,8 @@ def _deterministic_structural_force_mutation(
 def _compact_wire_schema_for(
     request: RepairRequest,
     mutation_policy: dict[str, Any],
+    *,
+    focus_keywords: tuple[str, ...] = (),
 ) -> dict[str, Any]:
     allowed = [
         str(scope)
@@ -3425,6 +3435,7 @@ def _compact_wire_schema_for(
         if str(scope) in {"provider_data", "provider_patch", "provider_bloc", "provider_js"}
     ]
     context = request.provider_context or {}
+    selected_focus = tuple(focus_keywords) or _force_structural_focus_keywords(request)
     variants: list[dict[str, Any]] = []
     for scope in allowed:
         if scope == "provider_bloc":
@@ -3438,7 +3449,7 @@ def _compact_wire_schema_for(
             units = _force_edit_units(
                 source,
                 request.failure_class,
-                focus_keywords=_force_structural_focus_keywords(request),
+                focus_keywords=selected_focus,
                 **_force_window_kwargs_for_request(request),
             )
             unit_ids = [str(row.get("id")) for row in selectable_force_units(request, units)
@@ -3477,7 +3488,7 @@ def _compact_wire_schema_for(
             units = _force_edit_units(
                 source,
                 request.failure_class,
-                focus_keywords=_force_structural_focus_keywords(request),
+                focus_keywords=selected_focus,
                 **_force_window_kwargs_for_request(request),
             )
             unit_ids = [str(row.get("id")) for row in selectable_force_units(request, units)
@@ -3749,6 +3760,11 @@ class BrainPlanner:
                 request, causal_prior, mutation_policy, documents,
                 experiences=experiences,
             )
+            force_focus_keywords = tuple(
+                str(value)
+                for value in (force_payload.get("structural_focus") or [])
+                if str(value).strip()
+            )
             edit_surface = (
                 force_payload.get("new_bloc_target")
                 if "provider_bloc" in request.allowed_mutations
@@ -3804,7 +3820,9 @@ class BrainPlanner:
             # Force cascade normally exposes exactly one mutation family, so
             # llama.cpp can enforce the fields that family actually needs
             # without paying for the complete production proposal schema.
-            schema = _compact_wire_schema_for(request, mutation_policy)
+            schema = _compact_wire_schema_for(
+                request, mutation_policy, focus_keywords=force_focus_keywords
+            )
         else:
             if request.advisor_only:
                 schema = advisor_schema_for(
@@ -3856,7 +3874,9 @@ class BrainPlanner:
         if compact_force:
             raw_edit = parsed.get("edit") if isinstance(parsed.get("edit"), dict) else None
             try:
-                mutation = _compact_edit_to_mutation(request, raw_edit)
+                mutation = _compact_edit_to_mutation(
+                    request, raw_edit, focus_keywords=force_focus_keywords
+                )
             except ValueError as exc:
                 tagged = tagged_force_deletion(request, raw_edit, exc)
                 if tagged is exc:

@@ -235,7 +235,10 @@ class ForceProjectMemoryBridgeTests(unittest.TestCase):
         self.assertIn("memory:sitemap", _force_structural_focus_keywords(request))
 
         # Wire schema must constrain exactly the IDs produced by the prompt.
-        wire = _compact_wire_schema_for(request, policy)
+        exact_focus = tuple(prompt["structural_focus"])
+        wire = _compact_wire_schema_for(
+            request, policy, focus_keywords=exact_focus
+        )
         variant = next(
             row for row in wire["properties"]["edit"]["anyOf"]
             if row.get("properties", {}).get("scope", {}).get("enum") == ["provider_bloc"]
@@ -248,7 +251,9 @@ class ForceProjectMemoryBridgeTests(unittest.TestCase):
         # post-model converter. An ID that silently remaps to another helper is
         # a Brain pipeline defect even if the JSON schema accepts it.
         for expected in prompt_units:
-            resolved, _ = _force_unit_for_edit(request, source, expected["id"])
+            resolved, _ = _force_unit_for_edit(
+                request, source, expected["id"], focus_keywords=exact_focus
+            )
             self.assertEqual(resolved["source"], expected["source"])
             self.assertEqual(resolved["offset"], expected["offset"])
 

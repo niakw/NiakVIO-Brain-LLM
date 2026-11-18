@@ -694,13 +694,6 @@ def _force_structural_focus_keywords(request: RepairRequest) -> tuple[str, ...]:
     live = (request.provider_context or {}).get("live_runtime_evidence") or {}
     context = request.provider_context or {}
     source = context.get('preferredRuntimeMutationSource') or context.get('runtimeMutationSource') or ''
-    # Memory-aware unit ranking must be identical in prompt, constrained wire
-    # schema and exact-byte converter. build_force_prompt_payload persists only
-    # sanitized route-free memory tokens here; no source text or proof authority.
-    for raw in getattr(request, "_force_memory_focus_keywords", ()) or ():
-        value = str(raw or "").strip().casefold()
-        if re.fullmatch(r"memory:[a-z0-9_-]{2,48}", value):
-            focus.append(value)
     focus.extend('avoid_function:' + name for name in non_improving_functions(source, live))
     # A classified GraphQL failure at lookup is stronger edit-locality evidence
     # than a generic downstream "chain terminal" tag. Preserve the other
@@ -2073,11 +2066,13 @@ def build_force_prompt_payload(
     memory_focus_keywords = _force_structured_memory_focus_keywords(
         structured_provider_hints, request.failure_class
     )
-    # Persist only the sanitized ranking tokens on this in-memory request.
-    # _compact_wire_schema_for and _force_unit_for_edit consume the same
-    # _force_structural_focus_keywords(request), preventing unit_id remapping.
-    setattr(request, "_force_memory_focus_keywords", tuple(memory_focus_keywords))
-    structural_focus_keywords = _force_structural_focus_keywords(request)
+    # This exact tuple is later passed explicitly to the constrained wire
+    # schema and exact-byte converter. Never recompute memory-aware unit IDs
+    # from a different focus set after the model has selected one.
+    structural_focus_keywords = tuple(dict.fromkeys((
+        *_force_structural_focus_keywords(request),
+        *memory_focus_keywords,
+    )))
     # Editable units are derived from the full bounded causal windows, but the
     # model does not need those same bytes duplicated verbatim as context.
     # Keep a smaller context view to reduce CPU prompt ingestion at fleet scale.
