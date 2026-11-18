@@ -2,6 +2,10 @@ name: Qwen 3B NiakVIO Benchmark
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/llm-benchmark-3b.yml'
 
 permissions:
   contents: read
@@ -52,7 +56,7 @@ jobs:
           key: qwen25-coder-3b-q4-km-v1
       - name: Start Qwen2.5 Coder 3B
         run: |
-          ./llama.cpp/build/bin/llama-server -hf Qwen/Qwen2.5-Coder-3B-Instruct-GGUF:Q4_K_M --host 127.0.0.1 --port 8080 -c 4096 -np 1 > llama-server.log 2>&1 &
+          ./llama.cpp/build/bin/llama-server -hf Qwen/Qwen2.5-Coder-3B-Instruct-GGUF:Q4_K_M --host 127.0.0.1 --port 8080 -c 8192 -np 1 > llama-server.log 2>&1 &
           for i in $(seq 1 180); do
             curl -fsS http://127.0.0.1:8080/health >/dev/null 2>&1 && exit 0
             sleep 2
@@ -61,7 +65,25 @@ jobs:
           exit 1
       - name: Run raw NiakVIO golden benchmark
         run: |
-          python brain/benchmark/golden_model_benchmark.py --cases brain/benchmark/golden_cases.jsonl --experience public-experience.jsonl --documents public-documents.jsonl --endpoint http://127.0.0.1:8080 --model qwen2.5-coder-3b | tee golden-benchmark-3b.json
+          # Exact six-case parity with pinned 9B diagnostic: no extra private/public
+          # memory injection, identical context ceiling and response budget.
+          : > empty-experience.jsonl
+          : > empty-documents.jsonl
+          python brain/benchmark/golden_model_benchmark.py \
+            --cases brain/benchmark/golden_cases.jsonl \
+            --experience empty-experience.jsonl \
+            --documents empty-documents.jsonl \
+            --endpoint http://127.0.0.1:8080 --model qwen2.5-coder-3b \
+            --request-timeout-seconds 420 --max-tokens 512 \
+            --output golden-benchmark-3b.json
+          python - <<'PY'
+          import json
+          r=json.load(open('golden-benchmark-3b.json'))
+          if r.get('incomplete') or r.get('completedCases') != r.get('cases') or r.get('validCaseCount',0)==0:
+              raise SystemExit('3B baseline incomplete or model unavailable')
+          print('FIELD_BRAIN_CPU_3B_DIAGNOSTIC cases=%d schema_valid=%d compliant=%d rate=%.3f acceptance=not-run decoded=not-run' %
+                (r['cases'], r['validCaseCount'], sum(x.get('fully_compliant') is True for x in r['results']), r['rates']['fully_compliant']))
+          PY
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always()
         with:
