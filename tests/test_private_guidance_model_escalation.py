@@ -35,6 +35,8 @@ assert 'wrong provider preflight' in workflow
 assert 'stale source preflight' in workflow
 assert 'preflight cannot publish' in workflow
 assert 'structured network evidence' in workflow
+assert "NIAKVIO_REQUIRE_DECODE_PROOF: '1'" in workflow
+assert 'incomplete strict repair fixture contract' in workflow
 assert 'provider=$target ready=false reason=capture_failed_or_timeout' in workflow
 assert 'FIELD_BRAIN_LIVE_PREFLIGHT' in workflow
 assert 'live_args=(--live-evidence' in workflow
