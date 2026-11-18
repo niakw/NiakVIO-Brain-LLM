@@ -1,3 +1,13 @@
+## 2026-11-18 — Structured provider construction memory reuses the existing ExperienceStore
+
+The canonical NiakVIO repair-prior document contains two distinct knowledge layers: explicit historical repair cases and a per-provider structured knowledge map derived from NiakVIO-owned ProviderBase/DATA/Lego state. Brain already imported the first layer. It now imports the second layer into the **same ExperienceStore** rather than creating another memory database.
+
+A `provider-structured-knowledge` row is a historical same-provider construction prior only. Its permitted projection is deliberately narrow: provider ID, strategy class, owned Lego basenames, route-family names, recipe roles/methods/response classes, media types and boolean recipe-capability flags. It excludes domains/hosts, route templates, request URLs/bodies/origins, opaque IDs, credentials and raw JavaScript/Python. This means an old manual reverse can tell FORCE *what kind of mechanism NiakVIO previously built* without telling it that an old endpoint or old implementation is still valid.
+
+Compact FORCE reserves at most one matching row with `ExperienceStore.same_provider_structured_priors()` and projects it as `retrieved_structured_provider_memory`. The row always carries `prior_only=true`, `proof_authority=false`, no current execution/network proof and a same-provider boundary. It cannot authorize mutation, bypass current-source unit selection, override negative execution memory, or satisfy playback/identity gates. Current exact bytes and live provider evidence remain authoritative.
+
+This channel complements, rather than replaces, existing memory planes: Markdown/evidence documents, explicit historical reverse cases, private historical ChatGPT RAG, accepted-program memory and executed-negative experiments. Their provenance remains separate so a model can combine prior knowledge while the deterministic pipeline can still distinguish memory from evidence.
+
 ## 2026-11-18 — Existing multi-source memory is prior context; exact live evidence owns repair authority
 
 NiakVIO Brain does **not** use a newly invented parallel memory store. FORCE reuses the existing knowledge planes:
