@@ -18,6 +18,7 @@ def live_fixture():
         "sourceSha": SHA,
         "preflight_status": "healthy",
         "preflight_playable": 2,
+        "preflight_identity_contradictions": 0,
         "fixture_selection_complete": True,
         "fixture_evidence": [
             {
@@ -81,6 +82,7 @@ class LivePlayableProofRefreshTests(unittest.TestCase):
             ),
             lambda live: live.update(preflight_playable=1),
             lambda live: live.update(preflight_status="no_streams"),
+            lambda live: live.update(preflight_identity_contradictions=1),
             lambda live: live.update(fixture_selection_complete=False),
         ):
             live = live_fixture()
