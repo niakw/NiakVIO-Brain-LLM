@@ -195,6 +195,62 @@ class ForceProjectMemoryBridgeTests(unittest.TestCase):
             (),
         )
 
+    def test_route_gap_memory_excludes_identity_and_media_only_mechanisms(self):
+        hints = [{
+            "mechanisms": [
+                "alias_title_matching",
+                "base64_decode",
+                "direct_media_files",
+                "inline_script_parse",
+                "json_response_parse",
+                "request_header_replay",
+                "season_episode_identity",
+                "sitemap_slug_discovery",
+                "terminal_media_crawl",
+                "tmdb_identity",
+            ],
+            "proof_authority": False,
+        }]
+        focus = _force_structured_memory_focus_keywords(hints, "route_proven_gap")
+        self.assertEqual(
+            focus,
+            (
+                "memory:sitemap", "memory:slug",
+                "memory:script", "memory:html",
+                "memory:json", "memory:parse",
+                "memory:referer", "memory:header",
+            ),
+        )
+        for contaminated in (
+            "memory:title", "memory:alias", "memory:season", "memory:episode",
+            "memory:decode", "memory:atob", "memory:media", "memory:mp4",
+            "memory:crawl", "memory:tmdb", "memory:identity",
+        ):
+            self.assertNotIn(contaminated, focus)
+
+    def test_terminal_gap_memory_prioritizes_terminal_extraction_not_title_alias(self):
+        hints = [{
+            "mechanisms": [
+                "alias_title_matching",
+                "terminal_media_crawl",
+                "embed_player_traversal",
+                "packed_script_unpack",
+                "hls_playlist_validation",
+            ],
+            "proof_authority": False,
+        }]
+        focus = _force_structured_memory_focus_keywords(hints, "chain_terminal_gap")
+        self.assertEqual(
+            focus[:6],
+            (
+                "memory:crawl", "memory:media",
+                "memory:embed", "memory:player",
+                "memory:unpack", "memory:decode",
+            ),
+        )
+        self.assertNotIn("memory:title", focus)
+        self.assertNotIn("memory:alias", focus)
+
     def test_other_provider_private_memory_and_failed_edits_do_not_transfer(self):
         request = RepairRequest(
             provider_id="movix", failure_class="route_proven_gap",
