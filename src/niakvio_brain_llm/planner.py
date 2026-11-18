@@ -3478,6 +3478,19 @@ class BrainPlanner:
         query = request.to_dict()
         experiences = self.store.search(query, limit=6)
         documents = self.documents.search(query, limit=4)
+        if compact_force:
+            # Ordinary top-4 lexical hits can be crowded by MEMORY.md, census
+            # and technical docs. Reserve one *provider-specific* old-chat
+            # RAG hit if the ephemeral private corpus is present. Never treat
+            # chat text as current execution evidence or proof authority.
+            private_hits = self.documents.search(
+                query, limit=1, private_only=True
+            )
+            if private_hits and not any(
+                row.get("document_id") == private_hits[0].get("document_id")
+                for row in documents
+            ):
+                documents.append(private_hits[0])
         causal_prior = build_causal_prior(request, experiences)
         mutation_policy = dict(build_mutation_policy(request, causal_prior))
         strategy = str(causal_prior.get("strategy_prior") or "")
