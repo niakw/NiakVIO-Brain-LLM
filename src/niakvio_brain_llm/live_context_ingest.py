@@ -55,9 +55,13 @@ def attach_live_runtime_evidence(
     playable = live.get("preflight_playable")
     if type(playable) is not int or not 0 <= playable <= 100000:
         playable = 0
+    contradictions = live.get("preflight_identity_contradictions")
+    if type(contradictions) is not int or not 0 <= contradictions <= 100000:
+        contradictions = 100000
     current = {
         "preflight_status": status,
         "preflight_playable": playable,
+        "preflight_identity_contradictions": contradictions,
         "fixture_selection_complete": live.get("fixture_selection_complete") is True,
         "network_evidence": network_evidence(live.get("network_evidence")),
         "public_domain_references": public_domain_references(live.get("public_domain_references")),
