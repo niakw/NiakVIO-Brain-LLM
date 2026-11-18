@@ -519,14 +519,13 @@ function other(v){return v}
             )
 
 
-    def test_complete_wrong_function_wrapper_keeps_selected_identity(self):
+    def test_complete_wrong_function_wrapper_is_rejected(self):
         find = "async function resolveCandidate(url, ref){return await crawl(url, ref);}"
         wrapped = "async function extractUrls(url, ref){const rows=await crawl(url, ref);return rows.filter(Boolean);}"
-        rebuilt = _preserve_selected_function_envelope(find, wrapped, normalize_explicit_wrapper=True)
-        self.assertTrue(rebuilt.startswith("async function resolveCandidate(url, ref){"))
-        self.assertNotIn("function extractUrls", rebuilt)
-        self.assertIn("const rows=await crawl(url, ref);", rebuilt)
-        self.assertIn("return rows.filter(Boolean);", rebuilt)
+        with self.assertRaisesRegex(ValueError, "declaration/signature changed"):
+            _preserve_selected_function_envelope(
+                find, wrapped, normalize_explicit_wrapper=True
+            )
 
     def test_multiple_function_wrapper_is_not_silently_normalized(self):
         find = "function resolve(url){return crawl(url);}"
