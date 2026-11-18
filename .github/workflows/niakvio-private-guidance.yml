@@ -23,6 +23,12 @@ on:
         description: "Bounded providers per guidance page (1..12)"
         required: false
         default: "9"
+      model_profile:
+        description: "Explicit local CPU model profile; larger model is challenger-only"
+        required: false
+        default: "qwen25-coder-3b"
+        type: choice
+        options: [qwen25-coder-3b, qwen35-9b]
 
 permissions:
   contents: write
@@ -409,6 +415,56 @@ jobs:
             fi
           fi
 
+      - name: Resolve bounded local model profile
+        if: steps.route.outputs.llm_needed == 'true' && steps.deterministic_force.outputs.ready != 'true'
+        id: model_profile
+        shell: bash
+        env:
+          INPUT_MODEL_PROFILE: ${{ inputs.model_profile || '' }}
+        run: |
+          set -euo pipefail
+          profile="qwen25-coder-3b"
+          if [ "${GITHUB_EVENT_NAME:-}" = "push" ]; then
+            profile="$(python - <<'PY'
+          import json
+          from pathlib import Path
+          data=json.loads(Path("brain/.github/triggers/niakvio-guidance.json").read_text(encoding="utf-8"))
+          print(str(data.get("model_profile") or "qwen25-coder-3b").strip())
+          PY
+            )"
+          elif [ -n "${INPUT_MODEL_PROFILE:-}" ]; then
+            profile="$INPUT_MODEL_PROFILE"
+          fi
+          case "$profile" in
+            qwen25-coder-3b)
+              model="qwen2.5-coder-3b"
+              cache_key="qwen25-coder-3b-q4-km-v1"
+              force_timeout=180
+              provider_budget=600
+              advisor_timeout=45
+              ;;
+            qwen35-9b)
+              model="qwen35-9b"
+              cache_key="qwen35-9b-q4-km-ef6f244d"
+              force_timeout=420
+              provider_budget=1500
+              advisor_timeout=180
+              ;;
+            *)
+              echo "unsupported local model profile: $profile" >&2
+              exit 2
+              ;;
+          esac
+          {
+            echo "profile=$profile"
+            echo "model=$model"
+            echo "cache_key=$cache_key"
+            echo "force_timeout=$force_timeout"
+            echo "provider_budget=$provider_budget"
+            echo "advisor_timeout=$advisor_timeout"
+          } >> "$GITHUB_OUTPUT"
+          echo "FIELD_BRAIN_LOCAL_MODEL_PROFILE profile=$profile model=$model publication_authority=false"
+
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         if: steps.route.outputs.llm_needed == 'true' && steps.deterministic_force.outputs.ready != 'true'
         id: llama-bin-cache
@@ -430,26 +486,56 @@ jobs:
           path: |
             ~/.cache/llama.cpp
             ~/.cache/huggingface
-          key: qwen25-coder-3b-q4-km-v1
+          key: ${{ steps.model_profile.outputs.cache_key }}
 
+          # Baseline contract strings retained for static regression: --model qwen2.5-coder-3b; --timeout-seconds 180.
           # Exact-provider FORCE uses the measured CPU default: 3B matched 9B
           # on the fixed diagnostics and completed far faster, while the real
           # private 7B Sekai oracle exhausted two long inference budgets.
           # Keep larger models as explicit challengers; memory quality and
           # current evidence are evaluated independently of parameter count.
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        if: steps.route.outputs.llm_needed == 'true' && steps.deterministic_force.outputs.ready != 'true' && steps.model_profile.outputs.profile == 'qwen35-9b'
+        id: qwen35-9b-cache
+        with:
+          path: .brain-models/qwen35-9b-q4.gguf
+          key: qwen35-9b-q4-ef6f244d
+
+      - name: Download hash-pinned Qwen3.5 9B challenger weights
+        if: steps.route.outputs.llm_needed == 'true' && steps.deterministic_force.outputs.ready != 'true' && steps.model_profile.outputs.profile == 'qwen35-9b' && steps.qwen35-9b-cache.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .brain-models
+          curl -fLsS --retry 4 --retry-all-errors --retry-delay 5 --connect-timeout 30 --max-time 2100 \
+            'https://huggingface.co/SoAIHQ/Qwen3.5-9B-GGUF/resolve/main/Qwen3.5-9B-Q4_K_M.gguf' \
+            -o .brain-models/qwen35-9b-q4.gguf
+          printf '%s  %s\n' \
+            'ef6f244d63abcba4f8d30b7cbd9369e9e798fc33cf21109889373f59af329c93' \
+            '.brain-models/qwen35-9b-q4.gguf' | sha256sum -c -
+          echo 'FIELD_BRAIN_LOCAL_MODEL_WEIGHTS profile=qwen35-9b verified=true'
+
       - name: Start bounded local Qwen advisor
         if: steps.route.outputs.llm_needed == 'true' && steps.deterministic_force.outputs.ready != 'true'
+        shell: bash
         run: |
+          set -euo pipefail
           SERVER="$(find llama-prebuilt -type f -name llama-server -print -quit)"
           test -n "$SERVER"
           chmod +x "$SERVER"
-          # Force proposals are small provider-local diffs. Use one llama slot:
-          # the GitHub runner has limited CPU and two concurrent generations were
-          # making every Force request hit its timeout before returning a patch.
-          # Compact Force source windows are bounded so prompt ingestion stays
-          # cheap; a single larger retry handles truncated JSON/code.
-          "$SERVER"             -hf Qwen/Qwen2.5-Coder-3B-Instruct-GGUF:Q4_K_M             --host 127.0.0.1             --port 8080             -c 8192             -np 1             > llama-server.log 2>&1 &
-          for i in $(seq 1 180); do
+          if [ "${{ steps.model_profile.outputs.profile }}" = "qwen35-9b" ]; then
+            test -s .brain-models/qwen35-9b-q4.gguf
+            "$SERVER" \
+              -m .brain-models/qwen35-9b-q4.gguf --alias qwen35-9b \
+              --host 127.0.0.1 --port 8080 -t 4 -c 8192 -np 1 --reasoning off \
+              > llama-server.log 2>&1 &
+          else
+            "$SERVER" \
+              -hf Qwen/Qwen2.5-Coder-3B-Instruct-GGUF:Q4_K_M \
+              --host 127.0.0.1 --port 8080 -c 8192 -np 1 \
+              > llama-server.log 2>&1 &
+          fi
+          for i in $(seq 1 240); do
             curl -fsS http://127.0.0.1:8080/health >/dev/null 2>&1 && exit 0
             sleep 2
           done
@@ -489,11 +575,11 @@ jobs:
             --max-hypotheses 4 \
             "${provider_args[@]}" \
             --endpoint http://127.0.0.1:8080 \
-            --model qwen2.5-coder-3b \
+            --model "${{ steps.model_profile.outputs.model }}" \
             --workers 1 \
             --max-tokens 512 \
-            --timeout-seconds 180 \
-            --force-provider-budget-seconds 600 \
+            --timeout-seconds "${{ steps.model_profile.outputs.force_timeout }}" \
+            --force-provider-budget-seconds "${{ steps.model_profile.outputs.provider_budget }}" \
             --output private-force-batch.jsonl
           python brain/scripts/plan_batch_from_checkout.py \
             --niakvio-root niakvio \
@@ -503,11 +589,11 @@ jobs:
             --mode brain \
             "${provider_args[@]}" \
             --endpoint http://127.0.0.1:8080 \
-            --model qwen2.5-coder-3b \
-            --workers 2 \
+            --model "${{ steps.model_profile.outputs.model }}" \
+            --workers 1 \
             --advisor-only \
             --max-tokens 160 \
-            --timeout-seconds 45 \
+            --timeout-seconds "${{ steps.model_profile.outputs.advisor_timeout }}" \
             --output private-guided-batch.jsonl
 
       - name: Sanitize advisor output
@@ -748,7 +834,8 @@ jobs:
             -f niakvio_sha="${{ steps.source.outputs.sha }}" \
             -f brain_sha="${{ steps.page.outputs.brain_sha }}" \
             -f target_providers="${{ steps.cohort.outputs.csv }}" \
-            -f page_size="${{ inputs.page_size || '9' }}"
+            -f page_size="${{ inputs.page_size || '9' }}" \
+            -f model_profile="${{ steps.model_profile.outputs.profile || 'qwen25-coder-3b' }}"
           echo "FIELD_NIAKVIO_GUIDANCE_CONTINUE remaining=${{ steps.page.outputs.remaining }} source=${{ steps.source.outputs.sha }}"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always()
