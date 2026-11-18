@@ -448,7 +448,9 @@ def _dynamic_variant_coverage_gap(observation: dict[str, Any]) -> bool:
     return False
 
 
-def _provider_waf_observation(payload: Any, provider_id: str) -> dict[str, Any]:
+def _provider_waf_observation(
+    payload: Any, provider_id: str, *, current_bundle_sha256: str = ""
+) -> dict[str, Any]:
     if not isinstance(payload, dict):
         return {}
     wanted = _canon(provider_id)
@@ -460,6 +462,15 @@ def _provider_waf_observation(payload: Any, provider_id: str) -> dict[str, Any]:
         row for row in ((payload.get("residentialProviderReplay") or {}).get("rows") or [])
         if isinstance(row, dict) and _canon(row.get("provider")) == wanted
     ]
+    # Browser/WAF probes remain transport observations across generations.
+    # Full residential *provider* replay can drive Brain mutation causality only
+    # when its exact executed JS bytes match this request's published bundle.
+    current_digest = str(current_bundle_sha256 or "").strip().casefold()
+    if current_digest:
+        replay_rows = [
+            row for row in replay_rows
+            if str(row.get("providerArtifactSha256") or "").strip().casefold() == current_digest
+        ]
     if not rows and not replay_rows:
         return {}
     return {
@@ -1066,7 +1077,10 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
         current_structure_payload,
         provider_id,
     )
-    waf_observation = _provider_waf_observation(waf, provider_id)
+    waf_observation = _provider_waf_observation(
+        waf, provider_id,
+        current_bundle_sha256=str(published_bundle.get("sha256") or row.get("providerArtifactSha256") or ""),
+    )
     targeted_stages = {
         str(value or "").strip().casefold()
         for value in (targeted_observation.get("debugStages") or {}).values()
