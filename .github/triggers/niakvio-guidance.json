@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
   "niakvio_sha": "b12ad3c1eebb087260ef8544a2c621971b507c0c",
-  "reason": "2026-11-18 Sekai retry 77: Brain 4697689a CI 44400111499 PASS. Source pinned NiakVIO b12ad3c1eebb087260ef8544a2c621971b507c0c (same source as retry76 44396679503). First live verification of exact-source current provider HTTP/function/fixture preflight in private-guidance, only one representative, using pre-existing NiakVIO capture_brain_live_context.py plus --live-evidence ingestion to FORCE and advisor, memory prior only. Retry76 demonstrated 4-unit route graph, 4 negative unit fingerprints carried, but 0 causal executable mutations due no_op/function_identity_changed/timeouts; replay must report preflight ready/why blocked, network evidence effect, selected exact units, executable proposals. No publication without canonical apply/rematerialization/current decoded and identity matched media.",
+  "reason": "2026-11-18 Sekai retry 78: Repair experiment 77 run 44400261425 collected source-pin network_events=5 fixture_count=5 but failed closed at live_context_ingest because the live observer did not use the strict category-matched repair fixture selection (NIAKVIO_REQUIRE_DECODE_PROOF unset). Brain pipeline fix f2ba92ac sets NIAKVIO_REQUIRE_DECODE_PROOF=1 and validates fixture_selection_complete=True before ingestion; regression 4a403838 CI 44400867349 SUCCESS. Pin SAME NiakVIO b12ad3c1 to compare, verify strict fixtures, current upstream events reach FORCE and advisor, only then evaluate generated edits. No provider patch or publication authority without canonical apply, materialized bytes, decoded media identity and regression.",
   "requested_repair_queue": [
     "sekai"
   ],
-  "retry": 77,
+  "retry": 78,
   "require_deterministic_force": false
 }
