@@ -7,6 +7,10 @@ on:
     paths:
       - 'src/niakvio_brain_llm/private_chat_memory.py'
       - 'src/niakvio_brain_llm/document_memory.py'
+      - 'src/niakvio_brain_llm/prompting.py'
+      - 'src/niakvio_brain_llm/planner.py'
+      - 'src/niakvio_brain_llm/retrieval.py'
+      - 'tests/test_force_project_memory_bridge.py'
       - 'tests/test_private_chat_memory.py'
       - '.github/workflows/private-chat-memory-contract.yml'
   schedule:
@@ -150,6 +154,37 @@ jobs:
           if leftover:
               raise AssertionError("private corpus contains unresolved redaction categories: "
                                    + json.dumps(leftover, sort_keys=True))
+
+          # The corpus must actually enter the same compact FORCE RAG path
+          # used by private guidance, not merely be readable by DocumentStore.
+          # Use one already observed provider token; never print private text.
+          from niakvio_brain_llm.contracts import RepairRequest
+          from niakvio_brain_llm.planner import BrainPlanner
+          from niakvio_brain_llm.prompting import build_force_prompt_payload
+          req = RepairRequest(
+              provider_id=provider, failure_class="route_proven_gap",
+              allowed_mutations=["provider_bloc"],
+              provider_context={"runtimeMutationSource": (
+                  "function getStreams(){ const links=[]; return links; }"
+              )},
+          )
+          retrieved_exp, retrieved_docs, prior, policy, _ = BrainPlanner(
+              object(), documents=store
+          )._prepare(req, compact_force=True)
+          assert any(d.get("private_memory") is True for d in retrieved_docs)
+          force_prompt = build_force_prompt_payload(
+              req, prior, policy, retrieved_docs,
+              experiences=retrieved_exp
+          )
+          hints = [
+              d for d in force_prompt.get("retrieved_document_hints") or []
+              if d.get("source_kind") == "private_chat"
+          ]
+          assert hints and all(h.get("proof_authority") is False for h in hints)
+          assert not any("conversations/" in str(h) for h in hints)
+          assert not any("https://" in str(h) for h in hints)
+          print("FIELD_BRAIN_PRIVATE_FORCE_MEMORY provider_hit=true "
+                "private_hint=true proof_authority=false raw_content_logged=false")
 
           print(json.dumps({
               "private_documents": len(store.rows),
