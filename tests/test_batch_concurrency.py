@@ -67,13 +67,17 @@ assert "FIELD_NIAKVIO_FORCE_MUTATIONS_READY ready=false" in wf
 
 assert "-c 8192" in wf
 assert "Qwen/Qwen2.5-Coder-3B-Instruct-GGUF:Q4_K_M" in wf
-assert "--model qwen2.5-coder-3b" in wf
+assert 'default: "qwen25-coder-3b"' in wf
+assert 'model="qwen2.5-coder-3b"' in wf
+assert '--model "${{ steps.model_profile.outputs.model }}"' in wf
 assert "-np 1" in wf
 assert "--workers 1" in wf
 assert "--advisor-only" in wf
 assert "--max-tokens 512" in wf
-assert "--timeout-seconds 180" in wf
-assert "--force-provider-budget-seconds 600" in wf
+assert 'force_timeout=180' in wf
+assert 'provider_budget=600' in wf
+assert '--timeout-seconds "${{ steps.model_profile.outputs.force_timeout }}"' in wf
+assert '--force-provider-budget-seconds "${{ steps.model_profile.outputs.provider_budget }}"' in wf
 assert wf.index("-np 1") < wf.index("--workers 1")
 
 print("bounded concurrent private-guidance batch contract passed")

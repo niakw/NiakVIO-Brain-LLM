@@ -45,8 +45,10 @@ print("NiakVIO private guidance Force-mutation workflow contract passed")
 assert "--workers 1" in workflow
 assert "--max-hypotheses 4" in workflow
 assert "--max-tokens 512" in workflow
-assert "--timeout-seconds 180" in workflow
-assert "--timeout-seconds 45" in workflow
+assert "force_timeout=180" in workflow
+assert "advisor_timeout=45" in workflow
+assert '--timeout-seconds "${{ steps.model_profile.outputs.force_timeout }}"' in workflow
+assert '--timeout-seconds "${{ steps.model_profile.outputs.advisor_timeout }}"' in workflow
 assert "--limit 4" not in workflow
 assert "requested_repair_queue" in workflow
 assert "niakvio-guidance-targets.txt" in workflow

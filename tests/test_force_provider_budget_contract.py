@@ -37,7 +37,8 @@ assert 'failure_key == "provider_transport_gap"' in batch
 assert 'budget_seconds = min(budget_cap, 300)' in batch
 assert 'failure_key == "transport_environment_gap"' in batch
 assert 'budget_seconds = min(budget_cap, 180)' in batch
-assert '--force-provider-budget-seconds 600' in workflow
+assert 'provider_budget=600' in workflow
+assert '--force-provider-budget-seconds "${{ steps.model_profile.outputs.provider_budget }}"' in workflow
 assert 'budget_seconds = min(' in batch
 assert '--stop-after-first-mutation' in workflow
 assert '--max-hypotheses 4' in workflow
@@ -48,11 +49,14 @@ assert 'default: "9"' in workflow
 assert "PAGE_SIZE: ${{ inputs.page_size || '9' }}" in workflow
 assert '-f page_size="${{ inputs.page_size || \'9\' }}"' in workflow
 assert 'Qwen/Qwen2.5-Coder-3B-Instruct-GGUF:Q4_K_M' in workflow
-assert '--model qwen2.5-coder-3b' in workflow
+assert 'model="qwen2.5-coder-3b"' in workflow
+assert '--model "${{ steps.model_profile.outputs.model }}"' in workflow
 assert '-c 8192' in workflow
 assert '--max-tokens 512' in workflow
-assert '--timeout-seconds 180' in workflow
+assert 'force_timeout=180' in workflow
+assert '--timeout-seconds "${{ steps.model_profile.outputs.force_timeout }}"' in workflow
 assert 'qwen25-coder-3b-q4-km-v1' in workflow
+assert 'qwen35-9b-q4-ef6f244d' in workflow
 assert 'Qwen/Qwen2.5-Coder-7B-Instruct-GGUF:Q4_K_M' not in workflow
 assert 'private 7B Sekai oracle exhausted two long inference budgets' in workflow
 print("FORCE provider budget contract passed: 3B default, larger models challenger-only")
