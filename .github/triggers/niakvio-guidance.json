@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "00ce736e5e8d8e4d8e332c25a7f1648807503c17",
-  "reason": "2026-11-18 Sekai retry 75: Brain memory-ranked exact-unit rejection fingerprint and cross-correction/portfolio negative-hash carry fixes (planner 8f1f4216; FORCE script 63834a3d; regressions 23eb8fb0 CI 44393417870 SUCCESS). Previous run 44382451653 on Brain 6097a5ff consumed current public Markdown, historical ChatGPT, structured ProviderBase/Lego and executed-negative memory but generated 16 no-op rejects with 0 rejected units carried. Re-run source-pinned current Sekai via 3B model to verify actual rejected_units_carried, distinct exact-unit ranking and any material executable candidate. Historical/private memory proof_authority=false. Generated mutation is not repair proof: require canonical NiakVIO isolated apply, materialization, executed bytes, current media decode/identity and non-regression before publication.",
+  "niakvio_sha": "b12ad3c1eebb087260ef8544a2c621971b507c0c",
+  "reason": "2026-11-18 Sekai retry 76: Brain exact no-op unit negative memory is real-validated by run 44393628384 (rejected_units_carried=2, two exact units excluded, but no executable candidate). Source-pinned current NiakVIO: b12ad3c1eebb087260ef8544a2c621971b507c0c. New generic Brain route_proven_gap follow-on: expose up to 4 current source-backed causal edit units in two windows only after two distinct exact unit hashes are rejected as no-op/deletion; maintain default 2-unit strict source focus, grammar/current byte parity, existing MD/ChatGPT/ProviderBase/negative RAG prior-only, no private text. Verify live unit graph expands and produces a distinct causal executable edit; no publication without canonical apply, materialization, current runtime/media decode and identity nonregression. Committed Brain code 32485902, test b9f0e753, docs 2945c924. Previous retry 75 stage succeeded as diagnostics only and had zero mutations.",
   "requested_repair_queue": [
     "sekai"
   ],
-  "retry": 75,
+  "retry": 76,
   "require_deterministic_force": false
 }
