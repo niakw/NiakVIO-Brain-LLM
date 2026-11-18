@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
   "niakvio_sha": "b12ad3c1eebb087260ef8544a2c621971b507c0c",
-  "reason": "2026-11-18 Sekai retry 76: Brain exact no-op unit negative memory is real-validated by run 44393628384 (rejected_units_carried=2, two exact units excluded, but no executable candidate). Source-pinned current NiakVIO: b12ad3c1eebb087260ef8544a2c621971b507c0c. New generic Brain route_proven_gap follow-on: expose up to 4 current source-backed causal edit units in two windows only after two distinct exact unit hashes are rejected as no-op/deletion; maintain default 2-unit strict source focus, grammar/current byte parity, existing MD/ChatGPT/ProviderBase/negative RAG prior-only, no private text. Verify live unit graph expands and produces a distinct causal executable edit; no publication without canonical apply, materialization, current runtime/media decode and identity nonregression. Committed Brain code 32485902, test b9f0e753, docs 2945c924. Previous retry 75 stage succeeded as diagnostics only and had zero mutations.",
+  "reason": "2026-11-18 Sekai retry 77: Brain 4697689a CI 44400111499 PASS. Source pinned NiakVIO b12ad3c1eebb087260ef8544a2c621971b507c0c (same source as retry76 44396679503). First live verification of exact-source current provider HTTP/function/fixture preflight in private-guidance, only one representative, using pre-existing NiakVIO capture_brain_live_context.py plus --live-evidence ingestion to FORCE and advisor, memory prior only. Retry76 demonstrated 4-unit route graph, 4 negative unit fingerprints carried, but 0 causal executable mutations due no_op/function_identity_changed/timeouts; replay must report preflight ready/why blocked, network evidence effect, selected exact units, executable proposals. No publication without canonical apply/rematerialization/current decoded and identity matched media.",
   "requested_repair_queue": [
     "sekai"
   ],
-  "retry": 76,
+  "retry": 77,
   "require_deterministic_force": false
 }
