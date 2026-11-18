@@ -474,6 +474,7 @@ def _provider_waf_observation(
     if not rows and not replay_rows:
         return {}
     return {
+        "residentialReplayCurrentBundle": bool(current_digest and replay_rows),
         "browserOutcomes": sorted({
             str(row.get("outcome") or "") for row in rows if str(row.get("outcome") or "")
         }),
