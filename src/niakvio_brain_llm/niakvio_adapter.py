@@ -466,7 +466,11 @@ def _provider_waf_observation(
     # Full residential *provider* replay can drive Brain mutation causality only
     # when its exact executed JS bytes match this request's published bundle.
     current_digest = str(current_bundle_sha256 or "").strip().casefold()
-    if current_digest:
+    # No verified current bundle hash means NO executable residential replay
+    # authority. Never accidentally promote an unpinned historical record.
+    if re.fullmatch(r"[0-9a-f]{64}", current_digest) is None:
+        replay_rows = []
+    else:
         replay_rows = [
             row for row in replay_rows
             if str(row.get("providerArtifactSha256") or "").strip().casefold() == current_digest
