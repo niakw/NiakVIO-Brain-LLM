@@ -36,8 +36,8 @@ SENSITIVE_PATTERNS = [
     (re.compile(r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", re.I), "[REDACTED_EMAIL]"),
     (re.compile(r"(?<!\d)(?:\+33[ .-]?|0)[1-9](?:[ .-]?\d{2}){4}(?!\d)"), "[REDACTED_PHONE]"),
     (re.compile(r"(?<![\d.])(?:\d{1,3}\.){3}\d{1,3}(?![\d.])"), "[REDACTED_IP]"),
-    (re.compile(r"/Users/[^/\s]+"), "[REDACTED_LOCAL_USER_PATH]"),
-    (re.compile(r"/home/[^/\s]+"), "[REDACTED_LOCAL_USER_PATH]"),
+    (re.compile(r"/Users/[^/\s]+", re.I), "[REDACTED_LOCAL_USER_PATH]"),
+    (re.compile(r"/home/[^/\s]+", re.I), "[REDACTED_LOCAL_USER_PATH]"),
 ]
 
 MESSAGE_HEADING = re.compile(r"^##\s+(USER|ASSISTANT|TOOL)\s+·\s+(.+?)\s*$", re.M)
