@@ -368,16 +368,17 @@ def _node_check_javascript(source: str) -> None:
     node = shutil.which("node")
     if not node:
         raise ValueError("node is required for compact Force JavaScript syntax validation")
-    with tempfile.TemporaryDirectory(prefix="niakvio-force-js-") as tmp:
-        path = Path(tmp) / "candidate.js"
-        path.write_text(source, encoding="utf-8")
-        proc = subprocess.run(
-            [node, "--check", str(path)],
-            text=True,
-            capture_output=True,
-            check=False,
-            timeout=20,
-        )
+    # Validate provider-owned source through stdin. Writing the complete
+    # candidate into a temporary clear-text file is unnecessary and makes
+    # ephemeral provider literals visible to filesystem scanners/recovery.
+    proc = subprocess.run(
+        [node, "--check", "-"],
+        input=source,
+        text=True,
+        capture_output=True,
+        check=False,
+        timeout=20,
+    )
     if proc.returncode != 0:
         # Node prints source lines, paths and potentially provider-owned
         # sensitive values in its stderr. Return fixed diagnostic classes to
