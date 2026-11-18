@@ -672,8 +672,11 @@ def main() -> int:
                     "replace that binding and make the repair behavior explicit instead of deleting it"
                 ),
                 "causally_empty_deletion": (
-                    "previous traversal repair only deleted existing logic; add or replace concrete "
-                    "route/player/terminal traversal behavior on the selected unit, or abstain"
+                    "previous traversal repair erased live media-producing behavior. Preserve the "
+                    "current resolver/crawler and terminal streams push/return paths; a guard-only "
+                    "episode/identity condition is not a repair. Add an evidenced alternative "
+                    "terminal producer or change a causal lookup/reader step without deleting "
+                    "existing producers. If no current evidence supports one, abstain"
                 ),
             }
             feedback = {
