@@ -7,7 +7,7 @@ from typing import Any
 
 from .contracts import RepairRequest
 from .provider_context import _sanitize_reference_source
-from .source_units import javascript_function_end
+from .source_units import javascript_function_end, javascript_if_block_span
 from .current_evidence import current_causal_signatures
 from .live_evidence import network_evidence, verification_feedback, non_improving_functions, fixture_evidence, executed_helper_context, short_media_source_focus, public_domain_references, domain_reference_focus
 
@@ -1286,6 +1286,78 @@ def _force_edit_units(
                 "source": fragment,
             },
         ))
+
+    # Large provider helpers hide complete causal control blocks even when no
+    # full function fits the 1,800-char FORCE ceiling. Expose complete, braced
+    # if branches as exact current-byte units, never arbitrary cut-up snippets.
+    # This is generic Brain edit-surface discovery, not a provider override.
+    if family_key in {"chain_terminal_gap", "media_extraction_gap", "route_proven_gap"}:
+        active_function_names = {
+            str(token).split(":", 1)[1].casefold()
+            for token in focus_keywords
+            if str(token).startswith("function:")
+        }
+        control_tokens = ("media", "source", "player", "iframe", "form",
+                          "stream", "m3u8", "mp4", "link", "embed", "url")
+        named_functions = re.compile(
+            r"\b(?:async\s+)?function\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*\([^)]*\)\s*\{"
+        )
+        for func in named_functions.finditer(text):
+            function_end = javascript_function_end(text, func.start())
+            if function_end <= func.start() or function_end - func.start() <= 1800:
+                continue
+            function_name = str(func.group(1) or "").casefold()
+            active_match = function_name in active_function_names
+            # If an exact executed function is known, do not spend the limited
+            # CPU editing budget on unrelated oversized functions.
+            if active_function_names and not active_match:
+                continue
+            block_candidates = []
+            for control in re.finditer(r"(?<![\w$])if\s*\(", text[func.end():function_end]):
+                start = func.end() + control.start()
+                parsed = javascript_if_block_span(text, start)
+                if not parsed:
+                    continue
+                _, end = parsed
+                if end > function_end:
+                    continue
+                fragment = text[start:end]
+                if not (24 <= len(fragment) <= 1400):
+                    continue
+                if not safe(fragment, start, max_len=1400, allow_function=True):
+                    continue
+                lowered = fragment.casefold()
+                hits = sum(1 for token in control_tokens if token in lowered)
+                if not hits:
+                    continue
+                focus_hits = sum(1 for token in family_keywords if token in lowered)
+                block_candidates.append((hits + focus_hits, start, end, fragment))
+            for strength, start, end, fragment in sorted(
+                block_candidates, key=lambda item: (-item[0], item[1])
+            )[:2]:
+                key = (start, end)
+                if key in seen:
+                    continue
+                seen.add(key)
+                nearest_index = (
+                    min(range(len(windows)), key=lambda idx: abs(
+                        start - (int(windows[idx].get("offset") or 0)
+                                 + int(windows[idx].get("focus_offset") or 0))
+                    )) if windows else 0
+                )
+                nearest = windows[nearest_index] if windows else {}
+                ranked.append((
+                    (0 if active_match or strength >= 2 else 1,
+                     -1, -strength, nearest_index, start),
+                    {
+                        "window_id": str(nearest.get("id") or "w1"),
+                        "offset": start,
+                        "end_offset": end,
+                        "reason": "exact_large_function_control_block",
+                        "kind": "block_unit",
+                        "source": fragment,
+                    },
+                ))
 
     ranked.sort(key=lambda item: item[0])
 
