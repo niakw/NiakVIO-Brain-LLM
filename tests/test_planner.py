@@ -2217,5 +2217,58 @@ class PlannerGuardTests(unittest.TestCase):
         ))
 
 
+    def test_force_block_unit_materializes_exact_current_conditional(self):
+        source = (
+            "async function crawlDirectMedia(query){\n"
+            + "".join(f"const observed{i}=query;\n" for i in range(125))
+            + "if (query && String(query).includes(')')) {\n"
+            + "const mediaSources = oldExtractor(query);\n"
+            + "return mediaSources.slice(0, 1);\n"
+            + "}\nreturn [];\n}\n"
+        )
+        request = RepairRequest(
+            provider_id="demo",
+            failure_class="media_extraction_gap",
+            allowed_mutations=["provider_bloc"],
+            provider_context={
+                "preferredRuntimeMutationSource": source,
+                "runtimeMutationSource": source,
+            },
+        )
+        payload = build_force_prompt_payload(
+            request,
+            {"target_layer": "provider", "confidence": 0.95},
+            {"allow_mutations": True, "allowed_scopes": ["provider_bloc"]},
+        )
+        candidates = [
+            unit for unit in payload["new_bloc_target"]["editable_units"]
+            if unit.get("kind") == "block_unit"
+        ]
+        self.assertTrue(candidates, "missing exact if block unit")
+        unit = candidates[0]
+        edit = {
+            "scope": "provider_bloc",
+            "family": "media_source_chain",
+            "unit_id": unit["id"],
+            "replace": (
+                "const mediaSources = extractPlayers(query);\n"
+                "return mediaSources.filter(Boolean);"
+            ),
+        }
+        mutation = _compact_edit_to_mutation(request, edit)
+        self.assertEqual(mutation["scope"], "provider_bloc")
+        self.assertEqual(mutation["find"], unit["source"])
+        self.assertTrue(mutation["replace"].startswith(
+            "if (query && String(query).includes(')')) {"
+        ))
+        self.assertIn("mediaSources.filter(Boolean)", mutation["replace"])
+        self.assertNotIn("oldExtractor", mutation["replace"])
+        with self.assertRaises(ValueError):
+            _compact_edit_to_mutation(
+                request,
+                {**edit, "replace": "return )"},
+            )
+
+
 if __name__ == "__main__":
     unittest.main()
