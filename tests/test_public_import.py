@@ -33,6 +33,15 @@ class PublicImportTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             (root / "automation").mkdir()
+            lego_dir = root / "scripts" / "provider_patches"
+            lego_dir.mkdir(parents=True)
+            (lego_dir / "sekai_runtime_v1.py").write_text(
+                """SECRET='https://secret.example.org/private/player?id=123'\n"""
+                """JS=r'''function scripts(html){return html.match(/<script/)}\n"""
+                """function resolve(tmdbId,season,episode){var x=atob('YWJj');"""
+                """var y=JSON.parse('{}'); return _crawlDirectMedia(['/movie.mp4']);}\n"""
+                """// sitemap.xml Referer User-Agent iframe #EXTM3U .m3u8\n'''\n"""
+            )
             payload = {
                 "role": "repair-prior-only",
                 "sourceSha": "a" * 40,
@@ -69,6 +78,22 @@ class PublicImportTests(unittest.TestCase):
             self.assertEqual(row["providers"], ["sekai"])
             self.assertEqual(row["provider_recipe"]["lego_families"], ["sekai_runtime_v1"])
             self.assertEqual(row["provider_recipe"]["route_families"], ["detail", "player", "api"])
+            self.assertEqual(
+                row["provider_recipe"]["mechanisms"],
+                [
+                    "base64_decode",
+                    "direct_media_files",
+                    "embed_player_traversal",
+                    "hls_playlist_validation",
+                    "inline_script_parse",
+                    "json_response_parse",
+                    "request_header_replay",
+                    "season_episode_identity",
+                    "sitemap_slug_discovery",
+                    "terminal_media_crawl",
+                    "tmdb_identity",
+                ],
+            )
             self.assertFalse(row["proof_authority"])
             self.assertTrue(row["prior_only"])
             encoded = json.dumps(row)

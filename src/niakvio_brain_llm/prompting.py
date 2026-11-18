@@ -1765,6 +1765,7 @@ def _bounded_force_structured_provider_hints(
         hints.append({
             "strategy": strategy,
             "lego_families": tokens("lego_families", 4),
+            "mechanisms": tokens("mechanisms", 12),
             "route_families": tokens("route_families", 6),
             "recipe_roles": tokens("recipe_roles", 6),
             "recipe_methods": tokens("recipe_methods", 4),

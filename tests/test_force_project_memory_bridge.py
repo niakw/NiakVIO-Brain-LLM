@@ -83,6 +83,7 @@ class ForceProjectMemoryBridgeTests(unittest.TestCase):
             "provider_recipe": {
                 "strategy": "html_scraper",
                 "lego_families": ["sekai_runtime_v1"],
+                "mechanisms": ["sitemap_slug_discovery", "inline_script_parse", "terminal_media_crawl"],
                 "route_families": ["api", "detail", "episode", "player"],
                 "recipe_roles": ["detail"],
                 "recipe_methods": ["get"],
@@ -131,6 +132,10 @@ class ForceProjectMemoryBridgeTests(unittest.TestCase):
         structured_hints = payload.get("retrieved_structured_provider_memory") or []
         self.assertEqual(len(structured_hints), 1)
         self.assertEqual(structured_hints[0]["lego_families"], ["sekai_runtime_v1"])
+        self.assertEqual(
+            structured_hints[0]["mechanisms"],
+            ["sitemap_slug_discovery", "inline_script_parse", "terminal_media_crawl"],
+        )
         self.assertEqual(structured_hints[0]["route_families"], ["api", "detail", "episode", "player"])
         self.assertFalse(structured_hints[0]["proof_authority"])
         self.assertNotIn("host", json.dumps(structured_hints))

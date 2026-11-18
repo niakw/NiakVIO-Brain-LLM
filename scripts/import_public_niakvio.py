@@ -126,6 +126,47 @@ def collect_local_force(root: Path) -> list[dict[str, Any]]:
 
 
 
+def provider_lego_mechanism_tags(root: Path, lego_names: list[str]) -> list[str]:
+    """Extract a closed vocabulary of reusable mechanisms from owned Lego.
+
+    No source snippet, host, route, literal identifier or request body survives
+    this projection. The tags describe implementation shape only.
+    """
+    tags: set[str] = set()
+    base = (root / "scripts" / "provider_patches").resolve()
+    markers = (
+        ("sitemap_slug_discovery", lambda s: "sitemap.xml" in s and "slug" in s),
+        ("inline_script_parse", lambda s: "<script" in s or "function scripts(" in s),
+        ("base64_decode", lambda s: "atob(" in s),
+        ("packed_script_unpack", lambda s: "eval(function(p,a,c,k,e,d)" in s or "unpack" in s),
+        ("form_post", lambda s: "application/x-www-form-urlencoded" in s and "post" in s),
+        ("hls_playlist_validation", lambda s: "#extm3u" in s or ".m3u8" in s),
+        ("direct_media_files", lambda s: ".mp4" in s or ".mkv" in s or ".webm" in s),
+        ("tmdb_identity", lambda s: "tmdbid" in s or "tmdb_id" in s),
+        ("season_episode_identity", lambda s: "season" in s and "episode" in s),
+        ("embed_player_traversal", lambda s: "iframe" in s or "embed" in s),
+        ("json_response_parse", lambda s: "json.parse" in s or "application/json" in s),
+        ("alias_title_matching", lambda s: "alternative_titles" in s or "original_name" in s),
+        ("request_header_replay", lambda s: "referer" in s and "user-agent" in s),
+        ("terminal_media_crawl", lambda s: "_crawldirectmedia" in s or "terminal(" in s),
+    )
+    for raw in lego_names[:6]:
+        name = Path(str(raw or "")).name.casefold()
+        if not re.fullmatch(r"[a-z0-9][a-z0-9_.-]{0,100}\.py", name):
+            continue
+        path = (base / name).resolve()
+        if path.parent != base or not path.is_file():
+            continue
+        try:
+            source = path.read_text(encoding="utf-8", errors="replace").casefold()
+        except OSError:
+            continue
+        for tag, predicate in markers:
+            if predicate(source):
+                tags.add(tag)
+    return sorted(tags)[:16]
+
+
 def collect_provider_structured_priors(root: Path) -> list[dict[str, Any]]:
     """Project existing NiakVIO provider knowledge into non-authoritative RAG.
 
@@ -175,6 +216,9 @@ def collect_provider_structured_priors(root: Path) -> list[dict[str, Any]]:
         recipe = {
             "strategy": strategy,
             "lego_families": lego_families,
+            "mechanisms": provider_lego_mechanism_tags(
+                root, list(raw.get("providerLegoScripts") or [])
+            ),
             "route_families": safe_tokens(raw.get("routeFamilies"), limit=8),
             "recipe_roles": safe_tokens(raw.get("recipeRoles"), limit=8),
             "recipe_methods": safe_tokens(raw.get("recipeMethods"), limit=6),
