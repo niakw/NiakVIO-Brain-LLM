@@ -59,6 +59,38 @@ class LivePlayableProofRefreshTests(unittest.TestCase):
             },
         )
 
+    def test_reachable_is_live_transport_evidence_not_playback_proof(self):
+        live = live_fixture()
+        live["preflight_status"] = "reachable"
+        live["preflight_playable"] = 0
+        live["fixture_evidence"][0]["streamsReturned"] = 0
+        live["fixture_evidence"][0]["streamsPlayable"] = 0
+        request = self.request()
+        result = attach_live_runtime_evidence(
+            request, live, source_sha=SHA,
+            explicit_providers=["demo"], repair_mode=True,
+        )
+        self.assertTrue(result["fixture_selection_complete"])
+        self.assertEqual(request.provider_context["live_runtime_evidence"]["preflight_status"], "reachable")
+        self.assertEqual(request.failure_class, "chain_terminal_gap")
+        self.assertNotEqual(request.failure_class, "proof_freshness_gap")
+
+    def test_missing_live_fixture_completeness_cannot_authorize_repair_context(self):
+        for variant in ("missing", None, "true", 1, False):
+            with self.subTest(variant=variant):
+                live = live_fixture()
+                if variant == "missing":
+                    live.pop("fixture_selection_complete")
+                else:
+                    live["fixture_selection_complete"] = variant
+                request = self.request()
+                with self.assertRaisesRegex(ValueError, "fixture set is incomplete"):
+                    attach_live_runtime_evidence(
+                        request, live, source_sha=SHA,
+                        explicit_providers=["demo"], repair_mode=True,
+                    )
+                self.assertNotIn("live_runtime_evidence", request.provider_context)
+
     def test_complete_current_playable_baseline_routes_to_core_proof_refresh(self):
         request = self.request()
         metrics = attach_live_runtime_evidence(
