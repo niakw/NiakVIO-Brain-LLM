@@ -756,8 +756,43 @@ def non_improving_functions(source, live):
     return names[:4]
 
 
+def current_baseline_requires_proof_refresh(live):
+    """Current exact-source playable baseline outranks stale provider repair debt.
+
+    This is deliberately not FULL/playback authority. It only proves that a
+    provider-local extraction repair is the wrong next action when every
+    required fixture already returns at least one playable stream on the
+    current checkout. Native/decoded certification and census publication stay
+    with NiakVIO's independent proof gates.
+    """
+    if not isinstance(live, dict):
+        return False
+    if live.get('fixture_selection_complete') is not True:
+        return False
+    if str(live.get('preflight_status') or '').strip().casefold() != 'healthy':
+        return False
+    playable = live.get('preflight_playable')
+    if type(playable) is not int or playable <= 0:
+        return False
+    fixtures = live.get('fixture_evidence')
+    if not isinstance(fixtures, list) or not 0 < len(fixtures) <= 8:
+        return False
+    total = 0
+    for row in fixtures:
+        if not _valid_stream_counts(row):
+            return False
+        returned = row.get('streamsReturned')
+        current_playable = row.get('streamsPlayable')
+        if returned <= 0 or current_playable <= 0:
+            return False
+        total += current_playable
+    return total == playable
+
+
 def observed_failure_class(current, live):
     """Refine broad census labels using the source-validated current preflight."""
+    if current_baseline_requires_proof_refresh(live):
+        return 'proof_freshness_gap'
     if current not in {'variant_coverage_gap', 'candidate_replay_gap'}:
         return current
     failed = {row['fixture'] for row in _observed_empty_fixtures(live.get('fixture_evidence'))}
