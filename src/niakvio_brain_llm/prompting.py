@@ -2235,7 +2235,11 @@ def build_force_prompt_payload(
                         chosen.append(row)
 
             safe_fields = (
-                "fixture", "stage", "status", "functions",
+                # Keep causally decisive provider vs foreign-player boundaries,
+                # allowlisted DNS/transport errors and measured reader fanout.
+                # All values already passed live_evidence.network_evidence.
+                "fixture", "stage", "host", "status", "error_code",
+                "announced_players", "functions",
                 "address_scope", "request_ref", "response_ref", "referer_ref",
                 "media_observation", "http_observation", "observed_media_probe",
                 "reader_user_agent_probe", "address_refs_truncated",
