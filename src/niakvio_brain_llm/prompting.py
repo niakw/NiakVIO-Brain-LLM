@@ -9,7 +9,7 @@ from .contracts import RepairRequest
 from .provider_context import _sanitize_reference_source
 from .source_units import javascript_function_end, javascript_if_block_span
 from .current_evidence import current_causal_signatures
-from .live_evidence import network_evidence, verification_feedback, non_improving_functions, fixture_evidence, executed_helper_context, short_media_source_focus, public_domain_references, domain_reference_focus
+from .live_evidence import NETWORK_ERROR_CODES, network_evidence, verification_feedback, non_improving_functions, fixture_evidence, executed_helper_context, short_media_source_focus, public_domain_references, domain_reference_focus
 
 def _clip(value: Any, limit: int) -> str:
     text = str(value or "")
@@ -2214,7 +2214,14 @@ def build_force_prompt_payload(
             ordered = sorted(
                 enumerate(row for row in rows if isinstance(row, dict)),
                 key=lambda pair: (
-                    0 if causal_graphql_failure(pair[1]) else 1,
+                    # Prioritize an actual failed foreign-reader transport
+                    # after a GraphQL schema failure but before generic HTML
+                    # successes. Sekai 44327993359 otherwise lost ENOTFOUND
+                    # during the first-three-event CPU prompt reduction.
+                    0 if causal_graphql_failure(pair[1]) else
+                    1 if pair[1].get("error_code") in NETWORK_ERROR_CODES
+                         and pair[1].get("stage") in {"player", "source", "media"}
+                    else 2,
                     ranks.get(str(pair[1].get("stage") or ""), 6), pair[0]),
             )
             chosen = []
