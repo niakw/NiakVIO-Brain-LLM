@@ -772,7 +772,10 @@ def current_baseline_requires_proof_refresh(live):
     if str(live.get('preflight_status') or '').strip().casefold() != 'healthy':
         return False
     playable = live.get('preflight_playable')
+    contradictions = live.get('preflight_identity_contradictions')
     if type(playable) is not int or playable <= 0:
+        return False
+    if type(contradictions) is not int or contradictions != 0:
         return False
     fixtures = live.get('fixture_evidence')
     if not isinstance(fixtures, list) or not 0 < len(fixtures) <= 8:
