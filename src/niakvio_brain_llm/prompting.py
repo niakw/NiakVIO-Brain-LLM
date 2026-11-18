@@ -52,11 +52,19 @@ def _current_residential_provider_replay(observations: Any) -> dict[str, Any]:
         return val if all(ch.isalnum() or ch in "-_" for ch in val) else ""
     def num(value: Any) -> int:
         return min(9999, max(0, value)) if type(value) is int else 0
+    def codes(values: Any) -> list[str]:
+        return [
+            token for raw in (values[:2] if isinstance(values, list) else [])
+            if (token := code(raw))
+        ]
     for observation in rows:
         if not isinstance(observation, dict) or observation.get("source") != "waf-client-differential-current":
             continue
         value = observation.get("value")
         if not isinstance(value, dict) or value.get("residentialReplayCurrentBundle") is not True:
+            continue
+        raw_replay = value.get("residentialReplay")
+        if not isinstance(raw_replay, list):
             continue
         replay = [
             {
@@ -72,7 +80,7 @@ def _current_residential_provider_replay(observations: Any) -> dict[str, Any]:
                 "verified": num(raw.get("verified")),
                 "identitySafe": raw.get("identitySafe") is True,
             }
-            for raw in (value.get("residentialReplay") or [])[:3]
+            for raw in raw_replay[:3]
             if isinstance(raw, dict)
         ]
         if not replay:
@@ -80,14 +88,8 @@ def _current_residential_provider_replay(observations: Any) -> dict[str, Any]:
         return {
             "source": "matched-current-js-residential-full-provider-runtime",
             "transport": {
-                "githubBrowserOutcomes": [
-                    token for v in (value.get("browserOutcomes") or [])[:2]
-                    if (token := code(v))
-                ],
-                "residentialBrowserOutcomes": [
-                    token for v in (value.get("residentialOutcomes") or [])[:2]
-                    if (token := code(v))
-                ],
+                "githubBrowserOutcomes": codes(value.get("browserOutcomes")),
+                "residentialBrowserOutcomes": codes(value.get("residentialOutcomes")),
                 "nativeTvTransportStillUnproven": value.get("nativeTvTransportStillUnproven") is True,
             },
             "providerRuntime": replay,
