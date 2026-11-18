@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "2ac2d184ba5e278eb1884c77df87436c2eb2e5eb",
-  "reason": "2026-11-18 Brain-first Sekai retry 81 after independent GitHub+authorized Tailscale residential WAF run 44412766230: GitHub Chrome/OkHttp and residential browser retrieve homepage HTML, but *full provider runtime* returns zero streams at provider_zero_before_provider_network. Newly stamped current JS bundle SHA256 be7898d0cd10d8cb6df2804720ef1fa927abc1114e1a4d9cf4eb06a67f70f1a0 is verified against NiakVIO census; not an IP/WAF blockage of the homepage. Analyze invocation, TMDB/title search, route planning and ProviderBase before any provider-network call; use current bytes and exact fixture to produce an additive causal change, preserve terminal producers, no direct provider override, no CAPTCHA/clearance action. Published proof still requires isolated apply, materialized exact bytes, decoded media identity, headers/languages/quality and non-regression. Prior retry 80 produced zero executable mutations, do not repeat no-op or destructive edits.",
+  "niakvio_sha": "e9fe89923567008469a647c431b3289fe67e71f0",
+  "reason": "2026-11-18 Brain-first Sekai retry 82 after generic prompt projection repair: Tailscale residential full-provider replay 44412766230 now exact-JS-matched (be7898d0cd10d8cb6df2804720ef1fa927abc1114e1a4d9cf4eb06a67f70f1a0), GitHub+residential public HTML reachable; full JS returns zero at provider_zero_before_provider_network (no fetch), not WAF. Previous retry 81 pinned before Brain prompt fix and current residential runtime signal was dropped when CPU context clipped. Brain 30fba681/5b83e61d/3b655863/b80cc13 now preserves bounded current_residential_provider_replay even under CPU prompt pressure and instructs model to target route selection, invocation, search/episode mapping prior to network. CI 44414547175 success. No WAF/CAPTCHA circumvention or manual provider edits. Require distinct causal generator patch; then only strict canonical isolated apply, source-sha materialization, decoded terminal media, correct work/season/episode/headers/languages/quality, non-regression and persistence.",
   "requested_repair_queue": [
     "sekai"
   ],
-  "retry": 81,
+  "retry": 82,
   "require_deterministic_force": false
 }
