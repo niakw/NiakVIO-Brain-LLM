@@ -389,6 +389,28 @@ def _reject_causally_empty_deletion(failure_class: str, find: str, replace: str)
         raise ValueError(
             "compact Force traversal repair may not be a pure deletion of existing logic"
         )
+    # A live terminal branch can push multiple resolved/crawled media streams
+    # into the surrounding result. Replacing the whole branch with only an
+    # identity/episode guard is not a repair, even if the new guard changes
+    # bytes and evades simple substring deletion detection. Preserve a
+    # concrete terminal-producing path or use a validated alternate producer.
+    stream_emitter = re.compile(
+        r"\\b(?:streams|sources|mediaStreams|playableStreams)\\s*\\.\\s*"
+        r"(?:push|unshift|splice)\\s*\\("
+    )
+    emitter_count = len(stream_emitter.findall(find))
+    if emitter_count >= 2 and not stream_emitter.search(replace):
+        alternate_producer = re.search(
+            r"\\b(?:streams|sources|mediaStreams|playableStreams)\\s*"
+            r"(?:(?<![!<>=])=(?!=)|\\+=)\\s*|"
+            r"\\b(?:return|yield)\\s+[^;{}]{1,180}",
+            replace,
+        )
+        if not alternate_producer:
+            raise ValueError(
+                "compact Force traversal repair may not be a pure deletion of existing logic "
+                "(all terminal stream producers erased)"
+            )
     # A selected network/helper body that already performs the request and
     # returns its response cannot be replaced by a side-effect-only fragment.
     # Doing so silently turns the helper into an undefined-return path even
