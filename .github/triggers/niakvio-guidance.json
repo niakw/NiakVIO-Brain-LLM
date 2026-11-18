@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "c8f10ff1ffd803c4a470baf9723f42281bcdec6e",
-  "reason": "2026-11-18 explicit Brain-first current-proof pilot: one Sekai route-proven-gap witness at exact NiakVIO source after 3B hosted FORCE negative 44327993359 and RAG private corpus bridge. Brain main includes bound complete block-unit, no-op rejection, CPU retry compaction, syntax-control feedback, same-provider executed-negative memory, document/private-chat RAG selection and strict nonpublication. Evaluate 7B private-guidance as model challenger using existing project memory (202 conversations/167 indexed/6620 documents, sanitization private contract 44338035084 green), not new standalone memory. Every generated mutation must compile, be selected/applied/materialized/executed on exact NiakVIO bytes, and pass decoded terminal identity, audio/quality, non-regression before any acceptance. Historic chats and manual reverse are non-authoritative hints only.",
+  "niakvio_sha": "74e19c84ea366114fcdd2b413f07e486af27ce03",
+  "reason": "2026-11-18 second one-provider Sekai current-source FORCE oracle. Previous private 7B #44338977378 loaded 202/167/6620 ChatGPT private docs and returned no executable edits: two long CPU timeout calls and a no-op body. Generic tested NIAKVIO_FORCE_CPU_TIGHT_PROMPT=1 is now enabled for actual private-guidance 7B, preserves exact JS mutation units and causal network evidence. Source provider bytes unchanged from c8f10ff1 per exact NiakVIO compare, but current main contains new negative experiment receipts. Require real generated+compiled+selected+applied+materialized+executed+terminal decoded identity-correct media for success; zero executable is negative learning not repair; keep 7B challenger rather than default.",
   "requested_repair_queue": [
     "sekai"
   ],
-  "retry": 61,
+  "retry": 62,
   "require_deterministic_force": false
 }
