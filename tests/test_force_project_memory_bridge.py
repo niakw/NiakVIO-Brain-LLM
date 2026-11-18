@@ -8,7 +8,7 @@ import unittest
 
 from niakvio_brain_llm.contracts import RepairRequest
 from niakvio_brain_llm.document_memory import DocumentStore
-from niakvio_brain_llm.planner import BrainPlanner
+from niakvio_brain_llm.planner import BrainPlanner, COMPACT_FORCE_SYSTEM_PROMPT
 from niakvio_brain_llm.prompting import build_force_prompt_payload
 from niakvio_brain_llm.retrieval import ExperienceStore
 
@@ -151,6 +151,15 @@ class ForceProjectMemoryBridgeTests(unittest.TestCase):
         self.assertNotIn("https://", serialized)
         self.assertFalse(payload["mutation_policy"]["force_abstain"] is False and
                          any(row["proof_authority"] is not False for row in md_and_chat))
+        for memory_field in (
+            "retrieved_strategy_memory",
+            "retrieved_structured_provider_memory",
+            "retrieved_document_hints",
+            "retrieved_executed_negative_memory",
+        ):
+            self.assertIn(memory_field, COMPACT_FORCE_SYSTEM_PROMPT)
+        self.assertIn("planning priors only", COMPACT_FORCE_SYSTEM_PROMPT)
+        self.assertIn("never repeat an identical executed-negative edit", COMPACT_FORCE_SYSTEM_PROMPT)
 
     def test_other_provider_private_memory_and_failed_edits_do_not_transfer(self):
         request = RepairRequest(
