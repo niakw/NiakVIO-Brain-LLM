@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "5754ff66883fea7355850635ec9ad45f92ab2118",
-  "reason": "2026-11-18 Sekai representative retry 80 after real strict-source retry 79 (Brain 97a86b40, NiakVIO e6c4d564) proved new generic compiler rejects terminal producer erasure, carries exact negative unit fingerprints 2/3/4, but produced zero executable edits due causal deletion/no-op/CPU timeouts. Brain 864a601d/a6bf4574/ebd5bdf6 teaches preservation of terminal streams and additive identity checks, plus 0a2e67b9/3aac20db fail-closed live fixture completeness and preserve transport-only reachable status; CI passed on 3aac20db. Source-pin CURRENT NiakVIO main after V6 decoded-repair gate, reuse existing public/private/ProviderBase/executed-negative memory as historical only. Require new causal edit and accept only independently decoded terminal playable media and identity in canonical sandbox. Never publish old destructive fingerprint a42d23895e3536ad5480882141a22f48f67d9241a47e52461cdcfd0dcba766e3.",
+  "niakvio_sha": "2ac2d184ba5e278eb1884c77df87436c2eb2e5eb",
+  "reason": "2026-11-18 Brain-first Sekai retry 81 after independent GitHub+authorized Tailscale residential WAF run 44412766230: GitHub Chrome/OkHttp and residential browser retrieve homepage HTML, but *full provider runtime* returns zero streams at provider_zero_before_provider_network. Newly stamped current JS bundle SHA256 be7898d0cd10d8cb6df2804720ef1fa927abc1114e1a4d9cf4eb06a67f70f1a0 is verified against NiakVIO census; not an IP/WAF blockage of the homepage. Analyze invocation, TMDB/title search, route planning and ProviderBase before any provider-network call; use current bytes and exact fixture to produce an additive causal change, preserve terminal producers, no direct provider override, no CAPTCHA/clearance action. Published proof still requires isolated apply, materialized exact bytes, decoded media identity, headers/languages/quality and non-regression. Prior retry 80 produced zero executable mutations, do not repeat no-op or destructive edits.",
   "requested_repair_queue": [
     "sekai"
   ],
-  "retry": 80,
+  "retry": 81,
   "require_deterministic_force": false
 }
