@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "niakvio_sha": "f3b8c8d98bc4a2b02f2aab0d899b565f4c1fdb15",
-  "reason": "2026-11-18 retry 72 on exact NiakVIO main after memory-aware A/B artifact exposed a syntactically valid sibling-helper transplant: episodeCandidates body was replaced with aliases body. Brain now rejects explicit wrong helper identity and exact raw sibling-helper body transplants before mutation publication. Keep all existing memory planes active (Markdown/MEMORY, historical ChatGPT project, manual reverse cases, same-provider structured ProviderBase/Lego mechanisms, executed-negative memory); memory remains proof_authority=false. Require a materially different exact-current unit/edit and then canonical apply/materialize/execute/decoded playable identity proof.",
+  "reason": "2026-11-18 regenerate Sekai after candidate 8cfb3a40 revealed cross-helper body transplant (episode index helper replaced by title-alias helper body). Brain ffa1d723532f9408e0f9167903fa688272c26e29 now rejects explicit sibling-wrapper identity changes and raw sibling helper-body transplants under exact unit authority; CI green. Generate a materially different exact-current candidate only. Source NiakVIO f3b8c8d98bc4a2b02f2aab0d899b565f4c1fdb15. No publication/proof authority; canonical sandbox required.",
   "requested_repair_queue": [
     "sekai"
   ],
