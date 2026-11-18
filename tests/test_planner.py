@@ -2319,7 +2319,7 @@ class PlannerGuardTests(unittest.TestCase):
         with self.assertRaisesRegex(
             ValueError, "unexpected_token"
         ):
-            _node_check_javascript("function broken( {")
+            _node_check_javascript("const x = ;")
         _node_check_javascript(
             "function legal(items){for(const item of items){if(item)continue;}return [];}"
         )
