@@ -203,10 +203,10 @@ class ForceProjectMemoryBridgeTests(unittest.TestCase):
 
     def test_memory_ranked_unit_ids_are_identical_in_prompt_schema_and_converter(self):
         source = (
-            "function resolvePlayer(value) { const player=value.player; return player || null; }\n"
+            "function alpha(value) { return value; }\n"
             "function parseSitemapSlug(value) { const sitemap=value.sitemap; const slug=value.slug; "
             "return sitemap && slug ? value : null; }\n"
-            "function fallback(value) { return value; }\n"
+            "function omega(value) { return value; }\n"
         )
         structured = {
             "source": "provider-structured-knowledge",
