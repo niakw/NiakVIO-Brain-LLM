@@ -8,8 +8,14 @@ import unittest
 
 from niakvio_brain_llm.contracts import RepairRequest
 from niakvio_brain_llm.document_memory import DocumentStore
-from niakvio_brain_llm.planner import BrainPlanner, COMPACT_FORCE_SYSTEM_PROMPT
-from niakvio_brain_llm.prompting import (build_force_prompt_payload, _force_edit_units, _force_structured_memory_focus_keywords)
+from niakvio_brain_llm.planner import (
+    BrainPlanner, COMPACT_FORCE_SYSTEM_PROMPT, _compact_wire_schema_for,
+    _force_unit_for_edit,
+)
+from niakvio_brain_llm.prompting import (
+    build_force_prompt_payload, _force_edit_units,
+    _force_structural_focus_keywords, _force_structured_memory_focus_keywords,
+)
 from niakvio_brain_llm.retrieval import ExperienceStore
 
 
@@ -194,6 +200,100 @@ class ForceProjectMemoryBridgeTests(unittest.TestCase):
             }]),
             (),
         )
+
+    def test_memory_ranked_unit_ids_are_identical_in_prompt_schema_and_converter(self):
+        source = (
+            "function resolvePlayer(value) { const player=value.player; return player || null; }\n"
+            "function parseSitemapSlug(value) { const sitemap=value.sitemap; const slug=value.slug; "
+            "return sitemap && slug ? value : null; }\n"
+            "function fallback(value) { return value; }\n"
+        )
+        structured = {
+            "source": "provider-structured-knowledge",
+            "providers": ["sekai"],
+            "result": "provider_recipe_prior",
+            "prior_only": True,
+            "proof_authority": False,
+            "provider_recipe": {
+                "strategy": "html_scraper",
+                "lego_families": ["sekai_runtime_v1"],
+                "mechanisms": ["sitemap_slug_discovery", "inline_script_parse"],
+            },
+        }
+        request = RepairRequest(
+            provider_id="sekai", failure_class="route_proven_gap",
+            allowed_mutations=["provider_bloc"],
+            provider_context={"runtimeMutationSource": source},
+        )
+        policy = {"allow_mutations": True, "allowed_scopes": ["provider_bloc"]}
+        prompt = build_force_prompt_payload(
+            request, {}, policy, [], experiences=[structured]
+        )
+        prompt_units = prompt["new_bloc_target"]["editable_units"]
+        self.assertTrue(prompt_units)
+        self.assertIn("parseSitemapSlug", prompt_units[0]["source"])
+        self.assertIn("memory:sitemap", _force_structural_focus_keywords(request))
+
+        # Wire schema must constrain exactly the IDs produced by the prompt.
+        wire = _compact_wire_schema_for(request, policy)
+        variant = next(
+            row for row in wire["properties"]["edit"]["anyOf"]
+            if row.get("properties", {}).get("scope", {}).get("enum") == ["provider_bloc"]
+        )
+        self.assertEqual(
+            variant["properties"]["unit_id"]["enum"],
+            [row["id"] for row in prompt_units],
+        )
+        # Most importantly, each ID must resolve to the exact same bytes in the
+        # post-model converter. An ID that silently remaps to another helper is
+        # a Brain pipeline defect even if the JSON schema accepts it.
+        for expected in prompt_units:
+            resolved, _ = _force_unit_for_edit(request, source, expected["id"])
+            self.assertEqual(resolved["source"], expected["source"])
+            self.assertEqual(resolved["offset"], expected["offset"])
+
+    def test_function_identity_retry_keeps_exact_unit_but_suppresses_historical_implementation_hints(self):
+        source = (
+            "function parseSitemapSlug(value) { const sitemap=value.sitemap; "
+            "const slug=value.slug; return sitemap && slug ? value : null; }\n"
+        )
+        request = RepairRequest(
+            provider_id="sekai", failure_class="route_proven_gap",
+            allowed_mutations=["provider_bloc"],
+            observations=[{
+                "stage": "force_validation_feedback",
+                "reason": "function_identity_changed",
+                "instruction": "return body only",
+            }],
+            provider_context={"runtimeMutationSource": source},
+        )
+        structured = {
+            "source": "provider-structured-knowledge",
+            "providers": ["sekai"], "result": "provider_recipe_prior",
+            "prior_only": True, "proof_authority": False,
+            "provider_recipe": {
+                "strategy": "html_scraper",
+                "mechanisms": ["sitemap_slug_discovery"],
+            },
+        }
+        documents = [{
+            "kind": "document", "role": "brain_repair_architecture",
+            "authority": 95, "text": "Sekai historical helper details",
+            "proof_authority": False,
+        }]
+        policy = {"allow_mutations": True, "allowed_scopes": ["provider_bloc"]}
+        payload = build_force_prompt_payload(
+            request, {}, policy, documents, experiences=[structured]
+        )
+        self.assertTrue(payload["new_bloc_target"]["editable_units"])
+        self.assertNotIn("retrieved_structured_provider_memory", payload)
+        self.assertNotIn("retrieved_document_hints", payload)
+        self.assertIn("function_identity_retry_policy", payload)
+        self.assertEqual(
+            payload["output_contract"]["function_unit_replace_mode"],
+            "body_only_no_function_declaration",
+        )
+        self.assertIn("memory:sitemap", payload["structural_focus"])
 
     def test_route_gap_memory_excludes_identity_and_media_only_mechanisms(self):
         hints = [{

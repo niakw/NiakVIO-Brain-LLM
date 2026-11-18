@@ -694,6 +694,13 @@ def _force_structural_focus_keywords(request: RepairRequest) -> tuple[str, ...]:
     live = (request.provider_context or {}).get("live_runtime_evidence") or {}
     context = request.provider_context or {}
     source = context.get('preferredRuntimeMutationSource') or context.get('runtimeMutationSource') or ''
+    # Memory-aware unit ranking must be identical in prompt, constrained wire
+    # schema and exact-byte converter. build_force_prompt_payload persists only
+    # sanitized route-free memory tokens here; no source text or proof authority.
+    for raw in context.get("_force_memory_focus_keywords") or []:
+        value = str(raw or "").strip().casefold()
+        if re.fullmatch(r"memory:[a-z0-9_-]{2,48}", value):
+            focus.append(value)
     focus.extend('avoid_function:' + name for name in non_improving_functions(source, live))
     # A classified GraphQL failure at lookup is stronger edit-locality evidence
     # than a generic downstream "chain terminal" tag. Preserve the other
@@ -2030,7 +2037,9 @@ def build_force_prompt_payload(
     """
     prior = causal_prior or {}
     policy = mutation_policy or {}
-    context = request.provider_context or {}
+    if not isinstance(request.provider_context, dict):
+        request.provider_context = {}
+    context = request.provider_context
 
     allowed_scopes = list(policy.get("allowed_scopes") or request.allowed_mutations or [])
     domain_focus = domain_reference_focus(context.get('live_runtime_evidence'))
@@ -2043,6 +2052,11 @@ def build_force_prompt_payload(
         ),
         None,
     )
+    validation_feedback_reason = (
+        str(validation_feedback.get("reason") or "").strip().casefold()
+        if isinstance(validation_feedback, dict) else ""
+    )
+    function_identity_retry = validation_feedback_reason == "function_identity_changed"
     force_window_kwargs = _force_window_kwargs_for_request(request)
     runtime_template_prior = (
         context.get("runtime_template_prior")
@@ -2059,10 +2073,11 @@ def build_force_prompt_payload(
     memory_focus_keywords = _force_structured_memory_focus_keywords(
         structured_provider_hints, request.failure_class
     )
-    structural_focus_keywords = tuple(dict.fromkeys((
-        *_force_structural_focus_keywords(request),
-        *memory_focus_keywords,
-    )))
+    # Persist only the sanitized ranking tokens on this in-memory request.
+    # _compact_wire_schema_for and _force_unit_for_edit consume the same
+    # _force_structural_focus_keywords(request), preventing unit_id remapping.
+    context["_force_memory_focus_keywords"] = list(memory_focus_keywords)
+    structural_focus_keywords = _force_structural_focus_keywords(request)
     # Editable units are derived from the full bounded causal windows, but the
     # model does not need those same bytes duplicated verbatim as context.
     # Keep a smaller context view to reduce CPU prompt ingestion at fleet scale.
@@ -2291,6 +2306,14 @@ def build_force_prompt_payload(
             else {}
         ),
         "current_observations": observations,
+        **({
+            "function_identity_retry_policy": (
+                "Selected function identity is immutable. For function_unit, replace must contain "
+                "ONLY statements inside the selected braces; never emit function or async function, "
+                "never rename parameters, and never copy a sibling helper wrapper. Historical "
+                "Markdown/private-chat/structured implementation hints are suppressed for this correction."
+            )
+        } if function_identity_retry else {}),
         "current_route_contract": (
             _compact(context.get("route_contract"), string_limit=260)
             if isinstance(context.get("route_contract"), dict)
@@ -2331,7 +2354,7 @@ def build_force_prompt_payload(
         )) else {}),
         **({
             "retrieved_structured_provider_memory": structured_provider_hints
-        } if structured_provider_hints else {}),
+        } if structured_provider_hints and not function_identity_retry else {}),
         **({
             "retrieved_executed_negative_memory": negative_hints
         } if (negative_hints := _bounded_force_hosted_negative_hints(
@@ -2364,9 +2387,9 @@ def build_force_prompt_payload(
         "provider_field_evidence": field_evidence,
         **({
             "retrieved_document_hints": document_hints
-        } if (document_hints := _bounded_force_document_hints(
+        } if (not function_identity_retry and (document_hints := _bounded_force_document_hints(
             documents, request.provider_id, request.failure_class
-        )) else {}),
+        ))) else {}),
         "field_evidence_policy": {
             "same_provider_only": True,
             "historical_hint_not_current_proof": True,
@@ -2393,6 +2416,7 @@ def build_force_prompt_payload(
             "brain_resolves_global_anchor_uniqueness": True,
             "source_windows_are_exact_current_bytes": True,
             "validation_retry_context": "focused" if validation_feedback is not None else "compact_initial",
+            "function_unit_replace_mode": "body_only_no_function_declaration",
         },
     }
 
@@ -2449,7 +2473,8 @@ def build_force_prompt_payload(
                             "generated_bloc_format",
                             "unit_id_selects_exact_current_bytes",
                             "source_windows_are_exact_current_bytes",
-                            "validation_retry_context")
+                            "validation_retry_context",
+                            "function_unit_replace_mode")
                 if key in contract
             }
     if prompt_chars() > soft_limit:

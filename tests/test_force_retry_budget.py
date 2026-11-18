@@ -122,3 +122,11 @@ assert _helper_ns["_force_rejection_reason"](
 assert '"invalid_current_unit_id": (' in source
 assert "Copy one unit_id verbatim from " in source
 assert "Never invent or " in source
+
+# A mismatched explicit function wrapper is a distinct Brain-generation
+# rejection. Retry must be body-only and may diversify without weakening the
+# exact function identity guard.
+assert '("selected function declaration/signature changed", "function_identity_changed")' in source
+assert '"function_identity_changed": (' in source
+assert '"function_identity_changed"} or (' in source
+assert "return ONLY the new statements inside" in source

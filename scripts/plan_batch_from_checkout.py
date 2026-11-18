@@ -64,7 +64,7 @@ def force_feedback_temperature(request) -> float:
         if str(observation.get("stage") or "") != "force_validation_feedback":
             continue
         reason = str(observation.get("reason") or "").strip().casefold()
-        if reason in {"no_op", "causally_empty_deletion", "helper_collision"} or (
+        if reason in {"no_op", "causally_empty_deletion", "helper_collision", "function_identity_changed"} or (
                 reason == "removed_live_binding" and observation.get("rotate_unit") is True):
             return 0.2
     return 0.0
@@ -453,6 +453,7 @@ def main() -> int:
             ("duplicated javascript control tokens", "duplicated_tokens"),
             ("may not absorb a neighboring helper", "neighbor_absorption"),
             ("helper name collides with current runtime", "helper_collision"),
+            ("selected function declaration/signature changed", "function_identity_changed"),
             ("removes live binding still referenced nearby", "removed_live_binding"),
             ("pure deletion of existing logic", "causally_empty_deletion"),
             ("helper function declaration", "helper_declaration_removed"),
@@ -587,6 +588,13 @@ def main() -> int:
                     "previous edit broke syntax; change only one complete expression "
                     "or statement copied from the selected window, preserve surrounding "
                     "quotes/braces/parentheses and never emit a partial function declaration"
+                ),
+                "function_identity_changed": (
+                    "previous edit returned a different function wrapper than the exact selected "
+                    "function_unit. Keep the SAME unit_id and return ONLY the new statements inside "
+                    "that selected function's braces. Do not output function/async function, do not "
+                    "rename the function or parameters, and do not transplant a sibling helper. "
+                    "Historical implementation hints are intentionally suppressed on this correction"
                 ),
                 "illegal_continue_outside_loop": (
                     "previous edit introduced continue outside a surrounding for/while "
