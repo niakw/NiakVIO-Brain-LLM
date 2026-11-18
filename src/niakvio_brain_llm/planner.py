@@ -166,6 +166,22 @@ def _preserve_selected_block_envelope(find: str, replacement_body: str) -> str:
     body = str(replacement_body or "").strip()
     if not body:
         raise ValueError("selected block replacement body is empty")
+    # A small CPU model may reproduce the entire selected if-block despite
+    # being asked for its body. Unwrap only the *identical* current condition;
+    # otherwise a duplicated wrapper silently synthesizes a no-op or an
+    # unintended nested branch, as observed in hosted FORCE run 44327993359.
+    # Changing the selected condition is not permitted by block_unit.
+    if re.match(r"^if\s*\(", body):
+        nested = javascript_if_block_span(body, 0)
+        if nested is not None and nested[1] == len(body):
+            nested_brace, _ = nested
+            if body[:nested_brace + 1] != find[:brace + 1]:
+                raise ValueError("selected if condition changed in full-block replacement")
+            body = body[nested_brace + 1:-1].strip()
+    if not body:
+        raise ValueError("selected block replacement body is empty")
+    if body == find[brace + 1:end - 1].strip():
+        raise ValueError("block_unit replacement repeats current body without a repair")
     return find[:brace + 1] + "\n" + body + "\n" + find[end - 1:]
 
 
