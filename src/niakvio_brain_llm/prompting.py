@@ -970,14 +970,19 @@ def repeated_live_binding_rejection(observations: list[dict[str, Any]], reason: 
     )
 
 
-def rejected_force_unit_hashes(request: RepairRequest) -> set[str]:
-    """Exact-source fingerprints of rejected inert edits in this repair attempt.
+def _rejected_force_unit_hashes_by_scope(
+    request: RepairRequest,
+) -> tuple[set[str], set[str]]:
+    """Split exact-source rejection memory into hard retry vs portfolio hints.
 
-    Do not reuse ephemeral unit IDs across prompt-window re-ranking on retries.
-    Retain only SHA-256 of current source snippets, never raw provider bytes.
+    A same-correction no-op/deletion must rotate away from the exact unit.
+    Across later portfolio hypotheses, however, the rejected *edit* is the
+    negative fact -- not proof that the source unit can never host a different
+    causal repair. Portfolio hashes therefore rank the unit behind fresh
+    alternatives and may be reopened only when every fresh unit is exhausted.
     """
-    import hashlib
-    hashes: set[str] = set()
+    hard: set[str] = set()
+    portfolio: set[str] = set()
     for row in request.observations or []:
         if not isinstance(row, dict) or row.get("stage") != "force_validation_feedback":
             continue
@@ -986,22 +991,48 @@ def rejected_force_unit_hashes(request: RepairRequest) -> set[str]:
                          and row.get("rotate_unit") is True)):
             continue
         value = str(row.get("rejected_unit_sha256") or "").strip().lower()
-        if re.fullmatch(r"[0-9a-f]{64}", value):
-            hashes.add(value)
-    return hashes
+        if not re.fullmatch(r"[0-9a-f]{64}", value):
+            continue
+        if str(row.get("source") or "").strip().casefold() == "brain-force-portfolio-rejected-unit":
+            portfolio.add(value)
+        else:
+            hard.add(value)
+    return hard, portfolio
+
+
+def rejected_force_unit_hashes(request: RepairRequest) -> set[str]:
+    """All exact-source fingerprints retained as bounded negative memory."""
+    hard, portfolio = _rejected_force_unit_hashes_by_scope(request)
+    return hard | portfolio
 
 
 def selectable_force_units(request: RepairRequest, units: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Filter structurally failed exact snippets; preserve everything else."""
+    """Prefer fresh exact units; reopen portfolio-only units as a last resort.
+
+    Immediate validation retries remain strict: their rejected unit never
+    returns in that correction chain. A later portfolio hypothesis first sees
+    every other causal unit. If none remains, it may revisit a portfolio-only
+    unit, while mutation fingerprints/mechanism memory still require a
+    materially different edit.
+    """
     import hashlib
-    rejected = rejected_force_unit_hashes(request)
-    if not rejected:
+    hard, portfolio = _rejected_force_unit_hashes_by_scope(request)
+    if not hard and not portfolio:
         return units
-    return [
+
+    viable = [
         unit for unit in units
         if hashlib.sha256(str(unit.get("source") or "").encode("utf-8")).hexdigest()
-        not in rejected
+        not in hard
     ]
+    if not portfolio:
+        return viable
+    fresh = [
+        unit for unit in viable
+        if hashlib.sha256(str(unit.get("source") or "").encode("utf-8")).hexdigest()
+        not in portfolio
+    ]
+    return fresh if fresh else viable
 
 
 def _force_window_kwargs_for_request(request: RepairRequest) -> dict[str, int]:

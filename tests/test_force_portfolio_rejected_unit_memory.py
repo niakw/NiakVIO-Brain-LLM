@@ -2,7 +2,11 @@ from __future__ import annotations
 
 import importlib.util
 from pathlib import Path
+import hashlib
 import unittest
+
+from niakvio_brain_llm.contracts import RepairRequest
+from niakvio_brain_llm.prompting import selectable_force_units
 
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "plan_batch_from_checkout.py"
 SPEC = importlib.util.spec_from_file_location("force_portfolio_memory", SCRIPT)
@@ -57,6 +61,34 @@ class ForcePortfolioRejectedUnitMemoryTests(unittest.TestCase):
         encoded = repr(rows)
         self.assertNotIn("MUST_NOT_SURVIVE", encoded)
         self.assertNotIn("private_source", encoded)
+
+    def test_portfolio_rejected_units_are_fallback_not_lifetime_ban(self):
+        first = {"id": "w1u1", "source": "const player = firstPlayer();"}
+        second = {"id": "w1u2", "source": "const media = secondSource();"}
+        third = {"id": "w1u3", "source": "return terminalMedia;"}
+        first_hash = hashlib.sha256(first["source"].encode("utf-8")).hexdigest()
+        second_hash = hashlib.sha256(second["source"].encode("utf-8")).hexdigest()
+
+        request = RepairRequest(
+            provider_id="sekai",
+            failure_class="route_proven_gap",
+            observations=mod.force_portfolio_rejected_feedback([first_hash, second_hash]),
+        )
+        # A fresh causal unit outranks both same-run rejected units.
+        self.assertEqual(selectable_force_units(request, [first, second, third]), [third])
+        # Once all fresh units are exhausted, a later hypothesis may revisit
+        # the exact source unit with a different edit/mechanism.
+        self.assertEqual(selectable_force_units(request, [first, second]), [first, second])
+
+        # Immediate validation feedback is still a hard rotation and never
+        # reopens the rejected unit inside the same correction chain.
+        request.observations = [{
+            "stage": "force_validation_feedback",
+            "reason": "no_op",
+            "rejected_unit_sha256": first_hash,
+            "rotate_unit": True,
+        }]
+        self.assertEqual(selectable_force_units(request, [first]), [])
 
     def test_malformed_hashes_never_become_portfolio_memory(self):
         self.assertEqual(mod.force_portfolio_rejected_feedback([

@@ -109,7 +109,9 @@ def force_portfolio_rejected_feedback(hashes) -> list[dict]:
             "rotate_unit": True,
             "instruction": (
                 "this exact current-source unit already produced a rejected same-run edit; "
-                "exclude it from later portfolio hypotheses and choose another causal unit or scope"
+                "prefer another causal unit or scope. If no fresh unit remains in a later "
+                "portfolio hypothesis, the same unit may be reopened only for a materially "
+                "different mechanism/edit; never repeat the rejected candidate"
             ),
         })
     return rows[-4:]
