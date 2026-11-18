@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "f2b15568b14d78f13281fd0f1c140a387580d315",
-  "reason": "2026-11-18 rerun private-memory Sekai FORCE after live evidence showed portfolio-level unit bans exhausted all editable units. Brain 3f1cfb46 keeps immediate correction-chain rotation strict, but treats cross-hypothesis rejected-unit hashes as preference memory: use fresh causal units first and reopen a portfolio-only exact unit only when every fresh unit is exhausted, requiring a materially different edit/mechanism. Preserve existing Markdown/architecture/census memory, historical reverse cases, sanitized old ChatGPT Project context and exact executed-negative evidence as proof_authority=false. Canonical NiakVIO sandbox still owns application, materialization, decoded playback, identity and promotion.",
+  "niakvio_sha": "6bde9436444c748f4de8f76b9b33bd2321837770",
+  "reason": "2026-11-18 exact-current Sekai private-memory FORCE oracle after structured provider reverse bridge. Brain 7d636b8a/3e064670 imports NiakVIO's existing brain-repair-experience providers map into the same ExperienceStore as provider-structured-knowledge; same-provider FORCE may use only strategy, Lego basename, route/recipe family shape and media types, never old hosts/routes/raw code or proof authority. It also uses corrected portfolio rejected-unit fallback from 3f1cfb46. Compare selected units/mechanisms against prior no-op cycles. Success still requires canonical current-byte application/materialization and independent decoded playable identity proof in NiakVIO; private/public/history memory is planning context only.",
   "requested_repair_queue": [
     "sekai"
   ],
-  "retry": 67,
+  "retry": 68,
   "require_deterministic_force": false
 }
