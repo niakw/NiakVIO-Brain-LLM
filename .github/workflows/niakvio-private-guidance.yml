@@ -453,6 +453,11 @@ jobs:
 
       - name: Produce private-informed advisor and Force batches
         shell: bash
+        env:
+          # Already tested in source-model-challenger; keep exact selected JS
+          # units and network causality while shrinking duplicate text before
+          # CPU-heavy 7B inference and each subsequent validation retry.
+          NIAKVIO_FORCE_CPU_TIGHT_PROMPT: '1'
         run: |
           set -euo pipefail
           # Generate a bounded portfolio for EVERY provider in the exact
