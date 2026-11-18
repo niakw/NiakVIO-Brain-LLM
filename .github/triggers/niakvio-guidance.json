@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "01fdc866818c827ca4aaf542fa850b2beffef6c7",
-  "reason": "2026-11-18 A/B replay after baseline 44367715216 proved that full existing project memory + Lego mechanisms in prompt still produced 4/4 Sekai no-op/abstention cycles and zero executable mutation. Current Brain adds explicit FORCE memory-plane semantics plus same-provider route-free Lego mechanism tokens as secondary exact-current editable-unit ranking, while current live execution focus remains primary. Security stdin syntax-check change is non-semantic to provider selection. Require materially different current-byte edit, then canonical apply/materialize/execute/decoded playable identity proof; memory remains proof_authority=false.",
+  "niakvio_sha": "f3b8c8d98bc4a2b02f2aab0d899b565f4c1fdb15",
+  "reason": "2026-11-18 current-main regeneration for canonical Sekai Repair. Prior A/B run 44370331940 generated one executable sanitized mutation after memory-aware exact-unit ranking, while baseline 44367715216 generated none. Regenerate on current Brain main so niakvio-guidance publication is not rejected as stale. Keep Brain main frozen during run. Source NiakVIO is exact current f3b8c8d98bc4a2b02f2aab0d899b565f4c1fdb15; subsequent Repair trigger-only drift is neutral. Artifact still has no proof/publication authority and must pass canonical apply/materialize/execute/decoded playable identity/nonregression.",
   "requested_repair_queue": [
     "sekai"
   ],
-  "retry": 70,
+  "retry": 71,
   "require_deterministic_force": false
 }
