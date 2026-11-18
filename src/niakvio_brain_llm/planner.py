@@ -3479,6 +3479,24 @@ class BrainPlanner:
         experiences = self.store.search(query, limit=6)
         documents = self.documents.search(query, limit=4)
         if compact_force:
+            # A provider-specific FORCE mutation must not receive an unrelated
+            # old private chat, even if a sparse DocumentStore would rank it
+            # among the general top four. Advisor retrieval is unchanged.
+            provider_token = str(request.provider_id or "").strip().casefold()
+            documents = [
+                row for row in documents
+                if row.get("private_memory") is not True
+                or (
+                    row.get("proof_authority") is False
+                    and bool(re.search(
+                        r"(?<![a-z0-9])" + re.escape(provider_token)
+                        + r"(?![a-z0-9])",
+                        str(row.get("heading") or "") + "\n"
+                        + str(row.get("text") or ""),
+                        flags=re.I,
+                    ))
+                )
+            ]
             # Ordinary top-4 lexical hits can be crowded by MEMORY.md, census
             # and technical docs. Reserve one *provider-specific* old-chat
             # RAG hit if the ephemeral private corpus is present. Never treat
