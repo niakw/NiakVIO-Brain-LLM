@@ -449,6 +449,7 @@ class AdapterFailureClassTests(unittest.TestCase):
                     "runId": "run-replay",
                     "providers": [{
                         "provider": "demo",
+                        "providerArtifactSha256": "a" * 64,
                         "status": "ROUTE PROVEN",
                         "dominantIssue": "provider_waf_challenge",
                         "declaredLanes": ["movie"],
@@ -479,6 +480,7 @@ class AdapterFailureClassTests(unittest.TestCase):
                     }],
                     "residentialProviderReplay": {"rows": [{
                         "provider": "demo",
+                        "providerArtifactSha256": "a" * 64,
                         "lane": "movie",
                         "status": "no_streams",
                         "debugStage": "provider_zero_before_provider_network",
