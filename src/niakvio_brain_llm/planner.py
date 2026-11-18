@@ -14,7 +14,7 @@ from typing import Any
 
 from .backend import ModelBackend
 from .advisor_experiments import experiment_fingerprint, failed_advisor_fingerprints, next_advisor_experiment
-from .source_units import javascript_function_end as _deterministic_function_end
+from .source_units import javascript_function_end as _deterministic_function_end, javascript_if_block_span
 from .contracts import RepairProposal, RepairRequest
 from .document_memory import DocumentStore
 from .mutation_guard import validate_mutations
@@ -65,6 +65,7 @@ One edit max:
 - provider_bloc: {scope:"provider_bloc",family,unit_id,replace}
 unit_id MUST come from editable_units; Brain owns exact find bytes.
 For kind=function_unit, replace is the NEW FUNCTION BODY ONLY. Never emit or rename the function declaration/name/signature; Brain preserves it.
+For kind=block_unit, replace is the NEW IF-BLOCK BODY ONLY. Brain preserves the current if-condition and braces; do not repeat them.
 Existing-file replace <=640 chars unless function_unit; provider_bloc replace <=1200 chars.
 Prefer runtime_template_prior/current runtime reuse before a novel Bloc. A new provider-local mechanism is allowed when current evidence supports it.
 Never cosmetically repeat prior_force_sandbox_failures. force_portfolio_reservations are same-run candidates already reserved for sandbox; do not repeat them. force_validation_feedback requires a materially different valid edit or abstention.
@@ -150,6 +151,23 @@ def _preserve_selected_function_envelope(
         return match.group(1) + body.strip() + match.group(3)
 
     return match.group(1) + stripped + match.group(3)
+
+def _preserve_selected_block_envelope(find: str, replacement_body: str) -> str:
+    """Preserve an exact current braced if-condition around a model body edit.
+
+    A block_unit is emitted only for complete JS control blocks within an
+    oversized provider helper; modifying its condition is not model authority.
+    The full resulting provider runtime must still pass syntax and replay gates.
+    """
+    bounds = javascript_if_block_span(find, 0)
+    if bounds is None or bounds[1] != len(find):
+        raise ValueError("selected block is not a complete exact braced if")
+    brace, end = bounds
+    body = str(replacement_body or "").strip()
+    if not body:
+        raise ValueError("selected block replacement body is empty")
+    return find[:brace + 1] + "\n" + body + "\n" + find[end - 1:]
+
 
 def _compact_without_space(value: str) -> str:
     return re.sub(r"\s+", "", str(value or ""))
@@ -621,11 +639,14 @@ def _compact_edit_to_mutation(
             window_id = str(unit.get("window_id") or "")
             find = str(unit.get("source") or "")
             absolute_start_hint = int(unit.get("offset") or 0)
-            if str(unit.get("kind") or "") == "function_unit":
+            if str(unit.get("kind") or "") in {"function_unit", "block_unit"}:
                 # Keep deletion/live-behavior guards meaningful on the raw model
-                # body before adding the deterministic declaration envelope.
+                # body before adding the selected exact-source envelope.
                 _reject_causally_empty_deletion(request.failure_class, find, replace)
-                replace = _preserve_selected_function_envelope(find, replace, normalize_explicit_wrapper=True)
+                if str(unit.get("kind") or "") == "function_unit":
+                    replace = _preserve_selected_function_envelope(find, replace, normalize_explicit_wrapper=True)
+                else:
+                    replace = _preserve_selected_block_envelope(find, replace)
         elif not find or len(find) > 320:
             raise ValueError("compact Force provider_bloc exact edit target is missing or oversized")
         # A provider_bloc selected through a complete function_unit may need
@@ -698,15 +719,15 @@ def _compact_edit_to_mutation(
         window_id = str(unit.get("window_id") or "")
         find = str(unit.get("source") or "")
         absolute_start_hint = int(unit.get("offset") or 0)
-        if str(unit.get("kind") or "") == "function_unit":
-            # function_unit has the same deterministic contract for authored
-            # provider_patch/provider_js surfaces as for generated Bloc: the
-            # model may return the new body only, while Brain preserves the
-            # exact selected declaration. Keep the full bounded function
-            # available as an anchor when a structural rewrite changes most of
-            # its body instead of forcing every edit back under 320 bytes.
+        if str(unit.get("kind") or "") in {"function_unit", "block_unit"}:
+            # A bounded function or complete inner control block is an exact
+            # current-byte anchor. Brain preserves the outer declaration or
+            # conditional; the model changes only the selected body.
             _reject_causally_empty_deletion(request.failure_class, find, replace)
-            replace = _preserve_selected_function_envelope(find, replace)
+            if str(unit.get("kind") or "") == "function_unit":
+                replace = _preserve_selected_function_envelope(find, replace)
+            else:
+                replace = _preserve_selected_block_envelope(find, replace)
             max_find = 1800
             max_replace = 1800
     elif not find or len(find) > 320:
