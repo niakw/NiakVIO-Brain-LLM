@@ -309,8 +309,23 @@ def _node_check_javascript(source: str) -> None:
             timeout=20,
         )
     if proc.returncode != 0:
-        detail = (proc.stderr or proc.stdout or "node --check failed").strip().replace("\n", " ")
-        raise ValueError("compact Force JavaScript syntax validation failed: " + detail[:500])
+        # Node prints source lines, paths and potentially provider-owned
+        # sensitive values in its stderr. Return fixed diagnostic classes to
+        # the model so retries learn the *cause* without echoing source.
+        detail = (proc.stderr or proc.stdout or "").casefold()
+        if "illegal continue statement" in detail or (
+                "continue" in detail and "no surrounding iteration" in detail):
+            problem = "illegal_continue_outside_loop"
+        elif "illegal break statement" in detail or (
+                "break" in detail and "no surrounding iteration" in detail):
+            problem = "illegal_break_outside_loop"
+        elif "unexpected token" in detail:
+            problem = "unexpected_token"
+        elif "unexpected end of input" in detail:
+            problem = "incomplete_statement"
+        else:
+            problem = "syntax_error"
+        raise ValueError("compact Force JavaScript syntax validation failed: " + problem)
 
 
 def _validate_compact_updated_source(scope: str, updated: str) -> None:
