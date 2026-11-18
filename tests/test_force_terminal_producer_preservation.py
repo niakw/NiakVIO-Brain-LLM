@@ -8,7 +8,8 @@ import unittest
 
 from niakvio_brain_llm.contracts import RepairRequest
 from niakvio_brain_llm.planner import (
-    _compact_edit_to_mutation, _reject_causally_empty_deletion,
+    COMPACT_FORCE_SYSTEM_PROMPT, _compact_edit_to_mutation,
+    _reject_causally_empty_deletion,
 )
 from niakvio_brain_llm.prompting import build_force_prompt_payload
 
@@ -31,6 +32,17 @@ class TerminalProducerPreservationTests(unittest.TestCase):
             'if (episodeMarker.marked && !episodeMarker.matches) continue; '
             '}'
         )
+
+    def test_force_generator_is_told_not_to_repeat_terminal_erasure(self):
+        self.assertIn("preserve actual terminal-producing paths", COMPACT_FORCE_SYSTEM_PROMPT)
+        self.assertIn("Identity guards must supplement working traversal", COMPACT_FORCE_SYSTEM_PROMPT)
+        self.assertIn("abstain", COMPACT_FORCE_SYSTEM_PROMPT)
+        from pathlib import Path
+        pipeline = (Path(__file__).resolve().parents[1] /
+                    'scripts/plan_batch_from_checkout.py').read_text(encoding='utf-8')
+        self.assertIn('"causally_empty_deletion": (', pipeline)
+        self.assertIn("guard-only", pipeline)
+        self.assertIn("terminal streams push/return paths", pipeline)
 
     def test_reject_guard_only_erasure_of_all_terminal_stream_paths(self):
         with self.assertRaisesRegex(ValueError, 'all terminal stream producers erased'):
