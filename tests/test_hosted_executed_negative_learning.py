@@ -84,6 +84,31 @@ class HostedNegativeLearningTests(unittest.TestCase):
                 ], "sekai"), []
             )
 
+    def test_malformed_archived_acceptance_count_fails_closed(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            directory = root / "automation" / "hosted-repair-evidence"
+            directory.mkdir(parents=True)
+            for i, invalid in enumerate(("not-a-number", "0", None, False, 1)):
+                report = {
+                    "provider": "sekai",
+                    "sourceNiakvioSha": "a" * 40,
+                    "sourceBrainLlmSha": "b" * 40,
+                    "publicationAuthority": False,
+                    "acceptedProviderCount": invalid,
+                }
+                (directory / f"4432799336{i}.json").write_text(json.dumps(report))
+                (directory / f"4432799336{i}-evaluation.json").write_text(
+                    json.dumps({"currentSha": "a" * 40, "rows": [{
+                        "provider": "sekai", "accepted": False,
+                        "executionObserved": True,
+                        "materializedMutationObserved": True,
+                        "reason": "decoded_repair_no_new_fixture_control",
+                        "mutationFingerprint": "c" * 64,
+                    }]})
+                )
+            self.assertEqual(collect_hosted_replay_negatives(root), [])
+
     def test_non_false_publication_authority_is_rejected(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
