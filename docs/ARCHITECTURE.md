@@ -1,3 +1,28 @@
+## 2026-11-18 — Existing multi-source memory is prior context; exact live evidence owns repair authority
+
+NiakVIO Brain does **not** use a newly invented parallel memory store. FORCE reuses the existing knowledge planes:
+
+- `DocumentStore`: repository Markdown and evidence documents, including `MEMORY.md` and architecture/census ledgers;
+- `ExperienceStore`: historical reverse-engineering/repair cases plus retained experiment results;
+- optional read-only private ChatGPT Project memory from `niakvio-private`, sanitized before retrieval;
+- exact-SHA hosted executed-negative experiences and FORCE experiment memory.
+
+All retrieved memory is planning context only (`proof_authority=false`). A historical conversation, successful old recipe, Markdown statement or failed mutation cannot override current provider bytes, current network observations, current work/episode identity or playback validation. Private memory is never required by the public hosted repair path and raw private content is not persisted into public repair artifacts.
+
+The authority order for provider mutation is therefore:
+
+`exact current bytes + exact current preflight > current census/runtime state > recent durable memory/evidence > historical/private strategy priors`.
+
+A complete exact-current preflight that is `healthy`, covers every required fixture, returns at least one playable stream per fixture and reports **zero identity contradictions** invalidates a stale provider-local repair diagnosis. Brain reclassifies that situation as `proof_freshness_gap`, routes it to Core/proof refresh, and gives provider mutation policy no writable scopes. This does **not** grant FULL/decoded/native proof; it only prevents rewriting provider bytes that current evidence already shows are functioning.
+
+The public/private memory A/B and live FORCE runs must be interpreted under this boundary: retrieval can improve hypothesis selection, but only generated → compiled → applied → materialized → executed → identity-correct → terminal-playable evidence can establish a repair.
+
+## 2026-11-18 — Causal no-op rejection before provider materialization
+
+FORCE rejects edits that differ textually but leave the causal terminal traversal unchanged. In route/chain/media-extraction gaps, the planner canonicalizes syntax-checked JavaScript formatting and stream **presentation-only** assignments (`name/title/language/provider/player/sourceLabel/sourceName`) while retaining URLs, selectors, request parameters, `url` fields and control flow. If the remaining causal program is identical, the proposal is a `causally irrelevant no-op` and the selected exact unit is rotated before NiakVIO spends a materialization/replay budget.
+
+This guard was added after a real Papadustream FORCE candidate changed pretty-printing and display labels while leaving its player traversal unchanged. Metadata remains editable for failure classes that actually target metadata; this no-op rule is limited to route/terminal/media-extraction repair families.
+
 ## 2026-11-18 — Complete control-block edit units for oversized provider runtimes
 
 Some provider-owned terminal helpers exceed the 1,800-character whole-function edit ceiling. Exposing only a truncated 320-character statement may force the local model into unsafe deletions or abstention without a complete syntactic edit surface. FORCE now offers selected `block_unit` candidates: a fully balanced `if (condition) { body }` whose source bytes are cut from the exact current provider function and bounded to 1,400 characters. The candidate is considered only within an oversized provider helper for relevant route, chain or media extraction failures; current execution function names and causal tokens determine the limited offer. This is a generic local edit surface, not a patch for Frenchstream.
