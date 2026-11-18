@@ -2,6 +2,13 @@ name: Private NiakVIO Chat Memory Contract
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'src/niakvio_brain_llm/private_chat_memory.py'
+      - 'src/niakvio_brain_llm/document_memory.py'
+      - 'tests/test_private_chat_memory.py'
+      - '.github/workflows/private-chat-memory-contract.yml'
   schedule:
     - cron: "47 4 * * 1"
 
