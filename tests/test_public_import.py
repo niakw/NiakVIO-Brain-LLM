@@ -40,7 +40,7 @@ class PublicImportTests(unittest.TestCase):
                 """JS=r'''function scripts(html){return html.match(/<script/)}\n"""
                 """function resolve(tmdbId,season,episode){var x=atob('YWJj');"""
                 """var y=JSON.parse('{}'); return _crawlDirectMedia(['/movie.mp4']);}\n"""
-                """// sitemap.xml Referer User-Agent iframe #EXTM3U .m3u8\n'''\n"""
+                """// sitemap.xml slug Referer User-Agent iframe #EXTM3U .m3u8\n'''\n"""
             )
             payload = {
                 "role": "repair-prior-only",
