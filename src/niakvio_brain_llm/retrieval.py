@@ -119,6 +119,38 @@ class ExperienceStore:
 
         return cls(rows)
 
+    def same_provider_executed_negatives(
+        self, provider_id: str, *, limit: int = 2
+    ) -> list[dict[str, Any]]:
+        """Reserve memory slots for actual executed failures of this provider.
+
+        The broad similarity top-6 may be dominated by dozens of historical
+        successes. A later executed negative is still critical to avoid a
+        duplicated edit. It has no repair or publication authority.
+        """
+        provider = str(provider_id or "").strip().casefold()
+        if not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,63}", provider):
+            return []
+        found = []
+        for row in reversed(self.rows):
+            if row.get("source") != "hosted-executed-negative":
+                continue
+            if provider not in [str(value).strip().casefold()
+                                for value in (row.get("providers") or [])[:16]]:
+                continue
+            if (row.get("result") != "rejected_executed_no_improvement"
+                    or row.get("proof_authority") is not False
+                    or row.get("prior_only") is not True):
+                continue
+            if not re.fullmatch(
+                r"[0-9a-f]{64}", str(row.get("mutation_fingerprint") or "")
+            ):
+                continue
+            found.append(row)
+            if len(found) >= max(0, min(limit, 4)):
+                break
+        return found
+
     def search(self, query: dict[str, Any], *, limit: int = 6) -> list[dict[str, Any]]:
         qv = _tokens(query)
         scored = []
