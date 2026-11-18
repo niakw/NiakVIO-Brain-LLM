@@ -210,6 +210,46 @@ class ForceRejectedUnitDiversification(unittest.TestCase):
         self.assertEqual([u["id"] for u in after],
                          variants[0]["properties"]["unit_id"]["enum"])
 
+    def test_full_block_body_repeat_is_tagged_as_exact_noop_and_rotates(self):
+        source = (
+            "async function crawl(q){\n"
+            "if (q && q.player) { const rows = parse(q); return rows; }\n"
+            "if (q && q.embed) { return embeds(q); }\n"
+            "return [];\n}\n"
+        )
+        request = RepairRequest(
+            provider_id="synthetic", status="CHAIN REACHED",
+            failure_class="chain_terminal_gap",
+            allowed_mutations=["provider_bloc"],
+            provider_context={
+                "runtimeMutationSource": source,
+                "runtimeMutationFilename": "providers/synthetic.js",
+                "live_runtime_evidence": {"active_functions": ["crawl"]},
+            },
+        )
+        policy = {"allow_mutations": True, "allowed_scopes": ["provider_bloc"]}
+        offered = build_force_prompt_payload(request, {}, policy)["new_bloc_target"]["editable_units"]
+        block = next(row for row in offered if row.get("kind") == "block_unit")
+        tagged = tagged_force_deletion(
+            request,
+            {"scope": "provider_bloc", "unit_id": block["id"]},
+            ValueError("block_unit replacement repeats current body without a repair"),
+        )
+        self.assertIsInstance(tagged, RejectedForceUnitError)
+        denied = tagged.rejected_unit_sha256
+        request.observations = [{
+            "stage": "force_validation_feedback",
+            "reason": "no_op",
+            "rejected_unit_sha256": denied,
+            "rotate_unit": True,
+        }]
+        remaining = build_force_prompt_payload(request, {}, policy)["new_bloc_target"]["editable_units"]
+        self.assertTrue(remaining)
+        self.assertTrue(all(
+            hashlib.sha256(row["source"].encode("utf-8")).hexdigest() != denied
+            for row in remaining
+        ))
+
     def test_non_deletion_rejection_does_not_block_source_units(self):
         request = RepairRequest(provider_id="synthetic", failure_class="chain_terminal_gap", allowed_mutations=["provider_bloc"])
         exc = ValueError("compact Force JavaScript syntax validation failed")

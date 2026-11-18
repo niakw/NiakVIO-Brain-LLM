@@ -392,6 +392,7 @@ def main() -> int:
             ("synthetic or non-provider network endpoint", "placeholder_or_synthetic"),
             ("exactly once", "non_unique_anchor"),
             ("no-op", "no_op"),
+            ("repeats current body without a repair", "no_op"),
             ("truncated source fragment", "truncated_fragment"),
             ("function anchor is structurally incomplete", "truncated_fragment"),
             ("illegal_continue_outside_loop", "illegal_continue_outside_loop"),

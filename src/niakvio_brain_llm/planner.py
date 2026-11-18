@@ -649,7 +649,7 @@ def tagged_force_deletion(request: RepairRequest, edit: dict[str, Any] | None, e
     if (
         not isinstance(edit, dict)
         or edit.get("scope") != "provider_bloc"
-        or not any(reason in str(exc).casefold() for reason in ("pure deletion", "no-op", "removes live binding still referenced nearby"))
+        or not any(reason in str(exc).casefold() for reason in ("pure deletion", "no-op", "repeats current body without a repair", "removes live binding still referenced nearby"))
     ):
         return exc
     unit_id = str(edit.get("unit_id") or "")
