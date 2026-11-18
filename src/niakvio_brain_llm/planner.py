@@ -143,11 +143,14 @@ def _preserve_selected_function_envelope(
         )
         if replace_identity == find_identity:
             return stripped
-        if not normalize_explicit_wrapper:
-            raise ValueError("selected function declaration/signature changed")
-        _node_check_javascript(stripped)
-        body = stripped[replace_decl.end():-1]
-        return match.group(1) + body.strip() + match.group(3)
+        # A model may copy a nearby helper and return its full wrapper while
+        # the constrained unit_id points at another exact current function.
+        # Earlier FORCE normalized that mismatched wrapper onto the selected
+        # declaration. Live Sekai A/B proved this can transplant an unrelated
+        # helper body (for example title aliases into episode indexing) while
+        # remaining syntactically valid. Exact-unit authority includes function
+        # identity: a different explicit wrapper is therefore a hard rejection.
+        raise ValueError("selected function declaration/signature changed")
 
     return match.group(1) + stripped + match.group(3)
 
@@ -208,6 +211,45 @@ def _reject_semantic_identity_edit(find: str, replace: str) -> None:
         raise ValueError("compact Force edit is a no-op")
     if _normalized_js_identity(find) == _normalized_js_identity(replace):
         raise ValueError("compact Force edit is a semantic no-op")
+
+
+def _reject_sibling_helper_body_transplant(
+    source: str,
+    find: str,
+    replace: str,
+    *,
+    selected_offset: int | None = None,
+) -> None:
+    """Reject exact bodies copied from a different named JS helper.
+
+    This is deliberately narrow: only a replacement that is effectively the
+    complete body of another current helper is rejected. Calling/reusing a
+    helper remains allowed. Historical/RAG hints cannot make sibling source
+    bytes authoritative for a different exact unit.
+    """
+    candidate = _compact_without_space(replace)
+    if len(candidate) < 48:
+        return
+    pattern = re.compile(
+        r"\b(?:async\s+)?function\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*\([^)]*\)\s*\{"
+    )
+    for match in pattern.finditer(source):
+        end = _deterministic_function_end(source, match.start())
+        if end is None or end <= match.end():
+            continue
+        # The selected unit may itself be this function; edits to its own body
+        # are legitimate and handled by the normal no-op/signature guards.
+        if selected_offset is not None and match.start() <= selected_offset < end:
+            continue
+        whole = source[match.start():end]
+        brace = whole.find("{")
+        if brace < 0:
+            continue
+        body = whole[brace + 1:-1].strip()
+        if len(body) < 48:
+            continue
+        if candidate == _compact_without_space(body):
+            raise ValueError("compact Force replacement copies a different current helper body")
 
 
 
@@ -742,6 +784,9 @@ def _compact_edit_to_mutation(
             window_id = str(unit.get("window_id") or "")
             find = str(unit.get("source") or "")
             absolute_start_hint = int(unit.get("offset") or 0)
+            _reject_sibling_helper_body_transplant(
+                source, find, replace, selected_offset=absolute_start_hint
+            )
             if str(unit.get("kind") or "") in {"function_unit", "block_unit"}:
                 # Keep deletion/live-behavior guards meaningful on the raw model
                 # body before adding the selected exact-source envelope.
@@ -822,6 +867,9 @@ def _compact_edit_to_mutation(
         window_id = str(unit.get("window_id") or "")
         find = str(unit.get("source") or "")
         absolute_start_hint = int(unit.get("offset") or 0)
+        _reject_sibling_helper_body_transplant(
+            source, find, replace, selected_offset=absolute_start_hint
+        )
         if str(unit.get("kind") or "") in {"function_unit", "block_unit"}:
             # A bounded function or complete inner control block is an exact
             # current-byte anchor. Brain preserves the outer declaration or
