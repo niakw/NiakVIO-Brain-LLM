@@ -1693,6 +1693,41 @@ def _bounded_force_experience_hints(
     return hints
 
 
+
+def _bounded_force_hosted_negative_hints(
+    rows: list[dict[str, Any]] | None, provider_id: str
+) -> list[dict[str, Any]]:
+    """Retrieve only executed, source-pinned same-provider failed mechanisms."""
+    expected = str(provider_id or "").strip().casefold()
+    hints = []
+    for row in reversed(rows or []):
+        if not isinstance(row, dict) or row.get("source") != "hosted-executed-negative":
+            continue
+        providers = row.get("providers") or []
+        if expected not in providers or row.get("result") != "rejected_executed_no_improvement":
+            continue
+        if row.get("proof_authority") is not False or row.get("prior_only") is not True:
+            continue
+        fingerprint = str(row.get("mutation_fingerprint") or "").strip().casefold()
+        mechanism = str(row.get("strategy") or "").strip().casefold()
+        if not re.fullmatch(r"[a-f0-9]{64}", fingerprint):
+            continue
+        if not re.fullmatch(r"[a-z0-9_-]{2,80}", mechanism):
+            continue
+        hints.append({
+            "mechanism": mechanism[:64],
+            "mutation_fingerprint": fingerprint[:16],
+            "outcome": "executed_no_decoded_gain",
+            "scope": "same_provider_only",
+            "historical_sha_not_current_proof": True,
+            "proof_authority": False,
+            "never_repeat_identical_edit_without_new_evidence": True,
+        })
+        if len(hints) == 2:
+            break
+    return hints
+
+
 def build_force_prompt_payload(
     request: RepairRequest,
     causal_prior: dict[str, Any] | None = None,
@@ -1999,6 +2034,11 @@ def build_force_prompt_payload(
             "retrieved_strategy_memory": hints
         } if (hints := _bounded_force_experience_hints(
             experiences, request.failure_class
+        )) else {}),
+        **({
+            "retrieved_executed_negative_memory": negative_hints
+        } if (negative_hints := _bounded_force_hosted_negative_hints(
+            experiences, request.provider_id
         )) else {}),
         "previous_executed_edits": _compact(
             (context.get("live_runtime_evidence") or {}).get("previous_executed_edits") or [],
