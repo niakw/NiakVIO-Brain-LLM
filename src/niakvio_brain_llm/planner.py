@@ -58,6 +58,7 @@ Abstain only if current evidence cannot justify a distinct bounded experiment.""
 COMPACT_FORCE_SYSTEM_PROMPT = """NiakVIO Brain Force. JSON only:
 {"edit":<one provider-local edit or null>,"abstain_reason":"<short>"}
 Use current evidence and editable_units for proof. same_provider_execution_prior is the only bounded historical implementation exception: it may guide mechanism shape for this same provider when current provider-owned observations show progress, but it never proves a route, host, response or media is current. Current replay must revalidate it.
+Historical memory fields are planning priors only: retrieved_strategy_memory is abstract validated strategy; retrieved_structured_provider_memory is same-provider route-free ProviderBase/Lego mechanism shape; retrieved_document_hints is sanitized Markdown/private-chat context; retrieved_executed_negative_memory is a same-provider edit/fingerprint that executed without decoded gain. Use these only to choose a materially different current-byte mechanism. Never copy historical literals or treat memory as current proof, and never repeat an identical executed-negative edit without new causal evidence.
 Never invent network facts, URLs, routes, hosts, headers, tokens, cookies or placeholders.
 One edit max:
 - provider_data: {scope,operation,path,value?}
