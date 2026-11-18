@@ -33,6 +33,14 @@ rows = [
         },
     } for i in range(8)
 ]
+# Reproduce a DNS-failed external player in a real-source-style trace,
+# contrasting with provider-owned 200/404 catalogue responses. Tight FORCE
+# prompts must retain this transport failure, not encourage unrelated POST
+# parser edits when the external reader is not resolvable.
+rows[0].update({
+    "stage": "player", "host": "cdn.futur.link", "status": None,
+    "error_code": "ENOTFOUND", "announced_players": 3,
+})
 # Reproduce a HTTP-200 GraphQL failure nested among successful HTML
 # responses. Tight CPU prefill must preserve the class, not just status=200.
 rows[2]["response_structure"] = {
@@ -99,6 +107,12 @@ assert causal[0]["graphql"]["errorCount"] == 1
 assert causal[0]["graphql"]["kinds"] == ["schema_mismatch"]
 assert causal[0]["graphql"]["dataState"] == "null"
 assert {"path": "data.episode", "type": "null"} in causal[0]["fields"]
+assert any(
+    row.get("stage") == "player"
+    and row.get("host") == "cdn.futur.link"
+    and row.get("error_code") == "ENOTFOUND"
+    for row in compact["current_network_evidence"]
+), "tight prompt lost actual foreign reader DNS failure"
 assert "PRIVATE_ERROR_PAYLOAD" not in json.dumps(compact)
 # Candidate verification feedback must retain the same causal category.
 assert any(
