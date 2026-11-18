@@ -1042,6 +1042,21 @@ def _force_window_kwargs_for_request(request: RepairRequest) -> dict[str, int]:
         for row in (request.observations or [])
     )
     context = request.provider_context or {}
+    failure = str(request.failure_class or "").strip().casefold()
+    # The first route-proven synthesis stays on the strict dispatcher/parser
+    # pair. Once two different exact units have been rejected, continuing to
+    # offer only that pair cannot produce a new causal edit. Expand the same
+    # source-backed call graph rather than retrying a known no-op indefinitely.
+    rejected_route_hashes = {
+        str(row.get("rejected_unit_sha256") or "").strip().casefold()
+        for row in (request.observations or [])
+        if isinstance(row, dict)
+        and row.get("stage") == "force_validation_feedback"
+        and row.get("reason") in {"no_op", "causally_empty_deletion"}
+        and re.fullmatch(r"[0-9a-f]{64}",
+                         str(row.get("rejected_unit_sha256") or "").strip().casefold())
+    }
+    expanded_route_graph = failure == "route_proven_gap" and len(rejected_route_hashes) >= 2
     template_prior = context.get("runtime_template_prior")
     if (
         isinstance(template_prior, dict)
@@ -1054,6 +1069,8 @@ def _force_window_kwargs_for_request(request: RepairRequest) -> dict[str, int]:
             # Do not refill the admission surface with downstream validators.
             return {'max_chars': 2000, 'max_windows': 2,
                     'max_units': len(selection['seed_admission_functions'])}
+        if expanded_route_graph:
+            return {"max_chars": 1600, "max_windows": 2, "max_units": 4}
         if str(request.failure_class or '').casefold() == 'variant_coverage_gap' and non_improving_functions(
             context.get('preferredRuntimeMutationSource'), context.get('live_runtime_evidence') or {}
         ):
@@ -1071,7 +1088,8 @@ def _force_window_kwargs_for_request(request: RepairRequest) -> dict[str, int]:
             "max_windows": 1,
             "max_units": 2,
         }
-    failure = str(request.failure_class or "").strip().casefold()
+    if expanded_route_graph:
+        return {"max_chars": 1600, "max_windows": 2, "max_units": 4}
     # Route-proven gaps are dominated by one route/search dispatcher plus
     # its strongest selector/parser callee. Keep exactly that causal pair on
     # both initial and validation attempts. Chain/media gaps retain the wider
