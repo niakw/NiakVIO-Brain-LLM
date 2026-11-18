@@ -2,6 +2,10 @@ name: Brain Private Memory A/B Benchmark
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/private-memory-ab-benchmark.yml'
 
 permissions:
   contents: read
