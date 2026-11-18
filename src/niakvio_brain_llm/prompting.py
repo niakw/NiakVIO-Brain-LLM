@@ -2022,8 +2022,22 @@ def build_force_prompt_payload(
     if prompt_chars() > soft_limit:
         # Immutable policy is already enforced by the system prompt and Brain.
         for key in ("field_evidence_policy", "reference_policy",
-                    "runtime_template_policy", "output_contract"):
+                    "runtime_template_policy"):
             payload.pop(key, None)
+        # A long FORCE prompt must still state its bounded mutation format and
+        # distinguish an initial proposal from a validation retry.  Dropping the
+        # entire output contract makes the prompt and its verifier disagree.
+        contract = payload.get("output_contract")
+        if isinstance(contract, dict):
+            payload["output_contract"] = {
+                key: contract[key]
+                for key in ("max_edits", "file_edit_format",
+                            "generated_bloc_format",
+                            "unit_id_selects_exact_current_bytes",
+                            "source_windows_are_exact_current_bytes",
+                            "validation_retry_context")
+                if key in contract
+            }
     if prompt_chars() > soft_limit:
         # editable_units contain exact source fragments; never send them twice.
         for key in ("mutation_target", "new_bloc_target"):
