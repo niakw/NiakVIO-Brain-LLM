@@ -1,3 +1,9 @@
+## 2026-11-18 — Preserve terminal-producing paths in generated provider Blocs
+
+A `provider_bloc` exact-unit edit may be syntactically valid and still destroy playback: the private source-pinned Sekai replay `44400985137` generated a body that replaced nested player-resolution and crawling branches with only an episode-identity guard, dropping every existing `streams.push(...)` producer in the selected block. It was **generated/compiled only**, never proven in decoded playback. The actual failed edit is a negative learning example, not a provider fix.
+
+The Brain compiler now rejects route/media-gap edits that remove multiple terminal stream append operations without preserving an alternate producer, assignment, or return. This is a generic causal invariant on exact current JS bytes; an identity check should wrap or supplement terminal traversal, not replace it. It is enforced before `provider_bloc` compilation and covers bounded `function_unit` and `block_unit` edits. Regression: `tests/test_force_terminal_producer_preservation.py`. Only NiakVIO's isolated materialization, current network execution, terminal media decode, episode identity, and non-regression can validate a repair.
+
 ## 2026-11-18 — Current network observation before private FORCE synthesis
 
 The private-guidance workflow historically supplied source-pinned NiakVIO catalog + census, existing public Markdown, private historical ChatGPT mirror and learning experiments to FORCE, but omitted its already implemented `--live-evidence` ingress. A successful route census or old conversation cannot substitute for exact current network responses and function calls. In particular, a generated `no_op`/function-identity edit against an outdated HTML assumption is not a repair, no matter how many alternatives are attempted.
