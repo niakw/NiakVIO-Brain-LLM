@@ -92,6 +92,27 @@ def force_rejected_unit_hashes(observations) -> list[str]:
     return values[-4:]
 
 
+
+def force_rejected_error_hashes(error: Exception | None) -> list[str]:
+    """Retain exact-source negative identities from a failed correction chain.
+
+    Provider source and model replacement bytes never leave the local sandbox.
+    Only bounded validated SHA-256 unit identities cross portfolio boundaries.
+    """
+    if error is None:
+        return []
+    previous = getattr(error, "rejected_unit_sha256s", ())
+    if not isinstance(previous, (list, tuple, set)):
+        previous = ()
+    candidates = [*previous, getattr(error, "rejected_unit_sha256", "")]
+    hashes: list[str] = []
+    for raw in candidates:
+        value = str(raw or "").strip().casefold()
+        if re.fullmatch(r"[0-9a-f]{64}", value) and value not in hashes:
+            hashes.append(value)
+    return hashes[-4:]
+
+
 def force_portfolio_rejected_feedback(hashes) -> list[dict]:
     """Carry only source fingerprints, never rejected provider bytes, to later hypotheses."""
     rows = []
@@ -721,6 +742,15 @@ def main() -> int:
         def _run_validation_chain(request, first_exc: ValueError):
             current_request = request
             current_exc = first_exc
+            rejected_hashes = force_rejected_error_hashes(first_exc)
+
+            def _retain_error_hashes(error: ValueError) -> ValueError:
+                retained = list(dict.fromkeys([
+                    *rejected_hashes, *force_rejected_error_hashes(error)
+                ]))[-4:]
+                error.rejected_unit_sha256s = retained
+                return error
+
             if max_validation_corrections <= 0:
                 print(
                     "FIELD_BRAIN_FORCE_SPECULATIVE_FAST_FAIL "
@@ -728,7 +758,7 @@ def main() -> int:
                     "retry=validation-suppressed",
                     flush=True,
                 )
-                return None, first_exc
+                return None, _retain_error_hashes(first_exc)
             for correction_index in range(1, max_validation_corrections + 1):
                 retry_request = _validation_feedback(
                     current_request,
@@ -744,8 +774,9 @@ def main() -> int:
                 except ValueError as validation_exc:
                     current_request = retry_request
                     current_exc = validation_exc
+                    rejected_hashes.extend(force_rejected_error_hashes(validation_exc))
                     if correction_index >= max_validation_corrections:
-                        return None, validation_exc
+                        return None, _retain_error_hashes(validation_exc)
                     continue
                 except Exception as retry_exc:
                     print(
@@ -757,8 +788,8 @@ def main() -> int:
                     # A transport timeout while correcting an already-invalid edit
                     # must not erase the causal local rejection. The next portfolio
                     # hypothesis needs the no-op/syntax/window reason to diversify.
-                    return None, current_exc
-            return None, current_exc
+                    return None, _retain_error_hashes(current_exc)
+            return None, _retain_error_hashes(current_exc)
 
         try:
             outcome = _run_once(
@@ -919,7 +950,10 @@ def main() -> int:
                         }
                     )
                 ][:12]
-                rejected_feedback = force_portfolio_rejected_feedback(rejected_hashes)
+                rejected_feedback = force_portfolio_rejected_feedback([
+                    *force_rejected_unit_hashes(request.observations),
+                    *(rejected_hashes or []),
+                ])
                 request.observations = [feedback, *rejected_feedback, *retained]
                 negative_memory_rows = sum(
                     1
@@ -992,6 +1026,7 @@ def main() -> int:
                 last_row: dict | None = None
                 scope_trace: list[dict[str, object]] = []
                 selected_row: dict | None = None
+                rejected_hashes_seen: list[str] = []
 
                 for scope in scopes:
                     if time.monotonic() >= candidate_deadline:
@@ -1018,6 +1053,7 @@ def main() -> int:
                     )
                     if error is not None:
                         last_error = error
+                        rejected_hashes_seen.extend(force_rejected_error_hashes(error))
                         rejection_reason = _force_rejection_reason(error)
                         scope_trace.append({
                             "scope": scope,
@@ -1085,10 +1121,11 @@ def main() -> int:
                             if last_error is not None
                             else "abstain"
                         )
-                        rejected_hashes = (
-                            list(last_row.get("_force_rejected_unit_sha256s") or [])
-                            if isinstance(last_row, dict) else []
-                        )
+                        rejected_hashes = list(dict.fromkeys([
+                            *(list(last_row.get("_force_rejected_unit_sha256s") or [])
+                              if isinstance(last_row, dict) else []),
+                            *rejected_hashes_seen,
+                        ]))[-4:]
                         _carry_force_portfolio_feedback(
                             continuation_reason,
                             candidate_index,
