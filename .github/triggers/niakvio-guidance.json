@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "3a5d5a512ac2a2945e212c82fb9d94ea45fb8a0a",
-  "reason": "2026-11-18 retry 74 after exact Brain f8892da0 made memory-ranked FORCE editable-unit identity explicit across prompt, constrained JSON schema and exact-byte converter. Previous private-guided Sekai run 44375854959 proved all existing memory planes were present (public Markdown, historical ChatGPT, structured ProviderBase/Lego, executed-negative) but four hypotheses ended with selected function declaration/signature changed. Re-run the current eligible Sekai REGRESSION PROVIDER on exact current NiakVIO 3a5d5a51. Keep memory proof_authority=false; require same unit IDs/source bytes through generation and compilation, body-only function_unit correction, then canonical isolated apply/materialization, current network replay, decoded terminal playback and identity proof. No provider publication without those gates.",
+  "niakvio_sha": "00ce736e5e8d8e4d8e332c25a7f1648807503c17",
+  "reason": "2026-11-18 Sekai retry 75: Brain memory-ranked exact-unit rejection fingerprint and cross-correction/portfolio negative-hash carry fixes (planner 8f1f4216; FORCE script 63834a3d; regressions 23eb8fb0 CI 44393417870 SUCCESS). Previous run 44382451653 on Brain 6097a5ff consumed current public Markdown, historical ChatGPT, structured ProviderBase/Lego and executed-negative memory but generated 16 no-op rejects with 0 rejected units carried. Re-run source-pinned current Sekai via 3B model to verify actual rejected_units_carried, distinct exact-unit ranking and any material executable candidate. Historical/private memory proof_authority=false. Generated mutation is not repair proof: require canonical NiakVIO isolated apply, materialization, executed bytes, current media decode/identity and non-regression before publication.",
   "requested_repair_queue": [
     "sekai"
   ],
-  "retry": 74,
+  "retry": 75,
   "require_deterministic_force": false
 }
