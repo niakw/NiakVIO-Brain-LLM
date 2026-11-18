@@ -11,7 +11,7 @@ assert "routing.jsonl" in workflow
 assert "force_llm_needed=" in workflow
 assert "-c 8192" in workflow
 assert "Qwen/Qwen2.5-Coder-3B-Instruct-GGUF:Q4_K_M" in workflow
-assert "--model qwen2.5-coder-7b" in workflow
+assert "--model qwen2.5-coder-3b" in workflow
 assert "-np 1" in workflow
 assert "private-force-batch.jsonl" in workflow
 assert "plan_deterministic_force_from_checkout.py" in workflow
