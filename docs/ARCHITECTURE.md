@@ -1,3 +1,11 @@
+## 2026-11-18 — Residential network evidence requires matching executed provider bytes
+
+NiakVIO's existing GitHub Actions WAF lane can run a second, independently sourced network observation through an authorized Tailscale residential exit, without MacBridge/Desktop Commander tool calls. This isolates GitHub egress reputation from a real provider failure; it does not solve interactive challenges or grant access to restricted media. A browser reaching HTML 200 is an observation, **not** a decoded stream or correct episode.
+
+A full residential provider replay is a stronger causal input than a narrow URL/WAF seed only when it was executed against the **same materialized JS bundle** currently published for that provider. The NiakVIO canonical replay wrapper computes `provider_artifact_sha256` from exact Global/VF bundle bytes, carries that digest through sanitized replay evidence, and refuses a mismatch with census `providerArtifactSha256`. Brain's `_provider_waf_observation` repeats this exact bundle-digest requirement before including full provider replay as current evidence. Outdated or unpinned replay remains background memory, never a positive current repair signal. Browser/OkHttp/HTTP transport matrix stays advisory independent of this gate.
+
+This is an infrastructure/harness/Brain provenance boundary. It must not be repaired with per-provider overrides, synthetic media or shell access to a personal Mac. Canonical proof remains real source pin → generation → isolated apply → rematerialized executed bytes → independently decoded media → correct identity and no regression → persistence.
+
 ## 2026-11-18 — Preserve terminal-producing paths in generated provider Blocs
 
 A `provider_bloc` exact-unit edit may be syntactically valid and still destroy playback: the private source-pinned Sekai replay `44400985137` generated a body that replaced nested player-resolution and crawling branches with only an episode-identity guard, dropping every existing `streams.push(...)` producer in the selected block. It was **generated/compiled only**, never proven in decoded playback. The actual failed edit is a negative learning example, not a provider fix.
