@@ -2310,9 +2310,38 @@ def build_force_prompt_payload(
             # immutable exact-source unit of its strict CPU prompt budget.
             payload["validated_reference_patterns"] = []
         if prompt_chars() > 12000:
-            # Never silently clip exact editable units or invent source bytes.
-            # A remaining oversized payload is a missing CPU executor contract,
-            # not permission to mutate unsupported current source.
+            # A failed FORCE proposal may return bounded validation feedback
+            # while retaining a large current network trace and historical
+            # strategies. Those are optional *presentation* fields. Prefer
+            # one exact current edit unit and the causal execution facts.
+            # Never clip, rewrite or remove the exact editable unit list.
+            for hint in ("same_provider_execution_prior",
+                         "same_provider_execution_prior_policy",
+                         "retrieved_strategy_memory", "previous_executed_edits",
+                         "runtime_variant_coverage", "current_route_contract",
+                         "current_provider_structure", "runtime_template_prior",
+                         "source_selection_focus"):
+                payload.pop(hint, None)
+            payload["current_network_evidence"] = short_network(
+                payload.get("current_network_evidence"), count=2
+            )
+            feedback = payload.get("previous_verification")
+            if isinstance(feedback, dict) and feedback.get("candidate_network"):
+                feedback["candidate_network"] = short_network(
+                    feedback["candidate_network"], count=1
+                )
+            keys = ("fixture", "category", "tmdbId", "season", "episode",
+                    "duration", "status", "streamsReturned",
+                    "streamsPlayable", "identityContradictions")
+            payload["current_fixture_evidence"] = [
+                {key: _compact(row[key], string_limit=100)
+                 for key in keys if key in row}
+                for row in (payload.get("current_fixture_evidence") or [])[:2]
+                if isinstance(row, dict)
+            ]
+        if prompt_chars() > 12000:
+            # No safe way to fit the remaining exact unit into this CPU slot.
+            # Explicit abstention is preferable to a truncated anchor.
             raise ValueError("CPU Force prompt exceeds bounded exact-source budget")
     return payload
 
