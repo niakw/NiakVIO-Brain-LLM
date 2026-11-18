@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "e6c4d564dc3cf288acb64aa7eaf0c6382240639a",
-  "reason": "2026-11-18 Sekai retry 79: exact-current FORCE after real private strict-fixture replay 44400985137 generated one compiled but dangerous guard-only candidate that erased all terminal stream producers. Brain generic preservation guard 9808b08d and integration regression 637cc853 passed CI 44403271878; updated architecture/memory 01f2ee06 CI passed. Use exact present NiakVIO source; keep existing public/private/ProviderBase/executed-negative RAG prior-only and strict decoded-fixture live observations. Require a genuinely causal non-destructive distinct edit, then only canonical isolated evaluation, materialized executed bytes, decoded terminal media, correct content/episode identity and non-regression. Never apply fingerprint a42d23895e3536ad5480882141a22f48f67d9241a47e52461cdcfd0dcba766e3.",
+  "niakvio_sha": "5754ff66883fea7355850635ec9ad45f92ab2118",
+  "reason": "2026-11-18 Sekai representative retry 80 after real strict-source retry 79 (Brain 97a86b40, NiakVIO e6c4d564) proved new generic compiler rejects terminal producer erasure, carries exact negative unit fingerprints 2/3/4, but produced zero executable edits due causal deletion/no-op/CPU timeouts. Brain 864a601d/a6bf4574/ebd5bdf6 teaches preservation of terminal streams and additive identity checks, plus 0a2e67b9/3aac20db fail-closed live fixture completeness and preserve transport-only reachable status; CI passed on 3aac20db. Source-pin CURRENT NiakVIO main after V6 decoded-repair gate, reuse existing public/private/ProviderBase/executed-negative memory as historical only. Require new causal edit and accept only independently decoded terminal playable media and identity in canonical sandbox. Never publish old destructive fingerprint a42d23895e3536ad5480882141a22f48f67d9241a47e52461cdcfd0dcba766e3.",
   "requested_repair_queue": [
     "sekai"
   ],
-  "retry": 79,
+  "retry": 80,
   "require_deterministic_force": false
 }
