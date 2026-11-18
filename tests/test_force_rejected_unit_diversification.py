@@ -8,7 +8,13 @@ from niakvio_brain_llm.planner import (
     _force_unit_for_edit,
     tagged_force_deletion,
 )
-from niakvio_brain_llm.prompting import build_force_prompt_payload, selectable_force_units, repeated_live_binding_rejection
+from niakvio_brain_llm.prompting import (
+    _force_edit_units,
+    _force_window_kwargs_for_request,
+    build_force_prompt_payload,
+    selectable_force_units,
+    repeated_live_binding_rejection,
+)
 
 
 class ForceRejectedUnitDiversification(unittest.TestCase):
@@ -257,6 +263,60 @@ class ForceRejectedUnitDiversification(unittest.TestCase):
         exc = ValueError("compact Force JavaScript syntax validation failed")
         self.assertIs(tagged_force_deletion(
             request, {"scope": "provider_bloc", "unit_id": "w1u1"}, exc), exc)
+
+
+    def test_memory_ranked_noop_tags_exact_prompt_unit_and_rotates(self):
+        """A rejected unit must be resolved with the same live+memory focus as FORCE."""
+        source = (
+            "function genericList(q){return list(q);}\n"
+            "function searchSeason(q){return search(q);}\n"
+            "function sitemapSlug(q){return crawl(q);}\n"
+            "function extractPlayer(q){return resolve(q);}\n"
+        )
+        request = RepairRequest(
+            provider_id="synthetic",
+            status="REGRESSION PROVIDER",
+            failure_class="route_proven_gap",
+            allowed_mutations=["provider_bloc"],
+            provider_context={
+                "runtimeMutationSource": source,
+                "runtimeMutationFilename": "providers/synthetic.js",
+            },
+        )
+        # This is the same focus path passed from the prompt into the schema,
+        # converter and, crucially, the rejected-unit fingerprinting branch.
+        focus = ("function:extractPlayer", "memory:sitemap", "memory:slug")
+        units = _force_edit_units(
+            source, request.failure_class,
+            focus_keywords=focus, **_force_window_kwargs_for_request(request)
+        )
+        self.assertGreaterEqual(len(units), 2)
+        chosen = units[0]
+        expected_sha = hashlib.sha256(chosen["source"].encode("utf-8")).hexdigest()
+        tagged = tagged_force_deletion(
+            request,
+            {"scope": "provider_bloc", "unit_id": chosen["id"]},
+            ValueError("compact Force edit is a no-op"),
+            focus_keywords=focus,
+        )
+        self.assertIsInstance(tagged, RejectedForceUnitError)
+        self.assertEqual(tagged.rejected_unit_sha256, expected_sha)
+
+        request.observations = [{
+            "stage": "force_validation_feedback",
+            "reason": "no_op",
+            "rejected_unit_sha256": tagged.rejected_unit_sha256,
+            "rotate_unit": True,
+        }]
+        remaining = selectable_force_units(request, _force_edit_units(
+            source, request.failure_class,
+            focus_keywords=focus, **_force_window_kwargs_for_request(request)
+        ))
+        self.assertTrue(remaining)
+        self.assertNotIn(expected_sha, {
+            hashlib.sha256(unit["source"].encode("utf-8")).hexdigest()
+            for unit in remaining
+        })
 
 
 if __name__ == "__main__":
