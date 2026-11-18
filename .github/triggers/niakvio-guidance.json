@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "3a9496816368bae3e893514201be8a534aef6b21",
-  "reason": "2026-11-18 rerun exact-current Sekai private-guided FORCE after Brain b1e25f82 green CI and d3ffa25c Lego mechanism distillation. Existing RAG planes must be used together: public Markdown/MEMORY, historical ChatGPT project, manual reverse cases, same-provider structured ProviderBase/Lego recipe shape, and executed-negative memory. Compare against prior d1b7d454 private run where all four hypotheses collapsed to no-op. No historical route/host/raw code may become current proof; success still requires generated mutation, exact-byte application/materialization and independent decoded playable identity proof.",
+  "niakvio_sha": "01fdc866818c827ca4aaf542fa850b2beffef6c7",
+  "reason": "2026-11-18 A/B replay after baseline 44367715216 proved that full existing project memory + Lego mechanisms in prompt still produced 4/4 Sekai no-op/abstention cycles and zero executable mutation. Current Brain adds explicit FORCE memory-plane semantics plus same-provider route-free Lego mechanism tokens as secondary exact-current editable-unit ranking, while current live execution focus remains primary. Security stdin syntax-check change is non-semantic to provider selection. Require materially different current-byte edit, then canonical apply/materialize/execute/decoded playable identity proof; memory remains proof_authority=false.",
   "requested_repair_queue": [
     "sekai"
   ],
-  "retry": 69,
+  "retry": 70,
   "require_deterministic_force": false
 }
