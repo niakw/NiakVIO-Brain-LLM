@@ -34,7 +34,7 @@ def attach_live_runtime_evidence(
         or request.provider_id not in explicit_providers
     ):
         raise ValueError("live execution provider/SHA authority mismatch")
-    if live.get("fixture_selection_complete") is False:
+    if live.get("fixture_selection_complete") is not True:
         raise ValueError("live execution fixture set is incomplete")
     ctx = request.provider_context
     if not isinstance(ctx, dict):
@@ -49,7 +49,7 @@ def attach_live_runtime_evidence(
     status = str(live.get("preflight_status") or "").strip().casefold()
     if status not in {
         "healthy", "unavailable", "provider_unreachable", "blocked",
-        "runtime_error", "no_streams", "partial",
+        "runtime_error", "no_streams", "partial", "reachable",
     }:
         status = ""
     playable = live.get("preflight_playable")
