@@ -90,7 +90,8 @@ class DocumentStore:
                 rows.append(value)
         return cls(rows)
 
-    def search(self, query: dict[str, Any], *, limit: int = 4) -> list[dict[str, Any]]:
+    def search(self, query: dict[str, Any], *, limit: int = 4,
+               private_only: bool = False) -> list[dict[str, Any]]:
         provider = str(query.get("provider_id") or "").casefold()
         failure = str(query.get("failure_class") or "").casefold()
         status = str(query.get("status") or "").casefold()
@@ -101,6 +102,23 @@ class DocumentStore:
 
         scored = []
         for row, vector in zip(self.rows, self._vectors):
+            if private_only:
+                if (row.get("private_memory") is not True
+                        or row.get("proof_authority") is not False
+                        or str(row.get("role") or "") not in {
+                            "private_chat_signal",
+                            "private_chat_assistant",
+                            "private_chat_user",
+                        }):
+                    continue
+                # The private reserve slot exists only for a provider explicitly
+                # discussed in the transcript, not generic ChatGPT advice.
+                if not provider or not re.search(
+                    r"(?<![a-z0-9])" + re.escape(provider) + r"(?![a-z0-9])",
+                    str(row.get("heading") or "") + "\n" + str(row.get("text") or ""),
+                    re.I,
+                ):
+                    continue
             lexical = _cosine(qv, vector)
             haystack = (
                 str(row.get("heading") or "") + "\n" + str(row.get("text") or "")
