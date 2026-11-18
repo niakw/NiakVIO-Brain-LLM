@@ -38,8 +38,7 @@ assert 'structured network evidence' in workflow
 assert 'provider=$target ready=false reason=capture_failed_or_timeout' in workflow
 assert 'FIELD_BRAIN_LIVE_PREFLIGHT' in workflow
 assert 'live_args=(--live-evidence' in workflow
-assert workflow.count('"
- + '{live_args[@]}"') == 2, "both repair + advisor must consume the exact same live context"
+assert workflow.count('"\x24{live_args[@]}"') == 2, "both repair + advisor must consume the exact same live context"
 assert 'rm -f "$RUNNER_TEMP/niakvio-brain-live-evidence.json"' in workflow
 assert 'proof_authority=false' in workflow
 assert 'npm ci --prefix niakvio --ignore-scripts --no-audit --no-fund' in workflow
