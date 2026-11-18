@@ -39,6 +39,64 @@ def _compact(value: Any, *, depth: int = 0, string_limit: int = 500) -> Any:
         return value
     return _clip(value, string_limit)
 
+def _current_residential_provider_replay(observations: Any) -> dict[str, Any]:
+    """Retain exact-bundle full runtime network differential under CPU clipping.
+
+    The adapter already bound residential replay to the currently published
+    provider JS SHA256. Never forward raw URLs, hostnames, cookies or bodies.
+    A successful browser GET or zero provider request grants no playback proof.
+    """
+    rows = observations if isinstance(observations, list) else []
+    def code(value: Any, limit: int = 80) -> str:
+        val = str(value or "").strip().casefold()[:limit]
+        return val if all(ch.isalnum() or ch in "-_" for ch in val) else ""
+    def num(value: Any) -> int:
+        return min(9999, max(0, value)) if type(value) is int else 0
+    for observation in rows:
+        if not isinstance(observation, dict) or observation.get("source") != "waf-client-differential-current":
+            continue
+        value = observation.get("value")
+        if not isinstance(value, dict) or value.get("residentialReplayCurrentBundle") is not True:
+            continue
+        replay = [
+            {
+                "lane": code(raw.get("lane"), 32),
+                "status": code(raw.get("status")),
+                "debugStage": code(raw.get("debugStage"), 100),
+                "sampleDebugStages": [
+                    token for v in (raw.get("sampleDebugStages") or [])[:3]
+                    if (token := code(v, 100))
+                ],
+                "raw": num(raw.get("raw")),
+                "playable": num(raw.get("playable")),
+                "verified": num(raw.get("verified")),
+                "identitySafe": raw.get("identitySafe") is True,
+            }
+            for raw in (value.get("residentialReplay") or [])[:3]
+            if isinstance(raw, dict)
+        ]
+        if not replay:
+            continue
+        return {
+            "source": "matched-current-js-residential-full-provider-runtime",
+            "transport": {
+                "githubBrowserOutcomes": [
+                    token for v in (value.get("browserOutcomes") or [])[:2]
+                    if (token := code(v))
+                ],
+                "residentialBrowserOutcomes": [
+                    token for v in (value.get("residentialOutcomes") or [])[:2]
+                    if (token := code(v))
+                ],
+                "nativeTvTransportStillUnproven": value.get("nativeTvTransportStillUnproven") is True,
+            },
+            "providerRuntime": replay,
+            "playbackProofAuthority": False,
+            "mutateOnlyAfterCurrentCausalDiagnosis": True,
+        }
+    return {}
+
+
 def _compact_force_observation(row: dict[str, Any]) -> dict[str, Any]:
     source = str(row.get("source") or "").strip()
     if source != "targeted-regression-current":
@@ -2319,6 +2377,9 @@ def build_force_prompt_payload(
             else {}
         ),
         "current_observations": observations,
+        **({
+            "current_residential_provider_replay": current_replay
+        } if (current_replay := _current_residential_provider_replay(request.observations)) else {}),
         **({
             "function_identity_retry_policy": (
                 "Selected function identity is immutable. For function_unit, replace must contain "
