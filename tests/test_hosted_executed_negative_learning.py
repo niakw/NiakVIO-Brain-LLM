@@ -6,7 +6,17 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from scripts.import_public_niakvio import collect_hosted_replay_negatives
+# GitHub's hosted NiakVIO harness checks out Brain as ./brain-llm; the
+# project root also has a scripts package. Load this sibling script by its
+# exact file path so root-package shadowing cannot silently switch importer.
+import importlib.util
+
+_SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "import_public_niakvio.py"
+_SPEC = importlib.util.spec_from_file_location("niakvio_brain_public_import", _SCRIPT)
+assert _SPEC is not None and _SPEC.loader is not None
+_MOD = importlib.util.module_from_spec(_SPEC)
+_SPEC.loader.exec_module(_MOD)
+collect_hosted_replay_negatives = _MOD.collect_hosted_replay_negatives
 from niakvio_brain_llm.prompting import _bounded_force_hosted_negative_hints
 
 
