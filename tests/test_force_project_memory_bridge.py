@@ -9,7 +9,7 @@ import unittest
 from niakvio_brain_llm.contracts import RepairRequest
 from niakvio_brain_llm.document_memory import DocumentStore
 from niakvio_brain_llm.planner import BrainPlanner, COMPACT_FORCE_SYSTEM_PROMPT
-from niakvio_brain_llm.prompting import build_force_prompt_payload
+from niakvio_brain_llm.prompting import (build_force_prompt_payload, _force_edit_units, _force_structured_memory_focus_keywords)
 from niakvio_brain_llm.retrieval import ExperienceStore
 
 
@@ -160,6 +160,40 @@ class ForceProjectMemoryBridgeTests(unittest.TestCase):
             self.assertIn(memory_field, COMPACT_FORCE_SYSTEM_PROMPT)
         self.assertIn("planning priors only", COMPACT_FORCE_SYSTEM_PROMPT)
         self.assertIn("never repeat an identical executed-negative edit", COMPACT_FORCE_SYSTEM_PROMPT)
+
+    def test_structured_lego_memory_only_secondary_ranks_exact_units(self):
+        hints = [{
+            "mechanisms": ["sitemap_slug_discovery", "terminal_media_crawl"],
+            "proof_authority": False,
+        }]
+        focus = _force_structured_memory_focus_keywords(hints)
+        self.assertIn("memory:sitemap", focus)
+        self.assertIn("memory:slug", focus)
+        self.assertIn("memory:crawl", focus)
+        source = (
+            "function alpha(value) { return value; }\n"
+            "function parseSitemapSlug(value) { "
+            "const sitemap = value.sitemap; const slug = value.slug; "
+            "return sitemap && slug ? value : null; }\n"
+            "function omega(value) { return value; }\n"
+        )
+        units = _force_edit_units(
+            source, "route_proven_gap", max_chars=900,
+            max_windows=1, max_units=2, focus_keywords=focus,
+        )
+        self.assertTrue(units)
+        self.assertIn(
+            "parseSitemapSlug",
+            units[0]["source"],
+            "route-free Lego memory may rank a current exact helper but never invent bytes",
+        )
+        self.assertEqual(
+            _force_structured_memory_focus_keywords([{
+                "mechanisms": ["sitemap_slug_discovery"],
+                "proof_authority": True,
+            }]),
+            (),
+        )
 
     def test_other_provider_private_memory_and_failed_edits_do_not_transfer(self):
         request = RepairRequest(
