@@ -7,6 +7,7 @@ from typing import Any
 
 from .contracts import RepairRequest
 from .provider_context import _sanitize_reference_source
+from .private_chat_memory import redact_sensitive
 from .source_units import javascript_function_end, javascript_if_block_span
 from .current_evidence import current_causal_signatures
 from .live_evidence import NETWORK_ERROR_CODES, network_evidence, verification_feedback, non_improving_functions, fixture_evidence, executed_helper_context, short_media_source_focus, public_domain_references, domain_reference_focus
@@ -1728,6 +1729,80 @@ def _bounded_force_hosted_negative_hints(
     return hints
 
 
+def _bounded_force_document_hints(
+    rows: list[dict[str, Any]] | None, provider_id: str, failure_class: str
+) -> list[dict[str, Any]]:
+    """Convey already-indexed Markdown/chat RAG to FORCE without proof authority.
+
+    Keep the original public/private document stores and ranking. This layer
+    projects at most one sanitized line per source type into the CPU-sized
+    generation prompt. It never carries transcript paths, hostnames or source
+    code, and never substitutes for current network + exact-byte evidence.
+    """
+    provider = str(provider_id or "").strip().casefold()
+    failure = str(failure_class or "").strip().casefold().replace("_", " ")
+    if not provider:
+        return []
+    private, public = [], []
+    allowed_public = {
+        "brain_repair_architecture", "provider_family_architecture",
+        "durable_recovery_memory", "historical_provider_state",
+        "core_regression", "brain_docs", "technical_docs",
+        "change_history", "field_evidence", "durable_constraints",
+    }
+    allowed_private = {
+        "private_chat_signal", "private_chat_user",
+        "private_chat_assistant",
+    }
+    for row in rows or []:
+        if not isinstance(row, dict) or row.get("proof_authority") is True:
+            continue
+        is_private = row.get("private_memory") is True
+        role = str(row.get("role") or "")
+        if role not in (allowed_private if is_private else allowed_public):
+            continue
+        if is_private and row.get("proof_authority") is not False:
+            continue
+        title = str(row.get("heading") or "")
+        body = str(row.get("text") or "")
+        haystack = (title + "\n" + body)
+        lower = haystack.casefold()
+        provider_match = re.search(
+            r"(?<![a-z0-9])" + re.escape(provider) + r"(?![a-z0-9])",
+            lower,
+        )
+        failure_match = (lower.find(failure) if failure else -1)
+        # Private snippets must mention this exact provider. Public documents
+        # may instead contain a directly matching generic causal failure.
+        if is_private and provider_match is None:
+            continue
+        if not is_private and provider_match is None and failure_match < 0:
+            continue
+        pos = (provider_match.start() if provider_match else failure_match)
+        raw_excerpt = haystack[max(0, pos - 42):pos + 205]
+        clean = _sanitize_reference_source(
+            redact_sensitive(raw_excerpt), provider_id, limit=245
+        )
+        if len(clean.strip()) < 16:
+            continue
+        record = {
+            "source_kind": "private_chat" if is_private else "public_markdown",
+            "role": role,
+            "excerpt": clean,
+            "historical_context_only": True,
+            "proof_authority": False,
+            "may_not_override_current_evidence": True,
+            "never_copy_historical_routes_or_identity": True,
+        }
+        (private if is_private else public).append(record)
+    result = []
+    if private:
+        result.append(private[0])
+    if public:
+        result.append(public[0])
+    return result[:2]
+
+
 def build_force_prompt_payload(
     request: RepairRequest,
     causal_prior: dict[str, Any] | None = None,
@@ -2065,6 +2140,11 @@ def build_force_prompt_payload(
         "census_prior": census,
         "validated_reference_patterns": references,
         "provider_field_evidence": field_evidence,
+        **({
+            "retrieved_document_hints": document_hints
+        } if (document_hints := _bounded_force_document_hints(
+            documents, request.provider_id, request.failure_class
+        )) else {}),
         "field_evidence_policy": {
             "same_provider_only": True,
             "historical_hint_not_current_proof": True,
@@ -2356,6 +2436,15 @@ def build_force_prompt_payload(
                 feedback["candidate_network"] = (
                     feedback.get("candidate_network") or [])[:1]
 
+        if prompt_chars() > 9600 and payload.get("retrieved_document_hints"):
+            payload["retrieved_document_hints"] = [
+                {**hint, "excerpt": _clip(hint.get("excerpt"), 110)}
+                for hint in payload["retrieved_document_hints"][:1]
+            ]
+        if prompt_chars() > 12000:
+            # Historical Markdown/chat hints are advisory and can be dropped
+            # under severe CPU budget pressure, never exact editable source.
+            payload.pop("retrieved_document_hints", None)
         if prompt_chars() > 12000:
             # Peer patterns are optional hints; they must never starve the
             # immutable exact-source unit of its strict CPU prompt budget.
