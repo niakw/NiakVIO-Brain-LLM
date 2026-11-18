@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "d7b6ccd2054636be69faedefd5448d01dc05e926",
-  "reason": "2026-11-18 green-SHA private-memory FORCE oracle: rerun repair-eligible Sekai against exact current NiakVIO after Brain CI 44353809470 passed the 3B/8K/180s migration. Reuse the existing unified Markdown, old ChatGPT Project and source-pinned executed-negative RAG; larger 7B/9B models remain challengers. The prior e21adcbc run is non-authoritative because that Brain SHA had stale architecture-test expectations. Require executable causal mutation plus canonical apply, materialization, execution, decoded terminal media, identity correctness and no regression; failure is negative memory only.",
+  "niakvio_sha": "3e38cd604c9b3f59a261d94f43f0fcd4c69afaa1",
+  "reason": "2026-11-18 green 3B private-memory FORCE oracle after exact block no-op rotation fix. Brain CI 44355246558 passed on 6bbadf17. Use current NiakVIO 3e38cd60 (evidence-only successor of the d7b6 hosted test) and repair-eligible Sekai. Preserve unified Markdown + old ChatGPT Project + source-pinned executed-negative RAG as strategy-only context. Require a materially different exact-current mutation after any no-op, canonical application/materialization/execution, decoded terminal media, identity correctness and non-regression; otherwise persist only negative experience.",
   "requested_repair_queue": [
     "sekai"
   ],
-  "retry": 64,
+  "retry": 65,
   "require_deterministic_force": false
 }
