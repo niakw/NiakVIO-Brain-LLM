@@ -7,7 +7,11 @@ import unittest
 
 from niakvio_brain_llm.contracts import RepairRequest
 from niakvio_brain_llm.planner import RejectedForceUnitError
-from niakvio_brain_llm.prompting import selectable_force_units
+from niakvio_brain_llm.prompting import (
+    _force_window_kwargs_for_request, build_force_prompt_payload,
+    selectable_force_units,
+)
+from niakvio_brain_llm.planner import _compact_wire_schema_for
 
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "plan_batch_from_checkout.py"
 SPEC = importlib.util.spec_from_file_location("force_portfolio_memory", SCRIPT)
@@ -152,6 +156,59 @@ class ForcePortfolioRejectedUnitMemoryTests(unittest.TestCase):
             selectable_force_units(request, [*previously_rejected, fresh]),
             [fresh],
         )
+
+
+    def test_route_graph_expands_only_after_two_distinct_exact_failures(self):
+        source = (
+            "async function resolve(q){return await search(q);}\n"
+            "async function search(q){return await player(q);}\n"
+            "async function player(q){return await extract(q);}\n"
+            "async function extract(q){return parseMedia(q);}\n"
+            "function parseMedia(q){return q || []; }\n"
+            "function normalize(q){return q;}\n"
+        )
+        request = RepairRequest(
+            provider_id="synthetic", status="REGRESSION PROVIDER",
+            failure_class="route_proven_gap",
+            allowed_mutations=["provider_bloc"],
+            provider_context={
+                "preferredRuntimeMutationSource": source,
+                "runtimeMutationSource": source,
+                "runtimeMutationFilename": "providers/synthetic.js",
+                "runtime_template_prior": {"reuseBeforeNovelBloc": True},
+            },
+        )
+        policy = {"allow_mutations": True, "allowed_scopes": ["provider_bloc"]}
+        baseline = build_force_prompt_payload(request, {}, policy)
+        first_units = baseline["new_bloc_target"]["editable_units"]
+        self.assertEqual(len(first_units), 2)
+        self.assertEqual(_force_window_kwargs_for_request(request)["max_units"], 2)
+        hashes = [
+            hashlib.sha256(unit["source"].encode("utf-8")).hexdigest()
+            for unit in first_units
+        ]
+        # One rejected current function must not widen the normal CPU prompt.
+        request.observations = mod.force_portfolio_rejected_feedback(hashes[:1])
+        self.assertEqual(_force_window_kwargs_for_request(request)["max_units"], 2)
+        # Exhausting both exact units permits a bounded two-window/four-unit
+        # causal fallback. The two old units remain lower priority.
+        request.observations = mod.force_portfolio_rejected_feedback(hashes)
+        expanded = build_force_prompt_payload(request, {}, policy)
+        self.assertEqual(_force_window_kwargs_for_request(request)["max_units"], 4)
+        new_units = expanded["new_bloc_target"]["editable_units"]
+        self.assertGreater(len(new_units), 0)
+        self.assertTrue(all(
+            hashlib.sha256(unit["source"].encode("utf-8")).hexdigest() not in hashes
+            for unit in new_units
+        ), "fresh causal functions must be offered before portfolio rejects")
+        wire = _compact_wire_schema_for(request, policy)
+        variant = next(v for v in wire["properties"]["edit"]["anyOf"]
+                       if v.get("properties", {}).get("scope", {}).get("enum")
+                       == ["provider_bloc"])
+        self.assertEqual([u["id"] for u in new_units],
+                         variant["properties"]["unit_id"]["enum"])
+        # No valid source-backed replacement is published without conversion,
+        # materialization and downstream replay; this is an edit-surface test.
 
 
 if __name__ == "__main__":
