@@ -93,3 +93,77 @@ def javascript_function_end(text: str, start: int) -> int:
         i += 1
     return -1
 
+
+
+def javascript_if_block_span(text: str, start: int) -> tuple[int, int] | None:
+    """Return (opening brace, exclusive end) for a complete braced JS if.
+
+    The condition may contain nested calls and quoted parentheses. An unbraced
+    branch or an incomplete conditional never becomes an edit unit. Final
+    validation still belongs to the exact-source JavaScript sandbox.
+    """
+    match = re.match(r"if\s*\(", text[start:])
+    if not match:
+        return None
+    i = start + match.end() - 1
+    depth = 0
+    quote = ""
+    escaped = False
+    line_comment = False
+    block_comment = False
+    while i < len(text):
+        ch = text[i]
+        nxt = text[i + 1] if i + 1 < len(text) else ""
+        if line_comment:
+            if ch in "\r\n":
+                line_comment = False
+            i += 1
+            continue
+        if block_comment:
+            if ch == "*" and nxt == "/":
+                block_comment = False
+                i += 2
+            else:
+                i += 1
+            continue
+        if quote:
+            if escaped:
+                escaped = False
+            elif ch == "\\":
+                escaped = True
+            elif ch == quote:
+                quote = ""
+            i += 1
+            continue
+        if ch == "/" and nxt == "/":
+            line_comment = True
+            i += 2
+            continue
+        if ch == "/" and nxt == "*":
+            block_comment = True
+            i += 2
+            continue
+        if ch in {"'", '"', chr(96)}:
+            quote = ch
+            i += 1
+            continue
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+            if depth == 0:
+                i += 1
+                break
+            if depth < 0:
+                return None
+        i += 1
+    else:
+        return None
+    while i < len(text) and text[i].isspace():
+        i += 1
+    if i >= len(text) or text[i] != "{":
+        return None
+    end = javascript_function_end(text, i)
+    if end <= i:
+        return None
+    return i, end
