@@ -853,6 +853,28 @@ def main() -> int:
                 f"historical_positive_overridden={str(current['historical_prior_overridden']).lower()}",
                 flush=True,
             )
+            # Log source-free current causal facts, never raw provider hosts,
+            # paths, response bodies, credentials or private memory. This
+            # differentiates an upstream transport/no-source gap from a parser
+            # gap before another costly CPU FORCE portfolio is attempted.
+            from niakvio_brain_llm.current_evidence import current_causal_signatures
+            causal = current_causal_signatures(
+                (request.provider_context or {}).get("live_runtime_evidence")
+            )
+            stage_codes = ",".join(causal["observed_stages"]) or "none"
+            signal_codes = ",".join(causal["signals"]) or "none"
+            kind_codes = ",".join(
+                f"{key}:{value}" for key, value in
+                sorted(causal["response_kinds"].items())
+            ) or "none"
+            print(
+                "FIELD_BRAIN_LIVE_CAUSAL_TRACE "
+                f"provider={provider} stages={stage_codes} "
+                f"signals={signal_codes} response_kinds={kind_codes} "
+                f"failed_fixtures={causal['failed_fixtures']} "
+                "source_content_logged=false proof_authority=false",
+                flush=True,
+            )
         request.advisor_only = bool(args.advisor_only)
         max_hypotheses = max(
             1,
