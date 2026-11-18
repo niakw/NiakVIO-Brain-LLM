@@ -7,9 +7,7 @@ import json
 import re
 import shutil
 import subprocess
-import tempfile
 import time
-from pathlib import Path
 from typing import Any
 
 from .backend import ModelBackend
@@ -3721,6 +3719,34 @@ class BrainPlanner:
                 f"executed_negative_hints={len(force_payload.get('retrieved_executed_negative_memory') or [])} "
                 f"memory_proof_authority=false "
                 f"policy_abstain={str(bool(mutation_policy.get('force_abstain'))).lower()}",
+                flush=True,
+            )
+            unit_receipts = []
+            for unit in (edit_surface.get("editable_units") or [])[:4]:
+                if not isinstance(unit, dict):
+                    continue
+                digest = hashlib.sha256(
+                    str(unit.get("source") or "").encode("utf-8")
+                ).hexdigest()[:12]
+                unit_receipts.append(
+                    ":".join([
+                        str(unit.get("id") or "")[:24],
+                        str(unit.get("kind") or "")[:24],
+                        str(unit.get("reason") or "")[:48],
+                        digest,
+                    ])
+                )
+            memory_focus = [
+                str(value)[:32]
+                for value in (force_payload.get("structural_focus") or [])
+                if str(value).startswith("memory:")
+            ][:8]
+            print(
+                "FIELD_BRAIN_FORCE_UNIT_SELECTION "
+                f"provider={request.provider_id} "
+                f"memory_focus={','.join(memory_focus) or 'none'} "
+                f"units={';'.join(unit_receipts) or 'none'} "
+                "source_content_logged=false",
                 flush=True,
             )
             user = json.dumps(
