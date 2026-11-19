@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "64adaf7e6affbdb16631a6e6d6d79268d65ccfef",
-  "reason": "Retry first cheapest active Brain provider French-Manga after correcting generic zero-LLM deterministic replay planner budget bug (3058af4d plus regression fdf2cf6d; CI 44497867885 success). First source-matched no-mutation candidate replay and exact media/identity proof; no model startup unless actual reasoning is required, no fake current FULL, no provider-specific override. Preserve negative experiments and all four manifests.",
+  "niakvio_sha": "6ba01b325e92b657a9836a8fc949390d039ffe54",
+  "reason": "Cheapest-first Brain representative #2: Sadisflix active VF, census movie playable_unverified/provider_returned_streams and TV timeout, current Reactivation/Repair queue. First reuse deterministic saved candidate/media program then exact-current replay and identity/duration/native playback, only move to minimal Brain-generated TV timeout correction after current causal evidence. Preserve generic French-Manga failed independent identity proof as memory; no manual provider patch or fake FULL from URL.",
   "requested_repair_queue": [
-    "french-manga"
+    "sadisflix"
   ],
-  "retry": 85,
+  "retry": 86,
   "require_deterministic_force": false,
   "model_profile": "qwen25-coder-3b"
 }
