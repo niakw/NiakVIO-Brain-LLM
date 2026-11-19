@@ -887,8 +887,35 @@ def main() -> int:
 
         if args.mode == "repair" and not args.advisor_only:
             from niakvio_brain_llm.routing import route_request
-            from niakvio_brain_llm.force_scope_order import diagnostic_only_route
+            from niakvio_brain_llm.force_scope_order import (
+                diagnostic_only_route, non_mutating_probe_route,
+            )
             causal_route = route_request(request, store)
+            if non_mutating_probe_route(causal_route):
+                # Real routing may require an observational experiment before
+                # any fix. Never silently replace a probe or healthy skip with
+                # a guessed provider_patch/provider_bloc synthesis portfolio.
+                # Such observations are not "fixed" or even model diagnoses.
+                print(
+                    "FIELD_BRAIN_FORCE_PROBE_ONLY "
+                    f"provider={provider} mode={causal_route.mode} "
+                    "scopes=none model_executed=false mutation_authority=false",
+                    flush=True,
+                )
+                return [{
+                    "position": position,
+                    "hypothesis_index": 1,
+                    "provider": provider,
+                    "status": request.status,
+                    "failure_class": request.failure_class,
+                    "repair_family": repair_family_descriptor(request),
+                    "ok": True,
+                    "routing": causal_route.to_dict(),
+                    "proposal": None,
+                    "probe_only": True,
+                    "model_executed": False,
+                    "provider_mutation_authority": False,
+                }]
             if diagnostic_only_route(causal_route):
                 # Real native extraction/transport evidence may establish that
                 # media exists without identifying the repair owner. FORCE's
