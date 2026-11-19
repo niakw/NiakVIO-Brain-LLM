@@ -643,6 +643,92 @@ def _provider_retest_observation(
     return {}
 
 
+_CAUSAL_DIAGNOSTIC_LAYERS = frozenset({
+    "unknown", "core", "client", "runtime", "network", "provider",
+    "pipeline", "harness", "environment", "brain",
+})
+_CAUSAL_DIAGNOSTIC_STATUSES = frozenset({
+    "completed", "abstained", "model_error", "route_only",
+})
+
+
+def _provider_causal_diagnostic_priors(
+    payload: Any, provider_id: str, *, current_bundle_sha256: str = ""
+) -> list[dict[str, Any]]:
+    """Re-use past model diagnoses only for the same exact JS bytes.
+
+    The guidance branch is historical and no hypothesis upgrades client
+    playback, provider mutation, publisher authority or current facts.
+    Free-text LLM output and private data are never ingested from this lane.
+    """
+    if (
+        not isinstance(payload, dict)
+        or payload.get("schemaVersion") != 1
+        or payload.get("authority") != "brain-source-pinned-causal-hypotheses-only"
+        or any(payload.get(key) is not False for key in (
+            "proofAuthority", "publicationAuthority",
+            "providerMutationAuthority", "nativePlaybackAuthority",
+            "privateContentRetained",
+        ))
+    ):
+        return []
+    wanted = _canon(provider_id).replace(" ", "-")
+    current_digest = str(current_bundle_sha256 or "").strip().casefold()
+    if not re.fullmatch(r"[a-f0-9]{64}", current_digest):
+        return []
+    accepted: list[dict[str, Any]] = []
+    seen: set[tuple[str, str]] = set()
+    for row in (payload.get("rows") or [])[:1400]:
+        if not isinstance(row, dict):
+            continue
+        strategy = str(row.get("strategy") or "")
+        failure = str(row.get("failureClass") or "")
+        model_status = str(row.get("modelStatus") or "")
+        source_sha = str(row.get("sourceNiakvioSha") or "")
+        brain_sha = str(row.get("brainLlmSha") or "")
+        if (
+            _canon(row.get("providerId")).replace(" ", "-") != wanted
+            or str(row.get("providerArtifactSha256") or "") != current_digest
+            or row.get("historicalOnly") is not True
+            or any(row.get(key) is not False for key in (
+                "proofAuthority", "publicationAuthority",
+                "providerMutationAuthority", "nativePlaybackAuthority",
+            ))
+            or not re.fullmatch(r"[a-f0-9]{40}", source_sha)
+            or not re.fullmatch(r"[a-f0-9]{40}", brain_sha)
+            or not re.fullmatch(r"[a-z0-9][a-z0-9_-]{0,95}", strategy)
+            or not re.fullmatch(r"[a-z0-9][a-z0-9_-]{0,95}", failure)
+            or model_status not in _CAUSAL_DIAGNOSTIC_STATUSES
+        ):
+            continue
+        key = (source_sha, strategy)
+        if key in seen:
+            continue
+        seen.add(key)
+        routing_layer = str(row.get("routingLayer") or "")
+        hypothesis_layer = str(row.get("hypothesisLayer") or "")
+        accepted.append({
+            "source": "same-js-historical-brain-causal-hypothesis",
+            "strategy": strategy,
+            "failureClass": failure,
+            "routingLayer": (
+                routing_layer if routing_layer in _CAUSAL_DIAGNOSTIC_LAYERS else "unknown"
+            ),
+            "hypothesisLayer": (
+                hypothesis_layer if hypothesis_layer in _CAUSAL_DIAGNOSTIC_LAYERS else "unknown"
+            ),
+            "modelStatus": model_status,
+            "historicalOnly": True,
+            "proofAuthority": False,
+            "publicationAuthority": False,
+            "providerMutationAuthority": False,
+            "nativePlaybackAuthority": False,
+        })
+        if len(accepted) >= 4:
+            break
+    return accepted
+
+
 def _provider_retest_history_observations(
     payload: Any,
     provider_id: str,
@@ -1380,6 +1466,7 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
     waf = _load(root / "automation" / "provider-waf-browser-session-latest.json", {})
     retest = _load(root / "automation" / "provider-retest-brain-evidence-latest.json", {})
     retest_history = _load(root / "automation" / "provider-retest-brain-evidence-history.json", {})
+    causal_memory = _load(root / "automation" / "brain-causal-diagnostics-history.json", {})
     user_client_reports = _load(root / "automation" / "user-client-provider-field-observations.json", {})
     android_tv_emulator = _load(root / "automation" / "brain-android-tv-emulator-history.json", {})
     refined = _load(root / "automation" / "provider-repair-batch-refined-latest.json", {})
@@ -1489,6 +1576,10 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
         retest_history, provider_id,
         current_bundle_sha256=str(published_bundle.get("sha256") or row.get("providerArtifactSha256") or ""),
         current_census_run_id=census_run,
+    )
+    causal_diagnostic_priors = _provider_causal_diagnostic_priors(
+        causal_memory, provider_id,
+        current_bundle_sha256=str(published_bundle.get("sha256") or ""),
     )
     android_tv_observations = _provider_android_tv_emulator_observations(
         android_tv_emulator, provider_id,
@@ -1680,6 +1771,10 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
             *(
                 [{"source": "historical-provider-retest-media", "value": item}
                  for item in retest_history_observations]
+            ),
+            *(
+                [{"source": "historical-brain-causal-diagnosis", "value": item}
+                 for item in causal_diagnostic_priors]
             ),
             *(
                 [{"source": "current-provider-retest-media", "value": retest_observation}]
