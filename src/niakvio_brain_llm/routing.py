@@ -149,6 +149,26 @@ def _user_client_visibility_differential(request: RepairRequest) -> bool:
     return False
 
 
+def _official_android_tv_diagnostic(request: RepairRequest) -> dict[str, Any]:
+    """Same-current-provider-JS native observation, historical-only, no authority."""
+    for observation in request.observations or []:
+        if not isinstance(observation, dict) or _canon(observation.get("source")) != "official-android-tv-emulator":
+            continue
+        row = observation.get("value")
+        if (
+            isinstance(row, dict)
+            and row.get("source") == "official-android-tv-emulator"
+            and row.get("client") == "tv"
+            and row.get("historicalOnly") is True
+            and all(row.get(flag) is False for flag in (
+                "proofAuthority", "publicationAuthority",
+                "nativePlaybackAuthority", "providerMutationAuthority",
+            ))
+        ):
+            return row
+    return {}
+
+
 def route_request(
     request: RepairRequest,
     store: ExperienceStore | None = None,
@@ -173,6 +193,59 @@ def route_request(
             target_layer=layer,
             strategy=strategy,
             prior_confidence=confidence,
+        )
+
+    # TV is the primary executable client for Brain repair. A reported
+    # macOS-positive/TV-missing provider must first have a source-pinned native
+    # emulator oracle. Existing Lego for Desktop/Mobile/iOS remains intact, but
+    # no client is presumed to have validated playback merely from build status.
+    if _user_client_visibility_differential(request):
+        native_tv = _official_android_tv_diagnostic(request)
+        if not native_tv:
+            return RoutingDecision(
+                mode="probe",
+                reason="Android TV is primary; cross-client visibility lacks a source-pinned official emulator trace",
+                target_layer="client",
+                strategy="run_official_android_tv_emulator_first",
+                prior_confidence=0.90,
+                allowed_mutations=[],
+                next_actions=[
+                    "execute official Android TV emulator with exact provider JS and selected canonical manifest",
+                    "record installed app selection, QuickJS phases, network route and terminal player evidence",
+                    "ingest sanitized artifact by source SHA; do not mutate the provider from user report alone",
+                ],
+            )
+        if native_tv.get("appSelected") is True and (
+            native_tv.get("quickJsReturned") == 0
+            or bool(native_tv.get("quickJsErrors"))
+        ):
+            return RoutingDecision(
+                mode="llm_diagnose",
+                reason="official Android TV emulator invoked the exact JS but returned no media or a QuickJS exception; user reports macOS playback",
+                target_layer="client",
+                strategy="trace_tv_quickjs_media_context_and_transport",
+                prior_confidence=0.80,
+                requires_llm=True,
+                allowed_mutations=[],
+                next_actions=[
+                    "inspect official TV QuickJS exception category and metadata/BuildConfig capability",
+                    "compare Desktop vs Android TV provider input, manifest scope and fetch bridge",
+                    "propose shared client/Core/Lego correction, not a provider JS override",
+                    "re-run exact TV emulator after materialization; validate terminal media and audio",
+                ],
+            )
+        return RoutingDecision(
+            mode="probe",
+            reason="official Android TV emulator evidence does not yet explain the cross-client visibility differential",
+            target_layer="client",
+            strategy="complete_official_android_tv_player_probe",
+            prior_confidence=0.88,
+            allowed_mutations=[],
+            next_actions=[
+                "verify installed TV stream list and real decoding on the same fixture",
+                "compare exact JS and manifest version with the macOS observation",
+                "retain evidence as diagnostic-only until verified playback",
+            ],
         )
 
     # Low-confidence/unknown causality is exactly where model reasoning helps.
