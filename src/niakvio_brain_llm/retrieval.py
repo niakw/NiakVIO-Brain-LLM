@@ -168,7 +168,8 @@ class ExperienceStore:
             return []
         found = []
         for row in reversed(self.rows):
-            if row.get("source") != "hosted-executed-negative":
+            source = row.get("source")
+            if source not in {"hosted-executed-negative", "official-tv-executed-negative"}:
                 continue
             if provider not in [str(value).strip().casefold()
                                 for value in (row.get("providers") or [])[:16]]:
@@ -177,10 +178,23 @@ class ExperienceStore:
                     or row.get("proof_authority") is not False
                     or row.get("prior_only") is not True):
                 continue
-            if not re.fullmatch(
-                r"[0-9a-f]{64}", str(row.get("mutation_fingerprint") or "")
-            ):
-                continue
+            if source == "hosted-executed-negative":
+                if not re.fullmatch(
+                    r"[0-9a-f]{64}", str(row.get("mutation_fingerprint") or "")
+                ):
+                    continue
+            else:
+                # The TV case is a rejected ProviderBase/host strategy, NOT a
+                # provider edit fingerprint. Reserve it only when tied to the
+                # exact JS candidate, native client and source checkout.
+                if not all(re.fullmatch(
+                    r"[0-9a-f]{40}", str(row.get(key) or "")
+                ) for key in ("source_niakvio_sha", "official_client_sha")):
+                    continue
+                if not re.fullmatch(
+                    r"[0-9a-f]{64}", str(row.get("candidate_js_sha256") or "")
+                ):
+                    continue
             found.append(row)
             if len(found) >= max(0, min(limit, 4)):
                 break
