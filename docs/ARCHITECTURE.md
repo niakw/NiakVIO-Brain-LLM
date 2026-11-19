@@ -1,3 +1,7 @@
+## 2026-11-19 — Android TV primary Brain-driven emulator validation
+
+**Android TV is the primary executable proof client**, and the current official NuvioTV emulator is owned by NiakVIO GitHub Actions. Brain-LLM routes source-pinned sanitized TV run observations into bounded diagnostic next actions through `scripts/route_android_tv_emulator_feedback.py`. Complete design, proof rules, and selective Desktop/Mobile/iOS Lego non-regression: `docs/ANDROID_TV_PRIMARY_REPAIR_LOOP.md`. No automatic model repair is authorized by a diagnostic receipt; decoded content/episode/audio and materialized Brain correction remain necessary for FULL.
+
 ## 2026-11-19 — User-native client differences are diagnosis hints, never current proof
 
 `automation/user-client-provider-field-observations.json` in the NiakVIO source repository is a bounded field-observation input. The Brain adapter `_provider_user_client_field_observation` only accepts its declared non-authoritative schema and a whitelist of platform/result/BCP47-language fields. It derives actual provider membership from all four manifests in the current checkout and drops user-provided URLs, headers, notes, fixture guesses and unverifiable build/JS assertions. Every observation states `fixtureKnown=false`, `executedJsKnown=false`, `installedManifestKnown=false`, `proofAuthority=false`, `publicationAuthority=false`, `mutationAuthority=false`.
