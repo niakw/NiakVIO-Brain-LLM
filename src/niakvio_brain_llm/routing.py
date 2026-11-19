@@ -9,6 +9,7 @@ from .policy import NO_MUTATION_STRATEGIES, build_mutation_policy
 from .priors import build_causal_prior
 from .retrieval import ExperienceStore
 from .repair_family import repair_family_descriptor
+from .live_evidence import current_candidate_identity_gap
 
 
 @dataclass(slots=True)
@@ -129,40 +130,6 @@ def _has_current_executed_player_frontier(request: RepairRequest) -> bool:
     return False
 
 
-def _current_candidate_identity_gap(request: RepairRequest) -> bool:
-    """Actual same-bundle Retest missing content identity needs new reasoning.
-
-    Prior-only advisor experiment generation is not a replay. Once the exact
-    published JS was executed and returned undecidable content, repeating
-    another no-op deterministic candidate experiment is a false loop.
-    """
-    for observation in request.observations or []:
-        if not isinstance(observation, dict):
-            continue
-        if _canon(observation.get("source")) != "current-provider-retest-media":
-            continue
-        row = observation.get("value")
-        if not isinstance(row, dict) or row.get("source") != "same-js-current-retest":
-            continue
-        if (
-            row.get("proofAuthority") is not False
-            or row.get("publicationAuthority") is not False
-            or row.get("nativePlaybackAuthority") is not False
-        ):
-            continue
-        if (
-            int(row.get("playable") or 0) > 0
-            and int(row.get("verified") or 0) == 0
-            and set(row.get("identityReasons") or []) & {
-                "insufficient_identity_metadata",
-                "duration_incomplete_hls",
-                "duration_unavailable",
-            }
-        ):
-            return True
-    return False
-
-
 def route_request(
     request: RepairRequest,
     store: ExperienceStore | None = None,
@@ -270,7 +237,7 @@ def route_request(
             ],
         )
 
-    if failure == "candidate-replay-gap" and _current_candidate_identity_gap(request):
+    if failure == "candidate-replay-gap" and current_candidate_identity_gap(request.observations):
         # Evidence now distinguishes "URL unavailable" from "URL exists but
         # content identity unproven". Do NOT promote or guess a provider fix:
         # model must first locate whether source provenance was dropped by
