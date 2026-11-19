@@ -235,8 +235,30 @@ def route_request(
                     "ingest sanitized artifact by source SHA; do not mutate the provider from user report alone",
                 ],
             )
+        # An invocation-only trace is not a 0-stream return. The official TV
+        # job may have been killed, timed out or lost its completion marker.
+        # Diagnose the harness/runtime first; never turn a missing result into
+        # a fabricated provider-network or extractor failure.
+        phases = native_tv.get("quickJsPhases") or []
+        if (native_tv.get("appSelected") is True
+                and "call" in phases and "result" not in phases
+                and not native_tv.get("quickJsErrors")):
+            return RoutingDecision(
+                mode="probe",
+                reason="official TV QuickJS call was observed but no completed result or classified exception followed",
+                target_layer="client",
+                strategy="complete_android_tv_quickjs_execution_trace",
+                prior_confidence=0.80,
+                allowed_mutations=[],
+                next_actions=[
+                    "inspect TV runner cancellation/timeout, QuickJS task lifecycle and missing completion event",
+                    "verify TMDB metadata capability and native fetch bridge in the official emulator build",
+                    "repeat source-pinned Android TV invocation and capture a terminal result or error",
+                    "preserve Mac/Desktop positive as comparison only; do not patch provider or grant playback",
+                ],
+            )
         if native_tv.get("appSelected") is True and (
-            native_tv.get("quickJsReturned") == 0
+            ("result" in phases and native_tv.get("quickJsReturned") == 0)
             or bool(native_tv.get("quickJsErrors"))
         ):
             return RoutingDecision(
