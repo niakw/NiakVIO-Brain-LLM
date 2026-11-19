@@ -16,6 +16,7 @@ class GuidanceFamilyWaveTests(unittest.TestCase):
         self.old_request = mod.request_from_checkout
         self.old_family = mod.repair_family_descriptor
         self.old_memory = mod.load_memory
+        self.old_json = mod.load_json
         mod.request_from_checkout = lambda _root, provider: SimpleNamespace(provider_id=provider)
         mod.repair_family_descriptor = lambda request: {
             "key": ("a" * 64) if request.provider_id in {"alpha", "beta"} else ("b" * 64)
@@ -25,6 +26,7 @@ class GuidanceFamilyWaveTests(unittest.TestCase):
         mod.request_from_checkout = self.old_request
         mod.repair_family_descriptor = self.old_family
         mod.load_memory = self.old_memory
+        mod.load_json = self.old_json
 
     def test_unvalidated_family_uses_one_rotating_representative(self):
         mod.load_memory = lambda _root: {
@@ -107,6 +109,58 @@ class GuidanceFamilyWaveTests(unittest.TestCase):
         self.assertEqual(selected, ["beta", "gamma"])
         self.assertEqual(report["executionBlockedProviders"], ["alpha"])
         self.assertEqual(report["providerExecutionBurden"]["alpha"], 2)
+
+    def test_fast_first_chooses_current_media_witness_before_http_failure(self):
+        # Both providers share the same causal family in this fixture.
+        # The cheap/current candidate should be selected as the witness,
+        # even when the HTTP-failing provider was requested first.
+        mod.load_memory = lambda _root: {
+            "schemaVersion": 2, "entries": [], "validatedFamilies": [],
+        }
+        mod.load_json = lambda _path: {
+            "runId": "run-prior-only",
+            "providers": [
+                {"provider": "alpha", "status": "CHAIN REACHED",
+                 "dominantIssue": "provider_network_http_error",
+                 "latestLaneVerdicts": ["movie=no_streams/provider_network_http_error"]},
+                {"provider": "beta", "status": "CANDIDATE OK",
+                 "dominantIssue": "provider_returned_streams",
+                 "latestLaneVerdicts": ["anime=playable_unverified/provider_returned_streams"]},
+                {"provider": "gamma", "status": "HARNESS/ENV BLOCKED",
+                 "dominantIssue": "provider_waf_challenge"},
+            ],
+        }
+        selected, report = mod.select_wave(["alpha", "gamma", "beta"], ROOT)
+        self.assertEqual(selected, ["beta", "gamma"])
+        self.assertEqual(report["quickWinOrder"], ["beta", "alpha", "gamma"])
+        self.assertEqual(report["deferredProviders"], ["alpha"])
+        self.assertEqual(report["selectedQuickWins"][0], {
+            "provider": "beta", "rank": 0,
+            "nextAction": "verify-terminal-media-and-identity-first",
+        })
+        self.assertEqual(report["censusRunIdForPlanningOnly"], "run-prior-only")
+        self.assertFalse(report["publicationAuthority"])
+        self.assertFalse(report["proofAuthority"])
+
+    def test_fast_first_never_conflates_stream_candidate_with_playback(self):
+        cases = [
+            ({"status": "CANDIDATE OK"}, 0, "verify-terminal-media-and-identity-first"),
+            ({"status": "PARTIAL OK"}, 0, "verify-terminal-media-and-identity-first"),
+            ({"status": "REGRESSION PROVIDER", "latestLaneVerdicts": [
+                "movie=playable_unverified/provider_returned_streams"]}, 1, "verify-existing-media-first"),
+            ({"status": "CHAIN REACHED", "dominantIssue": "provider_network_zero_result"}, 5,
+             "inspect-search-route-and-providerbase"),
+            ({"status": "CHAIN REACHED", "dominantIssue": "provider_network_http_error"}, 6,
+             "diagnose-upstream-network-before-mutation"),
+            ({"status": "REGRESSION PROVIDER", "dominantIssue": "timeout"}, 7,
+             "diagnose-provider-timeout"),
+            ({"status": "HARNESS/ENV BLOCKED", "dominantIssue": "provider_waf_challenge"}, 8,
+             "independent-transport-oracle-first"),
+            ({"status": "DISABLED"}, 90, "disabled-recovery-isolated"),
+        ]
+        for row, rank, action in cases:
+            with self.subTest(row=row):
+                self.assertEqual(mod.quick_win_rank(row), (rank, action))
 
     def test_validated_replayable_family_fans_out(self):
         mod.load_memory = lambda _root: {
