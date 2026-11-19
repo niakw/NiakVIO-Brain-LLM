@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "3f49873669794f08265e39fcc27ac7d0d6582054",
-  "reason": "2026-11-19 Brain exact-source current French-Manga media-provenance negative at census 44509152891-retest. The published stream is 2 HLS candidates, verified=0, insufficient_identity_metadata and duration_incomplete_hls, exact JS SHA256 f18a1c3a2352c0a3fed0b094cf517cea251125c39e70fa6da319cde869e21c4e. New Brain routing must ESCALATE from repeated deterministic advisor replay to LLM causal diagnosis only (provider episode API source ownership vs Core metadata vs HLS playlist incompleteness); never assume an S01E01 identity from requested TMDB or count URL as success. Propose generalized repairs/test instrumentation, compile/apply only if separately authorized and independently validated.",
+  "niakvio_sha": "ae70d35a89a46bc9d12e3ccf88914ef7feb26471",
+  "reason": "2026-11-19 verify end-to-end Brain causal route persistence after fixing live_context_ingest overwrite: French-Manga current exact-source Retest 44510538929-retest, published JS SHA256 f18a1c3a2352c0a3fed0b094cf517cea251125c39e70fa6da319cde869e21c4e, 2 HLS candidates/0 verified, incomplete duration and insufficient independent episode metadata. Expected: route and FORCE planner keep candidate_replay_gap with source-pinned identity proof unresolved, route model to bounded causal diagnosis, not silently replace with proof_freshness_gap. Do NOT count a successful model invocation as repaired or authorize provider mutations until causal owner, materialized correct playback and nonregression are proven.",
   "requested_repair_queue": [
     "french-manga"
   ],
-  "retry": 88,
+  "retry": 89,
   "require_deterministic_force": false,
   "model_profile": "qwen25-coder-3b"
 }
