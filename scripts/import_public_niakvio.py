@@ -334,6 +334,108 @@ def collect_hosted_replay_negatives(root: Path) -> list[dict[str, Any]]:
     return rows[-24:]
 
 
+
+def collect_native_bridge_negatives(root: Path) -> list[dict[str, Any]]:
+    """Import exact executed, source-pinned rejected native strategy priors.
+
+    A client/ProviderBase hypothesis is never a validated repair. Do not
+    construct executable provider code, copy private URLs, or promote results.
+    """
+    import re
+    path = root / "automation" / "native-bridge-negative-experiments.json"
+    data = load_json(path, {})
+    if (
+        not isinstance(data, dict)
+        or data.get("schemaVersion") != 1
+        or data.get("role") != "brain-native-bridge-negative-experiments"
+    ):
+        return []
+    rows: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for raw in (data.get("experiments") or [])[:80]:
+        if not isinstance(raw, dict):
+            continue
+        if (
+            raw.get("result") != "rejected_executed_no_improvement"
+            or raw.get("mechanism") != "providerbase_v27_js_promise_hedge"
+            or raw.get("failureClass") != "synchronous_native_fetch_no_parallelism"
+            or any(raw.get(k) is not False for k in (
+                "proofAuthority", "publicationAuthority", "providerMutationAuthority"
+            ))
+        ):
+            continue
+        provider = str(raw.get("provider") or "").strip().casefold()
+        run = str(raw.get("runId") or "").strip()
+        source_sha = str(raw.get("sourceNiakvioSha") or "").lower()
+        client_sha = str(raw.get("officialClientSha") or "").lower()
+        candidate_sha = str(raw.get("candidateJsSha256") or "").lower()
+        if (
+            not re.fullmatch(r"[a-z0-9][a-z0-9-]{1,63}", provider)
+            or not re.fullmatch(r"[0-9]{8,14}", run)
+            or not all(re.fullmatch(r"[a-f0-9]{40}", sha) for sha in (source_sha, client_sha))
+            or not re.fullmatch(r"[a-f0-9]{64}", candidate_sha)
+        ):
+            continue
+        evidence = raw.get("evidence")
+        if not isinstance(evidence, dict):
+            continue
+        required_true = (
+            "candidateByteMatched", "publishedManifestShaPinnedHttps",
+            "runtimeIsOfficialNuvioTV", "officialBridgeBlockingCallExecute",
+            "nativeRequestSequentialObserved",
+        )
+        required_false = ("playerReached", "decodedMediaVerified")
+        if (
+            any(evidence.get(k) is not True for k in required_true)
+            or any(evidence.get(k) is not False for k in required_false)
+            or evidence.get("firstSourceHttpStatus") != 522
+            or type(evidence.get("returnedStreamCount")) is not int
+            or evidence["returnedStreamCount"] != 0
+        ):
+            continue
+        identity = f"native-bridge-negative:{run}:{candidate_sha[:16]}"
+        if identity in seen:
+            continue
+        seen.add(identity)
+        rows.append({
+            "experience_id": identity,
+            "source": "official-tv-executed-negative",
+            "providers": [provider],
+            "failure_class": "synchronous_native_fetch_no_parallelism",
+            "symptom_families": [
+                "android_tv_only_zero_streams",
+                "http_522_then_empty",
+                "js_promise_hedge_no_parallelism",
+            ],
+            "signals": [
+                "candidate_bytes_matched",
+                "official_tv_call_execute_synchronous",
+                "sequential_http_fetch_observed",
+                "zero_returned_streams",
+                "no_decoded_player_proof",
+            ],
+            "strategy": "require_nonblocking_native_fetch_capability_or_evidence_backed_origin_priority",
+            "avoid": [
+                "repeat_promise_all_hedge_without_async_host_capability",
+                "attribute_http_522_to_provider_js_without_owner_trace",
+            ],
+            "lesson": (
+                "A source-pinned NuvioTV QuickJS candidate executed with unchanged "
+                "published HTTPS repository and exact candidate JS bytes. "
+                "The blocking OkHttp Call.execute host bridge serializes JS fetch; "
+                "Promise.all does not race a slow 522. No stream or playback was "
+                "validated. Diagnose client transport or evidence-backed route ordering."
+            ),
+            "result": "rejected_executed_no_improvement",
+            "proof_authority": False,
+            "prior_only": True,
+            "source_niakvio_sha": source_sha,
+            "official_client_sha": client_sha,
+            "candidate_js_sha256": candidate_sha,
+        })
+    return rows[-40:]
+
+
 def collect(root: Path) -> list[dict[str, Any]]:
     sources = [
         ("brain-repair-experience", root / "automation" / "brain-repair-experience.json"),
@@ -363,6 +465,7 @@ def collect(root: Path) -> list[dict[str, Any]]:
         *collect_provider_structured_priors(root),
         *collect_local_force(root),
         *collect_hosted_replay_negatives(root),
+        *collect_native_bridge_negatives(root),
     ]:
         identity = str(row.get("experience_id") or "")
         if not identity or identity in seen:
