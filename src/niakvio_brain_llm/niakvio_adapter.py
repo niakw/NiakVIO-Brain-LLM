@@ -791,6 +791,10 @@ def _provider_android_tv_emulator_observations(
             "appSelected": row.get("appSelected") if type(row.get("appSelected")) is bool else None,
             "quickJsPhases": phases,
             "quickJsErrors": errors,
+            "tvPromiseControl": str(row.get("tvPromiseControl") or "")
+                if row.get("tvPromiseControl") in {
+                    "bridge_ok", "promise_delivery_gap", "baseline_failed",
+                } else "not_observed",
             "quickJsReturned": min(10000, max(0, row.get("quickJsReturned")))
                 if type(row.get("quickJsReturned")) is int else 0,
             "nativeExtractionZeroObserved": row.get("nativeExtractionZeroObserved") is True,
