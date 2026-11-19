@@ -14,6 +14,68 @@ class RoutingTests(unittest.TestCase):
         self.assertEqual(decision.mode, "skip")
         self.assertFalse(decision.requires_llm)
 
+    def test_android_tv_is_primary_probe_for_cross_client_visibility_gap(self):
+        report = {
+            "source": "user-client-field-report",
+            "value": {
+                "authority": "historical-user-report-only",
+                "crossClientVisibilityDiscrepancy": True,
+                "proofAuthority": False,
+                "publicationAuthority": False,
+                "mutationAuthority": False,
+                "executedJsKnown": False,
+            },
+        }
+        base = {
+            "provider_id": "french-manga",
+            "failure_class": "candidate_replay_gap",
+            "status": "CANDIDATE OK",
+        }
+        before = route_request(RepairRequest(**base, observations=[report]))
+        self.assertEqual(before.mode, "probe")
+        self.assertEqual(before.target_layer, "client")
+        self.assertEqual(before.strategy, "run_official_android_tv_emulator_first")
+        self.assertEqual(before.allowed_mutations, [])
+        self.assertFalse(before.requires_llm)
+
+        tv = {
+            "source": "official-android-tv-emulator",
+            "value": {
+                "source": "official-android-tv-emulator",
+                "client": "tv", "historicalOnly": True,
+                "appSelected": True,
+                "quickJsReturned": 0,
+                "quickJsErrors": ["reference_error"],
+                "proofAuthority": False,
+                "publicationAuthority": False,
+                "nativePlaybackAuthority": False,
+                "providerMutationAuthority": False,
+            },
+        }
+        diagnosed = route_request(RepairRequest(**base, observations=[report, tv]))
+        self.assertEqual(diagnosed.mode, "llm_diagnose")
+        self.assertEqual(diagnosed.target_layer, "client")
+        self.assertEqual(diagnosed.strategy, "trace_tv_quickjs_media_context_and_transport")
+        self.assertEqual(diagnosed.allowed_mutations, [])
+        self.assertTrue(diagnosed.requires_llm)
+
+        # Even emulator 'ready' on the same JS needs a real correct-media proof.
+        tv_positive = {"source": "official-android-tv-emulator", "value": {
+            **tv["value"], "quickJsReturned": 1,
+            "quickJsErrors": [], "playerStates": ["ready"],
+        }}
+        unresolved = route_request(RepairRequest(**base, observations=[report, tv_positive]))
+        self.assertEqual(unresolved.mode, "probe")
+        self.assertEqual(unresolved.strategy, "complete_official_android_tv_player_probe")
+        self.assertEqual(unresolved.allowed_mutations, [])
+
+        tv_forged = {"source": "official-android-tv-emulator", "value": {
+            **tv["value"], "nativePlaybackAuthority": True,
+        }}
+        refused = route_request(RepairRequest(**base, observations=[report, tv_forged]))
+        self.assertEqual(refused.mode, "probe")
+        self.assertEqual(refused.strategy, "run_official_android_tv_emulator_first")
+
     def test_full_ok_variant_coverage_gap_routes_provider_synthesis(self):
         decision = route_request(
             RepairRequest(
