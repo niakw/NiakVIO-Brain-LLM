@@ -44,6 +44,13 @@ class UserClientFieldObservationTests(unittest.TestCase):
                     "executedJsKnown", "appBuildKnown", "installedManifestKnown"):
             self.assertFalse(record[key])
         self.assertFalse(record["fixtureKnown"])
+        # French-Manga must not be inferred on no-anime installations merely
+        # because the Full Global/VF manifests contain it.
+        with_variants = self.observe(scopes=[
+            "manifest.json", "vf/manifest.json",
+            "no-anime/manifest.json", "vf-no-anime/manifest.json",
+        ])
+        self.assertEqual(len(with_variants["activeManifestScopesAtCheckout"]), 4)
         self.assertNotIn("url", str(record))
         self.assertNotIn("secret.example", str(record))
         self.assertNotIn("PRIVATE", str(record))
@@ -53,8 +60,14 @@ class UserClientFieldObservationTests(unittest.TestCase):
         row["provider"] = "sadisflix"
         row["clients"] = [{"client": "unspecified", "observation": "not-in-stream-list"}]
         self.payload["rows"] = [row]
-        result = self.observe(provider="sadisflix", scopes=["vf/manifest.json"])
-        self.assertEqual(result["activeManifestScopesAtCheckout"], ["vf/manifest.json"])
+        result = self.observe(
+            provider="sadisflix",
+            scopes=["vf/manifest.json", "vf-no-anime/manifest.json"],
+        )
+        self.assertEqual(
+            result["activeManifestScopesAtCheckout"],
+            ["vf-no-anime/manifest.json", "vf/manifest.json"],
+        )
         self.assertFalse(result["crossClientVisibilityDiscrepancy"])
 
     def test_fake_authority_and_unspecified_fixture_cannot_be_upgraded(self):
