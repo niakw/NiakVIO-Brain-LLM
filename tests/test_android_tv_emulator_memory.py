@@ -21,6 +21,7 @@ class AndroidTVEmulatorMemoryTests(unittest.TestCase):
                 "providerArtifactSha256": self.sha,
                 "sourceNiakvioSha": "b" * 40,
                 "nativeRunId": "44514660418",
+                "officialClientSha": "c" * 40,
                 "manifestScope": "manifest.json",
                 "fixture": "jujutsu-kaisen-s01e01",
                 "requestType": "anime",
@@ -51,6 +52,7 @@ class AndroidTVEmulatorMemoryTests(unittest.TestCase):
         self.assertEqual(len(rows), 1)
         row = rows[0]
         self.assertEqual(row["client"], "tv")
+        self.assertEqual(row["officialClientSha"], "c" * 40)
         self.assertEqual(row["requestType"], "anime")
         self.assertEqual(row["quickJsReturned"], 0)
         self.assertEqual(row["quickJsErrors"], ["reference_error"])
@@ -62,6 +64,21 @@ class AndroidTVEmulatorMemoryTests(unittest.TestCase):
                      "nativePlaybackAuthority", "providerMutationAuthority"):
             self.assertFalse(row[flag])
         self.assertNotIn("privateUrl", row)
+
+    def test_client_ref_is_historical_and_fail_closed(self):
+        actual = self.get()[0]
+        self.assertEqual(actual["officialClientSha"], "c"*40)
+        self.assertTrue(actual["historicalOnly"])
+        self.assertFalse(actual["nativePlaybackAuthority"])
+        for value in ("https://private.invalid/SECRET", "12345", "Z"*40):
+            data = self.report()
+            data["rows"][0]["officialClientSha"] = value
+            rows = self.get(data)
+            self.assertEqual(len(rows), 1)
+            self.assertEqual(rows[0]["officialClientSha"], "")
+        old = self.report()
+        del old["rows"][0]["officialClientSha"]
+        self.assertEqual(self.get(old)[0]["officialClientSha"], "")
 
     def test_mismatch_never_becomes_current_proof(self):
         self.assertEqual(self.get(sha="c" * 64), [])
