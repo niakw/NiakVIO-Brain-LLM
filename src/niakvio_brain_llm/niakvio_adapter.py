@@ -518,7 +518,10 @@ def _provider_user_client_field_observation(
             continue
         scopes = sorted({
             scope for scope in (active_manifest_scopes or [])
-            if scope in {"manifest.json", "vf/manifest.json"}
+            if scope in {
+                "manifest.json", "vf/manifest.json",
+                "no-anime/manifest.json", "vf-no-anime/manifest.json",
+            }
         })
         states = {x["observation"] for x in clients}
         return {
@@ -1347,7 +1350,10 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
         provider_id,
     )
     active_manifest_scopes = []
-    for candidate_path in ("manifest.json", "vf/manifest.json"):
+    for candidate_path in (
+        "manifest.json", "vf/manifest.json",
+        "no-anime/manifest.json", "vf-no-anime/manifest.json",
+    ):
         document = _load(root / candidate_path, {})
         if any(
             isinstance(item, dict)
