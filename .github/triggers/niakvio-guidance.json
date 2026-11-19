@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "ae70d35a89a46bc9d12e3ccf88914ef7feb26471",
-  "reason": "2026-11-19 verify end-to-end Brain causal route persistence after fixing live_context_ingest overwrite: French-Manga current exact-source Retest 44510538929-retest, published JS SHA256 f18a1c3a2352c0a3fed0b094cf517cea251125c39e70fa6da319cde869e21c4e, 2 HLS candidates/0 verified, incomplete duration and insufficient independent episode metadata. Expected: route and FORCE planner keep candidate_replay_gap with source-pinned identity proof unresolved, route model to bounded causal diagnosis, not silently replace with proof_freshness_gap. Do NOT count a successful model invocation as repaired or authorize provider mutations until causal owner, materialized correct playback and nonregression are proven.",
+  "niakvio_sha": "4e636000173f1edaabca538f84d1c3d6b8e55b8e",
+  "reason": "Brain-first source-pinned real regression of diagnostic-only FORCE gate. Official TV extracted 2 HLS on earlier native run, reader READY but no decoded video/audio, independent HLS probe HTTP403. User Mac Desktop FR audio positive / Android TV absent. Exact current JS hash f18a1c3a2352c0a3fed0b094cf517cea251125c39e70fa6da319cde869e21c4e. Must route unknown owner to llm_diagnose without provider_patch/provider_bloc scope, then persist bounded diagnosis or abstention. No provider JS changes, no false media publication. Real updated native replay in progress.",
   "requested_repair_queue": [
     "french-manga"
   ],
-  "retry": 89,
+  "retry": 90,
   "require_deterministic_force": false,
   "model_profile": "qwen25-coder-3b"
 }
