@@ -873,6 +873,14 @@ def _provider_android_tv_emulator_observations(
             "fixture": fixture,
             "requestType": lane,
             "sourceRunId": str(row["nativeRunId"]),
+            # Exact official NuvioTV commit, separate from the NiakVIO JS SHA
+            # and from an unverified user-installed APK version. Old receipts
+            # without this field stay historical and are never backfilled.
+            "officialClientSha": (
+                str(row.get("officialClientSha") or "").lower()
+                if re.fullmatch(r"[0-9a-f]{40}", str(row.get("officialClientSha") or "").lower())
+                else ""
+            ),
             "manifestScope": row["manifestScope"],
             "appSelected": row.get("appSelected") if type(row.get("appSelected")) is bool else None,
             "quickJsPhases": phases,
