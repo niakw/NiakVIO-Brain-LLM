@@ -72,7 +72,7 @@ def quick_win_rank(row: dict[str, Any]) -> tuple[int, str]:
     if "provider js broken" in status and "chain-reached" in depth:
         return 2, "local-media-extractor"
     if "chain reached" in status and not any(
-        x in issue for x in ("timeout", "http-error", "waf-challenge")
+        x in issue for x in ("timeout", "http-error", "waf-challenge", "zero-result")
     ):
         return 3, "finish-terminal-extractor"
     if "provider-network-zero-result" in issue:
