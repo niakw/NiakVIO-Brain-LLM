@@ -41,6 +41,8 @@ class AndroidTVRouteLoopTests(unittest.TestCase):
                 "quickJsReturned": 0,
                 "nativeExtractionZeroObserved": True,
                 "tvPromiseControl": "promise_delivery_gap",
+                "nativeHardTimeoutObserved": True,
+                "nativeHardTimeoutMs": 25000,
                 "proofAuthority": False, "publicationAuthority": False,
                 "nativePlaybackAuthority": False, "providerMutationAuthority": False,
                 "url": "https://token.example/do-not-leak?cookie=SECRET",
@@ -92,6 +94,8 @@ class AndroidTVRouteLoopTests(unittest.TestCase):
             active_manifest_scopes=["manifest.json"],
         )
         self.assertEqual(rows[0]["tvPromiseControl"], "promise_delivery_gap")
+        self.assertTrue(rows[0]["nativeHardTimeoutObserved"])
+        self.assertEqual(rows[0]["nativeHardTimeoutMs"], 25000)
         self.assertFalse(rows[0]["nativePlaybackAuthority"])
         forged = self.ledger()
         forged["rows"][0]["tvPromiseControl"] = "https://private.example/t"
@@ -101,6 +105,7 @@ class AndroidTVRouteLoopTests(unittest.TestCase):
             active_manifest_scopes=["manifest.json"],
         )
         self.assertEqual(rows[0]["tvPromiseControl"], "not_observed")
+        self.assertTrue(rows[0]["nativeHardTimeoutObserved"])
         self.assertEqual(_provider_android_tv_emulator_observations(
             self.ledger(), "french-manga",
             current_bundle_sha256="c" * 64,
