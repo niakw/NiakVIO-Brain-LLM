@@ -4,6 +4,13 @@ from pathlib import Path
 root=Path(__file__).resolve().parents[1]
 workflow=(root/".github/workflows/niakvio-private-guidance.yml").read_text(encoding="utf-8")
 
+model_profile_step = workflow.split("      - name: Resolve bounded local model profile", 1)[1].split("\n      - ", 1)[0]
+assert "if: steps.deterministic_force.outputs.ready != 'true'" in model_profile_step
+assert "steps.route.outputs.llm_needed == 'true'" not in model_profile_step
+# Merely resolving budgets must not start, download, or cache a model when the
+# candidate is a deterministic replay with no LLM calls.
+assert "if: steps.route.outputs.llm_needed == 'true' && steps.deterministic_force.outputs.ready != 'true'" in workflow
+
 assert 'default: "qwen25-coder-3b"' in workflow
 assert 'options: [qwen25-coder-3b, qwen35-9b]' in workflow
 assert 'unsupported local model profile' in workflow
