@@ -195,6 +195,46 @@ def route_request(
             prior_confidence=confidence,
         )
 
+    # A synthetic control executed through the same official QuickJS
+    # PluginRuntime is a stronger *runtime* diagnostic than any one provider
+    # count=0. It is not media proof and never authorizes a provider patch.
+    official_tv = _official_android_tv_diagnostic(request)
+    if (official_tv.get("appSelected") is True
+            and official_tv.get("nativeExtractionZeroObserved") is True
+            and official_tv.get("tvPromiseControl") == "promise_delivery_gap"):
+        return RoutingDecision(
+            mode="llm_diagnose",
+            reason="official Android TV synthetic immediate result succeeded but awaited Promise control did not; provider stream zero cannot be attributed to provider JS",
+            target_layer="client",
+            strategy="diagnose_android_tv_quickjs_promise_completion",
+            prior_confidence=0.90,
+            requires_llm=True,
+            allowed_mutations=[],
+            next_actions=[
+                "inspect official TV QuickJS async job lifecycle using the synthetic non-media control",
+                "compare TV bridge with accepted Desktop runtime and published JS requirements",
+                "fix owner-level client/Brain runtime compatibility without editing individual providers",
+                "rerun synthetic immediate and awaited controls, then source-pinned official provider playback",
+                "retain zero media publication authority until correct decoded content and audio are proven",
+            ],
+        )
+    if (official_tv.get("appSelected") is True
+            and official_tv.get("nativeExtractionZeroObserved") is True
+            and official_tv.get("tvPromiseControl") == "baseline_failed"):
+        return RoutingDecision(
+            mode="probe",
+            reason="official Android TV synthetic immediate JS control failed; async and provider attribution are unreliable",
+            target_layer="client",
+            strategy="isolate_android_tv_quickjs_baseline",
+            prior_confidence=0.75,
+            allowed_mutations=[],
+            next_actions=[
+                "inspect official test-only control compilation and LocalScraperResult parsing",
+                "replay the same immediate control in NuvioTV without modifying provider JS",
+                "do not infer provider failure from a broken baseline control",
+            ],
+        )
+
     # TV is the primary executable client for Brain repair. A reported
     # macOS-positive/TV-missing provider must first have a source-pinned native
     # emulator oracle. Existing Lego for Desktop/Mobile/iOS remains intact, but
