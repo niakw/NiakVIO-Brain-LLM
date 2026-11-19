@@ -112,6 +112,56 @@ class AndroidTVRouteLoopTests(unittest.TestCase):
             active_manifest_scopes=["manifest.json"],
         ), [])
 
+    def test_real_native_terminal_403_keeps_transport_not_provider_mutation(self):
+        from niakvio_brain_llm.models import RepairRequest
+        x = self.ledger()
+        row = x["rows"][0]
+        row.update({
+            "tvPromiseControl": "bridge_ok",
+            "nativeHardTimeoutObserved": False,
+            "nativeHardTimeoutMs": 0,
+            "nativeExtractionZeroObserved": False,
+            "nativeExtractionPositiveObserved": True,
+            "nativeExtractionReturnedCount": 2,
+            "playerVideoFormatUnverified": True,
+            "independentTerminalHttpStatuses": [403],
+            "playerStates": ["ready"],
+            "playerFailureClasses": ["healthy"],
+            "quickJsReturned": 0,
+            "url": "https://private.example/?token=SECRET",
+        })
+        observations = _provider_android_tv_emulator_observations(
+            x, "french-manga",
+            current_bundle_sha256=self.digest,
+            active_manifest_scopes=["manifest.json"],
+        )
+        self.assertEqual(len(observations), 1)
+        observation = observations[0]
+        self.assertEqual(observation["nativeExtractionReturnedCount"], 2)
+        self.assertTrue(observation["playerVideoFormatUnverified"])
+        self.assertEqual(observation["independentTerminalHttpStatuses"], [403])
+        self.assertFalse(observation["nativePlaybackAuthority"])
+        self.assertNotIn("private.example", json.dumps(observation))
+        from niakvio_brain_llm.models import RepairRequest
+        req = RepairRequest(
+            provider_id="french-manga", status="CANDIDATE OK",
+            failure_class="candidate_replay_gap", advisor_only=True,
+            observations=[{"source": "official-android-tv-emulator", "value": observation}],
+        )
+        route = route_request(req)
+        self.assertEqual(route.mode, "llm_diagnose")
+        self.assertEqual(route.target_layer, "unknown")
+        self.assertEqual(route.strategy, "trace_tv_hls_403_headers_client_fetch_and_decoded_video")
+        self.assertEqual(route.allowed_mutations, [])
+        self.assertTrue(route.requires_llm)
+        tampered = dict(observation)
+        tampered["nativeExtractionReturnedCount"] = 0
+        req.observations = [{"source": "official-android-tv-emulator", "value": tampered}]
+        self.assertNotEqual(
+            route_request(req).strategy,
+            "trace_tv_hls_403_headers_client_fetch_and_decoded_video",
+        )
+
     def test_historical_other_run_not_rerouted(self):
         for sha, run in ((self.sha, "44520778917"),
                          ("c" * 40, self.native_run_id)):
