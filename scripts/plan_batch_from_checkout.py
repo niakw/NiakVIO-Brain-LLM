@@ -886,6 +886,57 @@ def main() -> int:
         planned: list[dict] = []
 
         if args.mode == "repair" and not args.advisor_only:
+            from niakvio_brain_llm.routing import route_request
+            from niakvio_brain_llm.force_scope_order import diagnostic_only_route
+            causal_route = route_request(request, store)
+            if diagnostic_only_route(causal_route):
+                # Real native extraction/transport evidence may establish that
+                # media exists without identifying the repair owner. FORCE's
+                # historical scope-order fallback used to manufacture a
+                # provider_patch/provider_bloc scope here, wasting local LLM
+                # budget and hiding missing Core/client/HLS proof behind a
+                # provider synthesis timeout. Diagnose once with no edits.
+                strategy = re.sub(
+                    r"[^a-z0-9_-]", "_",
+                    str(causal_route.strategy or "").strip().casefold(),
+                )[:95] or "unclassified"
+                print(
+                    "FIELD_BRAIN_FORCE_DIAGNOSTIC_ONLY "
+                    f"provider={provider} strategy={strategy} "
+                    "scopes=none mutation_authority=false",
+                    flush=True,
+                )
+                try:
+                    outcome = orchestrator.run(request, compact_force=False)
+                    if outcome.routing.mode != "llm_diagnose":
+                        raise RuntimeError("causal routing drift during diagnosis")
+                    proposal = outcome.proposal
+                    if proposal is not None and proposal.mutations:
+                        raise RuntimeError("diagnostic model emitted unauthorized mutations")
+                    result = _row(position, 1, provider, request, outcome)
+                    result["diagnostic_only"] = True
+                    result["provider_mutation_authority"] = False
+                    return [result]
+                except Exception as exc:
+                    print(
+                        "FIELD_BRAIN_FORCE_DIAGNOSIS_STALLED "
+                        f"provider={provider} error={type(exc).__name__} "
+                        "mutation_authority=false",
+                        flush=True,
+                    )
+                    return [{
+                        "position": position,
+                        "hypothesis_index": 1,
+                        "provider": provider,
+                        "status": request.status,
+                        "failure_class": request.failure_class,
+                        "repair_family": repair_family_descriptor(request),
+                        "ok": False,
+                        "routing": causal_route.to_dict(),
+                        "diagnostic_only": True,
+                        "provider_mutation_authority": False,
+                        "error": type(exc).__name__ + ": causal diagnosis not completed",
+                    }]
             scopes = _force_scope_order(request)
             budget_cap = max(60, min(int(args.force_provider_budget_seconds), 900))
             failure_key = str(request.failure_class or "").strip().casefold().replace("-", "_")
