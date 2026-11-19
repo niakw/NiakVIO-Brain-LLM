@@ -18,6 +18,9 @@ _MOD = importlib.util.module_from_spec(_SPEC)
 _SPEC.loader.exec_module(_MOD)
 collect_hosted_replay_negatives = _MOD.collect_hosted_replay_negatives
 from niakvio_brain_llm.prompting import _bounded_force_hosted_negative_hints
+from niakvio_brain_llm.retrieval import ExperienceStore
+from niakvio_brain_llm.contracts import RepairRequest
+from niakvio_brain_llm.planner import BrainPlanner
 
 
 class HostedNegativeLearningTests(unittest.TestCase):
@@ -82,6 +85,71 @@ class HostedNegativeLearningTests(unittest.TestCase):
                 _bounded_force_hosted_negative_hints([
                     {**rows[0], "proof_authority": True}
                 ], "sekai"), []
+            )
+
+    def test_official_tv_sync_bridge_negative_reaches_force_even_when_top_six_crowded(self):
+        candidate = "c" * 64
+        negative = {
+            "experience_id": "native-bridge-negative:44620517326:" + candidate[:16],
+            "source": "official-tv-executed-negative",
+            "providers": ["french-manga"],
+            "failure_class": "synchronous_native_fetch_no_parallelism",
+            "strategy": "require_nonblocking_native_fetch_capability_or_evidence_backed_origin_priority",
+            "result": "rejected_executed_no_improvement",
+            "source_niakvio_sha": "a" * 40,
+            "official_client_sha": "b" * 40,
+            "candidate_js_sha256": candidate,
+            "proof_authority": False,
+            "prior_only": True,
+            "signedUrl": "https://private.invalid/?token=SECRET",
+        }
+        # Six lexical same-provider success histories can crowd a normal
+        # similarity result. FORCE must explicitly reserve the last negative.
+        positives = [{
+            "experience_id": "old-success-" + str(i),
+            "source": "historical-case",
+            "providers": ["french-manga"],
+            "failure_class": "media_extraction_gap",
+            "strategy": "crawl_embed",
+            "result": "validated",
+            "proof_authority": False,
+        } for i in range(16)]
+        store = ExperienceStore(positives + [negative])
+        reserved = store.same_provider_executed_negatives("french-manga", limit=2)
+        self.assertEqual(len(reserved), 1)
+        self.assertEqual(reserved[0]["experience_id"], negative["experience_id"])
+        prompt_hints = _bounded_force_hosted_negative_hints(reserved, "french-manga")
+        self.assertEqual(len(prompt_hints), 1)
+        hint = prompt_hints[0]
+        self.assertEqual(hint["mechanism"], "native_blocking_bridge_defeats_js_promise_hedge")
+        self.assertEqual(hint["scope"], "client_transport_and_common_providerbase")
+        self.assertFalse(hint["proof_authority"])
+        self.assertFalse(hint["provider_mutation_authority"])
+        self.assertTrue(hint["do_not_repeat_js_only_hedge_without_nonblocking_host_bridge"])
+        for forbidden in ("private.invalid", "SECRET", "token=", "https://"):
+            self.assertNotIn(forbidden, json.dumps(prompt_hints))
+        planner = BrainPlanner(backend=object(), store=store)
+        request = RepairRequest(
+            provider_id="french-manga", failure_class="media_extraction_gap",
+            status="REGRESSION PROVIDER", allowed_mutations=["provider_patch"]
+        )
+        prepared, _, _, _, _ = planner._prepare(request, compact_force=True)
+        self.assertTrue(any(row.get("experience_id") == negative["experience_id"]
+                            for row in prepared))
+        self.assertEqual(
+            store.same_provider_executed_negatives("sadisflix"), []
+        )
+        for key, forged in (
+            ("proof_authority", True),
+            ("prior_only", False),
+            ("candidate_js_sha256", "https://private.invalid"),
+            ("official_client_sha", "broken"),
+        ):
+            bad = dict(negative)
+            bad[key] = forged
+            self.assertEqual(
+                ExperienceStore([bad]).same_provider_executed_negatives("french-manga"),
+                [], key
             )
 
     def test_malformed_archived_acceptance_count_fails_closed(self):
