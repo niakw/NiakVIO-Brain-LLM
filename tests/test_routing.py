@@ -14,6 +14,51 @@ class RoutingTests(unittest.TestCase):
         self.assertEqual(decision.mode, "skip")
         self.assertFalse(decision.requires_llm)
 
+    def test_tv_promise_bridge_failure_is_client_owned_not_provider_mutation(self):
+        base = {
+            "source": "official-android-tv-emulator",
+            "client": "tv", "historicalOnly": True,
+            "appSelected": True,
+            "nativeExtractionZeroObserved": True,
+            "tvPromiseControl": "promise_delivery_gap",
+            "proofAuthority": False, "publicationAuthority": False,
+            "nativePlaybackAuthority": False, "providerMutationAuthority": False,
+        }
+        def decide(value):
+            return route_request(RepairRequest(
+                provider_id="demo", status="REGRESSION PROVIDER",
+                failure_class="media_extraction_gap",
+                allowed_mutations=["provider_patch"],
+                observations=[{
+                    "source": "official-android-tv-emulator",
+                    "value": value,
+                }],
+            ))
+        route = decide(base)
+        self.assertEqual(route.mode, "llm_diagnose")
+        self.assertEqual(route.target_layer, "client")
+        self.assertEqual(route.strategy, "diagnose_android_tv_quickjs_promise_completion")
+        self.assertTrue(route.requires_llm)
+        self.assertEqual(route.allowed_mutations, [])
+        self.assertTrue(any("synthetic" in line for line in route.next_actions))
+        baseline = decide({**base, "tvPromiseControl": "baseline_failed"})
+        self.assertEqual(baseline.mode, "probe")
+        self.assertEqual(baseline.strategy, "isolate_android_tv_quickjs_baseline")
+        self.assertEqual(baseline.allowed_mutations, [])
+        for bad in (
+            {**base, "proofAuthority": True},
+            {**base, "appSelected": False},
+            {**base, "nativeExtractionZeroObserved": False},
+            {**base, "historicalOnly": False},
+            {**base, "tvPromiseControl": "bridge_ok"},
+        ):
+            with self.subTest(bad=bad):
+                result = decide(bad)
+                self.assertNotEqual(
+                    result.strategy, "diagnose_android_tv_quickjs_promise_completion"
+                )
+                self.assertNotEqual(result.strategy, "isolate_android_tv_quickjs_baseline")
+
     def test_android_tv_is_primary_probe_for_cross_client_visibility_gap(self):
         report = {
             "source": "user-client-field-report",
