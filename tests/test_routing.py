@@ -14,6 +14,43 @@ class RoutingTests(unittest.TestCase):
         self.assertEqual(decision.mode, "skip")
         self.assertFalse(decision.requires_llm)
 
+    def test_official_tv_hard_timeout_is_not_generic_provider_replay(self):
+        value = {
+            "source": "official-android-tv-emulator", "client": "tv",
+            "historicalOnly": True, "appSelected": True,
+            "nativeHardTimeoutObserved": True, "nativeHardTimeoutMs": 25000,
+            "quickJsPhases": ["call"], "quickJsReturned": 0,
+            "nativeExtractionZeroObserved": False, "nativeExtractionPositiveObserved": False,
+            "proofAuthority": False, "publicationAuthority": False,
+            "nativePlaybackAuthority": False, "providerMutationAuthority": False,
+        }
+        def route(value):
+            return route_request(RepairRequest(
+                provider_id="sadisflix",
+                failure_class="media_extraction_gap", status="REGRESSION PROVIDER",
+                allowed_mutations=["provider_patch", "provider_bloc"],
+                observations=[{"source": "official-android-tv-emulator", "value": value}],
+            ))
+        decision = route(value)
+        self.assertEqual(decision.mode, "llm_diagnose")
+        self.assertEqual(decision.strategy, "discriminate_tv_native_hard_timeout_owner")
+        self.assertEqual(decision.target_layer, "unknown")
+        self.assertTrue(decision.requires_llm)
+        self.assertEqual(decision.allowed_mutations, [])
+        self.assertTrue(any("fetch" in step for step in decision.next_actions))
+        for bad in (
+            {**value, "nativeHardTimeoutObserved": False},
+            {**value, "nativeHardTimeoutMs": 0},
+            {**value, "nativeHardTimeoutMs": 25.0},
+            {**value, "appSelected": False},
+            {**value, "historicalOnly": False},
+            {**value, "nativePlaybackAuthority": True},
+        ):
+            with self.subTest(bad=bad):
+                self.assertNotEqual(
+                    route(bad).strategy, "discriminate_tv_native_hard_timeout_owner"
+                )
+
     def test_tv_promise_bridge_failure_is_client_owned_not_provider_mutation(self):
         base = {
             "source": "official-android-tv-emulator",
