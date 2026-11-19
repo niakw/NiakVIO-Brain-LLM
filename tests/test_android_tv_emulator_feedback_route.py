@@ -19,7 +19,7 @@ spec.loader.exec_module(script)
 class AndroidTVRouteLoopTests(unittest.TestCase):
     sha = "a" * 40
     digest = "b" * 64
-    run = "44520778916"
+    native_run_id = "44520778916"
 
     def ledger(self):
         return {
@@ -30,7 +30,7 @@ class AndroidTVRouteLoopTests(unittest.TestCase):
             "nativePlaybackAuthority": False, "providerMutationAuthority": False,
             "rows": [{
                 "sourceNiakvioSha": self.sha,
-                "nativeRunId": self.run,
+                "nativeRunId": self.native_run_id,
                 "provider": "french-manga",
                 "fixture": "jujutsu-kaisen-s01e01",
                 "manifestScope": "manifest.json",
@@ -69,7 +69,7 @@ class AndroidTVRouteLoopTests(unittest.TestCase):
                 strategy="trace_tv_quickjs_media_context_and_transport",
                 allowed_mutations=["provider_js"],
             )
-        result = script.build(self.ledger(), self.sha, self.run,
+        result = script.build(self.ledger(), self.sha, self.native_run_id,
                               checkout="unused", request_builder=factory,
                               router=router)
         self.assertEqual(result["primaryClient"], "tv")
@@ -85,14 +85,14 @@ class AndroidTVRouteLoopTests(unittest.TestCase):
 
     def test_historical_other_run_not_rerouted(self):
         for sha, run in ((self.sha, "44520778917"),
-                         ("c" * 40, self.run)):
+                         ("c" * 40, self.native_run_id)):
             with self.subTest(sha=sha, run=run):
                 r = script.build(self.ledger(), sha, run, checkout="unused",
                                  request_builder=lambda *_: self.fail("stale routed"))
                 self.assertEqual(r["routeCount"], 0)
 
     def test_bundle_mismatch_never_routes(self):
-        r = script.build(self.ledger(), self.sha, self.run, checkout="unused",
+        r = script.build(self.ledger(), self.sha, self.native_run_id, checkout="unused",
                          request_builder=lambda *_: self.fake_request(observations=False))
         self.assertEqual(r["routeCount"], 0)
 
@@ -105,7 +105,7 @@ class AndroidTVRouteLoopTests(unittest.TestCase):
         ):
             ledger = self.ledger()
             ledger["rows"][0][field] = value
-            r = script.build(ledger, self.sha, self.run, checkout="unused",
+            r = script.build(ledger, self.sha, self.native_run_id, checkout="unused",
                              request_builder=lambda *_: self.fail("forged routed"))
             self.assertEqual(r["routeCount"], 0)
 
@@ -119,7 +119,7 @@ class AndroidTVRouteLoopTests(unittest.TestCase):
             ledger = self.ledger()
             ledger[key] = value
             with self.assertRaises(ValueError):
-                script.build(ledger, self.sha, self.run, checkout="unused")
+                script.build(ledger, self.sha, self.native_run_id, checkout="unused")
 
 
 if __name__ == "__main__":
