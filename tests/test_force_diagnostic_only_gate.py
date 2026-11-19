@@ -3,7 +3,7 @@ import unittest
 from pathlib import Path
 
 from niakvio_brain_llm.contracts import RepairRequest
-from niakvio_brain_llm.force_scope_order import diagnostic_only_route
+from niakvio_brain_llm.force_scope_order import diagnostic_only_route, non_mutating_probe_route
 from niakvio_brain_llm.routing import RoutingDecision, route_request
 
 
@@ -66,12 +66,47 @@ class ForceDiagnosisBoundaryTests(unittest.TestCase):
             ))
         self.assertFalse(diagnostic_only_route(RoutingDecision(mode="probe", reason="probe required")))
 
+    def test_native_call_only_probe_blocks_force(self):
+        request = self.tv(
+            nativeExtractionPositiveObserved=False,
+            nativeExtractionReturnedCount=0,
+            playerVideoFormatUnverified=False,
+            independentTerminalHttpStatuses=[],
+            quickJsPhases=["call"],
+            quickJsReturned=0,
+        )
+        decision = route_request(request)
+        self.assertEqual(decision.mode, "probe")
+        self.assertEqual(decision.allowed_mutations, [])
+        self.assertTrue(non_mutating_probe_route(decision))
+        self.assertFalse(diagnostic_only_route(decision))
+
+    def test_probe_skip_and_advisor_have_no_mutation_scopes(self):
+        for mode in ("probe", "skip", "deterministic_advisor"):
+            with self.subTest(mode=mode):
+                self.assertTrue(non_mutating_probe_route(RoutingDecision(
+                    mode=mode, reason="need observations", allowed_mutations=[],
+                )))
+                with self.assertRaises(ValueError):
+                    non_mutating_probe_route(RoutingDecision(
+                        mode=mode, reason="forged scope",
+                        allowed_mutations=["provider_patch"],
+                    ))
+        for mode in ("llm_diagnose", "llm_repair", "family_replay", "deterministic"):
+            self.assertFalse(non_mutating_probe_route(RoutingDecision(
+                mode=mode, reason="not probe",
+            )))
+
     def test_force_entrypoint_short_circuits_before_scope_portfolio(self):
         source = (Path(__file__).resolve().parents[1] /
                   "scripts/plan_batch_from_checkout.py").read_text("utf-8")
         block = source[source.index('if args.mode == "repair" and not args.advisor_only:'):]
         self.assertLess(block.index("if diagnostic_only_route(causal_route):"),
                         block.index("scopes = _force_scope_order(request)"))
+        self.assertLess(block.index("if non_mutating_probe_route(causal_route):"),
+                        block.index("if diagnostic_only_route(causal_route):"))
+        self.assertIn('"probe_only": True', block)
+        self.assertIn('"model_executed": False', block)
         self.assertIn("orchestrator.run(request, compact_force=False)", block)
         self.assertIn("result[\"diagnostic_only\"] = True", block)
         self.assertIn('"provider_mutation_authority": False', block)
