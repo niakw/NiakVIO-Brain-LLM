@@ -52,6 +52,40 @@ def load_json(path: Path | None) -> dict[str, Any]:
     return value if isinstance(value, dict) else {}
 
 
+def quick_win_rank(row: dict[str, Any]) -> tuple[int, str]:
+    """Rank current *work effort*, never stream health or publication authority.
+
+    Existing media candidates need strict terminal/identity proof before any
+    mutation. Broken media extraction follows, then uncertain provider network,
+    and finally WAF/harness observations that require an independent oracle.
+    """
+    status = canon(row.get("status"))
+    issue = canon(row.get("dominantIssue"))
+    lanes = " ".join(canon(x) for x in row.get("latestLaneVerdicts") or [])
+    depth = " ".join(canon(x) for x in row.get("evidenceDepth") or [])
+    if status == "disabled":
+        return 90, "disabled-recovery-isolated"
+    if status in {"candidate ok", "partial ok"} or row.get("currentVerifiedLanes"):
+        return 0, "verify-terminal-media-and-identity-first"
+    if "playable-unverified" in lanes or "provider-returned-streams" in issue:
+        return 1, "verify-existing-media-first"
+    if "provider js broken" in status and "chain-reached" in depth:
+        return 2, "local-media-extractor"
+    if "chain reached" in status and not any(
+        x in issue for x in ("timeout", "http-error", "waf-challenge")
+    ):
+        return 3, "finish-terminal-extractor"
+    if "provider-network-zero-result" in issue:
+        return 5, "inspect-search-route-and-providerbase"
+    if "provider-network-http-error" in issue:
+        return 6, "diagnose-upstream-network-before-mutation"
+    if "timeout" in issue:
+        return 7, "diagnose-provider-timeout"
+    if "waf-challenge" in issue or "harness" in status or "network blocked" in status:
+        return 8, "independent-transport-oracle-first"
+    return 4, "inspect-current-causal-gap"
+
+
 def execution_burden_from_diagnostics(payload: dict[str, Any]) -> dict[str, int]:
     """Count model/runtime execution blocks without treating them as provider failures."""
     burden: dict[str, int] = {}
@@ -116,13 +150,26 @@ def select_wave(
                 0, int(raw.get("consecutiveFailures") or 0)
             )
 
+    census = load_json(niakvio_root / "automation" / "provider-census-status.json")
+    census_by_provider = {
+        canon(row.get("provider")): row
+        for row in census.get("providers") or []
+        if isinstance(row, dict) and canon(row.get("provider"))
+    }
     rows: list[dict[str, Any]] = []
-    for provider in providers:
+    for original_index, provider in enumerate(providers):
         request = request_from_checkout(niakvio_root, provider)
+        rank, action = quick_win_rank(census_by_provider.get(provider, {}))
         rows.append({
             "provider": provider,
             "repair_family": repair_family_descriptor(request),
+            "quickWinRank": rank,
+            "quickWinAction": action,
+            "originalIndex": original_index,
         })
+    # Scope is unchanged. Only execution order and a representative's position
+    # within a causal family are optimized; no disabled activation or proof.
+    rows.sort(key=lambda row: (row["quickWinRank"], row["originalIndex"]))
 
     execution_burden = execution_burden_from_diagnostics(previous_diagnostics or {})
     selected, deferred = select_family_wave(
@@ -130,6 +177,7 @@ def select_wave(
         validated_family_keys=validated_keys,
         provider_failure_burden=burden,
         provider_execution_burden=execution_burden,
+        provider_quick_win_rank={row["provider"]: row["quickWinRank"] for row in rows},
         ensure_topology_coverage=True,
     )
     selected_ids = [str(row["provider"]) for row in selected]
@@ -154,7 +202,13 @@ def select_wave(
         "validatedReplayableFamilyCount": len(validated_keys),
         "executionBlockedProviders": sorted(execution_burden),
         "providerExecutionBurden": dict(sorted(execution_burden.items())),
-        "policy": "one representative per unresolved family; generation-blocked witnesses rotate to unblocked siblings; validated replayable families may fan out",
+        "quickWinOrder": [row["provider"] for row in rows],
+        "selectedQuickWins": [
+            {"provider": row["provider"], "rank": row["quickWinRank"], "nextAction": row["quickWinAction"]}
+            for row in selected
+        ],
+        "censusRunIdForPlanningOnly": str(census.get("runId") or ""),
+        "policy": "fastest current-media proof first; one witness per unresolved family; never promote or mutate on ranking; execution-blocked witnesses rotate to unblocked siblings",
         "publicationAuthority": False,
         "proofAuthority": False,
     }
@@ -187,7 +241,7 @@ def main() -> int:
         f"deferred={report['deferredProviderCount']} families={report['repairFamilyCount']} "
         f"validated={report['validatedReplayableFamilyCount']} "
         f"execution_blocked={len(report['executionBlockedProviders'])} "
-        f"ids={','.join(selected)}"
+        f"order=quick-win-first ids={','.join(selected)}"
     )
     return 0
 
