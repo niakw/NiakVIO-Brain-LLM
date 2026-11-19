@@ -51,6 +51,50 @@ class RoutingTests(unittest.TestCase):
                     route(bad).strategy, "discriminate_tv_native_hard_timeout_owner"
                 )
 
+    def test_tv_hls_2xx_near_25s_zero_routes_owner_not_provider_mutation(self):
+        base = {
+            "source": "official-android-tv-emulator", "client": "tv",
+            "historicalOnly": True, "appSelected": True,
+            "nativeExtractionZeroObserved": True,
+            "hlsPlaylist2xxNearProviderBudgetZeroObserved": True,
+            "sameMediaRootSuccessThenForbidden": False,
+            "tvPromiseControl": "bridge_ok",
+            "proofAuthority": False, "publicationAuthority": False,
+            "nativePlaybackAuthority": False, "providerMutationAuthority": False,
+        }
+
+        def decide(row):
+            return route_request(RepairRequest(
+                provider_id="french-manga", status="CANDIDATE OK",
+                failure_class="media_extraction_gap",
+                allowed_mutations=["provider_bloc", "provider_patch"],
+                observations=[{
+                    "source": "official-android-tv-emulator",
+                    "value": row,
+                }],
+            ))
+
+        route = decide(base)
+        self.assertEqual(route.mode, "llm_diagnose")
+        self.assertEqual(route.target_layer, "unknown")
+        self.assertEqual(route.strategy, "discriminate_tv_hls_success_zero_near_js_budget_owner")
+        self.assertTrue(route.requires_llm)
+        self.assertEqual(route.allowed_mutations, [])
+        self.assertTrue(any("ProviderBase" in step for step in route.next_actions))
+        for bad in (
+            {**base, "hlsPlaylist2xxNearProviderBudgetZeroObserved": False},
+            {**base, "nativeExtractionZeroObserved": False},
+            {**base, "appSelected": False},
+            {**base, "historicalOnly": False},
+            {**base, "nativePlaybackAuthority": True},
+            {**base, "providerMutationAuthority": True},
+        ):
+            with self.subTest(bad=bad):
+                self.assertNotEqual(
+                    decide(bad).strategy,
+                    "discriminate_tv_hls_success_zero_near_js_budget_owner",
+                )
+
     def test_tv_promise_bridge_failure_is_client_owned_not_provider_mutation(self):
         base = {
             "source": "official-android-tv-emulator",
