@@ -118,7 +118,7 @@ assert "guidance/niakvio-guidance.json" in workflow
 assert "guidance/niakvio-force-mutations.json" in workflow
 assert "guidance/niakvio-guidance-state.json" in workflow
 assert "guidance/niakvio-force-diagnostics.json" in workflow
-assert "files=4" in workflow
+assert "files=5" in workflow
 
 print("paged guidance publication guard contract passed")
 
