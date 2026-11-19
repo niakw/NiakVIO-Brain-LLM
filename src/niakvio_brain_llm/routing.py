@@ -282,7 +282,9 @@ def route_request(
             next_actions=[
                 "compare exact current Core and generated ProviderBase JS deadlines with the official TV harness and NuvioTV timeout independently",
                 "pin a route-scoped trace of initial and alternate player start/end, HLS master proof handoff, child playlists and pre-player sanitizers without persisting signed URLs",
-                "run a bounded same-source candidate A/B with a fast alternate host and without weakening playlist, segment or episode validation",
+                "inspect the exact official NuvioTV PluginRuntime bridge: async JS fetch may call synchronous __native_fetch -> OkHttp Call.execute; Promise.all alone cannot race blocked HTTP calls",
+                "if the host bridge is blocking, reject JS-only hedging as non-transferable; discriminate client-level asynchronous network support from evidence-backed route-origin ordering",
+                "run a source-pinned alternate-host A/B without weakening playlist, segment or episode validation or increasing all production timeouts",
                 "have Brain generate a reusable repair only after distinguishing Core, ProviderBase, client, provider and network responsibility",
                 "rematerialize matching bytes and require returned media plus decoded correct episode, French/multitrack audio and non-regression on official TV before promotion",
             ],
