@@ -74,9 +74,14 @@ def reusable(rows: list[dict[str, Any]], targets: list[str], root: Path) -> bool
         if route.get("allowed_mutations") != []:
             return False
         proposal = row.get("proposal")
-        if proposal is not None:
-            if not isinstance(proposal, dict) or proposal.get("mutations") != []:
-                return False
+        # A route-only row or an abstention is not a completed diagnosis:
+        # leave the independent advisor a chance to gather useful knowledge.
+        if (
+            not isinstance(proposal, dict)
+            or proposal.get("mutations") != []
+            or proposal.get("abstain") is True
+        ):
+            return False
         current_digest = exact_active_digest(root, provider)
         row_digest = str(row.get("diagnostic_exact_bundle_sha256") or "").lower()
         if not current_digest or not SHA256.fullmatch(row_digest) or row_digest != current_digest:
