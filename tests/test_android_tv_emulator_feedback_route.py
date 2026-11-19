@@ -113,7 +113,7 @@ class AndroidTVRouteLoopTests(unittest.TestCase):
         ), [])
 
     def test_real_native_terminal_403_keeps_transport_not_provider_mutation(self):
-        from niakvio_brain_llm.models import RepairRequest
+        from niakvio_brain_llm.contracts import RepairRequest
         x = self.ledger()
         row = x["rows"][0]
         row.update({
@@ -142,7 +142,7 @@ class AndroidTVRouteLoopTests(unittest.TestCase):
         self.assertEqual(observation["independentTerminalHttpStatuses"], [403])
         self.assertFalse(observation["nativePlaybackAuthority"])
         self.assertNotIn("private.example", json.dumps(observation))
-        from niakvio_brain_llm.models import RepairRequest
+        from niakvio_brain_llm.contracts import RepairRequest
         req = RepairRequest(
             provider_id="french-manga", status="CANDIDATE OK",
             failure_class="candidate_replay_gap", advisor_only=True,
