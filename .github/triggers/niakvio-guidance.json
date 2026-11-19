@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
   "niakvio_sha": "64adaf7e6affbdb16631a6e6d6d79268d65ccfef",
-  "reason": "2026-11-19 representative Brain-first FORCE on currently active 67movies (CHAIN REACHED, hub/redirect family, authoritative route, no terminal movie/TV proof). Prior Sekai retries yielded no-op/causally empty deletion and Sekai is now disabled; do not repair it directly or treat transport-only WAF as playable. Use explicitly hash-pinned qwen35-9b challenger in bounded single-provider private guidance to seek a distinct causal media-preserving correction. Require exact current NiakVIO SHA, ProviderBase/route/fixture current observation, negative knowledge, isolated compiled candidate, actual canonical rematerialization, decoded media/identity/client non-regression before any promotion; zero publication authority in guidance.",
+  "reason": "2026-11-19 first quick-win Brain representative: French-Manga is CURRENTLY ACTIVE in Global/VF and current census labels candidate anime playable_unverified/provider_returned_streams. Cheapest-first policy requires current exact-source strict fixture -> candidate media URL/headers -> terminal decode/playback/episode identity -> no-regression before considering any corrective mutation; CANDIDATE OK is not functional. If failed, Brain uses source/route/ProviderBase and preserved negative memory to produce minimal causal fix; no direct provider patch or false media promotion. Trigger uses the cheap 3B model first; 9B reserved for demonstrated 3B generator failures. Single provider representative; retain four manifests including no-anime.",
   "requested_repair_queue": [
-    "67movies"
+    "french-manga"
   ],
-  "retry": 83,
+  "retry": 84,
   "require_deterministic_force": false,
-  "model_profile": "qwen35-9b"
+  "model_profile": "qwen25-coder-3b"
 }
