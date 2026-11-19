@@ -416,7 +416,11 @@ jobs:
           fi
 
       - name: Resolve bounded local model profile
-        if: steps.route.outputs.llm_needed == 'true' && steps.deterministic_force.outputs.ready != 'true'
+        # Cheap model-profile *argument* resolution is also needed when the
+        # Brain chooses deterministic replay with zero LLM calls. Otherwise
+        # plan_batch receives empty timeout/budget flags and aborts before the
+        # candidate can be validated. Model downloads/start remain LLM-only.
+        if: steps.deterministic_force.outputs.ready != 'true'
         id: model_profile
         shell: bash
         env:
