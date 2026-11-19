@@ -1,0 +1,13 @@
+{
+  "brainLlmSha": "5d9ff755632faf523469c4c0aff343b8775f6b7e",
+  "minConfidence": 0.8,
+  "privateContentRetained": false,
+  "proofAuthority": false,
+  "providerCount": 0,
+  "providerMutationContentRetained": true,
+  "publicationAuthority": false,
+  "rows": [],
+  "sandboxMutationAuthority": true,
+  "schemaVersion": 1,
+  "sourceNiakvioSha": "6c743268b8fc01b17c45294710d307805208343b"
+}

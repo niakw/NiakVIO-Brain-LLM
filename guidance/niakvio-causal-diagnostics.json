@@ -1,0 +1,45 @@
+{
+  "authority": "brain-source-pinned-causal-hypotheses-only",
+  "nativePlaybackAuthority": false,
+  "observationCount": 2,
+  "privateContentRetained": false,
+  "proofAuthority": false,
+  "providerCount": 2,
+  "providerMutationAuthority": false,
+  "publicationAuthority": false,
+  "rows": [
+    {
+      "brainLlmSha": "5d9ff755632faf523469c4c0aff343b8775f6b7e",
+      "failureClass": "chain_terminal_gap",
+      "historicalOnly": true,
+      "hypothesisLayer": "provider",
+      "modelStatus": "abstained",
+      "nativePlaybackAuthority": false,
+      "proofAuthority": false,
+      "providerArtifactSha256": "abfd1ce22ebd5e99b3dee1806b96eac2483c02e80c7c4966870aed2c5d46bc26",
+      "providerId": "sadisflix",
+      "providerMutationAuthority": false,
+      "publicationAuthority": false,
+      "routingLayer": "unknown",
+      "sourceNiakvioSha": "6c743268b8fc01b17c45294710d307805208343b",
+      "strategy": "discriminate_tv_native_hard_timeout_owner"
+    },
+    {
+      "brainLlmSha": "fe5940aa6035b7722e773cd46850757e5488f1ef",
+      "failureClass": "candidate_replay_gap",
+      "historicalOnly": true,
+      "hypothesisLayer": "provider",
+      "modelStatus": "completed",
+      "nativePlaybackAuthority": false,
+      "proofAuthority": false,
+      "providerArtifactSha256": "f18a1c3a2352c0a3fed0b094cf517cea251125c39e70fa6da319cde869e21c4e",
+      "providerId": "french-manga",
+      "providerMutationAuthority": false,
+      "publicationAuthority": false,
+      "routingLayer": "unknown",
+      "sourceNiakvioSha": "ba8bbd004ef022c1024628510375581d18acaff8",
+      "strategy": "trace_tv_hls_403_headers_client_fetch_and_decoded_video"
+    }
+  ],
+  "schemaVersion": 1
+}
