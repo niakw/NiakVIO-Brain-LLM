@@ -56,15 +56,15 @@ class ForceDiagnosisBoundaryTests(unittest.TestCase):
 
     def test_no_synthesis_for_unproven_or_forged_mutation_permission(self):
         self.assertFalse(diagnostic_only_route(RoutingDecision(
-            mode="llm_repair", strategy="confirmed_provider_fix",
+            mode="llm_repair", reason="confirmed provider root cause", strategy="confirmed_provider_fix",
             requires_llm=True, allowed_mutations=["provider_patch"],
         )))
         with self.assertRaises(ValueError):
             diagnostic_only_route(RoutingDecision(
-                mode="llm_diagnose", strategy="contradictory",
+                mode="llm_diagnose", reason="contradictory scope", strategy="contradictory",
                 requires_llm=True, allowed_mutations=["provider_js"],
             ))
-        self.assertFalse(diagnostic_only_route(RoutingDecision(mode="probe")))
+        self.assertFalse(diagnostic_only_route(RoutingDecision(mode="probe", reason="probe required")))
 
     def test_force_entrypoint_short_circuits_before_scope_portfolio(self):
         source = (Path(__file__).resolve().parents[1] /
