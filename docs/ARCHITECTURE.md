@@ -1,3 +1,11 @@
+## 2026-11-19 — User-native client differences are diagnosis hints, never current proof
+
+`automation/user-client-provider-field-observations.json` in the NiakVIO source repository is a bounded field-observation input. The Brain adapter `_provider_user_client_field_observation` only accepts its declared non-authoritative schema and a whitelist of platform/result/BCP47-language fields. It derives actual provider membership from all four manifests in the current checkout and drops user-provided URLs, headers, notes, fixture guesses and unverifiable build/JS assertions. Every observation states `fixtureKnown=false`, `executedJsKnown=false`, `installedManifestKnown=false`, `proofAuthority=false`, `publicationAuthority=false`, `mutationAuthority=false`.
+
+When a **separate source-pinned** current media Retest already justifies `llm_diagnose` and a non-authoritative field report shows Desktop playback but TV absence, routing adds bounded discriminating steps for installed manifest/selection, runtime getStreams execution, network, UI and audio. It does not switch the causal layer to provider, grant mutation scope or count the user report as a current test. A globally absent yet VF-visible provider must remain VF-only unless independent product and activation policy explicitly changes. Neither no-anime variant is silently replaced with anime.
+
+The 2026-11-19 field report is Mac French-Manga one played stream with FR audio, missing in Android TV stream UI, and Sadisflix not observed (client/fixture unknown). `tests/test_user_client_field_observation.py` and `tests/test_routing.py` preserve redaction, source uncertainty and no-promotion. Tests of the machine's actually installed repo, retained enable flag and provider JS hash remain mandatory before claiming a client root cause.
+
 ## 2026-11-19 — Healthy live transport must not suppress current identity diagnosis
 
 The first real French-Manga model check exposed an orchestration contradiction: `routing.route_request` correctly escalated current exact-JS `playable>0, verified=0` evidence to `llm_diagnose`, but `live_context_ingest.attach_live_runtime_evidence` then converted the failure to `proof_freshness_gap` because a second preflight saw reachable media. That observation never proved correct work, S/E, duration or decode.
