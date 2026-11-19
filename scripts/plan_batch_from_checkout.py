@@ -916,6 +916,11 @@ def main() -> int:
                     result = _row(position, 1, provider, request, outcome)
                     result["diagnostic_only"] = True
                     result["provider_mutation_authority"] = False
+                    bundle = (request.provider_context or {}).get("published_bundle") or {}
+                    digest = str(bundle.get("sha256") or "").strip().lower() if isinstance(bundle, dict) else ""
+                    result["diagnostic_exact_bundle_sha256"] = (
+                        digest if re.fullmatch(r"[0-9a-f]{64}", digest) else ""
+                    )
                     return [result]
                 except Exception as exc:
                     print(
@@ -935,6 +940,11 @@ def main() -> int:
                         "routing": causal_route.to_dict(),
                         "diagnostic_only": True,
                         "provider_mutation_authority": False,
+                        "diagnostic_exact_bundle_sha256": (
+                            str(((request.provider_context or {}).get("published_bundle") or {}).get("sha256") or "").lower()
+                            if re.fullmatch(r"[0-9a-f]{64}", str(((request.provider_context or {}).get("published_bundle") or {}).get("sha256") or "").lower())
+                            else ""
+                        ),
                         "error": type(exc).__name__ + ": causal diagnosis not completed",
                     }]
             scopes = _force_scope_order(request)
