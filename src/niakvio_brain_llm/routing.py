@@ -261,6 +261,33 @@ def route_request(
             ],
         )
 
+    # A native reader can fetch an HLS playlist successfully and still return
+    # zero near the shared ProviderBase/Core 25s budget. That timing does not
+    # prove the responsible layer: a slow host, failed fallback, JS deadline,
+    # native bridge or Core validation could all explain it. Route to a
+    # source-pinned owner diagnosis, never a provider-local mutation.
+    if (
+        official_tv.get("appSelected") is True
+        and official_tv.get("nativeExtractionZeroObserved") is True
+        and official_tv.get("hlsPlaylist2xxNearProviderBudgetZeroObserved") is True
+    ):
+        return RoutingDecision(
+            mode="llm_diagnose",
+            reason="official Android TV reached an HLS playlist HTTP 2xx but returned zero streams near a 25s provider request budget; causal owner remains unproven",
+            target_layer="unknown",
+            strategy="discriminate_tv_hls_success_zero_near_js_budget_owner",
+            prior_confidence=0.86,
+            requires_llm=True,
+            allowed_mutations=[],
+            next_actions=[
+                "compare exact current Core and generated ProviderBase JS deadlines with the official TV harness and NuvioTV timeout independently",
+                "pin a route-scoped trace of initial and alternate player start/end, HLS master proof handoff, child playlists and pre-player sanitizers without persisting signed URLs",
+                "run a bounded same-source candidate A/B with a fast alternate host and without weakening playlist, segment or episode validation",
+                "have Brain generate a reusable repair only after distinguishing Core, ProviderBase, client, provider and network responsibility",
+                "rematerialize matching bytes and require returned media plus decoded correct episode, French/multitrack audio and non-regression on official TV before promotion",
+            ],
+        )
+
     # A native hard timeout is a completed official test *error* even if the
     # QuickJS console only emitted its call marker. It must never be silently
     # downgraded to a generic deterministic provider replay. This alone does
