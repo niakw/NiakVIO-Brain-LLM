@@ -312,6 +312,20 @@ jobs:
                 f"source={d['source_conversations']} indexed={d['indexed_conversations']} documents={d['documents']}")
           PY
 
+      - name: Reuse prior Brain causal diagnosis from guidance branch without authority
+        shell: bash
+        run: |
+          set -euo pipefail
+          # The branch contains only prior sanitized hypotheses. Never turn
+          # historical LLM conclusions into fresh media/proof/patch authority.
+          git -C brain fetch origin "+refs/heads/niakvio-guidance:refs/remotes/origin/niakvio-guidance" || true
+          if git -C brain show "refs/remotes/origin/niakvio-guidance:guidance/niakvio-causal-diagnostics.json" > "$RUNNER_TEMP/niakvio-causal-history.json" 2>/dev/null; then
+            cp "$RUNNER_TEMP/niakvio-causal-history.json" niakvio/automation/brain-causal-diagnostics-history.json
+            echo "FIELD_BRAIN_CAUSAL_HISTORY_IMPORT status=historical_only proof_authority=false mutation_authority=false"
+          else
+            echo "FIELD_BRAIN_CAUSAL_HISTORY_IMPORT status=not_yet_published"
+          fi
+
       - name: Route exact requested Repair cohort
         id: route
         shell: bash
@@ -762,6 +776,7 @@ jobs:
         if: always()
         run: |
           rm -f private-documents.jsonl private-guided-batch.jsonl private-force-batch.jsonl private-force-deterministic.jsonl public-documents.jsonl public-experience.jsonl
+          rm -f niakvio/automation/brain-causal-diagnostics-history.json "$RUNNER_TEMP/niakvio-causal-history.json"
           rm -f "$RUNNER_TEMP/niakvio-brain-live-evidence.json" "$RUNNER_TEMP/niakvio-live-npm.log" "$RUNNER_TEMP/niakvio-live-capture.log"
           rm -rf private
 
