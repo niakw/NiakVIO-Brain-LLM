@@ -910,6 +910,9 @@ def _provider_android_tv_emulator_observations(
             # the exact same HLS root succeeded once, then returned 403 on a
             # later Core/runtime probe. No URL, host, token or header survives.
             "sameMediaRootSuccessThenForbidden": row.get("sameMediaRootSuccessThenForbidden") is True,
+            # HLS 2xx plus a completed 0 near 25s indicates an unresolved
+            # Core/ProviderBase/runtime budget possibility, never ownership proof.
+            "hlsPlaylist2xxNearProviderBudgetZeroObserved": row.get("hlsPlaylist2xxNearProviderBudgetZeroObserved") is True,
             "playerVideoFormatUnverified": row.get("playerVideoFormatUnverified") is True,
             # Independent network check is NOT the official player network's
             # HTTP status; this permits causal header/WAF investigation only.
