@@ -79,6 +79,24 @@ class AndroidTVEmulatorMemoryTests(unittest.TestCase):
         self.assertFalse(observation["providerMutationAuthority"])
         self.assertFalse(observation["nativePlaybackAuthority"])
 
+    def test_hls_near_budget_causal_flag_does_not_gain_repair_authority(self):
+        data = self.report()
+        row = data["rows"][0]
+        row["hlsPlaylist2xxNearProviderBudgetZeroObserved"] = True
+        row["nativeExtractionZeroObserved"] = True
+        actual = self.get(data)[0]
+        self.assertTrue(actual["hlsPlaylist2xxNearProviderBudgetZeroObserved"])
+        self.assertTrue(actual["nativeExtractionZeroObserved"])
+        self.assertFalse(actual["proofAuthority"])
+        self.assertFalse(actual["publicationAuthority"])
+        self.assertFalse(actual["nativePlaybackAuthority"])
+        self.assertFalse(actual["providerMutationAuthority"])
+        row["hlsPlaylist2xxNearProviderBudgetZeroObserved"] = "https://SECRET.invalid/token"
+        self.assertFalse(self.get(data)[0]["hlsPlaylist2xxNearProviderBudgetZeroObserved"])
+        row["hlsPlaylist2xxNearProviderBudgetZeroObserved"] = True
+        row["providerArtifactSha256"] = "c" * 64
+        self.assertEqual(self.get(data), [])
+
     def test_client_ref_is_historical_and_fail_closed(self):
         actual = self.get()[0]
         self.assertEqual(actual["officialClientSha"], "c"*40)
