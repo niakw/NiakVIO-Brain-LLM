@@ -202,6 +202,26 @@ def route_request(
     if _user_client_visibility_differential(request):
         native_tv = _official_android_tv_diagnostic(request)
         if not native_tv:
+            # A fresh source-pinned media/identity failure is already causal
+            # evidence. Preserve that diagnosis while prioritizing native TV
+            # discrimination; don't regress into an endless TV-only probe.
+            if failure == "candidate-replay-gap" and current_candidate_identity_gap(request.observations):
+                return RoutingDecision(
+                    mode="llm_diagnose",
+                    reason="current media identity unresolved with a user-reported Android TV visibility difference",
+                    target_layer="unknown",
+                    strategy="trace_independent_episode_and_hls_provenance",
+                    prior_confidence=0.70,
+                    requires_llm=True,
+                    allowed_mutations=[],
+                    next_actions=[
+                        "compare provider-owned episode/API selection with returned source metadata",
+                        "distinguish provider identity loss, Core projection and incomplete HLS duration",
+                        "verify installed manifest projection and exact JS bytes on Android TV",
+                        "trace native app media-type selection and QuickJS plugin invocation",
+                        "run official Android TV emulator before any mutation or promotion",
+                    ],
+                )
             return RoutingDecision(
                 mode="probe",
                 reason="Android TV is primary; cross-client visibility lacks a source-pinned official emulator trace",
