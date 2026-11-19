@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "4e636000173f1edaabca538f84d1c3d6b8e55b8e",
-  "reason": "Brain-first source-pinned real regression of diagnostic-only FORCE gate. Official TV extracted 2 HLS on earlier native run, reader READY but no decoded video/audio, independent HLS probe HTTP403. User Mac Desktop FR audio positive / Android TV absent. Exact current JS hash f18a1c3a2352c0a3fed0b094cf517cea251125c39e70fa6da319cde869e21c4e. Must route unknown owner to llm_diagnose without provider_patch/provider_bloc scope, then persist bounded diagnosis or abstention. No provider JS changes, no false media publication. Real updated native replay in progress.",
+  "niakvio_sha": "ba8bbd004ef022c1024628510375581d18acaff8",
+  "reason": "2026-11-19 prove Brain Force causal diagnosis-only route on exact official TV source: NiakVIO native replay 44546095189, 2 HLS returned, player READY but 0 observed video/audio, independent HLS GET 403 (NOT player's HTTP status). Source-pinned sanitized TV memory committed ba8bbd0, same French-Manga JS SHA256 f18a1c3a2352c0a3fed0b094cf517cea251125c39e70fa6da319cde869e21c4e. New Brain code must route llm_diagnose unknown owner, perform bounded causal model reasoning without ANY provider_patch/provider_bloc mutation, publish fifth redacted guidance/niakvio-causal-diagnostics.json historical hypotheses, preserve earlier experiments, no FULL/decoding claim. Real native player decode still blocked.",
   "requested_repair_queue": [
     "french-manga"
   ],
-  "retry": 90,
+  "retry": 91,
   "require_deterministic_force": false,
   "model_profile": "qwen25-coder-3b"
 }
