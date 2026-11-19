@@ -1,10 +1,11 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "e9fe89923567008469a647c431b3289fe67e71f0",
-  "reason": "2026-11-18 Brain-first Sekai retry 82 after generic prompt projection repair: Tailscale residential full-provider replay 44412766230 now exact-JS-matched (be7898d0cd10d8cb6df2804720ef1fa927abc1114e1a4d9cf4eb06a67f70f1a0), GitHub+residential public HTML reachable; full JS returns zero at provider_zero_before_provider_network (no fetch), not WAF. Previous retry 81 pinned before Brain prompt fix and current residential runtime signal was dropped when CPU context clipped. Brain 30fba681/5b83e61d/3b655863/b80cc13 now preserves bounded current_residential_provider_replay even under CPU prompt pressure and instructs model to target route selection, invocation, search/episode mapping prior to network. CI 44414547175 success. No WAF/CAPTCHA circumvention or manual provider edits. Require distinct causal generator patch; then only strict canonical isolated apply, source-sha materialization, decoded terminal media, correct work/season/episode/headers/languages/quality, non-regression and persistence.",
+  "niakvio_sha": "64adaf7e6affbdb16631a6e6d6d79268d65ccfef",
+  "reason": "2026-11-19 representative Brain-first FORCE on currently active 67movies (CHAIN REACHED, hub/redirect family, authoritative route, no terminal movie/TV proof). Prior Sekai retries yielded no-op/causally empty deletion and Sekai is now disabled; do not repair it directly or treat transport-only WAF as playable. Use explicitly hash-pinned qwen35-9b challenger in bounded single-provider private guidance to seek a distinct causal media-preserving correction. Require exact current NiakVIO SHA, ProviderBase/route/fixture current observation, negative knowledge, isolated compiled candidate, actual canonical rematerialization, decoded media/identity/client non-regression before any promotion; zero publication authority in guidance.",
   "requested_repair_queue": [
-    "sekai"
+    "67movies"
   ],
-  "retry": 82,
-  "require_deterministic_force": false
+  "retry": 83,
+  "require_deterministic_force": false,
+  "model_profile": "qwen35-9b"
 }
