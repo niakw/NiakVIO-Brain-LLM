@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "6ba01b325e92b657a9836a8fc949390d039ffe54",
-  "reason": "Cheapest-first Brain representative #2: Sadisflix active VF, census movie playable_unverified/provider_returned_streams and TV timeout, current Reactivation/Repair queue. First reuse deterministic saved candidate/media program then exact-current replay and identity/duration/native playback, only move to minimal Brain-generated TV timeout correction after current causal evidence. Preserve generic French-Manga failed independent identity proof as memory; no manual provider patch or fake FULL from URL.",
+  "niakvio_sha": "48697c42544779968b47a6432d5d40d89bc5d1d9",
+  "reason": "2026-11-19 Brain-first real end-to-end proof of newly persisted exact-bundle sanitized Retest observation (NiakVIO source 48697c4254, census 44507961371-retest, French-Manga JS SHA256 f18a1c3a2352c0a3fed0b094cf517cea251125c39e70fa6da319cde869e21c4e). Require adapter current-provider-retest-media observation with raw=2 playable=2 verified=0 identityReasons=insufficient_identity_metadata,duration_incomplete_hls. Prevent false FULL and do not hallucinate IDs or rewrite provider manually; use evidence to propose reusable identity/episode provenance or decoded playback probe as Brain strategy. If only planning, state no-op truthfully and retain negative.",
   "requested_repair_queue": [
-    "sadisflix"
+    "french-manga"
   ],
-  "retry": 86,
+  "retry": 87,
   "require_deterministic_force": false,
   "model_profile": "qwen25-coder-3b"
 }
