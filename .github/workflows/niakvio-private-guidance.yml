@@ -682,6 +682,19 @@ jobs:
         run: |
           set -euo pipefail
           brain_sha="$(git -C brain rev-parse HEAD)"
+          # Paged source-pinned causal memory is hypotheses only; no raw
+          # model output, executable mutations, secrets, or playback promotion.
+          git -C brain fetch origin "+refs/heads/niakvio-guidance:refs/remotes/origin/niakvio-guidance" || true
+          causal_previous_args=()
+          if git -C brain show "refs/remotes/origin/niakvio-guidance:guidance/niakvio-causal-diagnostics.json" > "$RUNNER_TEMP/niakvio-causal.previous.json" 2>/dev/null; then
+            causal_previous_args=(--previous "$RUNNER_TEMP/niakvio-causal.previous.json")
+          fi
+          python brain/scripts/publish_niakvio_causal_diagnostics.py \
+            --input private-force-batch.jsonl \
+            --output niakvio-causal-diagnostics.json \
+            "${causal_previous_args[@]}" \
+            --niakvio-sha "${{ steps.source.outputs.sha }}" \
+            --brain-llm-sha "$brain_sha"
           python brain/scripts/publish_niakvio_guidance.py             --input private-guided-batch.jsonl             --output niakvio-guidance.json             --niakvio-root niakvio             --niakvio-sha "${{ steps.source.outputs.sha }}"             --brain-llm-sha "$brain_sha"
           python brain/scripts/publish_niakvio_force_mutations.py             --input private-force-batch.jsonl             --output niakvio-force-mutations.json             --niakvio-root niakvio             --niakvio-sha "${{ steps.source.outputs.sha }}"             --brain-llm-sha "$brain_sha"
           python brain/scripts/publish_niakvio_force_diagnostics.py             --input private-force-batch.jsonl             --output niakvio-force-diagnostics.json             --niakvio-sha "${{ steps.source.outputs.sha }}"             --brain-llm-sha "$brain_sha"
@@ -887,11 +900,12 @@ jobs:
           cp niakvio-guidance.json brain/guidance/niakvio-guidance.json
           cp niakvio-force-mutations.json brain/guidance/niakvio-force-mutations.json
           cp niakvio-force-diagnostics.json brain/guidance/niakvio-force-diagnostics.json
+          cp niakvio-causal-diagnostics.json brain/guidance/niakvio-causal-diagnostics.json
           cp "$RUNNER_TEMP/niakvio-guidance-state.next.json" brain/guidance/niakvio-guidance-state.json
-          git -C brain add guidance/niakvio-guidance.json guidance/niakvio-force-mutations.json guidance/niakvio-force-diagnostics.json guidance/niakvio-guidance-state.json
+          git -C brain add guidance/niakvio-guidance.json guidance/niakvio-force-mutations.json guidance/niakvio-force-diagnostics.json guidance/niakvio-guidance-state.json guidance/niakvio-causal-diagnostics.json
           git -C brain commit -m "guidance: merge NiakVIO advisor page ${{ steps.page.outputs.cycle }}"
           tracked="$(git -C brain ls-files | sort)"
-          expected_tracked="$(printf '%s\n' guidance/niakvio-force-diagnostics.json guidance/niakvio-force-mutations.json guidance/niakvio-guidance-state.json guidance/niakvio-guidance.json | sort)"
+          expected_tracked="$(printf '%s\n' guidance/niakvio-causal-diagnostics.json guidance/niakvio-force-diagnostics.json guidance/niakvio-force-mutations.json guidance/niakvio-guidance-state.json guidance/niakvio-guidance.json | sort)"
           test "$tracked" = "$expected_tracked"
           if [ -n "$expected_sha" ]; then
             git -C brain push --force-with-lease="$BRANCH:$expected_sha" origin HEAD:"$BRANCH"
@@ -899,7 +913,7 @@ jobs:
             git -C brain push origin HEAD:"$BRANCH"
           fi
           echo "published=true" >> "$GITHUB_OUTPUT"
-          echo "FIELD_NIAKVIO_GUIDANCE_PUBLISH files=4 private_content=false force_mutations=true force_diagnostics=true complete=${{ steps.page.outputs.complete }} remaining=${{ steps.page.outputs.remaining }}"
+          echo "FIELD_NIAKVIO_GUIDANCE_PUBLISH files=5 private_content=false force_mutations=true force_diagnostics=true complete=${{ steps.page.outputs.complete }} remaining=${{ steps.page.outputs.remaining }}"
 
       - name: Continue remaining guidance page
         if: ${{ steps.publish.outputs.published == 'true' && steps.page.outputs.complete != 'true' }}
@@ -925,6 +939,7 @@ jobs:
             niakvio-guidance.json
             niakvio-force-mutations.json
             niakvio-force-diagnostics.json
+            niakvio-causal-diagnostics.json
             $RUNNER_TEMP/niakvio-guidance-state.next.json
             $RUNNER_TEMP/niakvio-guidance-family-wave.json
             private-memory-report.json
