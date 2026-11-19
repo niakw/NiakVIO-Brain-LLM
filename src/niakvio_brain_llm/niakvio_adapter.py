@@ -448,6 +448,98 @@ def _dynamic_variant_coverage_gap(observation: dict[str, Any]) -> bool:
     return False
 
 
+_RETEST_IDENTITY_REASONS = frozenset({
+    "insufficient_identity_metadata", "duration_incomplete_hls",
+    "duration_unavailable", "fixture_duration_mismatch",
+    "provider_tmdb_route_mismatch", "wrong_season_episode", "wrong_episode",
+    "forbidden_title_alias", "media_filename_title_mismatch",
+    "strong_title_mismatch", "expected_title_alias", "season_episode_match",
+    "episode_match", "provider_tmdb_direct_route",
+})
+
+
+def _provider_retest_observation(
+    payload: Any,
+    census: Any,
+    provider_id: str,
+    *,
+    current_bundle_sha256: str = "",
+) -> dict[str, Any]:
+    """Bind sanitized Retest failure reasons to exact current JS and census run.
+
+    A GitHub workflow success or one playable URL never grants a provider
+    correctness, identity or client-playback assertion. Historical receipts
+    and wrong-source-row data fail closed.
+    """
+    if not isinstance(payload, dict) or not isinstance(census, dict):
+        return {}
+    current_digest = str(current_bundle_sha256 or "").strip().casefold()
+    if not re.fullmatch(r"[a-f0-9]{64}", current_digest):
+        return {}
+    source_run = str(payload.get("sourceCensusRunId") or "")
+    source_sha = str(payload.get("sourceNiakvioSha") or "")
+    if (
+        payload.get("schemaVersion") != 1
+        or payload.get("authority") != "current-retest-observation-only"
+        or payload.get("proofAuthority") is not False
+        or payload.get("publicationAuthority") is not False
+        or not source_run.endswith("-retest")
+        or source_run != str(census.get("runId") or "")
+        or not re.fullmatch(r"[a-f0-9]{40}", source_sha)
+        or source_sha != str(census.get("triggerSha") or "")
+    ):
+        return {}
+    wanted = _canon(provider_id)
+    current = next(
+        (row for row in census.get("providers") or []
+         if isinstance(row, dict) and _canon(row.get("provider")) == wanted), {}
+    )
+    if current.get("testedThisRun") is not True or current.get("status") == "DISABLED":
+        return {}
+    for row in (payload.get("rows") or [])[:8]:
+        if not isinstance(row, dict) or _canon(row.get("provider")) != wanted:
+            continue
+        if (
+            str(row.get("providerArtifactSha256") or "").strip().casefold()
+            != current_digest
+            or row.get("proofAuthority") is not False
+            or row.get("publicationAuthority") is not False
+            or row.get("nativePlaybackAuthority") is not False
+        ):
+            continue
+        fixture = row.get("fixture") if isinstance(row.get("fixture"), dict) else {}
+        def bounded(value: Any) -> int:
+            return min(10000, max(0, value)) if type(value) is int else 0
+        lane = str(row.get("lane") or "")
+        status = str(row.get("status") or "")
+        stage = str(row.get("debugStage") or "")
+        if lane not in {"movie", "tv", "anime"}:
+            lane = ""
+        return {
+            "source": "same-js-current-retest",
+            "lane": lane,
+            "status": status[:48] if re.fullmatch(r"[a-z_]+", status) else "",
+            "debugStage": stage[:64] if re.fullmatch(r"[a-z_]+", stage) else "",
+            "fixture": {
+                "mediaType": lane,
+                "tmdbId": str(fixture.get("tmdbId") or "")[:12] if str(fixture.get("tmdbId") or "").isdigit() else "",
+                "season": bounded(fixture.get("season")),
+                "episode": bounded(fixture.get("episode")),
+            },
+            "raw": bounded(row.get("raw")),
+            "playable": bounded(row.get("playable")),
+            "verified": bounded(row.get("verified")),
+            "identityReasons": [
+                v for v in (row.get("identityReasons") or [])[:12]
+                if isinstance(v, str) and v in _RETEST_IDENTITY_REASONS
+            ],
+            "proofAuthority": False,
+            "publicationAuthority": False,
+            "nativePlaybackAuthority": False,
+        }
+    return {}
+
+
 def _provider_waf_observation(
     payload: Any, provider_id: str, *, current_bundle_sha256: str = ""
 ) -> dict[str, Any]:
@@ -1000,6 +1092,7 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
     current_repair = _load(root / "automation" / "provider-brain-repair-latest.json", {})
     targeted = _load(root / "automation" / "provider-targeted-regression-recovery-latest.json", {})
     waf = _load(root / "automation" / "provider-waf-browser-session-latest.json", {})
+    retest = _load(root / "automation" / "provider-retest-brain-evidence-latest.json", {})
     refined = _load(root / "automation" / "provider-repair-batch-refined-latest.json", {})
     current_structure_payload = _load(
         root / "automation" / "provider-current-structure-evidence.json",
@@ -1081,6 +1174,10 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
     current_structure_observation = _provider_current_structure_evidence(
         current_structure_payload,
         provider_id,
+    )
+    retest_observation = _provider_retest_observation(
+        retest, census, provider_id,
+        current_bundle_sha256=str(published_bundle.get("sha256") or row.get("providerArtifactSha256") or ""),
     )
     waf_observation = _provider_waf_observation(
         waf, provider_id,
@@ -1256,6 +1353,10 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
         census_prior=census_prior,
         observations=[
             {"source": "census_current", "value": census_prior},
+            *(
+                [{"source": "current-provider-retest-media", "value": retest_observation}]
+                if retest_observation else []
+            ),
             *(
                 [{"source": "fast-repair-current", "value": current_repair_observation}]
                 if current_repair_observation else []
