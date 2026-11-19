@@ -130,6 +130,25 @@ def _has_current_executed_player_frontier(request: RepairRequest) -> bool:
     return False
 
 
+def _user_client_visibility_differential(request: RepairRequest) -> bool:
+    """A field report is a probe target, never current-source proof."""
+    for item in request.observations or []:
+        if not isinstance(item, dict) or _canon(item.get("source")) != "user-client-field-report":
+            continue
+        row = item.get("value")
+        if (
+            isinstance(row, dict)
+            and row.get("authority") == "historical-user-report-only"
+            and row.get("crossClientVisibilityDiscrepancy") is True
+            and row.get("proofAuthority") is False
+            and row.get("publicationAuthority") is False
+            and row.get("mutationAuthority") is False
+            and row.get("executedJsKnown") is False
+        ):
+            return True
+    return False
+
+
 def route_request(
     request: RepairRequest,
     store: ExperienceStore | None = None,
@@ -254,6 +273,13 @@ def route_request(
                 "compare provider-owned episode/API selection with returned source metadata",
                 "distinguish provider identity loss, Core projection and incomplete HLS duration",
                 "produce reusable source-pinned evidence plan before mutation or promotion",
+                *(
+                    [
+                        "verify installed manifest projection, local enabled state and exact JS hash on each Nuvio client",
+                        "trace native app media-type selection, plugin invocation and stream UI independently",
+                    ]
+                    if _user_client_visibility_differential(request) else []
+                ),
             ],
         )
 
