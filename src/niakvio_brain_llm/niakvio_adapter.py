@@ -540,6 +540,75 @@ def _provider_retest_observation(
     return {}
 
 
+def _provider_retest_history_observations(
+    payload: Any,
+    provider_id: str,
+    *,
+    current_bundle_sha256: str = "",
+    current_census_run_id: str = "",
+) -> list[dict[str, Any]]:
+    """Retain old failures on unchanged JS, explicitly historical and non-authoritative.
+
+    Source SHA/census freshness is intentionally NOT promoted by this lane.
+    Only exact current-bundle-byte matches are usable as negative hypotheses.
+    """
+    if not isinstance(payload, dict) or payload.get("schemaVersion") != 1:
+        return []
+    if (
+        payload.get("authority") != "historical-exact-bundle-diagnostics-only"
+        or payload.get("proofAuthority") is not False
+        or payload.get("publicationAuthority") is not False
+    ):
+        return []
+    digest = str(current_bundle_sha256 or "").strip().casefold()
+    if not re.fullmatch(r"[0-9a-f]{64}", digest):
+        return []
+    wanted = _canon(provider_id)
+    output: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for row in (payload.get("rows") or [])[:1400]:
+        if not isinstance(row, dict):
+            continue
+        run = str(row.get("sourceCensusRunId") or "")
+        sha = str(row.get("sourceNiakvioSha") or "")
+        if (
+            _canon(row.get("provider")) != wanted
+            or str(row.get("providerArtifactSha256") or "").strip().casefold() != digest
+            or run == current_census_run_id
+            or not re.fullmatch(r"\\d+-retest", run)
+            or not re.fullmatch(r"[0-9a-f]{40}", sha)
+            or row.get("proofAuthority") is not False
+            or row.get("publicationAuthority") is not False
+            or row.get("nativePlaybackAuthority") is not False
+            or run in seen
+        ):
+            continue
+        seen.add(run)
+        def bounded(value: Any) -> int:
+            return min(10000, max(0, value)) if type(value) is int else 0
+        lane = str(row.get("lane") or "")
+        if lane not in {"movie", "tv", "anime"}:
+            continue
+        output.append({
+            "source": "historical-exact-js-retest",
+            "sourceCensusRunId": run,
+            "lane": lane,
+            "playable": bounded(row.get("playable")),
+            "verified": bounded(row.get("verified")),
+            "identityReasons": [
+                value for value in (row.get("identityReasons") or [])[:12]
+                if isinstance(value, str) and value in _RETEST_IDENTITY_REASONS
+            ],
+            "historicalOnly": True,
+            "proofAuthority": False,
+            "publicationAuthority": False,
+            "nativePlaybackAuthority": False,
+        })
+        if len(output) >= 4:
+            break
+    return output
+
+
 def _provider_waf_observation(
     payload: Any, provider_id: str, *, current_bundle_sha256: str = ""
 ) -> dict[str, Any]:
@@ -1093,6 +1162,7 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
     targeted = _load(root / "automation" / "provider-targeted-regression-recovery-latest.json", {})
     waf = _load(root / "automation" / "provider-waf-browser-session-latest.json", {})
     retest = _load(root / "automation" / "provider-retest-brain-evidence-latest.json", {})
+    retest_history = _load(root / "automation" / "provider-retest-brain-evidence-history.json", {})
     refined = _load(root / "automation" / "provider-repair-batch-refined-latest.json", {})
     current_structure_payload = _load(
         root / "automation" / "provider-current-structure-evidence.json",
@@ -1178,6 +1248,11 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
     retest_observation = _provider_retest_observation(
         retest, census, provider_id,
         current_bundle_sha256=str(published_bundle.get("sha256") or row.get("providerArtifactSha256") or ""),
+    )
+    retest_history_observations = _provider_retest_history_observations(
+        retest_history, provider_id,
+        current_bundle_sha256=str(published_bundle.get("sha256") or row.get("providerArtifactSha256") or ""),
+        current_census_run_id=census_run,
     )
     waf_observation = _provider_waf_observation(
         waf, provider_id,
@@ -1353,6 +1428,10 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
         census_prior=census_prior,
         observations=[
             {"source": "census_current", "value": census_prior},
+            *(
+                [{"source": "historical-provider-retest-media", "value": item}
+                 for item in retest_history_observations]
+            ),
             *(
                 [{"source": "current-provider-retest-media", "value": retest_observation}]
                 if retest_observation else []
