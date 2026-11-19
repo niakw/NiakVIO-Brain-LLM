@@ -33,6 +33,7 @@ class AndroidTVRouteLoopTests(unittest.TestCase):
                 "nativeRunId": self.native_run_id,
                 "provider": "french-manga",
                 "fixture": "jujutsu-kaisen-s01e01",
+                "requestType": "anime",
                 "manifestScope": "manifest.json",
                 "providerArtifactSha256": self.digest,
                 "appSelected": True,
