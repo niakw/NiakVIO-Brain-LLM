@@ -40,6 +40,7 @@ class AndroidTVRouteLoopTests(unittest.TestCase):
                 "quickJsPhases": ["call"],
                 "quickJsReturned": 0,
                 "nativeExtractionZeroObserved": True,
+                "sameMediaRootSuccessThenForbidden": False,
                 "tvPromiseControl": "promise_delivery_gap",
                 "nativeHardTimeoutObserved": True,
                 "nativeHardTimeoutMs": 25000,
@@ -111,6 +112,52 @@ class AndroidTVRouteLoopTests(unittest.TestCase):
             current_bundle_sha256="c" * 64,
             active_manifest_scopes=["manifest.json"],
         ), [])
+
+    def test_same_hls_root_success_then_403_routes_to_core_not_provider(self):
+        from niakvio_brain_llm.contracts import RepairRequest
+        ledger = self.ledger()
+        row = ledger["rows"][0]
+        row.update({
+            "tvPromiseControl": "bridge_ok",
+            "nativeHardTimeoutObserved": False,
+            "nativeHardTimeoutMs": 0,
+            "nativeExtractionZeroObserved": True,
+            "sameMediaRootSuccessThenForbidden": True,
+            "quickJsPhases": ["call", "result"],
+            "quickJsReturned": 0,
+            "url": "https://signed.example/master.m3u8?token=SECRET",
+        })
+        observations = _provider_android_tv_emulator_observations(
+            ledger, "french-manga",
+            current_bundle_sha256=self.digest,
+            active_manifest_scopes=["manifest.json"],
+        )
+        self.assertEqual(len(observations), 1)
+        observed = observations[0]
+        self.assertTrue(observed["sameMediaRootSuccessThenForbidden"])
+        self.assertNotIn("signed.example", json.dumps(observed))
+        self.assertNotIn("SECRET", json.dumps(observed))
+        request = RepairRequest(
+            provider_id="french-manga", status="PROVIDER JS BROKEN",
+            failure_class="media_extraction_gap", advisor_only=True,
+            observations=[{"source": "official-android-tv-emulator", "value": observed}],
+        )
+        route = route_request(request)
+        self.assertEqual(route.mode, "llm_diagnose")
+        self.assertEqual(route.target_layer, "core")
+        self.assertEqual(route.strategy, "reuse_successful_hls_root_across_core_validation")
+        self.assertEqual(route.allowed_mutations, [])
+        self.assertTrue(route.requires_llm)
+        self.assertTrue(any("rematerialize" in step for step in route.next_actions))
+
+        # Without the exact sanitized signature, the provider must not inherit
+        # this Core diagnosis from a historical/user-only assumption.
+        observed["sameMediaRootSuccessThenForbidden"] = False
+        request.observations = [{"source": "official-android-tv-emulator", "value": observed}]
+        self.assertNotEqual(
+            route_request(request).strategy,
+            "reuse_successful_hls_root_across_core_validation",
+        )
 
     def test_real_native_terminal_403_keeps_transport_not_provider_mutation(self):
         from niakvio_brain_llm.contracts import RepairRequest
