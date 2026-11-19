@@ -75,6 +75,17 @@ class ForceDiagnosisBoundaryTests(unittest.TestCase):
             quickJsPhases=["call"],
             quickJsReturned=0,
         )
+        request.observations.append({
+            "source": "user-client-field-report",
+            "value": {
+                "authority": "historical-user-report-only",
+                "crossClientVisibilityDiscrepancy": True,
+                "proofAuthority": False,
+                "publicationAuthority": False,
+                "mutationAuthority": False,
+                "executedJsKnown": False,
+            },
+        })
         decision = route_request(request)
         self.assertEqual(decision.mode, "probe")
         self.assertEqual(decision.allowed_mutations, [])
