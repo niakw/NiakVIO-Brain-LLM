@@ -76,6 +76,51 @@ class RoutingTests(unittest.TestCase):
         self.assertEqual(refused.mode, "probe")
         self.assertEqual(refused.strategy, "run_official_android_tv_emulator_first")
 
+    def test_android_tv_quickjs_call_only_never_infers_a_returned_zero(self):
+        report = {
+            "source": "user-client-field-report",
+            "value": {
+                "authority": "historical-user-report-only",
+                "crossClientVisibilityDiscrepancy": True,
+                "proofAuthority": False,
+                "publicationAuthority": False,
+                "mutationAuthority": False,
+                "executedJsKnown": False,
+            },
+        }
+        tv = {
+            "source": "official-android-tv-emulator",
+            "value": {
+                "source": "official-android-tv-emulator",
+                "client": "tv", "historicalOnly": True,
+                "appSelected": True, "quickJsPhases": ["call"],
+                "quickJsReturned": 0, "quickJsErrors": [],
+                "nativeExtractionZeroObserved": False,
+                "proofAuthority": False, "publicationAuthority": False,
+                "nativePlaybackAuthority": False, "providerMutationAuthority": False,
+            },
+        }
+        args = dict(provider_id="french-manga", status="CANDIDATE OK",
+                    failure_class="candidate_replay_gap")
+        unknown = route_request(RepairRequest(**args, observations=[report, tv]))
+        self.assertEqual(unknown.mode, "probe")
+        self.assertEqual(unknown.strategy, "complete_android_tv_quickjs_execution_trace")
+        self.assertEqual(unknown.allowed_mutations, [])
+
+        tv["value"]["nativeExtractionZeroObserved"] = True
+        confirmed_zero = route_request(RepairRequest(**args, observations=[report, tv]))
+        self.assertEqual(confirmed_zero.mode, "llm_diagnose")
+        self.assertEqual(confirmed_zero.target_layer, "unknown")
+        self.assertEqual(confirmed_zero.strategy,
+                         "discriminate_tv_runtime_network_core_vs_provider")
+        self.assertEqual(confirmed_zero.allowed_mutations, [])
+        self.assertTrue(confirmed_zero.requires_llm)
+
+        tv["value"]["providerMutationAuthority"] = True
+        forgery = route_request(RepairRequest(**args, observations=[report, tv]))
+        self.assertEqual(forgery.mode, "probe")
+        self.assertEqual(forgery.strategy, "run_official_android_tv_emulator_first")
+
     def test_full_ok_variant_coverage_gap_routes_provider_synthesis(self):
         decision = route_request(
             RepairRequest(
