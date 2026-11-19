@@ -268,6 +268,47 @@ class RoutingTests(unittest.TestCase):
         self.assertFalse(decision.requires_llm)
         self.assertEqual(decision.strategy, "same_provider_candidate_program_replay")
 
+    def test_client_field_report_adds_discriminating_app_selection_only_when_non_authoritative(self):
+        current = {
+            "source": "current-provider-retest-media",
+            "value": {
+                "source": "same-js-current-retest",
+                "playable": 2, "verified": 0,
+                "identityReasons": ["insufficient_identity_metadata"],
+                "proofAuthority": False, "publicationAuthority": False,
+                "nativePlaybackAuthority": False,
+            },
+        }
+        field = {
+            "source": "user-client-field-report",
+            "value": {
+                "authority": "historical-user-report-only",
+                "crossClientVisibilityDiscrepancy": True,
+                "executedJsKnown": False,
+                "proofAuthority": False,
+                "publicationAuthority": False,
+                "mutationAuthority": False,
+            },
+        }
+        def decision(field_row):
+            return route_request(RepairRequest(
+                provider_id="demo", failure_class="candidate_replay_gap",
+                status="CANDIDATE OK", advisor_only=True,
+                observations=[current, field_row],
+            ))
+        route = decision(field)
+        self.assertEqual(route.mode, "llm_diagnose")
+        self.assertEqual(route.allowed_mutations, [])
+        self.assertTrue(any("installed manifest projection" in x for x in route.next_actions))
+        self.assertTrue(any("native app media-type selection" in x for x in route.next_actions))
+        fake = {
+            **field, "value": {**field["value"], "mutationAuthority": True}
+        }
+        self.assertFalse(any("installed manifest projection" in x for x in decision(fake).next_actions))
+        self.assertFalse(any("installed manifest projection" in x for x in
+                             decision({"source": "user-client-field-report",
+                                       "value": {**field["value"], "executedJsKnown": True}}).next_actions))
+
     def test_exact_current_unverified_candidate_escalates_to_causal_diagnosis(self):
         candidate = {
             "source": "same-js-current-retest",
