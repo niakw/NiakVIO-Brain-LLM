@@ -1990,12 +1990,35 @@ def _bounded_force_hosted_negative_hints(
     expected = str(provider_id or "").strip().casefold()
     hints = []
     for row in reversed(rows or []):
-        if not isinstance(row, dict) or row.get("source") != "hosted-executed-negative":
+        if not isinstance(row, dict) or row.get("source") not in {
+            "hosted-executed-negative", "official-tv-executed-negative"
+        }:
             continue
         providers = row.get("providers") or []
         if expected not in providers or row.get("result") != "rejected_executed_no_improvement":
             continue
         if row.get("proof_authority") is not False or row.get("prior_only") is not True:
+            continue
+        if row.get("source") == "official-tv-executed-negative":
+            candidate = str(row.get("candidate_js_sha256") or "").strip().casefold()
+            source_sha = str(row.get("source_niakvio_sha") or "").strip().casefold()
+            client_sha = str(row.get("official_client_sha") or "").strip().casefold()
+            if not re.fullmatch(r"[a-f0-9]{64}", candidate) or not all(
+                re.fullmatch(r"[a-f0-9]{40}", sha) for sha in (source_sha, client_sha)
+            ):
+                continue
+            hints.append({
+                "mechanism": "native_blocking_bridge_defeats_js_promise_hedge",
+                "candidate_sha256_prefix": candidate[:16],
+                "outcome": "executed_zero_streams_no_decoded_gain",
+                "scope": "client_transport_and_common_providerbase",
+                "historical_sha_not_current_proof": True,
+                "proof_authority": False,
+                "provider_mutation_authority": False,
+                "do_not_repeat_js_only_hedge_without_nonblocking_host_bridge": True,
+            })
+            if len(hints) == 2:
+                break
             continue
         fingerprint = str(row.get("mutation_fingerprint") or "").strip().casefold()
         mechanism = str(row.get("strategy") or "").strip().casefold()
