@@ -40,6 +40,7 @@ class AndroidTVRouteLoopTests(unittest.TestCase):
                 "quickJsPhases": ["call"],
                 "quickJsReturned": 0,
                 "nativeExtractionZeroObserved": True,
+                "tvPromiseControl": "promise_delivery_gap",
                 "proofAuthority": False, "publicationAuthority": False,
                 "nativePlaybackAuthority": False, "providerMutationAuthority": False,
                 "url": "https://token.example/do-not-leak?cookie=SECRET",
@@ -83,6 +84,28 @@ class AndroidTVRouteLoopTests(unittest.TestCase):
         self.assertNotIn("allowed_mutations", json.dumps(result))
         for sensitive in ("token.example", "cookie", "SECRET", "https://"):
             self.assertNotIn(sensitive, json.dumps(result))
+
+    def test_adapter_drops_malicious_synthetic_control(self):
+        rows = _provider_android_tv_emulator_observations(
+            self.ledger(), "french-manga",
+            current_bundle_sha256=self.digest,
+            active_manifest_scopes=["manifest.json"],
+        )
+        self.assertEqual(rows[0]["tvPromiseControl"], "promise_delivery_gap")
+        self.assertFalse(rows[0]["nativePlaybackAuthority"])
+        forged = self.ledger()
+        forged["rows"][0]["tvPromiseControl"] = "https://private.example/t"
+        rows = _provider_android_tv_emulator_observations(
+            forged, "french-manga",
+            current_bundle_sha256=self.digest,
+            active_manifest_scopes=["manifest.json"],
+        )
+        self.assertEqual(rows[0]["tvPromiseControl"], "not_observed")
+        self.assertEqual(_provider_android_tv_emulator_observations(
+            self.ledger(), "french-manga",
+            current_bundle_sha256="c" * 64,
+            active_manifest_scopes=["manifest.json"],
+        ), [])
 
     def test_historical_other_run_not_rerouted(self):
         for sha, run in ((self.sha, "44520778917"),
