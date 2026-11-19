@@ -1,3 +1,9 @@
+## 2026-11-19 — Distinguish native 25s timeout from QuickJS call-only
+
+Official TV `FIELD_NATIVE_ERROR` with `provider_hard_timeout_ms=25000` must survive the NiakVIO native diagnostic JSON and sanitized per-provider exact-source/JS ledger, independently of `quickJsPhases=["call"]`. Previously the automatic feedback lost this evidence and Brain chose `deterministic_advisor` provider replay for Sadisflix despite a timed-out official call. The adapter now carries `nativeHardTimeoutObserved` plus bounded `nativeHardTimeoutMs`; routing escalates an app-selected native timeout to `llm_diagnose`, owner **unknown**, mutation scopes empty, to discriminate native fetch/WAF, QuickJS Promise completion, Core network bridge, provider route and external environment. An unavailable/currently excluded provider must never be upgraded by the timeout row.
+
+A separate test-owned immediate-vs-awaited synthetic `PluginRuntime` control, run in official NuvioTV without media playback, can yield `bridge_ok`, `promise_delivery_gap` or `baseline_failed`. The latter two route to client-runtime investigation rather than provider patch synthesis. These are negative diagnostic hypotheses only; even positive synthetic results do not certify an HLS stream, correct episode, audio tracks or full playback. Successful routing is not an accepted Brain mutation; the entire compilation, materialization, native replay, independent identity and non-regression sequence remains mandatory.
+
 # Brain-LLM — Android TV-primary repair and native emulator feedback
 
 **Policy:** Android TV is the **primary functional acceptance target**. Existing Desktop macOS, Android Mobile and iOS runtime/Core/ProviderBase/Lego compatibility remains mandatory for selective non-regression; do not implement separate provider variants for each device.
