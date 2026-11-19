@@ -53,6 +53,7 @@ class AndroidTVEmulatorMemoryTests(unittest.TestCase):
         row = rows[0]
         self.assertEqual(row["client"], "tv")
         self.assertEqual(row["officialClientSha"], "c" * 40)
+        self.assertEqual(row["nativeHardTimeoutOrigin"], "not-observed")
         self.assertEqual(row["requestType"], "anime")
         self.assertEqual(row["quickJsReturned"], 0)
         self.assertEqual(row["quickJsErrors"], ["reference_error"])
@@ -64,6 +65,19 @@ class AndroidTVEmulatorMemoryTests(unittest.TestCase):
                      "nativePlaybackAuthority", "providerMutationAuthority"):
             self.assertFalse(row[flag])
         self.assertNotIn("privateUrl", row)
+
+    def test_hard_deadline_belongs_to_native_test_harness_not_provider(self):
+        data = self.report()
+        row = data["rows"][0]
+        row["nativeHardTimeoutObserved"] = True
+        row["nativeHardTimeoutMs"] = 25000
+        observation = self.get(data)[0]
+        self.assertTrue(observation["nativeHardTimeoutObserved"])
+        self.assertEqual(observation["nativeHardTimeoutMs"], 25000)
+        self.assertEqual(observation["nativeHardTimeoutOrigin"], "niakvio-test-harness")
+        self.assertFalse(observation["proofAuthority"])
+        self.assertFalse(observation["providerMutationAuthority"])
+        self.assertFalse(observation["nativePlaybackAuthority"])
 
     def test_client_ref_is_historical_and_fail_closed(self):
         actual = self.get()[0]
