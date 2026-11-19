@@ -12,6 +12,7 @@ from .current_evidence import current_causal_signatures
 from .live_evidence import (
     apply_verified_live_failure, executed_runtime_source, fixture_evidence,
     network_evidence, observed_failure_class, public_domain_references,
+    current_candidate_identity_gap,
     verification_feedback,
 )
 
@@ -91,7 +92,20 @@ def attach_live_runtime_evidence(
             request, live, source_sha, explicit_providers,
         )
     )
-    request.failure_class = observed_failure_class(request.failure_class, current)
+    resolved_failure = observed_failure_class(request.failure_class, current)
+    if (
+        resolved_failure == "proof_freshness_gap"
+        and str(request.failure_class or "").strip().replace("-", "_") == "candidate_replay_gap"
+        and current_candidate_identity_gap(request.observations)
+    ):
+        # This fresh live preflight proves the current provider still returns
+        # playable candidates, but the exact-JS Retest already proved that
+        # independently correct work/season/episode content remains undecidable.
+        # Preserve the causal investigation; the Core/media proof gate stays
+        # fail-closed and no provider mutation is authorized by this exception.
+        ctx["candidate_identity_proof_unresolved"] = True
+    else:
+        request.failure_class = resolved_failure
     source = executed_runtime_source(ctx, current)
     if source:
         ctx["preferredRuntimeMutationSource"] = source
