@@ -107,6 +107,76 @@ class LivePlayableProofRefreshTests(unittest.TestCase):
         self.assertTrue(policy["force_abstain"])
         self.assertEqual(policy["allowed_scopes"], [])
 
+    def test_current_exact_js_unverified_identity_survives_healthy_transport_preflight(self):
+        # A transport-positive live preflight is not an identity oracle.
+        # After a source-pinned Retest demonstrates playable-but-unverified,
+        # Brain must still reason about origin/episode/HLS provenance.
+        from niakvio_brain_llm.routing import route_request
+        request = RepairRequest(
+            provider_id="demo", status="CANDIDATE OK",
+            failure_class="candidate_replay_gap", advisor_only=True,
+            observations=[{
+                "source": "current-provider-retest-media",
+                "value": {
+                    "source": "same-js-current-retest",
+                    "playable": 2, "verified": 0,
+                    "identityReasons": ["insufficient_identity_metadata", "duration_incomplete_hls"],
+                    "proofAuthority": False, "publicationAuthority": False,
+                    "nativePlaybackAuthority": False,
+                },
+            }],
+            provider_context={
+                "runtimeMutationSource": "function getStreams(){return [];}"
+            },
+        )
+        attach_live_runtime_evidence(
+            request, live_fixture(), source_sha=SHA,
+            explicit_providers=["demo"], repair_mode=True,
+        )
+        self.assertEqual(request.failure_class, "candidate_replay_gap")
+        self.assertTrue(request.provider_context["candidate_identity_proof_unresolved"])
+        route = route_request(request)
+        self.assertEqual(route.mode, "llm_diagnose")
+        self.assertEqual(route.target_layer, "unknown")
+        self.assertTrue(route.requires_llm)
+        self.assertEqual(route.allowed_mutations, [])
+
+    def test_unmatched_identity_observation_preserves_freshness_fail_closed(self):
+        from niakvio_brain_llm.routing import route_request
+        for altered in (
+            {"source": "historical-exact-js-retest"},
+            {"verified": 1},
+            {"proofAuthority": True},
+            {"playable": 0},
+        ):
+            with self.subTest(altered=altered):
+                value = {
+                    "source": "same-js-current-retest", "playable": 2,
+                    "verified": 0,
+                    "identityReasons": ["insufficient_identity_metadata"],
+                    "proofAuthority": False, "publicationAuthority": False,
+                    "nativePlaybackAuthority": False,
+                    **altered,
+                }
+                request = RepairRequest(
+                    provider_id="demo", status="CANDIDATE OK",
+                    failure_class="candidate_replay_gap", advisor_only=True,
+                    observations=[{
+                        "source": "current-provider-retest-media",
+                        "value": value,
+                    }],
+                    provider_context={
+                        "runtimeMutationSource": "function getStreams(){return [];}"
+                    },
+                )
+                attach_live_runtime_evidence(
+                    request, live_fixture(), source_sha=SHA,
+                    explicit_providers=["demo"], repair_mode=True,
+                )
+                self.assertEqual(request.failure_class, "proof_freshness_gap")
+                self.assertNotIn("candidate_identity_proof_unresolved", request.provider_context)
+                self.assertNotEqual(route_request(request).mode, "llm_diagnose")
+
     def test_any_current_fixture_without_playable_media_keeps_provider_gap(self):
         for mutate in (
             lambda live: live["fixture_evidence"][1].update(
