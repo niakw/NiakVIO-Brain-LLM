@@ -792,6 +792,38 @@ def current_baseline_requires_proof_refresh(live):
     return total == playable
 
 
+def current_candidate_identity_gap(observations):
+    """Current exact-provider-JS media without independent title/episode proof.
+
+    This is NOT negative playback proof and never licenses mutation. It only
+    prevents a second current live transport probe from erasing the exact-JS
+    evidence that triggered a causal identity investigation.
+    """
+    for observation in observations or []:
+        if not isinstance(observation, dict):
+            continue
+        if str(observation.get("source") or "").strip() != "current-provider-retest-media":
+            continue
+        row = observation.get("value")
+        if not isinstance(row, dict) or row.get("source") != "same-js-current-retest":
+            continue
+        if any(row.get(key) is not False for key in (
+            "proofAuthority", "publicationAuthority", "nativePlaybackAuthority"
+        )):
+            continue
+        if (
+            type(row.get("playable")) is int and row["playable"] > 0
+            and type(row.get("verified")) is int and row["verified"] == 0
+            and set(row.get("identityReasons") or []) & {
+                "insufficient_identity_metadata",
+                "duration_incomplete_hls",
+                "duration_unavailable",
+            }
+        ):
+            return True
+    return False
+
+
 def observed_failure_class(current, live):
     """Refine broad census labels using the source-validated current preflight."""
     if current_baseline_requires_proof_refresh(live):
