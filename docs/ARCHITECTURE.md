@@ -1,3 +1,11 @@
+## 2026-11-19 — Healthy live transport must not suppress current identity diagnosis
+
+The first real French-Manga model check exposed an orchestration contradiction: `routing.route_request` correctly escalated current exact-JS `playable>0, verified=0` evidence to `llm_diagnose`, but `live_context_ingest.attach_live_runtime_evidence` then converted the failure to `proof_freshness_gap` because a second preflight saw reachable media. That observation never proved correct work, S/E, duration or decode.
+
+`live_evidence.current_candidate_identity_gap` now shares the same fail-closed detector with routing and live ingestion. For `candidate_replay_gap` with **matching current Retest proof-negative identity**, the preflight preserves the diagnostic despite positive transport; no current proof means ordinary `proof_freshness_gap` still applies. No added provider mutation authority is granted. Regressions in `test_live_playable_proof_refresh.py` and `test_routing.py` cover valid, historical and forged rows.
+
+Real [run 44510697687](https://github.com/niakw/NiakVIO-Brain-LLM/actions/runs/44510697687) proved both initial and FORCE-stage routing retained `llm_diagnose` and one actual 3B model call was made. FORCE subsequently timed out on provider bloc and abstained on provider patch, producing **zero accepted mutation and zero verified playback**. That failure must become negative experience for causal reasoning/tooling; the model is not to be treated as having repaired French-Manga. The next structural step is to persist diagnostic-only outputs (when mutation is disallowed) and grant executable scopes only after identifying Core vs provider vs media-validation responsibility.
+
 ## 2026-11-19 — Exact-JS Retest evidence → Brain causal escalation and experience retention
 
 `niakvio_adapter.request_from_checkout` reads `automation/provider-retest-brain-evidence-latest.json` for **current-census + exact executed provider JS SHA-256** diagnostics and imports `automation/provider-retest-brain-evidence-history.json` as up to four **historical-only same-bundle** observations. The latter never earns `proofAuthority`, `publicationAuthority` or `nativePlaybackAuthority`. No signed stream URLs, cookies, sensitive headers or private user content may enter the exported receipt or generated guidance.
