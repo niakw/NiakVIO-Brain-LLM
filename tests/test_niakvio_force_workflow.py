@@ -91,7 +91,7 @@ assert "guidance/niakvio-force-diagnostics.json" in workflow
 assert "--previous-diagnostics" in workflow
 assert "niakvio-guidance-family-wave.json" in workflow
 assert "execution_blocked=" in (ROOT / "scripts/select_niakvio_repair_family_wave.py").read_text(encoding="utf-8")
-assert "files=4" in workflow
+assert "files=5" in workflow
 
 assert "brain_sha:" in workflow
 assert 'ref: ${{ inputs.brain_sha || github.sha }}' in workflow
