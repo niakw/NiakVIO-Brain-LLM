@@ -673,13 +673,25 @@ jobs:
             --timeout-seconds "${{ steps.model_profile.outputs.force_timeout }}" \
             --force-provider-budget-seconds "${{ steps.model_profile.outputs.provider_budget }}" \
             --output private-force-batch.jsonl
-          python brain/scripts/plan_batch_from_checkout.py \
-            --niakvio-root niakvio \
-            --experience public-experience.jsonl \
-            --documents public-documents.jsonl \
-            --extra-documents private-documents.jsonl \
-            "${live_args[@]}" \
-            --mode brain \
+          # FORCE already supplied the strictly non-mutating causal diagnosis
+          # on the exact published JS. Avoid a second slow, equivalent local
+          # model call only when every targeted provider has a completed,
+          # non-abstaining model diagnosis and zero executable authority.
+          # All other routes still run the independent advisor unchanged.
+          if python brain/scripts/reuse_force_diagnostic_for_advisor.py \
+              --force-batch private-force-batch.jsonl \
+              --targets "$RUNNER_TEMP/niakvio-guidance-page.txt" \
+              --niakvio-root niakvio; then
+            : > private-guided-batch.jsonl
+            echo "FIELD_BRAIN_DIAGNOSIS_ADVISOR_REUSE completed=true source_pinned=true mutation_authority=false"
+          else
+            python brain/scripts/plan_batch_from_checkout.py \
+              --niakvio-root niakvio \
+              --experience public-experience.jsonl \
+              --documents public-documents.jsonl \
+              --extra-documents private-documents.jsonl \
+              "${live_args[@]}" \
+              --mode brain \
             "${provider_args[@]}" \
             --endpoint http://127.0.0.1:8080 \
             --model "${{ steps.model_profile.outputs.model }}" \
@@ -687,7 +699,8 @@ jobs:
             --advisor-only \
             --max-tokens 160 \
             --timeout-seconds "${{ steps.model_profile.outputs.advisor_timeout }}" \
-            --output private-guided-batch.jsonl
+              --output private-guided-batch.jsonl
+          fi
 
       - name: Sanitize advisor output
         shell: bash
