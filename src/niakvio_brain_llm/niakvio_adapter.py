@@ -575,7 +575,7 @@ def _provider_retest_history_observations(
             _canon(row.get("provider")) != wanted
             or str(row.get("providerArtifactSha256") or "").strip().casefold() != digest
             or run == current_census_run_id
-            or not re.fullmatch(r"\\d+-retest", run)
+            or not re.fullmatch(r"\d+-retest", run)
             or not re.fullmatch(r"[0-9a-f]{40}", sha)
             or row.get("proofAuthority") is not False
             or row.get("publicationAuthority") is not False
