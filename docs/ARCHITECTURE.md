@@ -1,3 +1,9 @@
+## 2026-11-19 — Zero-LLM deterministic replay still needs bounded planner arguments
+
+The fast-first lane can select a current candidate's no-mutation replay (`candidate_replay_gap`) instead of an LLM repair. In private guidance, `plan_batch_from_checkout.py` always parses `--timeout-seconds` / `--force-provider-budget-seconds` even when `route_request` needs no model. Resolve the validated model **profile and numeric budget arguments** for any non-ready deterministic FORCE preflight, while keeping local model cache/weights/download/start and inference conditional on `llm_needed=true`. Missing model args must never block a cheap already-observed provider candidate; model availability must not turn a deterministic verification into a provider failure.
+
+This is an orchestration/harness contract, not a media proof or a provider-local patch. The first source-pinned French-Manga run `44497329484` exposed the contract via empty timeout, and its correction must be proven with a fresh end-to-end deterministic replay. Regression: `tests/test_private_guidance_model_escalation.py`.
+
 ## 2026-11-19 — Quick-win-first Brain repair execution order (proof-neutral)
 
 The Brain's explicit RepairQueue/family-wave selection now prioritizes **work that can be qualified fastest**, based only on the source-pinned census and previous sanitized execution feedback. It does not rank providers by brand/name, invent an available stream, or change the authorized cohort. The first pass is one representative per unresolved causal family, with validated reusable families allowed to fan out and previous LLM execution timeouts rotating witnesses.
