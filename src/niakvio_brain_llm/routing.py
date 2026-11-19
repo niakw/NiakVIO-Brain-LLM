@@ -235,6 +235,27 @@ def route_request(
                     "ingest sanitized artifact by source SHA; do not mutate the provider from user report alone",
                 ],
             )
+        # A separate FIELD_NATIVE_RESULT count=0 is stronger than a partial
+        # QuickJS console. It proves no media was returned in the official
+        # app-selected native execution, but does not prove its causal owner.
+        if (native_tv.get("appSelected") is True
+                and native_tv.get("nativeExtractionZeroObserved") is True):
+            return RoutingDecision(
+                mode="llm_diagnose",
+                reason="source-pinned official Android TV execution returned zero streams independently of incomplete QuickJS console; Mac client reported playable media",
+                target_layer="unknown",
+                strategy="discriminate_tv_runtime_network_core_vs_provider",
+                prior_confidence=0.75,
+                requires_llm=True,
+                allowed_mutations=[],
+                next_actions=[
+                    "compare exact TV getStreams input, available metadata and QuickJS runtime capabilities to Desktop",
+                    "observe provider-owned detail and episode API before assigning responsibility",
+                    "discriminate TV HTTP/WAF and bridge responses from missing player result",
+                    "only produce owner-specific Brain tooling/Core/Lego fix after source-pinned cause",
+                    "replay official TV emulator and require correct decoded episode/audio before publication",
+                ],
+            )
         # An invocation-only trace is not a 0-stream return. The official TV
         # job may have been killed, timed out or lost its completion marker.
         # Diagnose the harness/runtime first; never turn a missing result into
