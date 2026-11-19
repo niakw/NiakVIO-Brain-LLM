@@ -287,6 +287,34 @@ def route_request(
             ],
         )
 
+    # An official native QuickJS call without a completed result, explicit
+    # extraction count or classified timeout cannot be treated as a provider
+    # candidate failure. The app test need not have a separate human Desktop
+    # comparison for this source-pinned incomplete trace to be meaningful.
+    if (
+        official_tv.get("appSelected") is True
+        and official_tv.get("nativeExtractionPositiveObserved") is not True
+        and official_tv.get("nativeExtractionZeroObserved") is not True
+        and official_tv.get("nativeHardTimeoutObserved") is not True
+        and not official_tv.get("quickJsErrors")
+        and isinstance(official_tv.get("quickJsPhases"), list)
+        and "call" in official_tv["quickJsPhases"]
+        and "result" not in official_tv["quickJsPhases"]
+    ):
+        return RoutingDecision(
+            mode="probe",
+            reason="official Android TV QuickJS invocation observed without result, extraction verdict, timeout or classified exception",
+            target_layer="client",
+            strategy="complete_android_tv_quickjs_execution_trace",
+            prior_confidence=0.80,
+            allowed_mutations=[],
+            next_actions=[
+                "capture official Android TV QuickJS completion or typed execution error",
+                "check runtime cancellation and transport before attributing a provider fault",
+                "do not generate provider patch or mark media playable from call-only evidence",
+            ],
+        )
+
     # TV is the primary executable client for Brain repair. A reported
     # macOS-positive/TV-missing provider must first have a source-pinned native
     # emulator oracle. Existing Lego for Desktop/Mobile/iOS remains intact, but
