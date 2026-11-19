@@ -712,6 +712,101 @@ def _provider_retest_history_observations(
     return output
 
 
+_ANDROID_TV_STATES = frozenset({
+    "ready", "playing", "error", "short_media", "buffering", "unknown",
+    "ended", "timeout", "not_reached", "paused",
+})
+_ANDROID_TV_ERRORS = frozenset({
+    "none", "reference_error", "type_error", "syntax_error", "timeout",
+    "network_error", "http_error", "unspecified_js_exception",
+})
+
+
+def _provider_android_tv_emulator_observations(
+    payload: Any, provider_id: str, *,
+    current_bundle_sha256: str = "",
+    active_manifest_scopes: list[str] | None = None,
+) -> list[dict[str, Any]]:
+    """Use historical exact-JS official TV traces as a diagnostic oracle only.
+
+    The emulator's historical source commit is not the current Brain source.
+    Byte equality permits comparing failures, NEVER declaring current playback
+    valid or granting provider mutation authority. Client patch ownership is
+    determined separately from the provider's extraction path.
+    """
+    if not isinstance(payload, dict) or (
+        payload.get("schemaVersion") != 1
+        or payload.get("authority") != "official-android-tv-emulator-diagnostic-only"
+        or payload.get("primaryClient") != "tv"
+        or any(payload.get(key) is not False for key in (
+            "proofAuthority", "publicationAuthority", "nativePlaybackAuthority",
+            "providerMutationAuthority",
+        ))
+    ):
+        return []
+    digest = str(current_bundle_sha256 or "").strip().casefold()
+    if not re.fullmatch(r"[0-9a-f]{64}", digest):
+        return []
+    allowed_scopes = set(active_manifest_scopes or [])
+    results: list[dict[str, Any]] = []
+    wanted = _canon(provider_id).replace("_", "-")
+    for row in (payload.get("rows") or [])[:1400]:
+        if not isinstance(row, dict):
+            continue
+        if (
+            _canon(row.get("provider")).replace("_", "-") != wanted
+            or row.get("providerArtifactSha256") != digest
+            or row.get("manifestScope") not in allowed_scopes
+            or not re.fullmatch(r"[0-9a-f]{40}", str(row.get("sourceNiakvioSha") or ""))
+            or not str(row.get("nativeRunId") or "").isdigit()
+            or any(row.get(key) is not False for key in (
+                "proofAuthority", "publicationAuthority", "nativePlaybackAuthority",
+                "providerMutationAuthority",
+            ))
+        ):
+            continue
+        lane = str(row.get("requestType") or "")
+        fixture = str(row.get("fixture") or "")
+        if lane not in {"movie", "tv", "anime"} or not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,95}", fixture):
+            continue
+        errors = [
+            x for x in (row.get("quickJsErrors") or [])[:8]
+            if isinstance(x, str) and x in _ANDROID_TV_ERRORS and x != "none"
+        ]
+        states = [
+            x for x in (row.get("playerStates") or [])[:8]
+            if isinstance(x, str) and x in _ANDROID_TV_STATES
+        ]
+        phases = [
+            x for x in (row.get("quickJsPhases") or [])[:4]
+            if isinstance(x, str) and x in {"call", "result", "error", "missing_export"}
+        ]
+        result = {
+            "source": "official-android-tv-emulator",
+            "client": "tv",
+            "fixture": fixture,
+            "requestType": lane,
+            "sourceRunId": str(row["nativeRunId"]),
+            "manifestScope": row["manifestScope"],
+            "appSelected": row.get("appSelected") if type(row.get("appSelected")) is bool else None,
+            "quickJsPhases": phases,
+            "quickJsErrors": errors,
+            "quickJsReturned": min(10000, max(0, row.get("quickJsReturned")))
+                if type(row.get("quickJsReturned")) is int else 0,
+            "playerStates": states,
+            "readerEvidenceComplete": row.get("readerEvidenceComplete") is True,
+            "historicalOnly": True,
+            "proofAuthority": False,
+            "publicationAuthority": False,
+            "nativePlaybackAuthority": False,
+            "providerMutationAuthority": False,
+        }
+        results.append(result)
+        if len(results) >= 4:
+            break
+    return results
+
+
 def _provider_waf_observation(
     payload: Any, provider_id: str, *, current_bundle_sha256: str = ""
 ) -> dict[str, Any]:
@@ -1267,6 +1362,7 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
     retest = _load(root / "automation" / "provider-retest-brain-evidence-latest.json", {})
     retest_history = _load(root / "automation" / "provider-retest-brain-evidence-history.json", {})
     user_client_reports = _load(root / "automation" / "user-client-provider-field-observations.json", {})
+    android_tv_emulator = _load(root / "automation" / "brain-android-tv-emulator-history.json", {})
     refined = _load(root / "automation" / "provider-repair-batch-refined-latest.json", {})
     current_structure_payload = _load(
         root / "automation" / "provider-current-structure-evidence.json",
@@ -1374,6 +1470,11 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
         retest_history, provider_id,
         current_bundle_sha256=str(published_bundle.get("sha256") or row.get("providerArtifactSha256") or ""),
         current_census_run_id=census_run,
+    )
+    android_tv_observations = _provider_android_tv_emulator_observations(
+        android_tv_emulator, provider_id,
+        current_bundle_sha256=str(published_bundle.get("sha256") or ""),
+        active_manifest_scopes=active_manifest_scopes,
     )
     waf_observation = _provider_waf_observation(
         waf, provider_id,
@@ -1549,6 +1650,10 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
         census_prior=census_prior,
         observations=[
             {"source": "census_current", "value": census_prior},
+            *(
+                [{"source": "official-android-tv-emulator", "value": item}
+                 for item in android_tv_observations]
+            ),
             *(
                 [{"source": "user-client-field-report", "value": user_client_observation}]
                 if user_client_observation else []
