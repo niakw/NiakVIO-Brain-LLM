@@ -5,6 +5,20 @@ which scope to TRY, never publication or playback authority.
 """
 from __future__ import annotations
 
+def diagnostic_only_route(route) -> bool:
+    """Stop FORCE from inventing provider mutations for unresolved causal owners.
+
+    LLM diagnosis is a planning outcome, not a scope grant. A route that asks
+    for diagnostic reasoning while permitting code mutations is contradictory
+    and must fail closed instead of silently rewriting current provider bytes.
+    """
+    if getattr(route, "mode", "") != "llm_diagnose":
+        return False
+    if getattr(route, "allowed_mutations", None):
+        raise ValueError("llm_diagnose cannot authorize FORCE mutations")
+    return True
+
+
 def select_force_scopes(request) -> list[str]:
     context = request.provider_context or {}
     allowed = set(request.allowed_mutations or [])
