@@ -892,6 +892,13 @@ def _provider_android_tv_emulator_observations(
             "quickJsReturned": min(10000, max(0, row.get("quickJsReturned")))
                 if type(row.get("quickJsReturned")) is int else 0,
             "nativeHardTimeoutObserved": row.get("nativeHardTimeoutObserved") is True,
+            # This clock is imposed by NiakVIO's generated Future.get
+            # harness, NOT by official NuvioTV PluginManager. It cannot
+            # prove a provider code defect or a client playback failure.
+            "nativeHardTimeoutOrigin": (
+                "niakvio-test-harness" if row.get("nativeHardTimeoutObserved") is True
+                else "not-observed"
+            ),
             "nativeHardTimeoutMs": min(180000, max(0, row.get("nativeHardTimeoutMs")))
                 if row.get("nativeHardTimeoutObserved") is True
                 and type(row.get("nativeHardTimeoutMs")) is int else 0,
