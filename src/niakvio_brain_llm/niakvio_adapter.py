@@ -793,6 +793,8 @@ def _provider_android_tv_emulator_observations(
             "quickJsErrors": errors,
             "quickJsReturned": min(10000, max(0, row.get("quickJsReturned")))
                 if type(row.get("quickJsReturned")) is int else 0,
+            "nativeExtractionZeroObserved": row.get("nativeExtractionZeroObserved") is True,
+            "nativeExtractionPositiveObserved": row.get("nativeExtractionPositiveObserved") is True,
             "playerStates": states,
             "readerEvidenceComplete": row.get("readerEvidenceComplete") is True,
             "historicalOnly": True,
