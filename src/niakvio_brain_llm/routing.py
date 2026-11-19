@@ -235,6 +235,31 @@ def route_request(
             ],
         )
 
+    # A native hard timeout is a completed official test *error* even if the
+    # QuickJS console only emitted its call marker. It must never be silently
+    # downgraded to a generic deterministic provider replay. This alone does
+    # not tell us whether network, bridge, runtime or provider route owns it.
+    if (official_tv.get("appSelected") is True
+            and official_tv.get("nativeHardTimeoutObserved") is True
+            and type(official_tv.get("nativeHardTimeoutMs")) is int
+            and official_tv["nativeHardTimeoutMs"] >= 1000):
+        return RoutingDecision(
+            mode="llm_diagnose",
+            reason="official Android TV app-selected provider hit native hard execution timeout; QuickJS call-only is not a completed empty result",
+            target_layer="unknown",
+            strategy="discriminate_tv_native_hard_timeout_owner",
+            prior_confidence=0.80,
+            requires_llm=True,
+            allowed_mutations=[],
+            next_actions=[
+                "measure official TV QuickJS Promise control on test-only immediate/awaited media-free fixture",
+                "check native fetch completion, HTTP/WAF and DNS versus provider loop deadline on exact source",
+                "compare Desktop/native bridge behavior without assuming the user ran the same bundle",
+                "fix client/Core/Brain orchestration if shared owner confirmed, else give Brain provider-specific bounded repair tooling",
+                "materialize then replay exact TV client for decoded correct title/episode/audio before publication",
+            ],
+        )
+
     # TV is the primary executable client for Brain repair. A reported
     # macOS-positive/TV-missing provider must first have a source-pinned native
     # emulator oracle. Existing Lego for Desktop/Mobile/iOS remains intact, but
