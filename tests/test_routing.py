@@ -81,6 +81,10 @@ class RoutingTests(unittest.TestCase):
         self.assertTrue(route.requires_llm)
         self.assertEqual(route.allowed_mutations, [])
         self.assertTrue(any("ProviderBase" in step for step in route.next_actions))
+        self.assertTrue(any("Call.execute" in step and "Promise.all" in step
+                            for step in route.next_actions))
+        self.assertTrue(any("reject JS-only hedging" in step
+                            for step in route.next_actions))
         for bad in (
             {**base, "hlsPlaylist2xxNearProviderBudgetZeroObserved": False},
             {**base, "nativeExtractionZeroObserved": False},
