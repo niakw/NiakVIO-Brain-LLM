@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "ba8bbd004ef022c1024628510375581d18acaff8",
-  "reason": "2026-11-19 prove Brain Force causal diagnosis-only route on exact official TV source: NiakVIO native replay 44546095189, 2 HLS returned, player READY but 0 observed video/audio, independent HLS GET 403 (NOT player's HTTP status). Source-pinned sanitized TV memory committed ba8bbd0, same French-Manga JS SHA256 f18a1c3a2352c0a3fed0b094cf517cea251125c39e70fa6da319cde869e21c4e. New Brain code must route llm_diagnose unknown owner, perform bounded causal model reasoning without ANY provider_patch/provider_bloc mutation, publish fifth redacted guidance/niakvio-causal-diagnostics.json historical hypotheses, preserve earlier experiments, no FULL/decoding claim. Real native player decode still blocked.",
+  "niakvio_sha": "6c743268b8fc01b17c45294710d307805208343b",
+  "reason": "2026-11-19 Brain-first quick-win TV/client discrepancy #2: Sadisflix only in VF, exact active JS SHA256 abfd1ce22ebd5e99b3dee1806b96eac2483c02e80c7c4966870aed2c5d46bc26; independent official TV current-bundle historical runs 44529501795 and 44551637696 selected plugin for Interstellar but 25s hard native execution timeout, QuickJS call only, Promise bridge_ok in latter. User did not see streams. Diagnose client/network/timeout/provider ownership with bounded model and persisted sanitized causal memory, NO provider JS mutation from historical-only evidence; preserve four manifests and no-anime; no FULL without source-matched decoded terminal playback.",
   "requested_repair_queue": [
-    "french-manga"
+    "sadisflix"
   ],
-  "retry": 91,
+  "retry": 92,
   "require_deterministic_force": false,
   "model_profile": "qwen25-coder-3b"
 }
