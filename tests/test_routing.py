@@ -268,6 +268,56 @@ class RoutingTests(unittest.TestCase):
         self.assertFalse(decision.requires_llm)
         self.assertEqual(decision.strategy, "same_provider_candidate_program_replay")
 
+    def test_exact_current_unverified_candidate_escalates_to_causal_diagnosis(self):
+        candidate = {
+            "source": "same-js-current-retest",
+            "playable": 2, "verified": 0,
+            "identityReasons": ["insufficient_identity_metadata", "duration_incomplete_hls"],
+            "proofAuthority": False, "publicationAuthority": False,
+            "nativePlaybackAuthority": False,
+        }
+        request = RepairRequest(
+            provider_id="demo", failure_class="candidate_replay_gap",
+            status="CANDIDATE OK", advisor_only=True,
+            observations=[{"source": "current-provider-retest-media", "value": candidate}],
+        )
+        route = route_request(request)
+        self.assertEqual(route.mode, "llm_diagnose")
+        self.assertTrue(route.requires_llm)
+        self.assertEqual(route.strategy, "trace_independent_episode_and_hls_provenance")
+        self.assertEqual(route.target_layer, "unknown")
+        self.assertEqual(route.allowed_mutations, [])
+        self.assertGreaterEqual(len(route.next_actions), 3)
+
+    def test_historical_or_stale_identity_gap_does_not_trigger_model(self):
+        candidate = {
+            "source": "same-js-current-retest", "playable": 2, "verified": 0,
+            "identityReasons": ["insufficient_identity_metadata"],
+            "proofAuthority": False, "publicationAuthority": False,
+            "nativePlaybackAuthority": False,
+        }
+        cases = [
+            {"source": "historical-provider-retest-media", "value": candidate},
+            {"source": "current-provider-retest-media",
+             "value": {**candidate, "source": "historical-exact-js-retest"}},
+            {"source": "current-provider-retest-media",
+             "value": {**candidate, "proofAuthority": True}},
+            {"source": "current-provider-retest-media",
+             "value": {**candidate, "verified": 1}},
+            {"source": "current-provider-retest-media",
+             "value": {**candidate, "playable": 0}},
+            {"source": "current-provider-retest-media",
+             "value": {**candidate, "identityReasons": []}},
+        ]
+        for observation in cases:
+            with self.subTest(observation=observation):
+                request = RepairRequest(
+                    provider_id="demo", failure_class="candidate_replay_gap",
+                    status="CANDIDATE OK", advisor_only=True,
+                    observations=[observation],
+                )
+                self.assertEqual(route_request(request).mode, "deterministic_advisor")
+
     def test_validated_same_family_routes_before_llm(self):
         request = RepairRequest(
             provider_id="demo",
