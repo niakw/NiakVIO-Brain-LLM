@@ -803,6 +803,15 @@ def _provider_android_tv_emulator_observations(
                 and type(row.get("nativeHardTimeoutMs")) is int else 0,
             "nativeExtractionZeroObserved": row.get("nativeExtractionZeroObserved") is True,
             "nativeExtractionPositiveObserved": row.get("nativeExtractionPositiveObserved") is True,
+            "nativeExtractionReturnedCount": min(10000, max(0, row.get("nativeExtractionReturnedCount")))
+                if type(row.get("nativeExtractionReturnedCount")) is int else 0,
+            "playerVideoFormatUnverified": row.get("playerVideoFormatUnverified") is True,
+            # Independent network check is NOT the official player network's
+            # HTTP status; this permits causal header/WAF investigation only.
+            "independentTerminalHttpStatuses": sorted({
+                v for v in (row.get("independentTerminalHttpStatuses") or [])[:8]
+                if type(v) is int and 400 <= v <= 599
+            }),
             "playerStates": states,
             "readerEvidenceComplete": row.get("readerEvidenceComplete") is True,
             "historicalOnly": True,
