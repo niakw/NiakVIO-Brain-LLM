@@ -906,6 +906,10 @@ def _provider_android_tv_emulator_observations(
             "nativeExtractionPositiveObserved": row.get("nativeExtractionPositiveObserved") is True,
             "nativeExtractionReturnedCount": min(10000, max(0, row.get("nativeExtractionReturnedCount")))
                 if type(row.get("nativeExtractionReturnedCount")) is int else 0,
+            # Sanitized pre-player signature from NiakVIO's official TV log:
+            # the exact same HLS root succeeded once, then returned 403 on a
+            # later Core/runtime probe. No URL, host, token or header survives.
+            "sameMediaRootSuccessThenForbidden": row.get("sameMediaRootSuccessThenForbidden") is True,
             "playerVideoFormatUnverified": row.get("playerVideoFormatUnverified") is True,
             # Independent network check is NOT the official player network's
             # HTTP status; this permits causal header/WAF investigation only.
