@@ -129,6 +129,40 @@ def _has_current_executed_player_frontier(request: RepairRequest) -> bool:
     return False
 
 
+def _current_candidate_identity_gap(request: RepairRequest) -> bool:
+    """Actual same-bundle Retest missing content identity needs new reasoning.
+
+    Prior-only advisor experiment generation is not a replay. Once the exact
+    published JS was executed and returned undecidable content, repeating
+    another no-op deterministic candidate experiment is a false loop.
+    """
+    for observation in request.observations or []:
+        if not isinstance(observation, dict):
+            continue
+        if _canon(observation.get("source")) != "current-provider-retest-media":
+            continue
+        row = observation.get("value")
+        if not isinstance(row, dict) or row.get("source") != "same-js-current-retest":
+            continue
+        if (
+            row.get("proofAuthority") is not False
+            or row.get("publicationAuthority") is not False
+            or row.get("nativePlaybackAuthority") is not False
+        ):
+            continue
+        if (
+            int(row.get("playable") or 0) > 0
+            and int(row.get("verified") or 0) == 0
+            and set(row.get("identityReasons") or []) & {
+                "insufficient_identity_metadata",
+                "duration_incomplete_hls",
+                "duration_unavailable",
+            }
+        ):
+            return True
+    return False
+
+
 def route_request(
     request: RepairRequest,
     store: ExperienceStore | None = None,
@@ -233,6 +267,26 @@ def route_request(
                 "run current provider authority/hub -> search/lookup -> detail -> player/embed -> terminal traversal",
                 "persist newly proven route DATA",
                 "rebuild Brain request on the refreshed current bytes",
+            ],
+        )
+
+    if failure == "candidate-replay-gap" and _current_candidate_identity_gap(request):
+        # Evidence now distinguishes "URL unavailable" from "URL exists but
+        # content identity unproven". Do NOT promote or guess a provider fix:
+        # model must first locate whether source provenance was dropped by
+        # provider extraction, Core projection or incomplete HLS introspection.
+        return RoutingDecision(
+            mode="llm_diagnose",
+            reason="current exact JS returned media but content identity/duration remains unproven; prior-only candidate replay is exhausted",
+            target_layer="unknown",
+            strategy="trace_independent_episode_and_hls_provenance",
+            prior_confidence=0.70,
+            requires_llm=True,
+            allowed_mutations=[],
+            next_actions=[
+                "compare provider-owned episode/API selection with returned source metadata",
+                "distinguish provider identity loss, Core projection and incomplete HLS duration",
+                "produce reusable source-pinned evidence plan before mutation or promotion",
             ],
         )
 
