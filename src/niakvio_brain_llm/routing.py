@@ -260,6 +260,33 @@ def route_request(
             ],
         )
 
+    # The native app DID return media, so do not repair search/extraction again.
+    # An independent HLS 403 with no observable video format requires causal
+    # investigation of headers, CDN/network and player decode; neither the
+    # HTTP probe nor READY can grant current playback or provider mutation.
+    if (official_tv.get("appSelected") is True
+            and official_tv.get("nativeExtractionPositiveObserved") is True
+            and type(official_tv.get("nativeExtractionReturnedCount")) is int
+            and official_tv["nativeExtractionReturnedCount"] > 0
+            and official_tv.get("playerVideoFormatUnverified") is True
+            and 403 in (official_tv.get("independentTerminalHttpStatuses") or [])):
+        return RoutingDecision(
+            mode="llm_diagnose",
+            reason="official Android TV returned media; independent terminal HLS probe got HTTP 403 while player READY lacks decoded video-format proof",
+            target_layer="unknown",
+            strategy="trace_tv_hls_403_headers_client_fetch_and_decoded_video",
+            prior_confidence=0.87,
+            requires_llm=True,
+            allowed_mutations=[],
+            next_actions=[
+                "replay exact returned HLS endpoint with production client headers and compare independent probe",
+                "discriminate CDN token expiry/WAF, missing Referer/cookie/origin, network egress and client playback path",
+                "check actual video frame/audio tracks and correct season/episode identity before granting success",
+                "repair Core/Brain/client only if causal owner is proven, never patch provider to hide network probe failure",
+                "persist failed attempt and test one representative per topology before extending to provider cohort",
+            ],
+        )
+
     # TV is the primary executable client for Brain repair. A reported
     # macOS-positive/TV-missing provider must first have a source-pinned native
     # emulator oracle. Existing Lego for Desktop/Mobile/iOS remains intact, but
