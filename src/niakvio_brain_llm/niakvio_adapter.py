@@ -448,6 +448,106 @@ def _dynamic_variant_coverage_gap(observation: dict[str, Any]) -> bool:
     return False
 
 
+_USER_CLIENT_OBSERVATION_STATES = frozenset({
+    "stream-played", "stream-returned", "not-in-stream-list",
+    "stream-playback-failed", "provider-disabled-in-ui",
+    "provider-not-installed", "unknown",
+})
+_USER_CLIENT_NAMES = frozenset({
+    "desktop-macos", "desktop-windows", "android-tv",
+    "android-mobile", "ios", "unspecified",
+})
+
+
+def _provider_user_client_field_observation(
+    payload: Any,
+    provider_id: str,
+    *,
+    active_manifest_scopes: list[str] | None = None,
+) -> dict[str, Any]:
+    """Sanitize user field observations; never turn a report into current proof.
+
+    A Desktop stream playing and an Android TV stream missing can be a client,
+    manifest-cache, media-type, runtime, network, or display difference. Without
+    the installed build and executed JS hash, this is diagnosis context only.
+    """
+    if (
+        not isinstance(payload, dict)
+        or payload.get("schemaVersion") != 1
+        or payload.get("authority") != "non-authoritative-user-field-report"
+        or payload.get("proofAuthority") is not False
+        or payload.get("publicationAuthority") is not False
+        or payload.get("sourceBundleVerified") is not False
+    ):
+        return {}
+    wanted = _canon(provider_id)
+    reported = str(payload.get("reportedOn") or "")
+    if not re.fullmatch(r"20\d{2}-\d{2}-\d{2}", reported):
+        return {}
+    for row in (payload.get("rows") or [])[:50]:
+        if not isinstance(row, dict) or _canon(row.get("provider")) != wanted:
+            continue
+        if row.get("fixtureKnown") is not False:
+            # Unknown user fixture cannot be silently assigned from a previous
+            # assistant test request or synthetic Retest fixture.
+            continue
+        clients: list[dict[str, Any]] = []
+        for item in (row.get("clients") or [])[:6]:
+            if not isinstance(item, dict):
+                continue
+            client = str(item.get("client") or "")
+            result = str(item.get("observation") or "")
+            if client not in _USER_CLIENT_NAMES or result not in _USER_CLIENT_OBSERVATION_STATES:
+                continue
+            observed_count = item.get("streamCountObserved")
+            audio = item.get("audioLanguagesObserved")
+            languages = [
+                value.casefold() for value in (audio if isinstance(audio, list) else [])[:8]
+                if isinstance(value, str) and re.fullmatch(r"[a-zA-Z]{2,3}(?:-[a-zA-Z0-9]{2,8}){0,2}", value)
+            ][:4]
+            clients.append({
+                "client": client,
+                "observation": result,
+                "streamCountObserved": (
+                    min(20, observed_count) if type(observed_count) is int
+                    and 0 <= observed_count <= 20 else None
+                ),
+                "audioLanguagesObserved": languages,
+            })
+        if not clients:
+            continue
+        scopes = sorted({
+            scope for scope in (active_manifest_scopes or [])
+            if scope in {"manifest.json", "vf/manifest.json"}
+        })
+        states = {x["observation"] for x in clients}
+        return {
+            "authority": "historical-user-report-only",
+            "reportedOn": reported,
+            "provider": wanted,
+            "fixtureKnown": False,
+            "executedJsKnown": False,
+            "installedManifestKnown": False,
+            "appBuildKnown": False,
+            "activeManifestScopesAtCheckout": scopes,
+            "clients": clients,
+            "crossClientVisibilityDiscrepancy": (
+                "stream-played" in states and "not-in-stream-list" in states
+            ),
+            "nextDiagnosticStages": [
+                "installed_manifest_and_scraper_enabled",
+                "media_type_and_client_selection",
+                "native_getstreams_invocation",
+                "network_and_terminal_media",
+                "stream_ui_render_and_audio",
+            ],
+            "proofAuthority": False,
+            "publicationAuthority": False,
+            "mutationAuthority": False,
+        }
+    return {}
+
+
 _RETEST_IDENTITY_REASONS = frozenset({
     "insufficient_identity_metadata", "duration_incomplete_hls",
     "duration_unavailable", "fixture_duration_mismatch",
@@ -1163,6 +1263,7 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
     waf = _load(root / "automation" / "provider-waf-browser-session-latest.json", {})
     retest = _load(root / "automation" / "provider-retest-brain-evidence-latest.json", {})
     retest_history = _load(root / "automation" / "provider-retest-brain-evidence-history.json", {})
+    user_client_reports = _load(root / "automation" / "user-client-provider-field-observations.json", {})
     refined = _load(root / "automation" / "provider-repair-batch-refined-latest.json", {})
     current_structure_payload = _load(
         root / "automation" / "provider-current-structure-evidence.json",
@@ -1244,6 +1345,20 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
     current_structure_observation = _provider_current_structure_evidence(
         current_structure_payload,
         provider_id,
+    )
+    active_manifest_scopes = []
+    for candidate_path in ("manifest.json", "vf/manifest.json"):
+        document = _load(root / candidate_path, {})
+        if any(
+            isinstance(item, dict)
+            and _canon(item.get("id")) == wanted
+            and item.get("enabled") is True
+            for item in (document.get("scrapers") or [])
+        ):
+            active_manifest_scopes.append(candidate_path)
+    user_client_observation = _provider_user_client_field_observation(
+        user_client_reports, provider_id,
+        active_manifest_scopes=active_manifest_scopes,
     )
     retest_observation = _provider_retest_observation(
         retest, census, provider_id,
@@ -1428,6 +1543,10 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
         census_prior=census_prior,
         observations=[
             {"source": "census_current", "value": census_prior},
+            *(
+                [{"source": "user-client-field-report", "value": user_client_observation}]
+                if user_client_observation else []
+            ),
             *(
                 [{"source": "historical-provider-retest-media", "value": item}
                  for item in retest_history_observations]
