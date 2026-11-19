@@ -19,6 +19,22 @@ def diagnostic_only_route(route) -> bool:
     return True
 
 
+def non_mutating_probe_route(route) -> bool:
+    """A probe/skip/advisor routing decision has no provider patch authority.
+
+    Do not run the FORCE patch/bloc fallback when the causal router explicitly
+    asks for more observations or declares that no reasoning is required.
+    Validated family replay and deterministic executable mechanisms are kept
+    separate and may still enter their own checked paths.
+    """
+    mode = str(getattr(route, "mode", "") or "")
+    if mode not in {"probe", "skip", "deterministic_advisor"}:
+        return False
+    if getattr(route, "allowed_mutations", None):
+        raise ValueError("non-mutating Brain probe/skip route cannot authorize provider patch")
+    return True
+
+
 def select_force_scopes(request) -> list[str]:
     context = request.provider_context or {}
     allowed = set(request.allowed_mutations or [])
