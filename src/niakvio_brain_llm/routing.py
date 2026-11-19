@@ -235,6 +235,32 @@ def route_request(
             ],
         )
 
+    # A current official TV trace can expose a stronger Core signature than
+    # a generic zero-stream provider result: the exact same signed HLS root
+    # succeeded once and then returned 403 when pre-player validation fetched
+    # it again. The URL/token is deliberately absent from the sanitized ledger.
+    # This is a Core/runtime ownership signal, never provider patch authority.
+    if (
+        official_tv.get("appSelected") is True
+        and official_tv.get("sameMediaRootSuccessThenForbidden") is True
+    ):
+        return RoutingDecision(
+            mode="llm_diagnose",
+            reason="official Android TV observed the same HLS root succeed then fail 403 before player delivery; duplicate pre-player media validation is a Core/runtime concern",
+            target_layer="core",
+            strategy="reuse_successful_hls_root_across_core_validation",
+            prior_confidence=0.97,
+            requires_llm=True,
+            allowed_mutations=[],
+            next_actions=[
+                "locate consecutive Core/media-validation owners that fetch the identical HLS root",
+                "reuse only the ephemeral successful master response while still validating child playlists and media segments",
+                "strip private proof bodies before provider output and retain fail-closed terminal sanitizer ownership",
+                "rematerialize affected provider bundles from the shared Core pipeline instead of editing one provider",
+                "replay exact official TV client and require returned stream, decoded correct content and audio before publication",
+            ],
+        )
+
     # A native hard timeout is a completed official test *error* even if the
     # QuickJS console only emitted its call marker. It must never be silently
     # downgraded to a generic deterministic provider replay. This alone does
