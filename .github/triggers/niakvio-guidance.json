@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
-  "niakvio_sha": "48697c42544779968b47a6432d5d40d89bc5d1d9",
-  "reason": "2026-11-19 Brain-first real end-to-end proof of newly persisted exact-bundle sanitized Retest observation (NiakVIO source 48697c4254, census 44507961371-retest, French-Manga JS SHA256 f18a1c3a2352c0a3fed0b094cf517cea251125c39e70fa6da319cde869e21c4e). Require adapter current-provider-retest-media observation with raw=2 playable=2 verified=0 identityReasons=insufficient_identity_metadata,duration_incomplete_hls. Prevent false FULL and do not hallucinate IDs or rewrite provider manually; use evidence to propose reusable identity/episode provenance or decoded playback probe as Brain strategy. If only planning, state no-op truthfully and retain negative.",
+  "niakvio_sha": "3f49873669794f08265e39fcc27ac7d0d6582054",
+  "reason": "2026-11-19 Brain exact-source current French-Manga media-provenance negative at census 44509152891-retest. The published stream is 2 HLS candidates, verified=0, insufficient_identity_metadata and duration_incomplete_hls, exact JS SHA256 f18a1c3a2352c0a3fed0b094cf517cea251125c39e70fa6da319cde869e21c4e. New Brain routing must ESCALATE from repeated deterministic advisor replay to LLM causal diagnosis only (provider episode API source ownership vs Core metadata vs HLS playlist incompleteness); never assume an S01E01 identity from requested TMDB or count URL as success. Propose generalized repairs/test instrumentation, compile/apply only if separately authorized and independently validated.",
   "requested_repair_queue": [
     "french-manga"
   ],
-  "retry": 87,
+  "retry": 88,
   "require_deterministic_force": false,
   "model_profile": "qwen25-coder-3b"
 }
