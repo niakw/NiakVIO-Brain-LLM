@@ -362,6 +362,24 @@ class AndroidTVRouteLoopTests(unittest.TestCase):
         self.assertTrue(any("do not rerun" in step.lower() for step in decision.next_actions))
         self.assertTrue(any("identical hls root" in step.lower() for step in decision.next_actions))
 
+        # Regression: a runtime-nonempty / extraction-unconfirmed attempt must
+        # not swallow an independent HLS 200 -> 403 Core signal. The old router
+        # returned from the harness branch before it could reach this case.
+        attempt = request.provider_context["native_candidate_experiment_history"][0]["candidateAttempts"][0]
+        attempt["candidateVerdict"] = "candidate_runtime_nonempty_unconfirmed_extraction"
+        attempt["candidateRuntimeReturnedCount"] = 1
+        self.assertEqual(
+            route_request(request).strategy,
+            "reuse_successful_hls_root_across_core_validation",
+        )
+
+        # No independent HLS replay evidence: do not invent a Core diagnosis.
+        request.observations[0]["value"]["sameMediaRootSuccessThenForbidden"] = False
+        fallback = route_request(request)
+        self.assertEqual(fallback.strategy, "repair_native_candidate_extraction_observability")
+        self.assertEqual(fallback.target_layer, "harness")
+        self.assertEqual(fallback.allowed_mutations, [])
+
     def test_executed_v29_terminal_decode_moves_to_family_validation(self):
         from niakvio_brain_llm.contracts import RepairRequest
         ledger = self.ledger()
