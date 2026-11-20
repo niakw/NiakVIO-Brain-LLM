@@ -15,7 +15,7 @@ from niakvio_brain_llm.prompting import (
 class SourceContractPromptWitnessTests(unittest.TestCase):
     sha = "a" * 40
     digest = "b" * 64
-    run = "44781039914"
+    native_run_id = "44781039914"
     probe_run = "44798438960"
 
     def request(self):
@@ -23,7 +23,7 @@ class SourceContractPromptWitnessTests(unittest.TestCase):
             "source": "official-android-tv-emulator",
             "value": {
                 "client": "tv",
-                "sourceRunId": self.run,
+                "sourceRunId": self.native_run_id,
                 "sourceNiakvioSha": self.sha,
                 "providerArtifactSha256": self.digest,
                 "fixture": "mushoku-tensei-s01e01",
@@ -45,7 +45,7 @@ class SourceContractPromptWitnessTests(unittest.TestCase):
             "source": "independent-catalogue-source-probe",
             "value": {
                 "source": "independent-ci-source-shape",
-                "nativeParentRunId": self.run,
+                "nativeParentRunId": self.native_run_id,
                 "nativeParentSourceSha": self.sha,
                 "currentProviderArtifactSha256": self.digest,
                 "probeRunId": self.probe_run,
