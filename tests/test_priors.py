@@ -1,7 +1,9 @@
 import unittest
 
 from niakvio_brain_llm.contracts import RepairRequest
+import json
 from niakvio_brain_llm.priors import build_causal_prior, taxonomy_layer
+from niakvio_brain_llm.policy import build_mutation_policy
 
 class PriorTests(unittest.TestCase):
     def test_negative_history_cannot_supply_taxonomy_strategy(self):
@@ -237,6 +239,81 @@ class PriorTests(unittest.TestCase):
         )
         self.assertEqual(prior["target_layer"], "provider")
         self.assertEqual(prior["strategy_prior"], "terminal_media_extractor_with_playback_validation")
+
+    def test_current_ts_over_aac_requires_core_diagnosis_not_provider_mutation(self):
+        request = RepairRequest(
+            provider_id="demo",
+            failure_class="chain_terminal_gap",
+            status="CHAIN REACHED",
+            allowed_mutations=["provider_bloc", "provider_patch", "provider_data"],
+            provider_context={
+                "runtimeMutationSource": "function getStreams(){return [];}",
+                "live_runtime_evidence": {
+                    "fixture_evidence": [{"streamsPlayable": 0}],
+                    "network_evidence": [{
+                        "stage": "media", "status": 206,
+                        "media_observation": {
+                            "advertisedContainer": "aac",
+                            "signature": "mpegts",
+                            "url": "https://PRIVATE.invalid/segment.aac?token=SECRET",
+                        },
+                    }],
+                },
+            },
+        )
+        prior = build_causal_prior(request, [])
+        self.assertEqual(prior["target_layer"], "core")
+        self.assertEqual(prior["source"], "current_hls_audio_transport_hypothesis")
+        self.assertLess(prior["confidence"], 0.9)
+        self.assertIs(prior["proof_authority"], False)
+        self.assertIs(prior["publication_authority"], False)
+        policy = build_mutation_policy(request, prior)
+        self.assertFalse(policy["allow_mutations"])
+        self.assertTrue(policy["force_abstain"])
+        self.assertEqual(policy["allowed_scopes"], [])
+        self.assertNotIn("PRIVATE", json.dumps(prior))
+        self.assertNotIn("SECRET", json.dumps(prior))
+
+    def test_ts_over_aac_does_not_override_without_successful_media_and_failed_fixture(self):
+        for media_status, streams, signature, advertised in (
+            (403, 0, "mpegts", "aac"),
+            (206, 1, "mpegts", "aac"),
+            (206, 0, "mp4", "aac"),
+            (206, 0, "mpegts", "mpegts"),
+        ):
+            with self.subTest(media_status=media_status, streams=streams, signature=signature, advertised=advertised):
+                request = RepairRequest(
+                    provider_id="demo",
+                    failure_class="chain_terminal_gap",
+                    status="CHAIN REACHED",
+                    provider_context={"live_runtime_evidence": {
+                        "fixture_evidence": [{"streamsPlayable": streams}],
+                        "network_evidence": [{
+                            "stage": "media", "status": media_status,
+                            "media_observation": {"signature": signature, "advertisedContainer": advertised},
+                        }],
+                    }},
+                )
+                prior = build_causal_prior(request, [])
+                self.assertEqual(prior["target_layer"], "provider")
+                self.assertEqual(prior["source"], "failure_class_taxonomy")
+
+    def test_ts_over_aac_never_overrides_harness_or_unrelated_failure_family(self):
+        live = {"fixture_evidence": [{"streamsPlayable": 0}], "network_evidence": [{
+            "stage": "media", "status": 206,
+            "media_observation": {"advertisedContainer": "aac", "signature": "mpegts"},
+        }]}
+        harness = build_causal_prior(RepairRequest(
+            provider_id="demo", failure_class="chain_terminal_gap",
+            status="HARNESS/ENV BLOCKED",
+            provider_context={"live_runtime_evidence": live},
+        ), [])
+        self.assertEqual(harness["target_layer"], "harness")
+        unrelated = build_causal_prior(RepairRequest(
+            provider_id="demo", failure_class="identity_mismatch",
+            provider_context={"live_runtime_evidence": live},
+        ), [])
+        self.assertEqual(unrelated["target_layer"], "provider")
 
     def test_chain_terminal_taxonomy_is_provider(self):
         prior = build_causal_prior(
