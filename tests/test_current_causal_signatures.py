@@ -111,10 +111,10 @@ class CausalSignaturesContract(unittest.TestCase):
                 "advertisedContainer": "aac", "signature": "hls"}}],
         })
         self.assertNotIn("hls_audio_container_mismatch_candidate", adts["signals"])
-        self.assertEqual(media_observation({
+        self.assertNotIn("advertisedContainer", media_observation({
             "advertisedContainer": "https://PRIVATE.invalid/aac?token=PRIVATE",
             "signature": "mpegts",
-        })["advertisedContainer"], "unknown")
+        }))
         request = RepairRequest(
             provider_id="demo", failure_class="chain_terminal_gap",
             allowed_mutations=["provider_bloc"],
