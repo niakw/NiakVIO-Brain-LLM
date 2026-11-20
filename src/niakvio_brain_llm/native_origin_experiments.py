@@ -30,6 +30,8 @@ def native_blocking_origin_priority_experiment(request: RepairRequest) -> dict[s
             row.get("appSelected") is True
             and row.get("nativeExtractionZeroObserved") is True
             and row.get("hlsPlaylist2xxNearProviderBudgetZeroObserved") is True
+            and row.get("tvPromiseControl") == "bridge_ok"
+            and row.get("nativeHardTimeoutObserved") is False
             and row.get("historicalOnly") is True
             and all(row.get(key) is False for key in (
                 "proofAuthority", "publicationAuthority",

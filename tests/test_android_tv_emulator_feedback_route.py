@@ -217,6 +217,9 @@ class AndroidTVRouteLoopTests(unittest.TestCase):
         ledger = self.ledger()
         row = ledger["rows"][0]
         row.update({
+            "tvPromiseControl": "bridge_ok",
+            "nativeHardTimeoutObserved": False,
+            "nativeHardTimeoutMs": 0,
             "nativeExtractionZeroObserved": True,
             "hlsPlaylist2xxNearProviderBudgetZeroObserved": True,
             "nativePrePlayerHostOutcomes": [
@@ -258,6 +261,27 @@ class AndroidTVRouteLoopTests(unittest.TestCase):
         wire = json.dumps(result)
         for sensitive in ("https://", "token=", "Cookie", "Authorization"):
             self.assertNotIn(sensitive, wire)
+
+        blocked = self.ledger()
+        blocked_row = blocked["rows"][0]
+        blocked_row.update({
+            "nativeExtractionZeroObserved": True,
+            "hlsPlaylist2xxNearProviderBudgetZeroObserved": True,
+            "nativePrePlayerHostOutcomes": row["nativePrePlayerHostOutcomes"],
+        })
+        blocked_rows = _provider_android_tv_emulator_observations(
+            blocked, "french-manga",
+            current_bundle_sha256=self.digest,
+            active_manifest_scopes=["manifest.json"],
+        )
+        blocked_request = RepairRequest(
+            provider_id="french-manga", status="CANDIDATE OK",
+            failure_class="candidate_replay_gap", advisor_only=True,
+            observations=[{"source": "official-android-tv-emulator", "value": x}
+                          for x in blocked_rows],
+        )
+        self.assertEqual(
+            script.native_blocking_origin_priority_experiment(blocked_request), {})
 
     def test_historical_other_run_not_rerouted(self):
         for sha, run in ((self.sha, "44520778917"),
