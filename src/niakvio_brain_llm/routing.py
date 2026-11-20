@@ -275,6 +275,32 @@ def route_request(
             ],
         )
 
+    # A missing episodes.js resource is a separate causal family from a
+    # successful HTTP response containing HTML. Neither proves a bad slug,
+    # a domain move or anti-bot protection without independent source evidence.
+    if (
+        official_tv.get("appSelected") is True
+        and official_tv.get("readerEvidenceComplete") is True
+        and official_tv.get("nativeExtractionZeroObserved") is True
+        and "script_http_missing" in script_shapes
+    ):
+        return RoutingDecision(
+            mode="llm_diagnose",
+            reason="official Android TV observed a 404/410 for an expected episode-source JavaScript resource and extracted zero streams; script absence alone does not identify a slug, domain, WAF or Core defect",
+            target_layer="unknown",
+            strategy="discriminate_missing_episode_script_resource",
+            prior_confidence=0.89,
+            requires_llm=True,
+            allowed_mutations=[],
+            next_actions=[
+                "verify the exact requested title, season, episode and source language against the canonical catalogue route",
+                "compare read-only response shape and status on announced primary and fallback hosts using native client headers without inferring the cause",
+                "distinguish a missing script from a redirect, page template, domain retirement or unimplemented source route before selecting a family Lego",
+                "never authorize a provider patch from a 404/410 alone; require an independently validated family representative",
+                "only promote a generated Core or family candidate after exact-byte NuvioTV episode decode, audio tracks and sibling non-regression",
+            ],
+        )
+
     origin_priority_prior = native_blocking_origin_priority_prior_attempt(request)
     origin_priority_experiment = (
         {} if origin_priority_prior

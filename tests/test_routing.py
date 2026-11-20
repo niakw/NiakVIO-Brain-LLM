@@ -57,6 +57,48 @@ class RoutingTests(unittest.TestCase):
                     "discriminate_catalogue_script_html_vs_missing_source_shape",
                 )
 
+    def test_official_tv_script_404_only_routes_separate_family_without_mutation(self):
+        base = {
+            "source": "official-android-tv-emulator", "client": "tv",
+            "historicalOnly": True, "appSelected": True,
+            "readerEvidenceComplete": True,
+            "nativeExtractionZeroObserved": True,
+            "nativeSourceScriptShapePatterns": ["script_http_missing"],
+            "tvPromiseControl": "bridge_ok",
+            "proofAuthority": False, "publicationAuthority": False,
+            "nativePlaybackAuthority": False, "providerMutationAuthority": False,
+        }
+
+        def decide(row):
+            return route_request(RepairRequest(
+                provider_id="anime-sama",
+                failure_class="media_extraction_gap",
+                status="REGRESSION PROVIDER",
+                allowed_mutations=["provider_patch", "provider_bloc"],
+                observations=[{"source": "official-android-tv-emulator", "value": row}],
+            ))
+
+        routed = decide(base)
+        self.assertEqual(routed.strategy, "discriminate_missing_episode_script_resource")
+        self.assertEqual(routed.target_layer, "unknown")
+        self.assertEqual(routed.mode, "llm_diagnose")
+        self.assertTrue(routed.requires_llm)
+        self.assertEqual(routed.allowed_mutations, [])
+        self.assertTrue(any("404/410" in x for x in routed.next_actions))
+        for changed in (
+            {"nativeExtractionZeroObserved": False},
+            {"appSelected": False},
+            {"readerEvidenceComplete": False},
+            {"historicalOnly": False},
+            {"nativePlaybackAuthority": True},
+            {"providerMutationAuthority": True},
+        ):
+            with self.subTest(changed=changed):
+                self.assertNotEqual(
+                    decide({**base, **changed}).strategy,
+                    "discriminate_missing_episode_script_resource",
+                )
+
     def test_official_tv_hard_timeout_is_not_generic_provider_replay(self):
         value = {
             "source": "official-android-tv-emulator", "client": "tv",
