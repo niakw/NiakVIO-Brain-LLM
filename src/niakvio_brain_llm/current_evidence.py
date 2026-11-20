@@ -70,7 +70,7 @@ def current_causal_signatures(live: dict[str, Any] | None) -> dict[str, Any]:
             # a catalogue miss. It points to inspecting generic HLS/Core
             # rendition validation, not to a provider search/HTML rewrite.
             # Without exact executed bytes + decode this remains hypothesis.
-            if media.get("advertisedContainer") == "aac" and media.get("signature") == "mpegts":
+            if status in (200, 206) and media.get("advertisedContainer") == "aac" and media.get("signature") == "mpegts":
                 add("hls_audio_container_mismatch_candidate")
             if media.get("signature") in {"mp4", "hls", "mpegts"}:
                 add("terminal_media_observed_but_unverified")
