@@ -496,6 +496,9 @@ def http_observation(value):
 def media_observation(value, prefix_limit=65536):
     enums = {
         'signature': ({'unknown', 'mp4', 'ebml', 'mpegts', 'hls', 'html'}, 'unknown'),
+        # URL suffix / advertised container is a structural hint only. Accept
+        # closed enums, NEVER the actual URL, MIME parameters or private token.
+        'advertisedContainer': ({'unknown', 'aac', 'adts', 'mpegts', 'mp4', 'm3u8'}, 'unknown'),
         'readState': ({'not_read', 'data', 'empty', 'complete', 'error'}, 'not_read'),
         'cancelState': ({'not_requested', 'requested', 'complete', 'error'}, 'not_requested'),
     }
