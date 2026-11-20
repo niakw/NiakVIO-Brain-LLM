@@ -434,7 +434,8 @@ def _source_contract_prompt_witness(request: RepairRequest) -> dict[str, Any]:
     It is *diagnostic only*, not a verified catalogue, player or mutation.
     A forged standalone independent row cannot enter the LLM prompt.
     """
-    observations = request.observations if isinstance(request.observations, list) else []
+    raw_observations = getattr(request, "observations", None)
+    observations = raw_observations if isinstance(raw_observations, list) else []
     native = []
     for obs in observations[:16]:
         if not isinstance(obs, dict) or obs.get("source") != "official-android-tv-emulator":
