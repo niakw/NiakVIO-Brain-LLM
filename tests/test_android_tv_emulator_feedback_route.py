@@ -362,6 +362,24 @@ class AndroidTVRouteLoopTests(unittest.TestCase):
         self.assertTrue(any("do not rerun" in step.lower() for step in decision.next_actions))
         self.assertTrue(any("identical hls root" in step.lower() for step in decision.next_actions))
 
+        # The workflow-facing Brain router must expose a *different* bounded
+        # candidate program, not the exhausted V29 origin ordering. This is
+        # source-only planning, not model execution nor publication.
+        workflow_plan = script.build(
+            ledger, self.sha, self.native_run_id, checkout="unused",
+            request_builder=lambda _root, _provider: request,
+        )
+        self.assertEqual(workflow_plan["routeCount"], 1)
+        workflow_route = workflow_plan["routes"][0]
+        self.assertNotIn("candidateExperiment", workflow_route)
+        followup = workflow_route["followupCoreExperiment"]
+        self.assertEqual(followup["experimentType"], "native-hls-master-receipt-v30")
+        self.assertEqual(followup["priorCandidateRunId"], "44670000001")
+        self.assertEqual(followup["providerArtifactSha256"], self.digest)
+        self.assertFalse(followup["modelExecuted"])
+        self.assertFalse(followup["publicationAuthority"])
+        self.assertNotIn("https://", json.dumps(workflow_plan))
+
         # Regression: a runtime-nonempty / extraction-unconfirmed attempt must
         # not swallow an independent HLS 200 -> 403 Core signal. The old router
         # returned from the harness branch before it could reach this case.
