@@ -5,7 +5,10 @@ from typing import Any
 
 from .contracts import RepairRequest
 from .advisor_experiments import next_advisor_experiment
-from .native_origin_experiments import native_blocking_origin_priority_experiment
+from .native_origin_experiments import (
+    native_blocking_origin_priority_experiment,
+    native_blocking_origin_priority_prior_attempt,
+)
 from .policy import NO_MUTATION_STRATEGIES, build_mutation_policy
 from .priors import build_causal_prior
 from .retrieval import ExperienceStore
@@ -204,7 +207,11 @@ def route_request(
     # the generic awaited-Promise suspicion. Keep a genuinely broken immediate
     # baseline fail-closed, but do not let the older Promise prior hide an
     # independently observed player 5xx -> alternate 2xx -> HLS 2xx sequence.
-    origin_priority_experiment = native_blocking_origin_priority_experiment(request)
+    origin_priority_prior = native_blocking_origin_priority_prior_attempt(request)
+    origin_priority_experiment = (
+        {} if origin_priority_prior
+        else native_blocking_origin_priority_experiment(request)
+    )
     if (official_tv.get("appSelected") is True
             and official_tv.get("nativeExtractionZeroObserved") is True
             and official_tv.get("tvPromiseControl") == "promise_delivery_gap"
@@ -265,6 +272,91 @@ def route_request(
                 "strip private proof bodies before provider output and retain fail-closed terminal sanitizer ownership",
                 "rematerialize affected provider bundles from the shared Core pipeline instead of editing one provider",
                 "replay exact official TV client and require returned stream, decoded correct content and audio before publication",
+            ],
+        )
+
+    if origin_priority_prior:
+        attempt = origin_priority_prior.get("attempt") or {}
+        verdict = str(attempt.get("candidateVerdict") or "")
+        if verdict == "candidate_terminal_decode_observed":
+            return RoutingDecision(
+                mode="deterministic_advisor",
+                reason="the exact blocking-native origin-priority strategy already executed on the same provider bytes and reached terminal decoded video; repeating the same candidate would add no information",
+                target_layer="core",
+                strategy="validate_native_origin_priority_across_causal_family_before_promotion",
+                prior_confidence=0.98,
+                requires_llm=False,
+                allowed_mutations=[],
+                next_actions=[
+                    "do not rerun the same provider/host-order candidate on unchanged bytes",
+                    "select a sibling provider with the same blocking-native 5xx -> alternate 2xx -> HLS 2xx causal signature",
+                    "run the same candidate-only mechanism on that representative and persist its verdict",
+                    "promote the generic Core/ProviderBase mechanism only after representative family success",
+                    "after promotion rematerialize production bytes and require fresh official TV decoded content, audio and non-regression before calling it repaired",
+                ],
+            )
+        if verdict in {
+            "candidate_extraction_improved_reader_unverified",
+            "candidate_reader_healthy_decode_unverified",
+        }:
+            return RoutingDecision(
+                mode="llm_diagnose",
+                reason="the exact V29 candidate already executed and advanced extraction/reader state but did not prove decoded video; repeat origin ordering is exhausted and the remaining frontier is player delivery/decoding",
+                target_layer="client",
+                strategy="diagnose_post_origin_priority_reader_frontier",
+                prior_confidence=0.94,
+                requires_llm=True,
+                allowed_mutations=[],
+                next_actions=[
+                    "do not rerun the same V29 candidate on unchanged provider bytes",
+                    "inspect terminal media handoff, headers, audio tracks and player decode state from the executed candidate",
+                    "separate Core extraction success from client/player decode failure",
+                    "generate the next owner-level experiment only after the reader frontier is discriminated",
+                ],
+            )
+        if verdict == "candidate_runtime_nonempty_unconfirmed_extraction":
+            return RoutingDecision(
+                mode="probe",
+                reason="the candidate runtime returned data but sanitized extraction evidence did not confirm it; fix observability before changing repair strategy",
+                target_layer="harness",
+                strategy="repair_native_candidate_extraction_observability",
+                prior_confidence=0.93,
+                requires_llm=False,
+                allowed_mutations=[],
+                next_actions=[
+                    "do not rerun V29 until exact runtime result and sanitized extraction observation agree",
+                    "repair the diagnostic bridge without weakening production validation",
+                    "replay the same candidate once after observability is fixed",
+                ],
+            )
+        if verdict in {"candidate_integrity_failure", "candidate_not_executed"}:
+            return RoutingDecision(
+                mode="probe",
+                reason="the previous V29 attempt did not produce an authoritative exact-byte execution verdict; repair candidate execution integrity before any strategy retry",
+                target_layer="harness",
+                strategy="repair_native_candidate_execution_integrity",
+                prior_confidence=0.95,
+                requires_llm=False,
+                allowed_mutations=[],
+                next_actions=[
+                    "inspect exact staged-byte attestation, PluginManager execution marker and restoration marker",
+                    "fix runner/harness integrity without editing provider JS",
+                    "retry only after the candidate oracle can prove exact execution",
+                ],
+            )
+        return RoutingDecision(
+            mode="llm_diagnose",
+            reason="the exact V29 origin-priority candidate already executed on unchanged provider bytes without terminal decode; the deterministic strategy is exhausted and Brain must change causal strategy",
+            target_layer="core",
+            strategy="change_native_origin_strategy_after_executed_failure",
+            prior_confidence=0.96,
+            requires_llm=True,
+            allowed_mutations=[],
+            next_actions=[
+                "do not regenerate the same preferred/deprioritized host order on unchanged provider bytes",
+                "use the persisted negative verdict to choose a different Core/client/network discriminator",
+                "retain exact source/provider-byte provenance for the next candidate",
+                "require terminal decoded content and audio before any promotion",
             ],
         )
 

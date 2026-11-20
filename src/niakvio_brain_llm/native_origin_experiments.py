@@ -23,8 +23,8 @@ def _official_tv_rows(request: RepairRequest) -> list[dict[str, Any]]:
     return rows
 
 
-def native_blocking_origin_priority_experiment(request: RepairRequest) -> dict[str, Any]:
-    """Build candidate-only origin ordering from exact official native evidence."""
+def _native_blocking_origin_priority_candidate(request: RepairRequest) -> dict[str, Any]:
+    """Build the causal candidate before applying executed-experiment memory."""
     for row in _official_tv_rows(request):
         if not (
             row.get("appSelected") is True
@@ -131,3 +131,83 @@ def native_blocking_origin_priority_experiment(request: RepairRequest) -> dict[s
             ).hexdigest()
             return payload
     return {}
+
+
+def _matching_native_origin_attempt(
+    request: RepairRequest, candidate: dict[str, Any],
+) -> dict[str, Any]:
+    history = (request.provider_context or {}).get("native_candidate_experiment_history")
+    if not isinstance(history, list) or not candidate:
+        return {}
+    for row in reversed(history[-8:]):
+        if not isinstance(row, dict):
+            continue
+        if (
+            row.get("providerId") != candidate.get("providerId")
+            or row.get("providerArtifactSha256") != candidate.get("providerArtifactSha256")
+            or row.get("runtimeScope") != candidate.get("runtimeScope")
+            or row.get("preferredHosts") != candidate.get("preferredHosts")
+            or row.get("deprioritizedHosts") != candidate.get("deprioritizedHosts")
+            or row.get("evidencePattern") != candidate.get("evidencePattern")
+            or row.get("candidateOnly") is not True
+            or row.get("generatedByBrain") is not True
+            or any(row.get(flag) is not False for flag in (
+                "proofAuthority", "publicationAuthority",
+                "nativePlaybackAuthority", "providerMutationAuthority",
+            ))
+        ):
+            continue
+        attempts = row.get("candidateAttempts")
+        if not isinstance(attempts, list):
+            continue
+        for attempt in reversed(attempts[-8:]):
+            if not isinstance(attempt, dict):
+                continue
+            verdict = str(attempt.get("candidateVerdict") or "")
+            if verdict not in {
+                "candidate_integrity_failure",
+                "candidate_not_executed",
+                "candidate_zero_stream",
+                "candidate_runtime_nonempty_unconfirmed_extraction",
+                "candidate_extraction_improved_reader_unverified",
+                "candidate_reader_healthy_decode_unverified",
+                "candidate_terminal_decode_observed",
+            }:
+                continue
+            return {
+                "candidateRunId": str(attempt.get("candidateRunId") or ""),
+                "candidateSourceSha": str(attempt.get("candidateSourceSha") or ""),
+                "candidateJsSha256": str(attempt.get("candidateJsSha256") or ""),
+                "candidateExecutionObserved": attempt.get("candidateExecutionObserved") is True,
+                "candidateRuntimeReturnedCount": int(
+                    attempt.get("candidateRuntimeReturnedCount") or 0
+                ),
+                "candidateRestoredObserved": attempt.get("candidateRestoredObserved") is True,
+                "candidateExtractionNonEmpty": attempt.get("candidateExtractionNonEmpty") is True,
+                "candidateTerminalReaderHealthy": attempt.get("candidateTerminalReaderHealthy") is True,
+                "candidateDecodedVideoObserved": attempt.get("candidateDecodedVideoObserved") is True,
+                "candidateFrAudioObserved": attempt.get("candidateFrAudioObserved") is True,
+                "candidateVerdict": verdict,
+                "validatedRepair": attempt.get("validatedRepair") is True,
+                "publicationAllowed": attempt.get("publicationAllowed") is True,
+            }
+    return {}
+
+
+def native_blocking_origin_priority_prior_attempt(request: RepairRequest) -> dict[str, Any]:
+    """Return the prior bounded verdict for this exact causal strategy/bytes."""
+    candidate = _native_blocking_origin_priority_candidate(request)
+    if not candidate:
+        return {}
+    attempt = _matching_native_origin_attempt(request, candidate)
+    if not attempt:
+        return {}
+    return {"candidate": candidate, "attempt": attempt}
+
+
+def native_blocking_origin_priority_experiment(request: RepairRequest) -> dict[str, Any]:
+    """Generate V29 once; executed history must change the next strategy."""
+    candidate = _native_blocking_origin_priority_candidate(request)
+    if not candidate or _matching_native_origin_attempt(request, candidate):
+        return {}
+    return candidate

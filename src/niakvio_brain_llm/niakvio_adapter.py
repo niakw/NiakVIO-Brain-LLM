@@ -959,6 +959,126 @@ def _provider_android_tv_emulator_observations(
     return results
 
 
+_NATIVE_CANDIDATE_VERDICTS = frozenset({
+    "candidate_integrity_failure",
+    "candidate_not_executed",
+    "candidate_zero_stream",
+    "candidate_runtime_nonempty_unconfirmed_extraction",
+    "candidate_extraction_improved_reader_unverified",
+    "candidate_reader_healthy_decode_unverified",
+    "candidate_terminal_decode_observed",
+})
+
+
+def _provider_native_candidate_experiment_history(
+    payload: Any, provider_id: str, *, current_bundle_sha256: str = "",
+) -> list[dict[str, Any]]:
+    """Sanitize executed candidate history for the exact current provider bytes."""
+    if not isinstance(payload, dict) or (
+        payload.get("schemaVersion") != 1
+        or payload.get("authority") != "candidate-only"
+        or payload.get("publicationAuthority") is not False
+        or payload.get("providerMutationAuthority") is not False
+    ):
+        return []
+    digest = str(current_bundle_sha256 or "").strip().casefold()
+    if re.fullmatch(r"[0-9a-f]{64}", digest) is None:
+        return []
+    wanted = _canon(provider_id).replace("_", "-")
+    out: list[dict[str, Any]] = []
+    for row in (payload.get("rows") or [])[:512]:
+        if not isinstance(row, dict):
+            continue
+        provider = _canon(row.get("providerId")).replace("_", "-")
+        preferred = [
+            str(value).strip().casefold().rstrip(".")
+            for value in (row.get("preferredHosts") or [])[:4]
+            if isinstance(value, str)
+            and re.fullmatch(
+                r"(?=.{1,253}$)[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?",
+                value.strip().casefold().rstrip("."),
+            )
+        ]
+        deprioritized = [
+            str(value).strip().casefold().rstrip(".")
+            for value in (row.get("deprioritizedHosts") or [])[:4]
+            if isinstance(value, str)
+            and re.fullmatch(
+                r"(?=.{1,253}$)[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?",
+                value.strip().casefold().rstrip("."),
+            )
+        ]
+        if (
+            provider != wanted
+            or str(row.get("providerArtifactSha256") or "").casefold() != digest
+            or row.get("runtimeScope") != "native-blocking-fetch"
+            or row.get("evidencePattern") != "player-5xx-then-alternate-2xx-then-hls-2xx-near-budget-zero"
+            or row.get("candidateOnly") is not True
+            or row.get("generatedByBrain") is not True
+            or not preferred
+            or not deprioritized
+            or any(row.get(flag) is not False for flag in (
+                "proofAuthority", "publicationAuthority",
+                "nativePlaybackAuthority", "providerMutationAuthority",
+            ))
+        ):
+            continue
+        attempts: list[dict[str, Any]] = []
+        for attempt in (row.get("candidateAttempts") or [])[-8:]:
+            if not isinstance(attempt, dict):
+                continue
+            run_id = str(attempt.get("candidateRunId") or "")
+            source_sha = str(attempt.get("candidateSourceSha") or "").casefold()
+            candidate_sha = str(attempt.get("candidateJsSha256") or "").casefold()
+            verdict = str(attempt.get("candidateVerdict") or "")
+            if (
+                not run_id.isdigit()
+                or re.fullmatch(r"[0-9a-f]{40}", source_sha) is None
+                or re.fullmatch(r"[0-9a-f]{64}", candidate_sha) is None
+                or verdict not in _NATIVE_CANDIDATE_VERDICTS
+            ):
+                continue
+            attempts.append({
+                "candidateRunId": run_id,
+                "candidateSourceSha": source_sha,
+                "candidateJsSha256": candidate_sha,
+                "candidateExecutionObserved": attempt.get("candidateExecutionObserved") is True,
+                "candidateRuntimeReturnedCount": min(
+                    200, max(0, int(attempt.get("candidateRuntimeReturnedCount") or 0))
+                ),
+                "candidateRestoredObserved": attempt.get("candidateRestoredObserved") is True,
+                "candidateExtractionNonEmpty": attempt.get("candidateExtractionNonEmpty") is True,
+                "candidateTerminalReaderHealthy": attempt.get("candidateTerminalReaderHealthy") is True,
+                "candidateDecodedVideoObserved": attempt.get("candidateDecodedVideoObserved") is True,
+                "candidateFrAudioObserved": attempt.get("candidateFrAudioObserved") is True,
+                "candidateVerdict": verdict,
+                "validatedRepair": attempt.get("validatedRepair") is True,
+                "publicationAllowed": attempt.get("publicationAllowed") is True,
+            })
+        if not attempts:
+            continue
+        out.append({
+            "providerId": wanted,
+            "providerArtifactSha256": digest,
+            "runtimeScope": "native-blocking-fetch",
+            "preferredHosts": preferred,
+            "deprioritizedHosts": [
+                host for host in deprioritized if host not in preferred
+            ],
+            "evidencePattern": "player-5xx-then-alternate-2xx-then-hls-2xx-near-budget-zero",
+            "candidateOnly": True,
+            "generatedByBrain": True,
+            "proofAuthority": False,
+            "publicationAuthority": False,
+            "nativePlaybackAuthority": False,
+            "providerMutationAuthority": False,
+            "candidateAttempts": attempts,
+        })
+        if len(out) >= 8:
+            break
+    return out
+
+
 def _provider_waf_observation(
     payload: Any, provider_id: str, *, current_bundle_sha256: str = ""
 ) -> dict[str, Any]:
@@ -1516,6 +1636,9 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
     causal_memory = _load(root / "automation" / "brain-causal-diagnostics-history.json", {})
     user_client_reports = _load(root / "automation" / "user-client-provider-field-observations.json", {})
     android_tv_emulator = _load(root / "automation" / "brain-android-tv-emulator-history.json", {})
+    native_candidate_experiments = _load(
+        root / "automation" / "brain-native-candidate-experiments.json", {}
+    )
     refined = _load(root / "automation" / "provider-repair-batch-refined-latest.json", {})
     current_structure_payload = _load(
         root / "automation" / "provider-current-structure-evidence.json",
@@ -1632,6 +1755,10 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
         android_tv_emulator, provider_id,
         current_bundle_sha256=str(published_bundle.get("sha256") or ""),
         active_manifest_scopes=active_manifest_scopes,
+    )
+    native_candidate_history = _provider_native_candidate_experiment_history(
+        native_candidate_experiments, provider_id,
+        current_bundle_sha256=str(published_bundle.get("sha256") or ""),
     )
     waf_observation = _provider_waf_observation(
         waf, provider_id,
@@ -1788,6 +1915,8 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
         # a recent suffix. Store chronological order consistently here.
         *reversed(force_negative_memory),
     ]
+    if native_candidate_history:
+        provider_context["native_candidate_experiment_history"] = native_candidate_history
     references = build_validated_reference_patterns(
         root,
         provider_id,

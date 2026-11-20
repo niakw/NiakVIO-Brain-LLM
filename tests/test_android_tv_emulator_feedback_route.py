@@ -283,6 +283,141 @@ class AndroidTVRouteLoopTests(unittest.TestCase):
         self.assertEqual(
             script.native_blocking_origin_priority_experiment(blocked_request), {})
 
+    def test_executed_v29_negative_is_not_regenerated(self):
+        from niakvio_brain_llm.contracts import RepairRequest
+        from niakvio_brain_llm.native_origin_experiments import (
+            native_blocking_origin_priority_experiment,
+            native_blocking_origin_priority_prior_attempt,
+        )
+        ledger = self.ledger()
+        row = ledger["rows"][0]
+        row.update({
+            "tvPromiseControl": "bridge_ok",
+            "nativeHardTimeoutObserved": False,
+            "nativeHardTimeoutMs": 0,
+            "nativeExtractionZeroObserved": True,
+            "hlsPlaylist2xxNearProviderBudgetZeroObserved": True,
+            "nativePrePlayerHostOutcomes": [
+                {"kind": "player-page", "sequence": 4, "host": "vidzy.live", "httpStatus": 522},
+                {"kind": "player-page", "sequence": 5, "host": "lplaygo.com", "httpStatus": 200},
+                {"kind": "hls", "sequence": 6, "host": "", "httpStatus": 200},
+            ],
+        })
+        observations = _provider_android_tv_emulator_observations(
+            ledger, "french-manga",
+            current_bundle_sha256=self.digest,
+            active_manifest_scopes=["manifest.json"],
+        )
+        request = RepairRequest(
+            provider_id="french-manga", status="CANDIDATE OK",
+            failure_class="candidate_replay_gap", advisor_only=True,
+            observations=[{"source": "official-android-tv-emulator", "value": x}
+                          for x in observations],
+            provider_context={"native_candidate_experiment_history": [{
+                "providerId": "french-manga",
+                "providerArtifactSha256": self.digest,
+                "runtimeScope": "native-blocking-fetch",
+                "preferredHosts": ["lplaygo.com"],
+                "deprioritizedHosts": ["vidzy.live"],
+                "evidencePattern": "player-5xx-then-alternate-2xx-then-hls-2xx-near-budget-zero",
+                "candidateOnly": True,
+                "generatedByBrain": True,
+                "proofAuthority": False,
+                "publicationAuthority": False,
+                "nativePlaybackAuthority": False,
+                "providerMutationAuthority": False,
+                "candidateAttempts": [{
+                    "candidateRunId": "44670000001",
+                    "candidateSourceSha": "c" * 40,
+                    "candidateJsSha256": "d" * 64,
+                    "candidateExecutionObserved": True,
+                    "candidateRuntimeReturnedCount": 0,
+                    "candidateRestoredObserved": True,
+                    "candidateExtractionNonEmpty": False,
+                    "candidateTerminalReaderHealthy": False,
+                    "candidateDecodedVideoObserved": False,
+                    "candidateFrAudioObserved": False,
+                    "candidateVerdict": "candidate_zero_stream",
+                    "validatedRepair": False,
+                    "publicationAllowed": False,
+                }],
+            }]},
+        )
+        self.assertEqual(native_blocking_origin_priority_experiment(request), {})
+        prior = native_blocking_origin_priority_prior_attempt(request)
+        self.assertEqual(prior["attempt"]["candidateVerdict"], "candidate_zero_stream")
+        decision = route_request(request)
+        self.assertEqual(decision.mode, "llm_diagnose")
+        self.assertEqual(decision.strategy, "change_native_origin_strategy_after_executed_failure")
+        self.assertEqual(decision.allowed_mutations, [])
+        self.assertFalse(any("rerun the same" in step.lower() for step in decision.next_actions))
+
+    def test_executed_v29_terminal_decode_moves_to_family_validation(self):
+        from niakvio_brain_llm.contracts import RepairRequest
+        ledger = self.ledger()
+        row = ledger["rows"][0]
+        row.update({
+            "tvPromiseControl": "bridge_ok",
+            "nativeHardTimeoutObserved": False,
+            "nativeHardTimeoutMs": 0,
+            "nativeExtractionZeroObserved": True,
+            "hlsPlaylist2xxNearProviderBudgetZeroObserved": True,
+            "nativePrePlayerHostOutcomes": [
+                {"kind": "player-page", "sequence": 4, "host": "vidzy.live", "httpStatus": 522},
+                {"kind": "player-page", "sequence": 5, "host": "lplaygo.com", "httpStatus": 200},
+                {"kind": "hls", "sequence": 6, "host": "", "httpStatus": 200},
+            ],
+        })
+        observations = _provider_android_tv_emulator_observations(
+            ledger, "french-manga",
+            current_bundle_sha256=self.digest,
+            active_manifest_scopes=["manifest.json"],
+        )
+        request = RepairRequest(
+            provider_id="french-manga", status="CANDIDATE OK",
+            failure_class="candidate_replay_gap", advisor_only=True,
+            observations=[{"source": "official-android-tv-emulator", "value": x}
+                          for x in observations],
+            provider_context={"native_candidate_experiment_history": [{
+                "providerId": "french-manga",
+                "providerArtifactSha256": self.digest,
+                "runtimeScope": "native-blocking-fetch",
+                "preferredHosts": ["lplaygo.com"],
+                "deprioritizedHosts": ["vidzy.live"],
+                "evidencePattern": "player-5xx-then-alternate-2xx-then-hls-2xx-near-budget-zero",
+                "candidateOnly": True,
+                "generatedByBrain": True,
+                "proofAuthority": False,
+                "publicationAuthority": False,
+                "nativePlaybackAuthority": False,
+                "providerMutationAuthority": False,
+                "candidateAttempts": [{
+                    "candidateRunId": "44670000002",
+                    "candidateSourceSha": "c" * 40,
+                    "candidateJsSha256": "e" * 64,
+                    "candidateExecutionObserved": True,
+                    "candidateRuntimeReturnedCount": 1,
+                    "candidateRestoredObserved": True,
+                    "candidateExtractionNonEmpty": True,
+                    "candidateTerminalReaderHealthy": True,
+                    "candidateDecodedVideoObserved": True,
+                    "candidateFrAudioObserved": True,
+                    "candidateVerdict": "candidate_terminal_decode_observed",
+                    "validatedRepair": False,
+                    "publicationAllowed": False,
+                }],
+            }]},
+        )
+        decision = route_request(request)
+        self.assertEqual(decision.mode, "deterministic_advisor")
+        self.assertEqual(
+            decision.strategy,
+            "validate_native_origin_priority_across_causal_family_before_promotion",
+        )
+        self.assertFalse(decision.requires_llm)
+        self.assertEqual(decision.allowed_mutations, [])
+        self.assertTrue(any("sibling provider" in step for step in decision.next_actions))
+
     def test_historical_other_run_not_rerouted(self):
         for sha, run in ((self.sha, "44520778917"),
                          ("c" * 40, self.native_run_id)):
