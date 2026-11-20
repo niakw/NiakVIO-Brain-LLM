@@ -34,6 +34,9 @@ def example():
     }
     parent = {
         "providerId": "french-manga", "providerArtifactSha256": digest,
+        "sourceNiakvioSha": s, "sourceRunId": "44669003629",
+        "officialClientSha": client, "fixture": "jujutsu-kaisen-s01e01",
+        "requestType": "anime",
         "runtimeScope": "native-blocking-fetch",
         "preferredHosts": ["good.example"], "deprioritizedHosts": ["failed.example"],
         "evidencePattern": "player-5xx-then-alternate-2xx-then-hls-2xx-near-budget-zero",
@@ -111,6 +114,17 @@ def test_v31_source_pinned_negative_and_no_repeat():
     obs["value"]["sameMediaRootSuccessThenForbidden"] = True
     obs["value"]["officialClientSha"] = "9"*40
     assert not native_hls_receipt_dedupe_experiment(request)
+    obs["value"]["officialClientSha"] = "c"*40
+    for key, fake in (
+        ("sourceNiakvioSha", "9"*40),
+        ("sourceRunId", "44669003630"),
+        ("fixture", "different-fixture"),
+        ("requestType", "tv"),
+    ):
+        old_value = obs["value"][key]
+        obs["value"][key] = fake
+        assert not native_hls_receipt_dedupe_experiment(request), key
+        obs["value"][key] = old_value
 
 
 def test_v31_does_not_trigger_without_v30():
