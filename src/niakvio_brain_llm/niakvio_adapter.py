@@ -938,6 +938,13 @@ def _provider_android_tv_emulator_observations(
                     )
                 )
             ],
+            # Typed, source-pinned diagnostic from NiakVIO's official TV log.
+            # A 2xx containing HTML at an expected episodes.js endpoint is not
+            # an executable source, a WAF proof or a provider mutation license.
+            "nativeSourceScriptShapePatterns": [
+                x for x in (row.get("nativeSourceScriptShapePatterns") or [])[:2]
+                if x in {"script_html_2xx", "script_http_missing"}
+            ],
             "playerVideoFormatUnverified": row.get("playerVideoFormatUnverified") is True,
             # Independent network check is NOT the official player network's
             # HTTP status; this permits causal header/WAF investigation only.
