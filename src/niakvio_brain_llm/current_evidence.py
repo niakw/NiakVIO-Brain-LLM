@@ -65,8 +65,15 @@ def current_causal_signatures(live: dict[str, Any] | None) -> dict[str, Any]:
         if type(announced) is int and announced > 0 and failed_count:
             add("announced_player_unresolved")
         media = row.get("media_observation")
-        if isinstance(media, dict) and media.get("signature") in {"mp4", "hls", "mpegts"} and failed_count:
-            add("terminal_media_observed_but_unverified")
+        if isinstance(media, dict) and failed_count:
+            # A URL/MIME hint of raw AAC with observed MPEG-TS bytes is not
+            # a catalogue miss. It points to inspecting generic HLS/Core
+            # rendition validation, not to a provider search/HTML rewrite.
+            # Without exact executed bytes + decode this remains hypothesis.
+            if media.get("advertisedContainer") == "aac" and media.get("signature") == "mpegts":
+                add("hls_audio_container_mismatch_candidate")
+            if media.get("signature") in {"mp4", "hls", "mpegts"}:
+                add("terminal_media_observed_but_unverified")
 
     if not network and failed_count:
         add("no_observed_provider_network")
@@ -81,6 +88,7 @@ def current_causal_signatures(live: dict[str, Any] | None) -> dict[str, Any]:
         "http_origin_rejection_or_throttle": "separate_waf_transport_from_provider_parse",
         "announced_player_unresolved": "trace_player_links_to_terminal_bytes",
         "terminal_media_observed_but_unverified": "inspect_duration_headers_and_identity",
+        "hls_audio_container_mismatch_candidate": "inspect_exact_core_hls_rendition_validator_and_audio_transport_bytes",
         "network_observed_no_terminal_proof": "locate_last_executed_stage_and_parser",
     }
     return {
