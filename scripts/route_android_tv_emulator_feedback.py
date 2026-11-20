@@ -25,6 +25,58 @@ _FIXTURE = re.compile(r"[a-z0-9][a-z0-9-]{0,95}")
 _ALLOWED_MODES = {"probe", "skip", "deterministic", "deterministic_advisor",
                   "llm_diagnose", "llm_repair"}
 _ALLOWED_SCOPES = {"manifest.json", "vf/manifest.json"}
+_MAX_COHORT_OBSERVATIONS = 96
+_MAX_DIAGNOSTIC_REPRESENTATIVES = 12
+# These are evidence-shape groups, NOT proven compatible causal families.
+_DIAGNOSTIC_PRIORITY = (
+    "script_html_2xx", "script_http_missing",
+    "hls_root_2xx_then_403", "hls_playlist_2xx_zero",
+    "player_video_unverified", "player_error",
+    "native_hard_timeout", "promise_delivery_gap",
+    "extraction_zero", "app_not_selected", "other",
+)
+
+
+def _diagnostic_signature(row: dict[str, Any]) -> str:
+    """Group sanitized per-run TV observations without inferring shared causes."""
+    lane = str(row.get("requestType") or "")
+    if lane not in {"movie", "tv", "anime"}:
+        return ""
+    patterns = row.get("nativeSourceScriptShapePatterns")
+    patterns = patterns if isinstance(patterns, list) else []
+    if row.get("appSelected") is False:
+        shape = "app_not_selected"
+    elif "script_html_2xx" in patterns:
+        shape = "script_html_2xx"
+    elif "script_http_missing" in patterns:
+        shape = "script_http_missing"
+    elif row.get("sameMediaRootSuccessThenForbidden") is True:
+        shape = "hls_root_2xx_then_403"
+    elif row.get("hlsPlaylist2xxNearProviderBudgetZeroObserved") is True:
+        shape = "hls_playlist_2xx_zero"
+    elif row.get("playerVideoFormatUnverified") is True:
+        shape = "player_video_unverified"
+    elif isinstance(row.get("playerFailureClasses"), list) and any(
+        x in {"playback_decoder", "playback_http_access", "playback_player_error",
+              "playback_parser", "terminal_media_gap"}
+        for x in row["playerFailureClasses"][:8]
+    ):
+        shape = "player_error"
+    elif row.get("nativeHardTimeoutObserved") is True:
+        shape = "native_hard_timeout"
+    elif row.get("tvPromiseControl") == "promise_delivery_gap":
+        shape = "promise_delivery_gap"
+    elif row.get("nativeExtractionZeroObserved") is True:
+        shape = "extraction_zero"
+    else:
+        shape = "other"
+    return f"{lane}:{shape}"
+
+
+def _diagnostic_priority(signature: str) -> tuple[int, str]:
+    shape = signature.split(":", 1)[-1]
+    return (_DIAGNOSTIC_PRIORITY.index(shape)
+            if shape in _DIAGNOSTIC_PRIORITY else len(_DIAGNOSTIC_PRIORITY), signature)
 
 
 def build(
@@ -48,7 +100,10 @@ def build(
     if not safe:
         raise ValueError("untrusted or unauthorized official TV ledger")
 
-    candidates: list[tuple[str, str]] = []
+    # Retain all 60+ source/run-pinned preflight rows, but route only one
+    # actual current-byte representative per diagnostic signature. A shared
+    # symptom does NOT authorize a sibling patch or prove a shared root cause.
+    groups: dict[str, list[tuple[str, str]]] = {}
     seen: set[tuple[str, str]] = set()
     for row in (ledger.get("rows") or [])[:1400]:
         if not isinstance(row, dict):
@@ -56,9 +111,11 @@ def build(
         provider = str(row.get("provider") or "")
         fixture = str(row.get("fixture") or "")
         key = (provider, fixture)
+        signature = _diagnostic_signature(row)
         if (
             not _ID.fullmatch(provider)
             or not _FIXTURE.fullmatch(fixture)
+            or not signature
             or key in seen
             or row.get("sourceNiakvioSha") != source_sha
             or str(row.get("nativeRunId") or "") != run_id
@@ -69,26 +126,36 @@ def build(
         ):
             continue
         seen.add(key)
-        candidates.append(key)
-        if len(candidates) >= 4:
+        groups.setdefault(signature, []).append(key)
+        if len(seen) >= _MAX_COHORT_OBSERVATIONS:
             break
 
     routes: list[dict[str, Any]] = []
-    for provider, fixture in candidates:
-        request = request_builder(checkout, provider)
-        request.advisor_only = True
-        observed = any(
-            isinstance(obs, dict)
-            and obs.get("source") == "official-android-tv-emulator"
-            and isinstance(obs.get("value"), dict)
-            and obs["value"].get("sourceRunId") == run_id
-            and obs["value"].get("fixture") == fixture
-            and obs["value"].get("historicalOnly") is True
-            and obs["value"].get("providerMutationAuthority") is False
-            for obs in (request.observations or [])
-        )
-        if not observed:
-            # Mismatched manifest, digest or disabled provider: no route.
+    for signature in sorted(groups, key=_diagnostic_priority):
+        if len(routes) >= _MAX_DIAGNOSTIC_REPRESENTATIVES:
+            break
+        # If a record fails exact JS digest/manifest matching, try the next
+        # same-shape member rather than suppressing the entire group.
+        request = None
+        provider = fixture = ""
+        for possible_provider, possible_fixture in groups[signature]:
+            candidate = request_builder(checkout, possible_provider)
+            candidate.advisor_only = True
+            observed = any(
+                isinstance(obs, dict)
+                and obs.get("source") == "official-android-tv-emulator"
+                and isinstance(obs.get("value"), dict)
+                and obs["value"].get("sourceRunId") == run_id
+                and obs["value"].get("fixture") == possible_fixture
+                and obs["value"].get("historicalOnly") is True
+                and obs["value"].get("providerMutationAuthority") is False
+                for obs in (candidate.observations or [])
+            )
+            if observed:
+                request = candidate
+                provider, fixture = possible_provider, possible_fixture
+                break
+        if request is None:
             continue
         decision = router(request)
         candidate_experiment = native_blocking_origin_priority_experiment(request)
@@ -104,6 +171,8 @@ def build(
         routes.append({
             "provider": provider,
             "fixture": fixture,
+            "diagnosticSignature": signature,
+            "sameSignatureObservationCount": len(groups[signature]),
             "mode": mode,
             "targetLayer": layer,
             "strategy": strategy[:95],
@@ -128,6 +197,12 @@ def build(
         "primaryClient": "tv",
         "providerCount": len({row["provider"] for row in routes}),
         "routeCount": len(routes),
+        "preflightObservationCount": len(seen),
+        "preflightDiagnosticSignatureCount": len(groups),
+        "unroutedDiagnosticSignatureCount": max(0, len(groups) - len(routes)),
+        "unroutedPreflightObservationCount": max(
+            0, len(seen) - sum(row["sameSignatureObservationCount"] for row in routes)
+        ),
         "routes": routes,
         "modelExecuted": False,
         "proofAuthority": False,

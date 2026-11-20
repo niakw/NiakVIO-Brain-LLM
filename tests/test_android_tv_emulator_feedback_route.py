@@ -2,6 +2,7 @@
 import json
 import unittest
 from types import SimpleNamespace
+from unittest.mock import patch
 from niakvio_brain_llm.niakvio_adapter import (
     _provider_android_tv_emulator_observations,
     _provider_native_candidate_experiment_history,
@@ -92,6 +93,80 @@ class AndroidTVRouteLoopTests(unittest.TestCase):
         self.assertNotIn("allowed_mutations", json.dumps(result))
         for sensitive in ("token.example", "cookie", "SECRET", "https://"):
             self.assertNotIn(sensitive, json.dumps(result))
+
+    def test_sixty_provider_cohort_routes_one_per_signature_not_first_four(self):
+        seed = self.ledger()["rows"][0]
+        payload = self.ledger()
+        payload["rows"] = []
+        for i in range(60):
+            row = {**seed, "provider": f"cohort{i:02d}",
+                   "nativeSourceScriptShapePatterns": [],
+                   "tvPromiseControl": "bridge_ok",
+                   "nativeHardTimeoutObserved": False,
+                   "rawHtml": "SECRET-CONTENT",
+                   "url": "https://secret.invalid/path?token=PRIVATE"}
+            if i == 58:
+                row["nativeSourceScriptShapePatterns"] = ["script_http_missing"]
+            if i == 59:
+                row["nativeSourceScriptShapePatterns"] = [
+                    "script_http_missing", "script_html_2xx",
+                ]
+            payload["rows"].append(row)
+        # An untrusted 61st row cannot create a new group or claim authority.
+        payload["rows"].append({
+            **payload["rows"][-1], "provider": "forged",
+            "providerMutationAuthority": True,
+        })
+
+        def factory(root, provider):
+            return SimpleNamespace(
+                advisor_only=False,
+                observations=[{
+                    "source": "official-android-tv-emulator",
+                    "value": {
+                        "sourceRunId": self.native_run_id,
+                        "fixture": "jujutsu-kaisen-s01e01",
+                        "historicalOnly": True,
+                        "providerMutationAuthority": False,
+                    },
+                }],
+            )
+
+        def router(request):
+            self.assertTrue(request.advisor_only)
+            return SimpleNamespace(
+                mode="llm_diagnose", target_layer="unknown",
+                strategy="diagnose_source_shape", allowed_mutations=["provider_js"],
+            )
+
+        with patch.object(script, "native_blocking_origin_priority_experiment", return_value={}), \\
+             patch.object(script, "native_hls_root_receipt_experiment", return_value={}), \\
+             patch.object(script, "native_hls_receipt_dedupe_experiment", return_value={}):
+            outcome = script.build(payload, self.sha, self.native_run_id,
+                                   checkout="unused", request_builder=factory,
+                                   router=router)
+        self.assertEqual(outcome["preflightObservationCount"], 60)
+        self.assertEqual(outcome["preflightDiagnosticSignatureCount"], 3)
+        self.assertEqual(outcome["routeCount"], 3)
+        self.assertEqual([x["diagnosticSignature"] for x in outcome["routes"]], [
+            "anime:script_html_2xx", "anime:script_http_missing",
+            "anime:extraction_zero",
+        ])
+        self.assertEqual([x["provider"] for x in outcome["routes"]], [
+            "cohort59", "cohort58", "cohort00",
+        ])
+        self.assertEqual([x["sameSignatureObservationCount"] for x in outcome["routes"]], [
+            1, 1, 58,
+        ])
+        self.assertEqual(outcome["unroutedDiagnosticSignatureCount"], 0)
+        self.assertEqual(outcome["unroutedPreflightObservationCount"], 0)
+        self.assertFalse(outcome["modelExecuted"])
+        self.assertFalse(outcome["providerMutationAuthority"])
+        self.assertTrue(all(x["providerMutationAuthority"] is False
+                            and x["publicationAuthority"] is False
+                            for x in outcome["routes"]))
+        for forbidden in ("SECRET", "PRIVATE", "https://", "forged"):
+            self.assertNotIn(forbidden, json.dumps(outcome))
 
     def test_adapter_drops_malicious_synthetic_control(self):
         rows = _provider_android_tv_emulator_observations(
