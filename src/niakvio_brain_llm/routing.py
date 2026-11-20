@@ -200,9 +200,15 @@ def route_request(
     # PluginRuntime is a stronger *runtime* diagnostic than any one provider
     # count=0. It is not media proof and never authorizes a provider patch.
     official_tv = _official_android_tv_diagnostic(request)
+    # A source-pinned native host/outcome sequence is more discriminating than
+    # the generic awaited-Promise suspicion. Keep a genuinely broken immediate
+    # baseline fail-closed, but do not let the older Promise prior hide an
+    # independently observed player 5xx -> alternate 2xx -> HLS 2xx sequence.
+    origin_priority_experiment = native_blocking_origin_priority_experiment(request)
     if (official_tv.get("appSelected") is True
             and official_tv.get("nativeExtractionZeroObserved") is True
-            and official_tv.get("tvPromiseControl") == "promise_delivery_gap"):
+            and official_tv.get("tvPromiseControl") == "promise_delivery_gap"
+            and not origin_priority_experiment):
         return RoutingDecision(
             mode="llm_diagnose",
             reason="official Android TV synthetic immediate result succeeded but awaited Promise control did not; provider stream zero cannot be attributed to provider JS",
@@ -262,7 +268,6 @@ def route_request(
             ],
         )
 
-    origin_priority_experiment = native_blocking_origin_priority_experiment(request)
     if origin_priority_experiment:
         return RoutingDecision(
             mode="deterministic_advisor",
