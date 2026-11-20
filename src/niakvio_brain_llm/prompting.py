@@ -428,6 +428,107 @@ def compact_document(
         "_document_score": row.get("_document_score"),
     }
 
+def _source_contract_prompt_witness(request: RepairRequest) -> dict[str, Any]:
+    """Reserve one native-attested CI source shape through all prompt shrinking.
+
+    It is *diagnostic only*, not a verified catalogue, player or mutation.
+    A forged standalone independent row cannot enter the LLM prompt.
+    """
+    observations = request.observations if isinstance(request.observations, list) else []
+    native = []
+    for obs in observations[:16]:
+        if not isinstance(obs, dict) or obs.get("source") != "official-android-tv-emulator":
+            continue
+        value = obs.get("value")
+        if not isinstance(value, dict):
+            continue
+        if (value.get("client") != "tv"
+                or value.get("historicalOnly") is not True
+                or value.get("appSelected") is not True
+                or value.get("readerEvidenceComplete") is not True
+                or value.get("nativeExtractionZeroObserved") is not True
+                or any(value.get(flag) is not False for flag in (
+                    "proofAuthority", "publicationAuthority",
+                    "nativePlaybackAuthority", "providerMutationAuthority"
+                ))):
+            continue
+        native.append(value)
+
+    for obs in observations[:16]:
+        if not isinstance(obs, dict) or obs.get("source") != "independent-catalogue-source-probe":
+            continue
+        value = obs.get("value")
+        if not isinstance(value, dict):
+            continue
+        digest = str(value.get("currentProviderArtifactSha256") or "")
+        native_run = str(value.get("nativeParentRunId") or "")
+        native_sha = str(value.get("nativeParentSourceSha") or "")
+        fixture = str(value.get("fixture") or "")
+        scope = str(value.get("manifestScope") or "")
+        slug = str(value.get("catalogueSlugUnverified") or "")
+        probe_run = str(value.get("probeRunId") or "")
+        if (value.get("source") != "independent-ci-source-shape"
+                or value.get("independentNetworkNotOfficialClient") is not True
+                or value.get("historicalOnly") is not True
+                or value.get("catalogueIdentityVerified") is not False
+                or value.get("episodeIdentityVerified") is not False
+                or value.get("sourceContractVerifiedOnOfficialTv") is not False
+                or any(value.get(flag) is not False for flag in (
+                    "proofAuthority", "publicationAuthority",
+                    "nativePlaybackAuthority", "providerMutationAuthority"
+                ))
+                or not re.fullmatch(r"[0-9a-f]{64}", digest)
+                or not re.fullmatch(r"[0-9a-f]{40}", native_sha)
+                or not re.fullmatch(r"[0-9]{8,20}", native_run)
+                or not re.fullmatch(r"[0-9]{8,20}", probe_run)
+                or not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,125}", slug)):
+            continue
+        if not any(
+            v.get("sourceRunId") == native_run
+            and v.get("sourceNiakvioSha") == native_sha
+            and v.get("providerArtifactSha256") == digest
+            and v.get("fixture") == fixture
+            and v.get("manifestScope") == scope
+            and any(x in {"script_html_2xx", "script_http_missing"}
+                    for x in v.get("nativeSourceScriptShapePatterns") or [])
+            for v in native
+        ):
+            continue
+        for row in (value.get("sourceObservations") or [])[:3]:
+            if not isinstance(row, dict):
+                continue
+            host = str(row.get("originHost") or "")
+            if (not re.fullmatch(
+                r"(?=.{1,253}$)[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?", host
+            ) or row.get("seasonSourceShape") != "catalogue_inline_token_episode"
+                    or type(row.get("seasonPageStatus")) is not int
+                    or row["seasonPageStatus"] != 200
+                    or row.get("inlineTokenSeasonObserved") is not True):
+                continue
+            return {
+                "source": "independent-ci-source-contract-read-only",
+                "officialParentRunId": native_run,
+                "independentProbeRunId": probe_run,
+                "catalogueSlugUnverified": slug,
+                "observedOriginHostUnverified": host,
+                "seasonHtmlShape": "catalogue_inline_token_episode",
+                "legacyJsStatus": (
+                    row.get("legacyScriptStatus")
+                    if type(row.get("legacyScriptStatus")) is int
+                    and 100 <= row.get("legacyScriptStatus") <= 599
+                    else 0
+                ),
+                "sourceContractVerifiedOnOfficialTv": False,
+                "catalogueIdentityVerified": False,
+                "episodeIdentityVerified": False,
+                "proofAuthority": False,
+                "publicationAuthority": False,
+                "nativePlaybackAuthority": False,
+                "providerMutationAuthority": False,
+            }
+    return {}
+
+
 def build_prompt_payload(
     request: RepairRequest,
     experiences: list[dict[str, Any]],
@@ -474,7 +575,9 @@ def build_prompt_payload(
         experience_text_limit = 420 if high_confidence else 600
         document_text_limit = 650 if high_confidence else 900
 
+    source_contract_witness = _source_contract_prompt_witness(request)
     payload = {
+        **({"source_contract_witness": source_contract_witness} if source_contract_witness else {}),
         "request": compact_request(
             request,
             high_confidence=high_confidence,
