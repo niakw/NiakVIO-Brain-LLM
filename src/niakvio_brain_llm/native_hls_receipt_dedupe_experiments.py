@@ -20,6 +20,22 @@ from .native_origin_experiments import (
 SHA40 = re.compile(r"[a-f0-9]{40}")
 SHA64 = re.compile(r"[a-f0-9]{64}")
 RUN = re.compile(r"[0-9]{8,20}")
+def _same_official_source(parent: dict[str, Any], original: dict[str, Any]) -> bool:
+    """A candidate negative is reusable only on the exact original TV source.
+
+    An unchanged provider JS digest cannot bind a changed native client SHA,
+    fixture, request type or historical run. This prevents cross-client
+    promotion and repeated candidate generation from an unrelated replay.
+    """
+    return all(
+        str(parent.get(key) or "") == str(original.get(key) or "")
+        for key in (
+            "providerId", "providerArtifactSha256", "sourceNiakvioSha",
+            "sourceRunId", "officialClientSha", "fixture", "requestType",
+        )
+    )
+
+
 KEYS = (
     "experimentType", "providerId", "fixture", "requestType",
     "sourceNiakvioSha", "sourceRunId", "providerArtifactSha256",
@@ -78,8 +94,7 @@ def native_hls_receipt_dedupe_experiment(request: RepairRequest) -> dict[str, An
     candidates: list[tuple[dict[str, Any], dict[str, Any]]] = []
     for parent in ledger_rows[-8:]:
         if not isinstance(parent, dict) or (
-            parent.get("providerId") != original.get("providerId")
-            or parent.get("providerArtifactSha256") != original.get("providerArtifactSha256")
+            not _same_official_source(parent, original)
             or parent.get("runtimeScope") != "native-blocking-fetch"
         ):
             continue
@@ -185,8 +200,7 @@ def native_hls_receipt_dedupe_positive_result(request: RepairRequest) -> dict[st
     matched = []
     for parent in ledger[-8:]:
         if not isinstance(parent, dict) or (
-            parent.get("providerId") != original.get("providerId")
-            or parent.get("providerArtifactSha256") != original.get("providerArtifactSha256")
+            not _same_official_source(parent, original)
             or parent.get("runtimeScope") != "native-blocking-fetch"
         ):
             continue
