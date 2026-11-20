@@ -10,7 +10,7 @@
     "diagnosis": {"type": "string"},
     "strategy": {"type": "string"},
     "mutation_scopes": {"type": "array", "items": {"type": "string"}},
-    "result": {"enum": ["validated", "failed", "abstained"]},
+    "result": {"enum": ["validated", "failed", "inconclusive", "abstained"]},
     "lesson": {"type": "string"}
   },
   "additionalProperties": true
