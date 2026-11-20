@@ -316,21 +316,6 @@ def route_request(
                     "generate the next owner-level experiment only after the reader frontier is discriminated",
                 ],
             )
-        if verdict == "candidate_runtime_nonempty_unconfirmed_extraction":
-            return RoutingDecision(
-                mode="probe",
-                reason="the candidate runtime returned data but sanitized extraction evidence did not confirm it; fix observability before changing repair strategy",
-                target_layer="harness",
-                strategy="repair_native_candidate_extraction_observability",
-                prior_confidence=0.93,
-                requires_llm=False,
-                allowed_mutations=[],
-                next_actions=[
-                    "do not rerun V29 until exact runtime result and sanitized extraction observation agree",
-                    "repair the diagnostic bridge without weakening production validation",
-                    "replay the same candidate once after observability is fixed",
-                ],
-            )
         if (
             official_tv.get("sameMediaRootSuccessThenForbidden") is True
             and verdict in {
@@ -353,6 +338,25 @@ def route_request(
                     "strip private proof bodies and never persist signed media URLs or tokens",
                     "generate a candidate-only Core experiment, rematerialize exact bytes and replay the same official TV fixture",
                     "require terminal decoded correct content and French/multitrack audio before any promotion",
+                ],
+            )
+
+        # Prefer an independent, source-pinned HLS replay signature when present.
+        # Without that evidence, a nonempty runtime/empty extraction remains a
+        # harness-observability issue; neither diagnosis grants mutation authority.
+        if verdict == "candidate_runtime_nonempty_unconfirmed_extraction":
+            return RoutingDecision(
+                mode="probe",
+                reason="the candidate runtime returned data but sanitized extraction evidence did not confirm it; fix observability before changing repair strategy",
+                target_layer="harness",
+                strategy="repair_native_candidate_extraction_observability",
+                prior_confidence=0.93,
+                requires_llm=False,
+                allowed_mutations=[],
+                next_actions=[
+                    "do not rerun V29 until exact runtime result and sanitized extraction observation agree",
+                    "repair the diagnostic bridge without weakening production validation",
+                    "replay the same candidate once after observability is fixed",
                 ],
             )
 
