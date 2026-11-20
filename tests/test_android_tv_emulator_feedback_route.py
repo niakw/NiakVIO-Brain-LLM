@@ -41,6 +41,8 @@ class AndroidTVRouteLoopTests(unittest.TestCase):
                 "quickJsReturned": 0,
                 "nativeExtractionZeroObserved": True,
                 "sameMediaRootSuccessThenForbidden": False,
+                "hlsPlaylist2xxNearProviderBudgetZeroObserved": False,
+                "nativePrePlayerHostOutcomes": [],
                 "tvPromiseControl": "promise_delivery_gap",
                 "nativeHardTimeoutObserved": True,
                 "nativeHardTimeoutMs": 25000,
@@ -208,6 +210,54 @@ class AndroidTVRouteLoopTests(unittest.TestCase):
             route_request(req).strategy,
             "trace_tv_hls_403_headers_client_fetch_and_decoded_video",
         )
+
+
+    def test_source_pinned_player_host_order_generates_candidate_only_brain_experiment(self):
+        from niakvio_brain_llm.contracts import RepairRequest
+        ledger = self.ledger()
+        row = ledger["rows"][0]
+        row.update({
+            "nativeExtractionZeroObserved": True,
+            "hlsPlaylist2xxNearProviderBudgetZeroObserved": True,
+            "nativePrePlayerHostOutcomes": [
+                {"kind": "player-page", "sequence": 4, "host": "vidzy.live", "httpStatus": 522},
+                {"kind": "player-page", "sequence": 5, "host": "lplaygo.com", "httpStatus": 200},
+                {"kind": "hls", "sequence": 6, "host": "", "httpStatus": 200},
+            ],
+        })
+        def factory(root, provider):
+            rows = _provider_android_tv_emulator_observations(
+                ledger, provider, current_bundle_sha256=self.digest,
+                active_manifest_scopes=["manifest.json"],
+            )
+            return RepairRequest(
+                provider_id=provider, status="CANDIDATE OK",
+                failure_class="candidate_replay_gap", advisor_only=True,
+                observations=[{"source": "official-android-tv-emulator", "value": x} for x in rows],
+            )
+        result = script.build(
+            ledger, self.sha, self.native_run_id,
+            checkout="unused", request_builder=factory,
+        )
+        self.assertEqual(result["routeCount"], 1)
+        route = result["routes"][0]
+        self.assertEqual(route["mode"], "deterministic_advisor")
+        self.assertEqual(route["targetLayer"], "core")
+        experiment = route["candidateExperiment"]
+        self.assertEqual(experiment["experimentType"], "native-blocking-player-origin-priority")
+        self.assertEqual(experiment["preferredHosts"], ["lplaygo.com"])
+        self.assertEqual(experiment["deprioritizedHosts"], ["vidzy.live"])
+        self.assertEqual(experiment["providerArtifactSha256"], self.digest)
+        self.assertEqual(experiment["sourceNiakvioSha"], self.sha)
+        self.assertEqual(experiment["sourceRunId"], self.native_run_id)
+        self.assertTrue(experiment["generatedByBrain"])
+        self.assertTrue(experiment["candidateOnly"])
+        for flag in ("proofAuthority", "publicationAuthority",
+                     "nativePlaybackAuthority", "providerMutationAuthority"):
+            self.assertFalse(experiment[flag])
+        wire = json.dumps(result)
+        for sensitive in ("https://", "token=", "Cookie", "Authorization"):
+            self.assertNotIn(sensitive, wire)
 
     def test_historical_other_run_not_rerouted(self):
         for sha, run in ((self.sha, "44520778917"),

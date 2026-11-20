@@ -15,6 +15,7 @@ from typing import Any, Callable
 
 from niakvio_brain_llm.niakvio_adapter import request_from_checkout
 from niakvio_brain_llm.routing import route_request
+from niakvio_brain_llm.native_origin_experiments import native_blocking_origin_priority_experiment
 
 _SHA40 = re.compile(r"[0-9a-f]{40}")
 _ID = re.compile(r"[a-z0-9][a-z0-9-]{0,95}")
@@ -88,6 +89,7 @@ def build(
             # Mismatched manifest, digest or disabled provider: no route.
             continue
         decision = router(request)
+        candidate_experiment = native_blocking_origin_priority_experiment(request)
         mode = str(getattr(decision, "mode", ""))
         if mode not in _ALLOWED_MODES:
             mode = "probe"
@@ -110,6 +112,7 @@ def build(
             "providerMutationAuthority": False,
             "publicationAuthority": False,
             "nativePlaybackAuthority": False,
+            **({"candidateExperiment": candidate_experiment} if candidate_experiment else {}),
         })
     return {
         "schemaVersion": 1,

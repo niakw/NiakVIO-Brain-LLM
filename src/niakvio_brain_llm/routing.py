@@ -5,6 +5,7 @@ from typing import Any
 
 from .contracts import RepairRequest
 from .advisor_experiments import next_advisor_experiment
+from .native_origin_experiments import native_blocking_origin_priority_experiment
 from .policy import NO_MUTATION_STRATEGIES, build_mutation_policy
 from .priors import build_causal_prior
 from .retrieval import ExperienceStore
@@ -258,6 +259,25 @@ def route_request(
                 "strip private proof bodies before provider output and retain fail-closed terminal sanitizer ownership",
                 "rematerialize affected provider bundles from the shared Core pipeline instead of editing one provider",
                 "replay exact official TV client and require returned stream, decoded correct content and audio before publication",
+            ],
+        )
+
+    origin_priority_experiment = native_blocking_origin_priority_experiment(request)
+    if origin_priority_experiment:
+        return RoutingDecision(
+            mode="deterministic_advisor",
+            reason="official Android TV source-pinned ordering observed a player-page 5xx, a different player-page 2xx and subsequent HLS 2xx before a near-budget zero result; candidate-only native blocking origin ordering is causally testable",
+            target_layer="core",
+            strategy="prioritize_native_blocking_player_origin_from_observed_outcome",
+            prior_confidence=0.96,
+            requires_llm=False,
+            allowed_mutations=[],
+            next_actions=[
+                "compile the Brain-generated host ordering into candidate ProviderBase data only",
+                "scope ordering to blocking native fetch and leave Node/browser ordering unchanged",
+                "rematerialize exact provider bytes and replay the same official Android TV fixture",
+                "require returned terminal media, decoded correct episode and French audio before promotion",
+                "persist negative result and do not promote this prior if the preferred host no longer reaches terminal media",
             ],
         )
 

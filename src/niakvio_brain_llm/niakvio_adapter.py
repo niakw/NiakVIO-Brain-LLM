@@ -873,6 +873,8 @@ def _provider_android_tv_emulator_observations(
             "fixture": fixture,
             "requestType": lane,
             "sourceRunId": str(row["nativeRunId"]),
+            "sourceNiakvioSha": str(row.get("sourceNiakvioSha") or "").lower(),
+            "providerArtifactSha256": digest,
             # Exact official NuvioTV commit, separate from the NiakVIO JS SHA
             # and from an unverified user-installed APK version. Old receipts
             # without this field stay historical and are never backfilled.
@@ -913,6 +915,29 @@ def _provider_android_tv_emulator_observations(
             # HLS 2xx plus a completed 0 near 25s indicates an unresolved
             # Core/ProviderBase/runtime budget possibility, never ownership proof.
             "hlsPlaylist2xxNearProviderBudgetZeroObserved": row.get("hlsPlaylist2xxNearProviderBudgetZeroObserved") is True,
+            "nativePrePlayerHostOutcomes": [
+                {
+                    "kind": str(value.get("kind") or ""),
+                    "sequence": value.get("sequence"),
+                    "host": str(value.get("host") or "").strip().lower(),
+                    "httpStatus": value.get("httpStatus"),
+                }
+                for value in (row.get("nativePrePlayerHostOutcomes") or [])[:12]
+                if isinstance(value, dict)
+                and value.get("kind") in {"player-page", "hls"}
+                and type(value.get("sequence")) is int and 1 <= value.get("sequence") <= 999
+                and type(value.get("httpStatus")) is int and 200 <= value.get("httpStatus") <= 599
+                and (
+                    (value.get("kind") == "hls" and str(value.get("host") or "") == "")
+                    or (
+                        value.get("kind") == "player-page"
+                        and re.fullmatch(
+                            r"(?=.{1,253}$)[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?",
+                            str(value.get("host") or "").strip().lower(),
+                        )
+                    )
+                )
+            ],
             "playerVideoFormatUnverified": row.get("playerVideoFormatUnverified") is True,
             # Independent network check is NOT the official player network's
             # HTTP status; this permits causal header/WAF investigation only.
