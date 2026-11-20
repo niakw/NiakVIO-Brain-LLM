@@ -2,7 +2,10 @@
 import json
 import unittest
 from types import SimpleNamespace
-from niakvio_brain_llm.niakvio_adapter import _provider_android_tv_emulator_observations
+from niakvio_brain_llm.niakvio_adapter import (
+    _provider_android_tv_emulator_observations,
+    _provider_native_candidate_experiment_history,
+)
 from niakvio_brain_llm.routing import route_request
 
 # Exercise the exact workflow-facing adapter without a heavyweight model.
@@ -417,6 +420,62 @@ class AndroidTVRouteLoopTests(unittest.TestCase):
         self.assertFalse(decision.requires_llm)
         self.assertEqual(decision.allowed_mutations, [])
         self.assertTrue(any("sibling provider" in step for step in decision.next_actions))
+
+    def test_candidate_verdict_memory_is_exact_byte_scoped_and_sanitized(self):
+        payload = {
+            "schemaVersion": 1,
+            "authority": "candidate-only",
+            "publicationAuthority": False,
+            "providerMutationAuthority": False,
+            "rows": [{
+                "providerId": "french-manga",
+                "providerArtifactSha256": self.digest,
+                "runtimeScope": "native-blocking-fetch",
+                "preferredHosts": ["lplaygo.com"],
+                "deprioritizedHosts": ["vidzy.live"],
+                "evidencePattern": "player-5xx-then-alternate-2xx-then-hls-2xx-near-budget-zero",
+                "candidateOnly": True,
+                "generatedByBrain": True,
+                "proofAuthority": False,
+                "publicationAuthority": False,
+                "nativePlaybackAuthority": False,
+                "providerMutationAuthority": False,
+                "candidateAttempts": [{
+                    "candidateRunId": "44670000003",
+                    "candidateSourceSha": "c" * 40,
+                    "candidateJsSha256": "d" * 64,
+                    "candidateExecutionObserved": True,
+                    "candidateRuntimeReturnedCount": 1,
+                    "candidateRestoredObserved": True,
+                    "candidateExtractionNonEmpty": True,
+                    "candidateTerminalReaderHealthy": False,
+                    "candidateDecodedVideoObserved": False,
+                    "candidateFrAudioObserved": False,
+                    "candidateVerdict": "candidate_extraction_improved_reader_unverified",
+                    "validatedRepair": False,
+                    "publicationAllowed": False,
+                    "url": "https://private.example/do-not-leak?token=SECRET",
+                }],
+            }],
+        }
+        rows = _provider_native_candidate_experiment_history(
+            payload, "french-manga", current_bundle_sha256=self.digest,
+        )
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["preferredHosts"], ["lplaygo.com"])
+        self.assertEqual(
+            rows[0]["candidateAttempts"][0]["candidateVerdict"],
+            "candidate_extraction_improved_reader_unverified",
+        )
+        wire = json.dumps(rows)
+        for sensitive in ("https://", "private.example", "token=", "SECRET", "url"):
+            self.assertNotIn(sensitive, wire)
+        self.assertEqual(
+            _provider_native_candidate_experiment_history(
+                payload, "french-manga", current_bundle_sha256="e" * 64,
+            ),
+            [],
+        )
 
     def test_historical_other_run_not_rerouted(self):
         for sha, run in ((self.sha, "44520778917"),
