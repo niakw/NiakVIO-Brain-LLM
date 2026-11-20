@@ -504,6 +504,10 @@ def media_observation(value, prefix_limit=65536):
     }
     result = {key: value[key] if isinstance(value.get(key), str) and value[key] in allowed else default
               for key, (allowed, default) in enums.items()}
+    # Backward-compatible sparse structural extension: do not add an unknown
+    # placeholder to historical media observations or exact-shape controls.
+    if result.get('advertisedContainer') == 'unknown':
+        result.pop('advertisedContainer', None)
     result['durationSeconds'] = count(value.get('durationSeconds'), 1209600) \
         if type(value.get('durationSeconds')) is int else None
     result['bytesSampled'] = count(value.get('bytesSampled'), prefix_limit)
