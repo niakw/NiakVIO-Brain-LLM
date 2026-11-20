@@ -224,6 +224,7 @@ class AndroidTVRouteLoopTests(unittest.TestCase):
             "nativeHardTimeoutObserved": False,
             "nativeHardTimeoutMs": 0,
             "nativeExtractionZeroObserved": True,
+            "sameMediaRootSuccessThenForbidden": True,
             "hlsPlaylist2xxNearProviderBudgetZeroObserved": True,
             "nativePrePlayerHostOutcomes": [
                 {"kind": "player-page", "sequence": 4, "host": "vidzy.live", "httpStatus": 522},
@@ -249,6 +250,10 @@ class AndroidTVRouteLoopTests(unittest.TestCase):
         route = result["routes"][0]
         self.assertEqual(route["mode"], "deterministic_advisor")
         self.assertEqual(route["targetLayer"], "core")
+        self.assertEqual(
+            route["strategy"],
+            "prioritize_native_blocking_player_origin_from_observed_outcome",
+        )
         experiment = route["candidateExperiment"]
         self.assertEqual(experiment["experimentType"], "native-blocking-player-origin-priority")
         self.assertEqual(experiment["preferredHosts"], ["lplaygo.com"])

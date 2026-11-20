@@ -257,6 +257,8 @@ def route_request(
     if (
         official_tv.get("appSelected") is True
         and official_tv.get("sameMediaRootSuccessThenForbidden") is True
+        and not origin_priority_prior
+        and not origin_priority_experiment
     ):
         return RoutingDecision(
             mode="llm_diagnose",
