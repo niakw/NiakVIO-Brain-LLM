@@ -117,6 +117,22 @@ class ExperienceStore:
                 seen.add(identity)
                 rows.append(value)
 
+        # Later evidence may invalidate an earlier causal attribution while
+        # retaining that historical record for audit. A row declaring `supersedes`
+        # removes only those older experience ids from active RAG; raw JSONL keeps
+        # both records, so failures and reasoning history remain inspectable.
+        superseded: set[str] = set()
+        for row in rows:
+            for value in row.get("supersedes") or []:
+                candidate = str(value or "").strip()
+                if candidate:
+                    superseded.add(candidate)
+        if superseded:
+            rows = [
+                row for row in rows
+                if str(row.get("experience_id") or "").strip() not in superseded
+            ]
+
         return cls(rows)
 
     def same_provider_structured_priors(

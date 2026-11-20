@@ -70,12 +70,25 @@ class LearningTests(unittest.TestCase):
         policy = classify_learning_record(record)
         self.assertEqual(policy["rag_bucket"], "transient")
         self.assertFalse(policy["sft_candidate"])
-        retrieval = ExperienceStore.from_jsonl(root / "data/experience.jsonl").search({
+        self.assertEqual(
+            record["superseded_by"],
+            "official-tv-purstream-v35-compose-track-observer-gap-20261120",
+        )
+        store = ExperienceStore.from_jsonl(root / "data/experience.jsonl")
+        self.assertNotIn(record["experience_id"], {
+            row.get("experience_id") for row in store.rows
+        })
+        retrieval = store.search({
             "provider_id": "purstream",
             "failure_class": "media_validation_gap",
-            "signals": ["player_audio_tracks_0"],
+            "signals": ["player_audio_tracks_0_observer_ambiguous"],
         }, limit=1)
-        self.assertEqual(retrieval[0]["experience_id"], record["experience_id"])
+        self.assertEqual(
+            retrieval[0]["experience_id"],
+            "official-tv-purstream-v35-compose-track-observer-gap-20261120",
+        )
+        self.assertEqual(retrieval[0]["target_layer"], "harness_observation")
+        self.assertFalse(retrieval[0]["proof_authority"])
         encoded = json.dumps(record)
         self.assertNotIn("http://", encoded)
         self.assertNotIn("https://", encoded)
