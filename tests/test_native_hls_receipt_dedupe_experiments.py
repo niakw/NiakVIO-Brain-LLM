@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import unittest
 
 from niakvio_brain_llm.contracts import RepairRequest
 from niakvio_brain_llm.native_hls_receipt_experiments import native_hls_root_receipt_experiment
@@ -198,3 +199,16 @@ def test_v31_decoded_candidate_routes_to_evidence_not_replaying_v30():
     follow["sourceNiakvioSha"]=old
     observed["value"]["sameMediaRootSuccessThenForbidden"]=False
     assert native_hls_receipt_dedupe_positive_result(request) == {}
+
+# Brain LLM CI uses python -m unittest discover, not pytest. Register the
+# contract functions as unittest methods so a green job cannot silently omit
+# the source-pinned V31 generation, no-repeat and positive-transition gates.
+class TestNativeHlsReceiptDedupeV31(unittest.TestCase):
+    def test_negative_to_generated_plan(self):
+        test_v31_source_pinned_negative_and_no_repeat()
+
+    def test_missing_v30_does_not_generate(self):
+        test_v31_does_not_trigger_without_v30()
+
+    def test_positive_to_validation_frontier(self):
+        test_v31_decoded_candidate_routes_to_evidence_not_replaying_v30()
