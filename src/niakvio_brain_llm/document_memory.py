@@ -52,6 +52,41 @@ def chunk_markdown(text: str, *, path: str, authority: int, role: str) -> list[d
     flush()
     return chunks
 
+# Only these bounded, native-source-pinned *diagnostic* enum values can affect
+# document retrieval. Never vectorize arbitrary HTTP bodies, signed URLs,
+# site text, tokens or user supplied failure explanations.
+SOURCE_SCRIPT_SHAPES = frozenset({"script_http_missing", "script_html_2xx"})
+
+
+def _source_script_shapes(query: dict[str, Any]) -> tuple[str, ...]:
+    observations = query.get("observations")
+    if not isinstance(observations, list):
+        return ()
+    found: set[str] = set()
+    for item in observations[:16]:
+        if not isinstance(item, dict) or item.get("source") != "official-android-tv-emulator":
+            continue
+        value = item.get("value")
+        if not isinstance(value, dict):
+            continue
+        if (value.get("client") != "tv"
+                or value.get("historicalOnly") is not True
+                or value.get("appSelected") is not True
+                or value.get("readerEvidenceComplete") is not True
+                or value.get("nativeExtractionZeroObserved") is not True
+                or any(value.get(flag) is not False for flag in (
+                    "proofAuthority", "publicationAuthority",
+                    "nativePlaybackAuthority", "providerMutationAuthority"
+                ))):
+            continue
+        patterns = value.get("nativeSourceScriptShapePatterns")
+        if not isinstance(patterns, list):
+            continue
+        found.update(pattern for pattern in patterns[:2]
+                     if isinstance(pattern, str) and pattern in SOURCE_SCRIPT_SHAPES)
+    return tuple(sorted(found))
+
+
 class DocumentStore:
     def __init__(self, rows: list[dict[str, Any]]):
         self.rows = rows
@@ -96,9 +131,12 @@ class DocumentStore:
         failure = str(query.get("failure_class") or "").casefold()
         status = str(query.get("status") or "").casefold()
         supported = " ".join(str(x) for x in query.get("supported_types") or [])
-        # Retrieval is based on problem values only. JSON field names such as
-        # provider_id/failure_class are not semantic evidence.
-        qv = _tokens(" ".join(part for part in (provider, failure, status, supported) if part))
+        source_shapes = () if private_only else _source_script_shapes(query)
+        # Only immutable enum strings, not the source HTTP body or any freeform
+        # observation, can shape RAG search for source-contract hypotheses.
+        qv = _tokens(" ".join(part for part in (
+            provider, failure, status, supported, *source_shapes
+        ) if part))
 
         scored = []
         for row, vector in zip(self.rows, self._vectors):
@@ -146,11 +184,30 @@ class DocumentStore:
             key=lambda item: (item[0], item[1], item[2]),
             reverse=True,
         )
+        selected = ranked[:limit]
+        # Source-contract docs have a reserved diagnostic slot only when the
+        # exact current provider and typed native response shape both appear
+        # in that *trusted imported* doc. This prevents MEMORY.md/census
+        # repetition from crowding out the actual family schema during LLM
+        # diagnosis. It is read-only context, never a mutation authority.
+        if source_shapes and not private_only and limit > 0:
+            scoped = next((
+                entry for entry in ranked
+                if entry[3].get("role") == "source_contract_reference"
+                and provider in set(_tokens(str(entry[3].get("heading") or "")
+                                             + "\n" + str(entry[3].get("text") or "")))
+                and any(shape in (
+                    str(entry[3].get("heading") or "") + "\n"
+                    + str(entry[3].get("text") or "")
+                ).casefold() for shape in source_shapes)
+            ), None)
+            if scoped is not None and scoped not in selected:
+                selected = [*ranked[:limit - 1], scoped]
         return [
             dict(
                 row,
                 _document_score=round(score, 4),
                 _document_relevance=round(relevance, 4),
             )
-            for score, relevance, _, row in ranked[:limit]
+            for score, relevance, _, row in selected
         ]

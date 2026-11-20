@@ -72,6 +72,11 @@
       "role": "repair_docs"
     },
     {
+      "glob": "docs/brain-oracle-*.md",
+      "authority": 88,
+      "role": "source_contract_reference"
+    },
+    {
       "glob": "docs/**/*.md",
       "authority": 50,
       "role": "technical_docs"
