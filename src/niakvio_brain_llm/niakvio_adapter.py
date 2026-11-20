@@ -1057,6 +1057,58 @@ def _provider_native_candidate_experiment_history(
             })
         if not attempts:
             continue
+        # Only exact V30 follow-up SHA/run results are visible to V31 Brain.
+        # Never pass raw native logs, playlist bodies or signed HLS URLs.
+        v30_followups: list[dict[str, Any]] = []
+        v31_fingerprints: list[str] = []
+        for child in (row.get("candidateFollowUpExperiments") or [])[:8]:
+            if not isinstance(child, dict):
+                continue
+            fingerprint = str(child.get("experimentFingerprint") or "")
+            if not re.fullmatch(r"[a-f0-9]{64}", fingerprint):
+                continue
+            if child.get("providerId") != provider or child.get("providerArtifactSha256") != digest:
+                continue
+            if any(child.get(flag) is not False for flag in (
+                "proofAuthority", "publicationAuthority",
+                "nativePlaybackAuthority", "providerMutationAuthority",
+            )):
+                continue
+            kind = child.get("experimentType")
+            if kind == "native-hls-master-receipt-dedupe-v31":
+                v31_fingerprints.append(fingerprint)
+            if kind != "native-hls-master-receipt-v30":
+                continue
+            safe_attempts = []
+            for attempt in (child.get("candidateAttempts") or [])[-8:]:
+                if not isinstance(attempt, dict):
+                    continue
+                run = str(attempt.get("candidateRunId") or "")
+                source = str(attempt.get("candidateSourceSha") or "")
+                bundle = str(attempt.get("candidateJsSha256") or "")
+                if not (re.fullmatch(r"[0-9]{8,20}", run)
+                        and re.fullmatch(r"[a-f0-9]{40}", source)
+                        and re.fullmatch(r"[a-f0-9]{64}", bundle)):
+                    continue
+                safe_attempts.append({
+                    "candidateExperimentType": attempt.get("candidateExperimentType"),
+                    "candidateRunId": run, "candidateSourceSha": source,
+                    "candidateJsSha256": bundle,
+                    "candidateVerdict": attempt.get("candidateVerdict"),
+                    "candidateExecutionObserved": attempt.get("candidateExecutionObserved") is True,
+                    "candidateRestoredObserved": attempt.get("candidateRestoredObserved") is True,
+                    "candidateDecodedVideoObserved": attempt.get("candidateDecodedVideoObserved") is True,
+                    "validatedRepair": attempt.get("validatedRepair") is True,
+                    "publicationAllowed": attempt.get("publicationAllowed") is True,
+                })
+            v30_followups.append({
+                "experimentType": kind,
+                "experimentFingerprint": fingerprint,
+                "priorCandidateRunId": str(child.get("priorCandidateRunId") or ""),
+                "priorCandidateSourceSha": str(child.get("priorCandidateSourceSha") or ""),
+                "priorCandidateJsSha256": str(child.get("priorCandidateJsSha256") or ""),
+                "candidateAttempts": safe_attempts,
+            })
         out.append({
             "providerId": wanted,
             "providerArtifactSha256": digest,
@@ -1073,6 +1125,8 @@ def _provider_native_candidate_experiment_history(
             "nativePlaybackAuthority": False,
             "providerMutationAuthority": False,
             "candidateAttempts": attempts,
+            "executedHlsReceiptFollowups": v30_followups,
+            "candidateV31ExperimentFingerprints": v31_fingerprints,
             "candidateFollowUpExperimentFingerprints": [
                 str(plan.get("experimentFingerprint"))
                 for plan in (row.get("candidateFollowUpExperiments") or [])[:8]

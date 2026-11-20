@@ -5,6 +5,7 @@ from typing import Any
 
 from .contracts import RepairRequest
 from .advisor_experiments import next_advisor_experiment
+from .native_hls_receipt_dedupe_experiments import native_hls_receipt_dedupe_experiment
 from .native_origin_experiments import (
     native_blocking_origin_priority_experiment,
     native_blocking_origin_priority_prior_attempt,
@@ -207,6 +208,24 @@ def route_request(
     # the generic awaited-Promise suspicion. Keep a genuinely broken immediate
     # baseline fail-closed, but do not let the older Promise prior hide an
     # independently observed player 5xx -> alternate 2xx -> HLS 2xx sequence.
+    dedupe_followup = native_hls_receipt_dedupe_experiment(request)
+    if dedupe_followup:
+        return RoutingDecision(
+            mode="deterministic_advisor",
+            reason="executed/restored V30 still returned zero streams after exact HLS 200->403; shared ProviderBase first-wins playback-key dedupe can discard a later verified master receipt",
+            target_layer="core",
+            strategy="preserve_hls_receipt_across_playback_key_dedupe",
+            prior_confidence=0.91,
+            requires_llm=False,
+            allowed_mutations=[],
+            next_actions=[
+                "compile only the Brain-owned V31 generic same-key HLS receipt preservation experiment",
+                "do not replay V29 or V30 on unchanged provider bytes",
+                "preserve original stream metadata and language/readers when deduplicating",
+                "retain strict independent child playlists/segments and terminal sanitizer",
+                "test exact rematerialized bytes in official NuvioTV, require correct decoded episode and audio before any promotion",
+            ],
+        )
     origin_priority_prior = native_blocking_origin_priority_prior_attempt(request)
     origin_priority_experiment = (
         {} if origin_priority_prior

@@ -17,6 +17,7 @@ from niakvio_brain_llm.niakvio_adapter import request_from_checkout
 from niakvio_brain_llm.routing import route_request
 from niakvio_brain_llm.native_origin_experiments import native_blocking_origin_priority_experiment
 from niakvio_brain_llm.native_hls_receipt_experiments import native_hls_root_receipt_experiment
+from niakvio_brain_llm.native_hls_receipt_dedupe_experiments import native_hls_receipt_dedupe_experiment
 
 _SHA40 = re.compile(r"[0-9a-f]{40}")
 _ID = re.compile(r"[a-z0-9][a-z0-9-]{0,95}")
@@ -92,6 +93,7 @@ def build(
         decision = router(request)
         candidate_experiment = native_blocking_origin_priority_experiment(request)
         followup_core_experiment = native_hls_root_receipt_experiment(request)
+        followup_dedupe_experiment = native_hls_receipt_dedupe_experiment(request)
         mode = str(getattr(decision, "mode", ""))
         if mode not in _ALLOWED_MODES:
             mode = "probe"
@@ -116,6 +118,7 @@ def build(
             "nativePlaybackAuthority": False,
             **({"candidateExperiment": candidate_experiment} if candidate_experiment else {}),
             **({"followupCoreExperiment": followup_core_experiment} if followup_core_experiment else {}),
+            **({"followupCoreDedupeExperiment": followup_dedupe_experiment} if followup_dedupe_experiment else {}),
         })
     return {
         "schemaVersion": 1,
