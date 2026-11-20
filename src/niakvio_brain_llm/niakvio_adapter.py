@@ -966,6 +966,188 @@ def _provider_android_tv_emulator_observations(
     return results
 
 
+_CATALOGUE_SHAPES = frozenset({
+    "catalogue_inline_token_episode", "script_html_2xx",
+    "script_http_missing", "legacy_external_episode_javascript",
+    "unknown_response_shape",
+})
+_CATALOGUE_CAUSAL_HYPOTHESES = frozenset({
+    "catalogue_search_slug_mismatch_unverified",
+    "catalogue_slug_and_episode_source_contract_drift_candidate_unverified",
+})
+
+
+def _provider_catalogue_source_probe_observations(
+    payload: Any,
+    provider_id: str,
+    *,
+    current_bundle_sha256: str = "",
+    active_manifest_scopes: list[str] | None = None,
+    official_tv_observations: list[dict[str, Any]] | None = None,
+) -> list[dict[str, Any]]:
+    """Join an independent CI source probe to *existing exact-byte* official TV zero.
+
+    A 200 HTML with inline epsN tokens is NOT proof of source identity or
+    playable media. Only bounded enums, hosts and catalogue slugs survive.
+    """
+    if not isinstance(payload, dict) or (
+        payload.get("schemaVersion") != 1
+        or payload.get("authority") != "independent-ci-source-shape-diagnostic-only"
+        or payload.get("primaryClient") != "independent-github-runner-not-official-android-tv"
+        or any(payload.get(key) is not False for key in (
+            "proofAuthority", "publicationAuthority",
+            "nativePlaybackAuthority", "providerMutationAuthority",
+        ))
+    ):
+        return []
+    digest = str(current_bundle_sha256 or "").lower().strip()
+    if not re.fullmatch(r"[0-9a-f]{64}", digest):
+        return []
+    scopes = set(active_manifest_scopes or [])
+    provider = _canon(provider_id).replace("_", "-").replace(" ", "-")
+    native = official_tv_observations or []
+    out: list[dict[str, Any]] = []
+    seen_runs: set[str] = set()
+
+    for row in reversed((payload.get("rows") or [])[-1400:]):
+        if not isinstance(row, dict):
+            continue
+        run = str(row.get("latestProbeRunId") or "")
+        native_run = str(row.get("parentNativeRunId") or "")
+        native_sha = str(row.get("parentNativeNiakvioSha") or "")
+        scope = str(row.get("manifestScope") or "manifest.json")
+        fixture = str(row.get("fixture") or "")
+        observed_sha = str(row.get("parentNativeProviderArtifactSha256") or "")
+        source_sha = str(row.get("latestProbeSourceSha") or "")
+        slug = str(row.get("inputCatalogueSlug") or "")
+        hint_slug = str(row.get("candidateNextSlug") or "")
+        count = row.get("probeRequestCount")
+        inline_count = row.get("inlineTokenResponseCount")
+        if (
+            row.get("providerId") != provider
+            or observed_sha != digest
+            or scope not in scopes
+            or not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,95}", fixture)
+            or not re.fullmatch(r"[0-9]{8,20}", run)
+            or run in seen_runs
+            or not re.fullmatch(r"[0-9]{8,20}", native_run)
+            or not re.fullmatch(r"[a-f0-9]{40}", native_sha)
+            or not re.fullmatch(r"[a-f0-9]{40}", source_sha)
+            or not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,125}", slug)
+            or (hint_slug and not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,125}", hint_slug))
+            or type(count) is not int or not 0 <= count <= 12
+            or type(inline_count) is not int or not 0 <= inline_count <= count
+            or row.get("leadHypothesis") not in _CATALOGUE_CAUSAL_HYPOTHESES
+            or row.get("independentNetworkNotOfficialClient") is not True
+            or any(row.get(key) is not False for key in (
+                "proofAuthority", "publicationAuthority",
+                "nativePlaybackAuthority", "providerMutationAuthority",
+                "sourceContractVerifiedOnOfficialTv",
+                "catalogueIdentityVerified", "episodeIdentityVerified",
+                "candidateMutationAllowed", "generatedByBrain",
+                "modelExecuted", "validatedRepair", "publicationAllowed",
+            ))
+        ):
+            continue
+        # A fake or unrelated CI report cannot be attached by provider name
+        # alone. Require its native parent to be an already-filtered official
+        # observation on the same run, JS bytes, manifest and fixture.
+        if not any(
+            item.get("client") == "tv"
+            and item.get("historicalOnly") is True
+            and item.get("readerEvidenceComplete") is True
+            and item.get("appSelected") is True
+            and item.get("nativeExtractionZeroObserved") is True
+            and item.get("sourceRunId") == native_run
+            and item.get("sourceNiakvioSha") == native_sha
+            and item.get("providerArtifactSha256") == digest
+            and item.get("manifestScope") == scope
+            and item.get("fixture") == fixture
+            and any(shape in {"script_html_2xx", "script_http_missing"}
+                    for shape in item.get("nativeSourceScriptShapePatterns") or [])
+            and all(item.get(key) is False for key in (
+                "proofAuthority", "publicationAuthority",
+                "nativePlaybackAuthority", "providerMutationAuthority",
+            ))
+            for item in native
+            if isinstance(item, dict)
+        ):
+            continue
+        evidence = row.get("evidence")
+        if not isinstance(evidence, list) or not 1 <= len(evidence) <= 3:
+            continue
+        sources = []
+        for item in evidence:
+            if not isinstance(item, dict):
+                continue
+            host = str(item.get("originHost") or "")
+            season_shape = str(item.get("seasonSourceShape") or "")
+            if not re.fullmatch(r"(?=.{1,253}$)[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?", host):
+                continue
+            if season_shape and season_shape not in _CATALOGUE_SHAPES:
+                continue
+            statuses = {}
+            invalid_status = False
+            for key in ("catalogueStatus", "seasonPageStatus", "legacyScriptStatus",
+                        "searchStatus"):
+                raw = item.get(key)
+                if raw is None:
+                    continue
+                if type(raw) is not int or not 0 <= raw <= 599:
+                    invalid_status = True
+                    break
+                statuses[key] = raw
+            if invalid_status:
+                continue
+            sources.append({
+                "originHost": host,
+                **statuses,
+                "seasonSourceShape": season_shape,
+                "inlineTokenSeasonObserved": (
+                    season_shape == "catalogue_inline_token_episode"
+                    and statuses.get("seasonPageStatus") == 200
+                ),
+                "searchLinkCount": (
+                    min(32, item["searchLinkCount"])
+                    if type(item.get("searchLinkCount")) is int
+                    and 0 <= item["searchLinkCount"] <= 32 else 0
+                ),
+            })
+        if not sources:
+            continue
+        seen_runs.add(run)
+        out.append({
+            "source": "independent-ci-source-shape",
+            "primaryClient": "independent-github-runner-not-official-android-tv",
+            "provider": provider,
+            "fixture": fixture,
+            "manifestScope": scope,
+            "nativeParentRunId": native_run,
+            "nativeParentSourceSha": native_sha,
+            "currentProviderArtifactSha256": digest,
+            "probeRunId": run,
+            "probeSourceSha": source_sha,
+            "catalogueSlugUnverified": slug,
+            "candidateNextSlugUnverified": hint_slug,
+            "causalHypothesisUnverified": row["leadHypothesis"],
+            "probeRequestCount": count,
+            "inlineTokenResponseCount": inline_count,
+            "sourceObservations": sources,
+            "historicalOnly": True,
+            "independentNetworkNotOfficialClient": True,
+            "catalogueIdentityVerified": False,
+            "episodeIdentityVerified": False,
+            "sourceContractVerifiedOnOfficialTv": False,
+            "proofAuthority": False,
+            "publicationAuthority": False,
+            "nativePlaybackAuthority": False,
+            "providerMutationAuthority": False,
+        })
+        if len(out) >= 4:
+            break
+    return out
+
+
 _NATIVE_CANDIDATE_VERDICTS = frozenset({
     "candidate_integrity_failure",
     "candidate_not_executed",
@@ -1761,6 +1943,9 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
     causal_memory = _load(root / "automation" / "brain-causal-diagnostics-history.json", {})
     user_client_reports = _load(root / "automation" / "user-client-provider-field-observations.json", {})
     android_tv_emulator = _load(root / "automation" / "brain-android-tv-emulator-history.json", {})
+    catalogue_source_probe = _load(
+        root / "automation" / "brain-catalogue-source-probe-history.json", {},
+    )
     native_candidate_experiments = _load(
         root / "automation" / "brain-native-candidate-experiments.json", {}
     )
@@ -1880,6 +2065,12 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
         android_tv_emulator, provider_id,
         current_bundle_sha256=str(published_bundle.get("sha256") or ""),
         active_manifest_scopes=active_manifest_scopes,
+    )
+    catalogue_source_observations = _provider_catalogue_source_probe_observations(
+        catalogue_source_probe, provider_id,
+        current_bundle_sha256=str(published_bundle.get("sha256") or ""),
+        active_manifest_scopes=active_manifest_scopes,
+        official_tv_observations=android_tv_observations,
     )
     native_candidate_history = _provider_native_candidate_experiment_history(
         native_candidate_experiments, provider_id,
@@ -2064,6 +2255,10 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
             *(
                 [{"source": "official-android-tv-emulator", "value": item}
                  for item in android_tv_observations]
+            ),
+            *(
+                [{"source": "independent-catalogue-source-probe", "value": item}
+                 for item in catalogue_source_observations]
             ),
             *(
                 [{"source": "user-client-field-report", "value": user_client_observation}]
