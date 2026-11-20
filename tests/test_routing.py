@@ -14,6 +14,49 @@ class RoutingTests(unittest.TestCase):
         self.assertEqual(decision.mode, "skip")
         self.assertFalse(decision.requires_llm)
 
+    def test_official_tv_script_200_html_zero_routes_source_family_not_provider_patch(self):
+        base = {
+            "source": "official-android-tv-emulator", "client": "tv",
+            "historicalOnly": True, "appSelected": True,
+            "readerEvidenceComplete": True,
+            "nativeExtractionZeroObserved": True,
+            "nativeSourceScriptShapePatterns": ["script_http_missing", "script_html_2xx"],
+            "tvPromiseControl": "bridge_ok",
+            "proofAuthority": False, "publicationAuthority": False,
+            "nativePlaybackAuthority": False, "providerMutationAuthority": False,
+        }
+
+        def decide(row):
+            return route_request(RepairRequest(
+                provider_id="anime-sama",
+                failure_class="media_extraction_gap",
+                status="REGRESSION PROVIDER",
+                allowed_mutations=["provider_patch", "provider_bloc"],
+                observations=[{"source": "official-android-tv-emulator", "value": row}],
+            ))
+
+        routed = decide(base)
+        self.assertEqual(routed.strategy, "discriminate_catalogue_script_html_vs_missing_source_shape")
+        self.assertEqual(routed.mode, "llm_diagnose")
+        self.assertEqual(routed.target_layer, "unknown")
+        self.assertTrue(routed.requires_llm)
+        self.assertEqual(routed.allowed_mutations, [])
+        self.assertTrue(any("episodes.js" in x for x in routed.next_actions))
+        for changed in (
+            {"nativeSourceScriptShapePatterns": ["script_http_missing"]},
+            {"nativeExtractionZeroObserved": False},
+            {"appSelected": False},
+            {"readerEvidenceComplete": False},
+            {"historicalOnly": False},
+            {"nativePlaybackAuthority": True},
+            {"providerMutationAuthority": True},
+        ):
+            with self.subTest(changed=changed):
+                self.assertNotEqual(
+                    decide({**base, **changed}).strategy,
+                    "discriminate_catalogue_script_html_vs_missing_source_shape",
+                )
+
     def test_official_tv_hard_timeout_is_not_generic_provider_replay(self):
         value = {
             "source": "official-android-tv-emulator", "client": "tv",
