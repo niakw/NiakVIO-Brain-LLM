@@ -18,7 +18,7 @@ from .document_memory import DocumentStore
 from .mutation_guard import validate_mutations
 from .policy import build_mutation_policy
 from .priors import build_causal_prior
-from .prompting import _force_edit_units, _force_source_windows, _force_structural_focus_keywords, _force_window_kwargs_for_request, build_force_prompt_payload, build_prompt_payload, selectable_force_units, rejected_force_unit_hashes
+from .prompting import _force_edit_units, _force_source_windows, _force_structural_focus_keywords, _force_window_kwargs_for_request, build_force_prompt_payload, build_prompt_payload, _source_contract_prompt_witness, selectable_force_units, rejected_force_unit_hashes
 from .retrieval import ExperienceStore
 from .schema import REPAIR_PROPOSAL_SCHEMA, advisor_schema_for, compact_force_schema_for, proposal_schema_for
 from .verification_plan import recommended_tests
@@ -52,6 +52,19 @@ Never return mutations, source text, evidence, tests, URLs, routes, headers, tok
 Keep the high-confidence causal strategy/layer exactly when constrained by schema.
 experiment is the only provider guidance payload: use only the abstract deterministic sandbox knobs allowed by the schema.
 Abstain only if current evidence cannot justify a distinct bounded experiment."""
+
+ADVISOR_SOURCE_CONTRACT_SYSTEM_PROMPT = """NiakVIO Brain source-contract challenger. JSON only.
+Return exactly: provider_id, strategy, confidence, target_layer, experiment, abstain, abstain_reason.
+The top-level source_contract_witness is an independently observed source shape,
+strictly matched to an official Android TV pre-player failure. It is NOT
+client playback, identity, a verified domain, or permission to mutate.
+If it contradicts a high-confidence historical strategy_prior, DO NOT
+copy that old strategy simply because its confidence was high. Re-evaluate
+the causal layer; propose a distinct diagnostic strategy or abstain.
+Never invent URLs, titles, routes, hosts, signed media or token resolvers.
+Return no mutations, code, tests or raw evidence. Treat failed experiments
+as negatives. A new strategy label is NOT executable until a reusable Lego
+is separately compiled, materially tested and validated. Publication=false."""
 
 COMPACT_FORCE_SYSTEM_PROMPT = """NiakVIO Brain Force. JSON only:
 {"edit":<one provider-local edit or null>,"abstain_reason":"<short>"}
@@ -3732,6 +3745,9 @@ class BrainPlanner:
         experiences, documents, causal_prior, mutation_policy, user = self._prepare(
             request, compact_force=compact_force,
         )
+        source_contract_challenge = bool(
+            request.advisor_only and _source_contract_prompt_witness(request)
+        )
         if compact_force:
             try:
                 # The production default retains deterministic-first FORCE.
@@ -3860,6 +3876,7 @@ class BrainPlanner:
                 schema = advisor_schema_for(
                     request.provider_id,
                     causal_prior,
+                    source_contract_challenge=source_contract_challenge,
                 )
             else:
                 schema = (
@@ -3878,7 +3895,12 @@ class BrainPlanner:
                 system=(
                     COMPACT_FORCE_SYSTEM_PROMPT
                     if compact_force
-                    else (ADVISOR_SYSTEM_PROMPT if request.advisor_only else SYSTEM_PROMPT)
+                    else (
+                        ADVISOR_SOURCE_CONTRACT_SYSTEM_PROMPT
+                        if source_contract_challenge
+                        else ADVISOR_SYSTEM_PROMPT if request.advisor_only
+                        else SYSTEM_PROMPT
+                    )
                 ),
                 user=user,
                 response_schema=schema,
@@ -3985,9 +4007,19 @@ class BrainPlanner:
         prior_confidence = float(causal_prior.get("confidence") or 0.0)
         prior_layer = str(causal_prior.get("target_layer") or "unknown")
         prior_strategy = str(causal_prior.get("strategy_prior") or "")
+        source_contract_challenge = bool(
+            request.advisor_only and _source_contract_prompt_witness(request)
+        )
+        if source_contract_challenge:
+            print(
+                "FIELD_BRAIN_ADVISOR_PRIOR_CHALLENGE "
+                f"provider={request.provider_id} source_attested=true "
+                "authority=false mutation=false", flush=True,
+            )
 
         if (
             prior_confidence >= 0.90
+            and not source_contract_challenge
             and prior_layer != "unknown"
             and proposal.target_layer != prior_layer
         ):
@@ -3996,6 +4028,7 @@ class BrainPlanner:
             )
         if (
             prior_confidence >= 0.90
+            and not source_contract_challenge
             and prior_strategy
             and proposal.strategy != prior_strategy
         ):

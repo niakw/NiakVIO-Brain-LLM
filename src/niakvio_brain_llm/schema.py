@@ -206,6 +206,8 @@ REPAIR_PROPOSAL_SCHEMA = {
 def advisor_schema_for(
     provider_id: str,
     causal_prior: dict[str, Any] | None = None,
+    *,
+    source_contract_challenge: bool = False,
 ) -> dict[str, Any]:
     """Minimal guidance-only schema.
 
@@ -234,7 +236,10 @@ def advisor_schema_for(
         "provider_id", "strategy", "confidence", "target_layer",
         "experiment", "abstain", "abstain_reason",
     ]
-    if confidence >= 0.90:
+    # An exact native-parent + independent source-contract witness may
+    # challenge a stale causal prior in ADVISOR mode only. It grants NO
+    # permission to mutate the provider or publish a result.
+    if confidence >= 0.90 and not source_contract_challenge:
         if layer in {"provider", "core", "harness", "network"}:
             properties["target_layer"]["enum"] = [layer]
         if strategy:
