@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from .contracts import RepairRequest
+from .current_evidence import current_causal_signatures
 
 # Project-wide causal taxonomy learned from validated NiakVIO architecture/history.
 # These are failure classes, never provider-specific exceptions.
@@ -278,6 +279,25 @@ def build_causal_prior(
             "source": "targeted_interactive_challenge",
             "strategy_prior": "compare_browser_native_residential_profiles_without_provider_mutation",
         }
+
+    # An exact-current media observation showing a 206 AAC-labelled segment
+    # with MPEG-TS bytes is *not* evidence of a missing catalogue or parser.
+    # Generic "chain-terminal" taxonomy usually routes to provider patches,
+    # but this narrow cross-provider family first requires Core HLS diagnosis.
+    # It is a hypothesis, not proof: no runtime mutation or playback authority.
+    # Current harness/WAF/lifecycle statuses retain higher precedence.
+    if failure in {"chain-terminal-gap", "media-extraction-gap", "route-proven-gap"}:
+        live = (request.provider_context or {}).get("live_runtime_evidence")
+        signatures = current_causal_signatures(live)
+        if "hls_audio_container_mismatch_candidate" in signatures["signals"]:
+            return {
+                "target_layer": "core",
+                "confidence": 0.78,
+                "source": "current_hls_audio_transport_hypothesis",
+                "strategy_prior": "inspect_exact_core_hls_audio_rendition_transport_then_native_replay",
+                "proof_authority": False,
+                "publication_authority": False,
+            }
 
     if static:
         prior = dict(static)
