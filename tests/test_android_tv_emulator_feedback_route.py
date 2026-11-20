@@ -304,6 +304,7 @@ class AndroidTVRouteLoopTests(unittest.TestCase):
             "nativeHardTimeoutObserved": False,
             "nativeHardTimeoutMs": 0,
             "nativeExtractionZeroObserved": True,
+            "sameMediaRootSuccessThenForbidden": True,
             "hlsPlaylist2xxNearProviderBudgetZeroObserved": True,
             "nativePrePlayerHostOutcomes": [
                 {"kind": "player-page", "sequence": 4, "host": "vidzy.live", "httpStatus": 522},
@@ -356,9 +357,10 @@ class AndroidTVRouteLoopTests(unittest.TestCase):
         self.assertEqual(prior["attempt"]["candidateVerdict"], "candidate_zero_stream")
         decision = route_request(request)
         self.assertEqual(decision.mode, "llm_diagnose")
-        self.assertEqual(decision.strategy, "change_native_origin_strategy_after_executed_failure")
+        self.assertEqual(decision.strategy, "reuse_successful_hls_root_across_core_validation")
         self.assertEqual(decision.allowed_mutations, [])
-        self.assertFalse(any("rerun the same" in step.lower() for step in decision.next_actions))
+        self.assertTrue(any("do not rerun" in step.lower() for step in decision.next_actions))
+        self.assertTrue(any("identical hls root" in step.lower() for step in decision.next_actions))
 
     def test_executed_v29_terminal_decode_moves_to_family_validation(self):
         from niakvio_brain_llm.contracts import RepairRequest

@@ -331,6 +331,31 @@ def route_request(
                     "replay the same candidate once after observability is fixed",
                 ],
             )
+        if (
+            official_tv.get("sameMediaRootSuccessThenForbidden") is True
+            and verdict in {
+                "candidate_zero_stream",
+                "candidate_runtime_nonempty_unconfirmed_extraction",
+            }
+        ):
+            return RoutingDecision(
+                mode="llm_diagnose",
+                reason="V29 already executed without terminal decode, while the same source-pinned trace independently observed one HLS root succeed then fail 403; origin ordering is exhausted and duplicate pre-player Core validation is now the stronger unused discriminator",
+                target_layer="core",
+                strategy="reuse_successful_hls_root_across_core_validation",
+                prior_confidence=0.98,
+                requires_llm=True,
+                allowed_mutations=[],
+                next_actions=[
+                    "do not rerun the same V29 host ordering on unchanged provider bytes",
+                    "locate the consecutive Core/media-validation owners that fetch the identical HLS root",
+                    "reuse only the ephemeral successful master response while still validating child playlists and media segments",
+                    "strip private proof bodies and never persist signed media URLs or tokens",
+                    "generate a candidate-only Core experiment, rematerialize exact bytes and replay the same official TV fixture",
+                    "require terminal decoded correct content and French/multitrack audio before any promotion",
+                ],
+            )
+
         if verdict in {"candidate_integrity_failure", "candidate_not_executed"}:
             return RoutingDecision(
                 mode="probe",
