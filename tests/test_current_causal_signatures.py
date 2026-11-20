@@ -6,6 +6,7 @@ import unittest
 from niakvio_brain_llm.current_evidence import current_causal_signatures
 from niakvio_brain_llm.contracts import RepairRequest
 from niakvio_brain_llm.prompting import build_force_prompt_payload
+from niakvio_brain_llm.live_evidence import media_observation, network_evidence
 
 
 class CausalSignaturesContract(unittest.TestCase):
@@ -78,6 +79,57 @@ class CausalSignaturesContract(unittest.TestCase):
         self.assertIn("terminal_media_observed_but_unverified", media["signals"])
         self.assertFalse(media["media_identity_verified"])
         self.assertNotIn("PRIVATE", json.dumps(media))
+
+    def test_ts_wrapped_aac_is_generic_hls_core_hypothesis_not_catalogue_failure(self):
+        live = {
+            "fixture_evidence": [{"fixture": "PRIVATE_TITLE", "streamsPlayable": 0}],
+            "network_evidence": [{
+                "stage": "media", "status": 206,
+                "media_observation": {
+                    "advertisedContainer": "aac", "signature": "mpegts",
+                    "bytesSampled": 62480,
+                    "url": "https://private.invalid/segment-000.aac?token=PRIVATE_TOKEN",
+                },
+            }],
+        }
+        safe = network_evidence(live["network_evidence"])
+        self.assertEqual(safe[0]["media_observation"]["advertisedContainer"], "aac")
+        self.assertNotIn("PRIVATE_TOKEN", json.dumps(safe))
+        signal = current_causal_signatures({**live, "network_evidence": safe})
+        self.assertIn("hls_audio_container_mismatch_candidate", signal["signals"])
+        self.assertIn("terminal_media_observed_but_unverified", signal["signals"])
+        self.assertIn("inspect_exact_core_hls_rendition_validator_and_audio_transport_bytes",
+                      signal["next_evidence"])
+        self.assertFalse(signal["proof_authority"])
+        self.assertFalse(signal["publication_authority"])
+        self.assertFalse(signal["media_identity_verified"])
+        self.assertNotIn("PRIVATE", json.dumps(signal))
+        # A raw AAC segment genuinely carrying ADTS must not take the TS branch.
+        adts = current_causal_signatures({
+            "fixture_evidence": [{"streamsPlayable": 0}],
+            "network_evidence": [{"stage": "media", "status": 206, "media_observation": {
+                "advertisedContainer": "aac", "signature": "hls"}}],
+        })
+        self.assertNotIn("hls_audio_container_mismatch_candidate", adts["signals"])
+        self.assertEqual(media_observation({
+            "advertisedContainer": "https://PRIVATE.invalid/aac?token=PRIVATE",
+            "signature": "mpegts",
+        })["advertisedContainer"], "unknown")
+        request = RepairRequest(
+            provider_id="demo", failure_class="chain_terminal_gap",
+            allowed_mutations=["provider_bloc"],
+            provider_context={
+                "runtimeMutationSource": "function resolve(){return source();}",
+                "runtimeMutationFilename": "providers/demo.js",
+                "live_runtime_evidence": live,
+            },
+        )
+        prompt = build_force_prompt_payload(
+            request, {}, {"allowed_scopes": ["provider_bloc"], "allow_mutations": True},
+        )
+        self.assertIn("hls_audio_container_mismatch_candidate",
+                      prompt["current_causal_signatures"]["signals"])
+        self.assertNotIn("PRIVATE_TOKEN", json.dumps(prompt.get("current_causal_signatures")))
 
     def test_no_fake_failure_when_playback_or_evidence_missing(self):
         self.assertEqual(current_causal_signatures({})["signals"], [])
