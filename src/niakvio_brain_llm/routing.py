@@ -247,6 +247,34 @@ def route_request(
                 "test exact rematerialized bytes in official NuvioTV, require correct decoded episode and audio before any promotion",
             ],
         )
+    # Source-pinned provider-family discriminator, independent of the V29-V31
+    # signed-HLS case. "HTTP 200" is not source validity when episodes.js
+    # returned HTML. This is diagnosis only: schema, slug, protection page and
+    # transport still require independent evidence and no provider mutation.
+    script_shapes = official_tv.get("nativeSourceScriptShapePatterns") or []
+    if (
+        official_tv.get("appSelected") is True
+        and official_tv.get("readerEvidenceComplete") is True
+        and official_tv.get("nativeExtractionZeroObserved") is True
+        and "script_html_2xx" in script_shapes
+    ):
+        return RoutingDecision(
+            mode="llm_diagnose",
+            reason="official Android TV returned a 2xx HTML document at an expected JavaScript episode-source endpoint, with zero extracted streams; HTTP success is not source validity and WAF/slug/domain causes remain unresolved",
+            target_layer="unknown",
+            strategy="discriminate_catalogue_script_html_vs_missing_source_shape",
+            prior_confidence=0.91,
+            requires_llm=True,
+            allowed_mutations=[],
+            next_actions=[
+                "inspect the exact current catalogue family, canonical episode/season identity and source route before editing any provider",
+                "distinguish expected episodes.js resource existence, genuine JavaScript payload, SPA HTML shell and challenge page; never treat 200 as sufficient",
+                "compare announced primary and fallback domains, page referer and discovered content slug with read-only evidence",
+                "propose a reusable Brain source-shape strategy or owned family Lego only after an independent validated representative",
+                "compile and rematerialize an isolated candidate; require official NuvioTV returned streams, correct decoded episode, language/audio and non-regression before promotion",
+            ],
+        )
+
     origin_priority_prior = native_blocking_origin_priority_prior_attempt(request)
     origin_priority_experiment = (
         {} if origin_priority_prior
