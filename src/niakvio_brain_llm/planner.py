@@ -4047,8 +4047,33 @@ class BrainPlanner:
                 try:
                     fingerprint = experiment_fingerprint(proposal.experiment)
                 except (KeyError, TypeError, ValueError) as exc:
-                    raise ValueError("advisor experiment lacks a complete bounded schema") from exc
-                if fingerprint in blocked:
+                    if not source_contract_challenge:
+                        raise ValueError("advisor experiment lacks a complete bounded schema") from exc
+                    # The model may identify a NEW source-contract failure
+                    # without knowing how to express a runnable legacy recipe.
+                    # Retain the hypothesis as diagnostic-only instead of
+                    # dropping it as a plan error. Never fabricate a complete
+                    # experiment or grant provider/publication authority.
+                    proposal.abstain = True
+                    proposal.abstain_reason = (
+                        "native-attested source-contract hypothesis has no "
+                        "bounded executable experiment; requires new family "
+                        "Lego, compilation and official client proof"
+                    )
+                    proposal.experiment = {}
+                    fingerprint = ""
+                    safe_strategy = (
+                        proposal.strategy
+                        if re.fullmatch(r"[a-zA-Z0-9_-]{1,100}", proposal.strategy)
+                        else "sanitized"
+                    )
+                    print(
+                        "FIELD_BRAIN_ADVISOR_SOURCE_HYPOTHESIS_ONLY "
+                        f"provider={request.provider_id} strategy={safe_strategy} "
+                        "experiment_complete=false mutation=false publication=false",
+                        flush=True,
+                    )
+                if fingerprint and fingerprint in blocked:
                     replacement = next_advisor_experiment(request, proposal.strategy)
                     if replacement:
                         selected = experiment_fingerprint(replacement)
