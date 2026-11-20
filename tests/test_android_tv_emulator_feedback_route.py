@@ -139,9 +139,11 @@ class AndroidTVRouteLoopTests(unittest.TestCase):
                 strategy="diagnose_source_shape", allowed_mutations=["provider_js"],
             )
 
-        with patch.object(script, "native_blocking_origin_priority_experiment", return_value={}), \\
-             patch.object(script, "native_hls_root_receipt_experiment", return_value={}), \\
-             patch.object(script, "native_hls_receipt_dedupe_experiment", return_value={}):
+        with (
+            patch.object(script, "native_blocking_origin_priority_experiment", return_value={}),
+            patch.object(script, "native_hls_root_receipt_experiment", return_value={}),
+            patch.object(script, "native_hls_receipt_dedupe_experiment", return_value={}),
+        ):
             outcome = script.build(payload, self.sha, self.native_run_id,
                                    checkout="unused", request_builder=factory,
                                    router=router)
