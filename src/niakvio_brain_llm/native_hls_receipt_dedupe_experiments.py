@@ -138,3 +138,127 @@ def native_hls_receipt_dedupe_experiment(request: RepairRequest) -> dict[str, An
                    sort_keys=True, separators=(",", ":")).encode("ascii")
     ).hexdigest()
     return payload
+
+
+def native_hls_receipt_dedupe_positive_result(request: RepairRequest) -> dict[str, Any]:
+    """Read one exact V31 decoded candidate without treating it as production proof.
+
+    A successful terminal diagnostic changes the *verification frontier*,
+    not the provider's published status. An attempted V31 with 0 streams,
+    wrong source or missing rollback cannot bypass V29/V30 evidence gates.
+    """
+    prior = native_blocking_origin_priority_prior_attempt(request)
+    original = prior.get("candidate") or {}
+    v29 = prior.get("attempt") or {}
+    if not original or not (
+        v29.get("candidateVerdict") == "candidate_zero_stream"
+        and v29.get("candidateExecutionObserved") is True
+        and v29.get("candidateRestoredObserved") is True
+        and v29.get("candidateDecodedVideoObserved") is False
+        and v29.get("validatedRepair") is False
+        and v29.get("publicationAllowed") is False
+    ):
+        return {}
+    witnessed = [
+        row for row in _official_tv_rows(request)
+        if row.get("historicalOnly") is True
+        and row.get("appSelected") is True
+        and row.get("sameMediaRootSuccessThenForbidden") is True
+        and row.get("nativeExtractionZeroObserved") is True
+        and row.get("nativeHardTimeoutObserved") is False
+        and row.get("tvPromiseControl") == "bridge_ok"
+        and all(row.get(key) == original.get(key) for key in (
+            "sourceNiakvioSha", "providerArtifactSha256",
+            "officialClientSha", "fixture", "requestType",
+        ))
+        and str(row.get("sourceRunId") or "") == str(original.get("sourceRunId") or "")
+        and all(row.get(flag) is False for flag in (
+            "proofAuthority", "publicationAuthority",
+            "nativePlaybackAuthority", "providerMutationAuthority",
+        ))
+    ]
+    if len(witnessed) != 1:
+        return {}
+    ledger = (request.provider_context or {}).get("native_candidate_experiment_history")
+    if not isinstance(ledger, list):
+        return {}
+    matched = []
+    for parent in ledger[-8:]:
+        if not isinstance(parent, dict) or (
+            parent.get("providerId") != original.get("providerId")
+            or parent.get("providerArtifactSha256") != original.get("providerArtifactSha256")
+            or parent.get("runtimeScope") != "native-blocking-fetch"
+        ):
+            continue
+        v30_plans = [
+            x for x in (parent.get("executedHlsReceiptFollowups") or [])[:4]
+            if isinstance(x, dict)
+            and x.get("experimentType") == "native-hls-master-receipt-v30"
+            and SHA64.fullmatch(str(x.get("experimentFingerprint") or ""))
+        ]
+        published_fingerprints = set(parent.get("candidateV31ExperimentFingerprints") or [])
+        for child in (parent.get("executedHlsDedupeFollowups") or [])[:8]:
+            if not isinstance(child, dict) or (
+                child.get("experimentType") != "native-hls-master-receipt-dedupe-v31"
+                or not SHA64.fullmatch(str(child.get("experimentFingerprint") or ""))
+                or child.get("experimentFingerprint") not in published_fingerprints
+                or not SHA64.fullmatch(str(child.get("parentExperimentFingerprint") or ""))
+                or any(child.get(key) != original.get(key) for key in (
+                    "sourceNiakvioSha", "officialClientSha", "fixture", "requestType",
+                ))
+                or str(child.get("sourceRunId") or "") != str(original.get("sourceRunId") or "")
+            ):
+                continue
+            parents = [x for x in v30_plans if (
+                x.get("experimentFingerprint") == child.get("parentExperimentFingerprint")
+                and x.get("priorCandidateRunId") == str(v29.get("candidateRunId") or "")
+                and x.get("priorCandidateSourceSha") == v29.get("candidateSourceSha")
+                and x.get("priorCandidateJsSha256") == v29.get("candidateJsSha256")
+            )]
+            if len(parents) != 1:
+                continue
+            v30_results = [
+                x for x in (parents[0].get("candidateAttempts") or [])[-8:]
+                if isinstance(x, dict)
+                and x.get("candidateExperimentType") == "native-hls-master-receipt-v30"
+                and x.get("candidateVerdict") == "candidate_zero_stream"
+                and x.get("candidateExecutionObserved") is True
+                and x.get("candidateRestoredObserved") is True
+                and x.get("candidateDecodedVideoObserved") is False
+                and x.get("validatedRepair") is False
+                and x.get("publicationAllowed") is False
+                and str(x.get("candidateRunId") or "") == child.get("priorCandidateRunId")
+                and x.get("candidateSourceSha") == child.get("priorCandidateSourceSha")
+                and x.get("candidateJsSha256") == child.get("priorCandidateJsSha256")
+            ]
+            if len(v30_results) != 1:
+                continue
+            for attempt in (child.get("candidateAttempts") or [])[-8:]:
+                if not isinstance(attempt, dict) or not (
+                    attempt.get("candidateExperimentType") == child.get("experimentType")
+                    and attempt.get("candidateVerdict") == "candidate_terminal_decode_observed"
+                    and attempt.get("candidateExecutionObserved") is True
+                    and attempt.get("candidateRestoredObserved") is True
+                    and attempt.get("candidateExtractionNonEmpty") is True
+                    and attempt.get("candidateTerminalReaderHealthy") is True
+                    and attempt.get("candidateDecodedVideoObserved") is True
+                    and type(attempt.get("candidateRuntimeReturnedCount")) is int
+                    and 0 < attempt["candidateRuntimeReturnedCount"] <= 200
+                    and attempt.get("validatedRepair") is False
+                    and attempt.get("publicationAllowed") is False
+                    and RUN.fullmatch(str(attempt.get("candidateRunId") or ""))
+                    and SHA40.fullmatch(str(attempt.get("candidateSourceSha") or ""))
+                    and SHA64.fullmatch(str(attempt.get("candidateJsSha256") or ""))
+                ):
+                    continue
+                matched.append({
+                    "experimentFingerprint": child["experimentFingerprint"],
+                    "candidateRunId": str(attempt["candidateRunId"]),
+                    "candidateSourceSha": attempt["candidateSourceSha"],
+                    "candidateJsSha256": attempt["candidateJsSha256"],
+                    "candidateRuntimeReturnedCount": attempt["candidateRuntimeReturnedCount"],
+                    "candidateFrAudioObserved": attempt.get("candidateFrAudioObserved") is True,
+                    "publicationAllowed": False,
+                    "validatedRepair": False,
+                })
+    return matched[0] if len(matched) == 1 else {}

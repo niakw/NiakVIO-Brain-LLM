@@ -5,7 +5,7 @@ import json
 
 from niakvio_brain_llm.contracts import RepairRequest
 from niakvio_brain_llm.native_hls_receipt_experiments import native_hls_root_receipt_experiment
-from niakvio_brain_llm.native_hls_receipt_dedupe_experiments import native_hls_receipt_dedupe_experiment
+from niakvio_brain_llm.native_hls_receipt_dedupe_experiments import native_hls_receipt_dedupe_experiment, native_hls_receipt_dedupe_positive_result
 from niakvio_brain_llm.routing import route_request
 
 
@@ -117,3 +117,84 @@ def test_v31_does_not_trigger_without_v30():
     parent["executedHlsReceiptFollowups"] = []
     assert not native_hls_receipt_dedupe_experiment(request)
     assert route_request(request).strategy != "preserve_hls_receipt_across_playback_key_dedupe"
+
+
+def test_v31_decoded_candidate_routes_to_evidence_not_replaying_v30():
+    request, parent, observed = example()
+    plan = native_hls_receipt_dedupe_experiment(request)
+    parent["candidateV31ExperimentFingerprints"] = [plan["experimentFingerprint"]]
+    a30 = parent["executedHlsReceiptFollowups"][0]["candidateAttempts"][0]
+    good = {
+        "candidateExperimentType": "native-hls-master-receipt-dedupe-v31",
+        "candidateRunId": "44753273273",
+        "candidateSourceSha": "2"*40,
+        "candidateJsSha256": "3"*64,
+        "candidateRuntimeReturnedCount": 2,
+        "candidateVerdict": "candidate_terminal_decode_observed",
+        "candidateExecutionObserved": True,
+        "candidateRestoredObserved": True,
+        "candidateExtractionNonEmpty": True,
+        "candidateTerminalReaderHealthy": True,
+        "candidateDecodedVideoObserved": True,
+        "candidateFrAudioObserved": False,
+        "validatedRepair": False,
+        "publicationAllowed": False,
+    }
+    follow = {
+        "experimentType": plan["experimentType"],
+        "experimentFingerprint": plan["experimentFingerprint"],
+        "parentExperimentFingerprint": plan["parentExperimentFingerprint"],
+        "sourceNiakvioSha": plan["sourceNiakvioSha"],
+        "sourceRunId": str(plan["sourceRunId"]),
+        "officialClientSha": plan["officialClientSha"],
+        "fixture": plan["fixture"],
+        "requestType": plan["requestType"],
+        "priorCandidateRunId": str(a30["candidateRunId"]),
+        "priorCandidateSourceSha": a30["candidateSourceSha"],
+        "priorCandidateJsSha256": a30["candidateJsSha256"],
+        "candidateAttempts": [good],
+    }
+    parent["executedHlsDedupeFollowups"] = [follow]
+    result = native_hls_receipt_dedupe_positive_result(request)
+    assert result["candidateRunId"] == "44753273273"
+    assert result["candidateRuntimeReturnedCount"] == 2
+    assert result["candidateFrAudioObserved"] is False
+    assert result["validatedRepair"] is False
+    assert result["publicationAllowed"] is False
+    assert native_hls_receipt_dedupe_experiment(request) == {}
+    route = route_request(request)
+    assert route.mode == "deterministic_advisor"
+    assert route.target_layer == "core"
+    assert route.strategy == "verify_hls_receipt_dedupe_visual_audio_family_before_promotion"
+    assert route.allowed_mutations == []
+    assert not route.requires_llm
+    assert "correct episode" in " ".join(route.next_actions)
+    # The full positive path is fail-closed across every authority boundary.
+    for key,bad in (
+        ("candidateRestoredObserved", False),
+        ("candidateExecutionObserved", False),
+        ("candidateExtractionNonEmpty", False),
+        ("candidateTerminalReaderHealthy", False),
+        ("candidateDecodedVideoObserved", False),
+        ("candidateRuntimeReturnedCount", 0),
+        ("candidateVerdict", "candidate_zero_stream"),
+        ("publicationAllowed", True),
+        ("validatedRepair", True),
+        ("candidateSourceSha", "bogus"),
+        ("candidateJsSha256", "bad"),
+    ):
+        old=good[key]
+        good[key]=bad
+        assert native_hls_receipt_dedupe_positive_result(request) == {}, key
+        assert route_request(request).strategy != "verify_hls_receipt_dedupe_visual_audio_family_before_promotion", key
+        good[key]=old
+    old=follow["priorCandidateJsSha256"]
+    follow["priorCandidateJsSha256"]="a"*64
+    assert native_hls_receipt_dedupe_positive_result(request) == {}
+    follow["priorCandidateJsSha256"]=old
+    old=follow["sourceNiakvioSha"]
+    follow["sourceNiakvioSha"]="1"*40
+    assert native_hls_receipt_dedupe_positive_result(request) == {}
+    follow["sourceNiakvioSha"]=old
+    observed["value"]["sameMediaRootSuccessThenForbidden"]=False
+    assert native_hls_receipt_dedupe_positive_result(request) == {}

@@ -1061,6 +1061,7 @@ def _provider_native_candidate_experiment_history(
         # Never pass raw native logs, playlist bodies or signed HLS URLs.
         v30_followups: list[dict[str, Any]] = []
         v31_fingerprints: list[str] = []
+        v31_executed: list[dict[str, Any]] = []
         for child in (row.get("candidateFollowUpExperiments") or [])[:8]:
             if not isinstance(child, dict):
                 continue
@@ -1077,6 +1078,59 @@ def _provider_native_candidate_experiment_history(
             kind = child.get("experimentType")
             if kind == "native-hls-master-receipt-dedupe-v31":
                 v31_fingerprints.append(fingerprint)
+                # Forward only typed, bounded *executed* outcomes to Brain.
+                # Neither a success label nor a playlist URL grants promotion
+                # authority. Every V31 result stays anchored to its V30 parent.
+                if (child.get("candidateOnly") is True
+                        and child.get("generatedByBrain") is True
+                        and child.get("modelExecuted") is False
+                        and re.fullmatch(r"[a-f0-9]{64}", str(child.get("parentExperimentFingerprint") or ""))):
+                    v31_attempts: list[dict[str, Any]] = []
+                    for attempt in (child.get("candidateAttempts") or [])[-8:]:
+                        if not isinstance(attempt, dict):
+                            continue
+                        run = str(attempt.get("candidateRunId") or "")
+                        source = str(attempt.get("candidateSourceSha") or "")
+                        bundle = str(attempt.get("candidateJsSha256") or "")
+                        count = attempt.get("candidateRuntimeReturnedCount")
+                        if (not re.fullmatch(r"[0-9]{8,20}", run)
+                                or not re.fullmatch(r"[a-f0-9]{40}", source)
+                                or not re.fullmatch(r"[a-f0-9]{64}", bundle)
+                                or type(count) is not int or not 0 <= count <= 200
+                                or attempt.get("candidateExperimentType") != kind
+                                or attempt.get("candidateVerdict") not in _NATIVE_CANDIDATE_VERDICTS):
+                            continue
+                        v31_attempts.append({
+                            "candidateExperimentType": kind,
+                            "candidateRunId": run,
+                            "candidateSourceSha": source,
+                            "candidateJsSha256": bundle,
+                            "candidateRuntimeReturnedCount": count,
+                            "candidateVerdict": attempt.get("candidateVerdict"),
+                            "candidateExecutionObserved": attempt.get("candidateExecutionObserved") is True,
+                            "candidateRestoredObserved": attempt.get("candidateRestoredObserved") is True,
+                            "candidateExtractionNonEmpty": attempt.get("candidateExtractionNonEmpty") is True,
+                            "candidateTerminalReaderHealthy": attempt.get("candidateTerminalReaderHealthy") is True,
+                            "candidateDecodedVideoObserved": attempt.get("candidateDecodedVideoObserved") is True,
+                            "candidateFrAudioObserved": attempt.get("candidateFrAudioObserved") is True,
+                            "validatedRepair": attempt.get("validatedRepair") is True,
+                            "publicationAllowed": attempt.get("publicationAllowed") is True,
+                        })
+                    if v31_attempts:
+                        v31_executed.append({
+                            "experimentType": kind,
+                            "experimentFingerprint": fingerprint,
+                            "parentExperimentFingerprint": str(child.get("parentExperimentFingerprint")),
+                            "sourceNiakvioSha": str(child.get("sourceNiakvioSha") or ""),
+                            "sourceRunId": str(child.get("sourceRunId") or ""),
+                            "officialClientSha": str(child.get("officialClientSha") or ""),
+                            "fixture": str(child.get("fixture") or ""),
+                            "requestType": str(child.get("requestType") or ""),
+                            "priorCandidateRunId": str(child.get("priorCandidateRunId") or ""),
+                            "priorCandidateSourceSha": str(child.get("priorCandidateSourceSha") or ""),
+                            "priorCandidateJsSha256": str(child.get("priorCandidateJsSha256") or ""),
+                            "candidateAttempts": v31_attempts,
+                        })
             if kind != "native-hls-master-receipt-v30":
                 continue
             safe_attempts = []
@@ -1126,6 +1180,7 @@ def _provider_native_candidate_experiment_history(
             "providerMutationAuthority": False,
             "candidateAttempts": attempts,
             "executedHlsReceiptFollowups": v30_followups,
+            "executedHlsDedupeFollowups": v31_executed,
             "candidateV31ExperimentFingerprints": v31_fingerprints,
             "candidateFollowUpExperimentFingerprints": [
                 str(plan.get("experimentFingerprint"))

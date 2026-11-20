@@ -5,7 +5,7 @@ from typing import Any
 
 from .contracts import RepairRequest
 from .advisor_experiments import next_advisor_experiment
-from .native_hls_receipt_dedupe_experiments import native_hls_receipt_dedupe_experiment
+from .native_hls_receipt_dedupe_experiments import native_hls_receipt_dedupe_experiment, native_hls_receipt_dedupe_positive_result
 from .native_origin_experiments import (
     native_blocking_origin_priority_experiment,
     native_blocking_origin_priority_prior_attempt,
@@ -208,6 +208,27 @@ def route_request(
     # the generic awaited-Promise suspicion. Keep a genuinely broken immediate
     # baseline fail-closed, but do not let the older Promise prior hide an
     # independently observed player 5xx -> alternate 2xx -> HLS 2xx sequence.
+    # An observed decoded V31 candidate changes the next frontier to
+    # visual/audio/identity and sibling validation. Never fall back to the
+    # old V29->V30 route or silently promote candidate bytes.
+    dedupe_positive = native_hls_receipt_dedupe_positive_result(request)
+    if dedupe_positive:
+        return RoutingDecision(
+            mode="deterministic_advisor",
+            reason="source-pinned isolated V31 returned streams and native player reported decoded video; the published provider and visual/audio identity remain unverified",
+            target_layer="core",
+            strategy="verify_hls_receipt_dedupe_visual_audio_family_before_promotion",
+            prior_confidence=0.95,
+            requires_llm=False,
+            allowed_mutations=[],
+            next_actions=[
+                "never regenerate V29/V30/V31 on the same evidence and unchanged source",
+                "obtain a screenshot while the official player is still visible; verify correct episode rather than player telemetry alone",
+                "verify offered and selectable French/Japanese audio tracks; do not infer them from signed HLS master tags or random UI fragments",
+                "replay a bounded source-pinned native baseline and one causally compatible sibling before applying the shared Core mechanism",
+                "require current production materialization and exact SHA-matched non-regression before publication",
+            ],
+        )
     dedupe_followup = native_hls_receipt_dedupe_experiment(request)
     if dedupe_followup:
         return RoutingDecision(
