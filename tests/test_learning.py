@@ -11,7 +11,15 @@ from niakvio_brain_llm.retrieval import ExperienceStore
 class LearningTests(unittest.TestCase):
     def test_hls_partial_native_experience_remains_retrievable_not_accepted(self):
         root = Path(__file__).resolve().parents[1]
-        record = json.loads((root / "data/experience.jsonl").read_text(encoding="utf-8").strip())
+        records = [
+            json.loads(line)
+            for line in (root / "data/experience.jsonl").read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+        record = next(
+            row for row in records
+            if row.get("experience_id") == "official-tv-purstream-core-v20-ts-aac-partial-20261120"
+        )
         schema = json.loads((root / "schemas/experience.schema.json").read_text(encoding="utf-8"))
         self.assertTrue(set(schema["required"]).issubset(record))
         self.assertIn(record["result"], schema["properties"]["result"]["enum"])
@@ -35,6 +43,42 @@ class LearningTests(unittest.TestCase):
         self.assertEqual(retrieval[0]["experience_id"], record["experience_id"])
         self.assertNotIn("http://", json.dumps(record))
         self.assertNotIn("https://", json.dumps(record))
+
+    def test_hls_track_topology_collapse_remains_core_negative_prior(self):
+        root = Path(__file__).resolve().parents[1]
+        records = [
+            json.loads(line)
+            for line in (root / "data/experience.jsonl").read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+        record = next(
+            row for row in records
+            if row.get("experience_id") == "official-tv-purstream-core-v20-track-topology-collapse-20261120"
+        )
+        schema = json.loads((root / "schemas/experience.schema.json").read_text(encoding="utf-8"))
+        self.assertTrue(set(schema["required"]).issubset(record))
+        self.assertEqual(record["result"], "inconclusive")
+        self.assertEqual(record["target_layer"], "core_client_boundary")
+        self.assertFalse(record["proof_authority"])
+        self.assertFalse(record["publication_authority"])
+        self.assertFalse(record["experiment"]["candidateGeneratedByBrain"])
+        self.assertTrue(record["experiment"]["decodedVideoVerified"])
+        self.assertFalse(record["experiment"]["decodedMediaVerified"])
+        self.assertEqual(record["experiment"]["transportAudioTrackCount"], 2)
+        self.assertEqual(record["experiment"]["playerAudioTrackCount"], 0)
+        self.assertEqual(record["experiment"]["transportSubtitleTrackCount"], 1)
+        policy = classify_learning_record(record)
+        self.assertEqual(policy["rag_bucket"], "transient")
+        self.assertFalse(policy["sft_candidate"])
+        retrieval = ExperienceStore.from_jsonl(root / "data/experience.jsonl").search({
+            "provider_id": "purstream",
+            "failure_class": "media_validation_gap",
+            "signals": ["player_audio_tracks_0"],
+        }, limit=1)
+        self.assertEqual(retrieval[0]["experience_id"], record["experience_id"])
+        encoded = json.dumps(record)
+        self.assertNotIn("http://", encoded)
+        self.assertNotIn("https://", encoded)
 
     def test_learning_record_omits_raw_context_and_marks_verifier(self):
         request = RepairRequest(
