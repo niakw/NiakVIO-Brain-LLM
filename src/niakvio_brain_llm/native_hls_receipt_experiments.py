@@ -55,6 +55,9 @@ def native_hls_root_receipt_experiment(request: RepairRequest) -> dict[str, Any]
             and row.get("sourceNiakvioSha") == candidate.get("sourceNiakvioSha")
             and row.get("providerArtifactSha256") == candidate.get("providerArtifactSha256")
             and str(row.get("sourceRunId")) == str(candidate.get("sourceRunId"))
+            and row.get("fixture") == candidate.get("fixture")
+            and row.get("requestType") == candidate.get("requestType")
+            and row.get("officialClientSha") == candidate.get("officialClientSha")
             and all(row.get(flag) is False for flag in (
                 "proofAuthority", "publicationAuthority",
                 "nativePlaybackAuthority", "providerMutationAuthority",
@@ -95,6 +98,18 @@ def native_hls_root_receipt_experiment(request: RepairRequest) -> dict[str, Any]
         "nativePlaybackAuthority": False,
         "providerMutationAuthority": False,
     }
+    # A completed or queued V30 must not become a new V29 parent. The
+    # fingerprint is source-pinned and redacted, never a signed media URL.
+    history = (request.provider_context or {}).get("native_candidate_experiment_history")
+    if isinstance(history, list) and any(
+        isinstance(row, dict)
+        and row.get("providerArtifactSha256") == candidate.get("providerArtifactSha256")
+        and row.get("providerId") == candidate.get("providerId")
+        and (row.get("candidateFollowUpExperimentFingerprints") or [])
+        for row in history
+    ):
+        return {}
+
     payload["experimentFingerprint"] = hashlib.sha256(
         json.dumps(
             {k: payload[k] for k in keys}, sort_keys=True, separators=(",", ":"),

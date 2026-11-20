@@ -93,6 +93,15 @@ def test_v30_uses_exact_negative_and_original_success_then_403():
     for forbidden in ("https://", "vidzy.live", "lplaygo.com", "cookie", "token=", "Authorization"):
         assert forbidden not in wire
 
+    prior["candidateFollowUpExperimentFingerprints"] = ["f" * 64]
+    assert not native_hls_root_receipt_experiment(req), "one V30 plan per source-byte family"
+    prior["candidateFollowUpExperimentFingerprints"] = []
+    obs["fixture"] = "unexpected-episode"
+    assert not native_hls_root_receipt_experiment(req), "fixture must be source-pinned"
+    obs["fixture"] = "jujutsu-kaisen-s01e01"
+    obs["officialClientSha"] = "f" * 40
+    assert not native_hls_root_receipt_experiment(req), "official client SHA must match"
+    obs["officialClientSha"] = "c" * 40
     obs["sameMediaRootSuccessThenForbidden"] = False
     assert not native_hls_root_receipt_experiment(req), "no generic 403 inference"
     obs["sameMediaRootSuccessThenForbidden"] = True

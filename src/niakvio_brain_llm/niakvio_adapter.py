@@ -1073,6 +1073,15 @@ def _provider_native_candidate_experiment_history(
             "nativePlaybackAuthority": False,
             "providerMutationAuthority": False,
             "candidateAttempts": attempts,
+            "candidateFollowUpExperimentFingerprints": [
+                str(plan.get("experimentFingerprint"))
+                for plan in (row.get("candidateFollowUpExperiments") or [])[:8]
+                if isinstance(plan, dict)
+                and plan.get("experimentType") == "native-hls-master-receipt-v30"
+                and re.fullmatch(
+                    r"[0-9a-f]{64}", str(plan.get("experimentFingerprint") or "")
+                )
+            ],
         })
         if len(out) >= 8:
             break
