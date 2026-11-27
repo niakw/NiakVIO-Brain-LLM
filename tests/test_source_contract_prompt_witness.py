@@ -140,6 +140,7 @@ class SourceContractPromptWitnessTests(unittest.TestCase):
         self.assertEqual(witness["resolvedTargetHiddenInputCount"], 2)
         self.assertEqual(witness["resolvedTargetRequestCallCount"], 4)
         self.assertEqual(witness["resolvedTargetRequestDynamicUrlCount"], 2)
+        self.assertEqual(witness["resolvedTargetRequestIdentifierUrlCount"], 1)
         self.assertEqual(witness["resolvedTargetRequestCrossOriginLiteralCount"], 1)
         self.assertTrue(witness["resolvedTargetPostFormObserved"])
         self.assertTrue(witness["resolvedTargetRequestBootstrapObserved"])
