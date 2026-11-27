@@ -47,6 +47,7 @@ for token in (
     'budget_seconds = min(budget_cap, 600)',
     "force_validation_feedback",
     "FIELD_BRAIN_FORCE_SCOPE_FEEDBACK",
+    '"advisor_memory_sources": len(advisor_memory_payloads)',
     "window-local edit in the same scope or abstain",
     "force provider budget exhausted",
     "candidate budget exhausted",

@@ -1482,6 +1482,7 @@ def main() -> int:
         "routing_modes": dict(sorted(routing_modes.items())),
         "ordered_by": "evidence_depth",
         "experience_sources": 1 + len(args.extra_experience),
+        "advisor_memory_sources": len(advisor_memory_payloads),
         "validatedFamilyExperiences": len(family_experiences),
         "familyWaveEnabled": family_wave_enabled,
         "familyWaveInputProviders": len(selected_before_family_wave),
