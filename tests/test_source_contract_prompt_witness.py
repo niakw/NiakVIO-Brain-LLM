@@ -191,13 +191,26 @@ class SourceContractPromptWitnessTests(unittest.TestCase):
                     probe["sourceObservations"][0]["originHost"] = "https://bad.invalid/"
                 elif variant == "unsafe_player_structure":
                     probe["sourceObservations"][0]["resolvedTargetIframeCount"] = 99
-                self.assertEqual(_source_contract_prompt_witness(req), {})
+                witness = _source_contract_prompt_witness(req)
+                if variant == "unsafe_player_structure":
+                    self.assertTrue(witness)
+                    self.assertNotIn("resolvedTargetShape", witness)
+                    self.assertNotIn("resolvedTargetPlayerStructureClass", witness)
+                else:
+                    self.assertEqual(witness, {})
                 payload = build_prompt_payload(
                     req, experiences=[], documents=[],
                     causal_prior={"confidence": 0.91},
                     mutation_policy={"allow_mutations": False},
                 )
-                self.assertNotIn("source_contract_witness", payload)
+                if variant == "unsafe_player_structure":
+                    self.assertIn("source_contract_witness", payload)
+                    self.assertNotIn(
+                        "resolvedTargetPlayerStructureClass",
+                        payload["source_contract_witness"],
+                    )
+                else:
+                    self.assertNotIn("source_contract_witness", payload)
 
 
 if __name__ == "__main__":
