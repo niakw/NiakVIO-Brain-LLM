@@ -16,6 +16,13 @@ def main() -> int:
     parser.add_argument("--niakvio-root", required=True)
     parser.add_argument("--experience", required=True)
     parser.add_argument("--extra-experience", action="append", default=[])
+    parser.add_argument(
+        "--advisor-memory",
+        type=Path,
+        action="append",
+        default=[],
+        help="Additional sanitized NiakVIO negative Learning/Repair memory visible to routing.",
+    )
     parser.add_argument("--mode", choices=("repair", "diagnostic", "brain"), default="repair")
     parser.add_argument("--provider", action="append", default=[])
     parser.add_argument("--allow-disabled-explicit", action="store_true")
@@ -24,6 +31,12 @@ def main() -> int:
     parser.add_argument("--output", required=True)
     parser.add_argument("--summary", required=True)
     args = parser.parse_args()
+    advisor_memory_payloads = []
+    for path in args.advisor_memory:
+        value = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(value, dict):
+            raise ValueError(f"advisor memory must be a JSON object: {path}")
+        advisor_memory_payloads.append(value)
 
     selected = select_batch_targets(
         load_census(args.niakvio_root),
@@ -42,7 +55,11 @@ def main() -> int:
 
     for position, census_row in enumerate(selected, start=1):
         provider = str(census_row["provider"])
-        request = request_from_checkout(args.niakvio_root, provider)
+        request = request_from_checkout(
+            args.niakvio_root,
+            provider,
+            supplemental_memory=advisor_memory_payloads,
+        )
         request.advisor_only = bool(args.advisor_only)
         routing = route_request(request, store)
         modes[routing.mode] += 1
@@ -82,6 +99,7 @@ def main() -> int:
         "llm_targets": llm_targets,
         "llm_needed": llm_targets > 0,
         "experience_sources": 1 + len(args.extra_experience),
+        "advisor_memory_sources": len(advisor_memory_payloads),
     }
     Path(args.summary).write_text(
         json.dumps(summary, indent=2, ensure_ascii=True) + "\n",

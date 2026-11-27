@@ -54,6 +54,9 @@ for token in (
     assert token in src, token
 
 assert 'parser.add_argument("--advisor-only", action="store_true")' in route
+assert '"--advisor-memory"' in route
+assert "supplemental_memory=advisor_memory_payloads" in route
+assert '"advisor_memory_sources": len(advisor_memory_payloads)' in route
 assert "request.advisor_only = bool(args.advisor_only)" in route
 assert "--mode brain \\" in wf
 assert "--advisor-only \\" in wf
