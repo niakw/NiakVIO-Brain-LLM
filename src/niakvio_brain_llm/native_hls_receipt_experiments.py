@@ -3,7 +3,7 @@
 This is a *deterministic* Brain-owned causal experiment selected after an
 actually executed, zero-stream V29 attempt. It does not call a model, patch a
 provider, persist signed URL/headers, certify playback or grant publication.
-The executor must compile the generic Core/ProviderBase Lego on exact bytes.
+The executor must compile the generic Core/ProviderBase Bloc on exact bytes.
 """
 from __future__ import annotations
 
