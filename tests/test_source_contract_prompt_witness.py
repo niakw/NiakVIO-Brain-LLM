@@ -75,6 +75,25 @@ class SourceContractPromptWitnessTests(unittest.TestCase):
                         "tokenResolverJsonObjectObserved": True,
                         "tokenResolverUrlFieldObserved": True,
                         "tokenResolverHttpsUrlObserved": True,
+                        "resolvedTargetStatus": 200,
+                        "resolvedTargetShape": "html_player",
+                        "resolvedTargetDirectMediaObserved": False,
+                        "resolvedTargetPlayerEmbedObserved": True,
+                        "resolvedTargetSameOrigin": False,
+                        "resolvedTargetRedirectObserved": False,
+                        "resolvedTargetPlayerStructureClass": "mixed",
+                        "resolvedTargetIframeCount": 1,
+                        "resolvedTargetVideoTagCount": 0,
+                        "resolvedTargetSourceTagCount": 0,
+                        "resolvedTargetExternalScriptCount": 1,
+                        "resolvedTargetInlineScriptCount": 1,
+                        "resolvedTargetFormCount": 1,
+                        "resolvedTargetHiddenInputCount": 2,
+                        "resolvedTargetPostFormObserved": True,
+                        "resolvedTargetRequestBootstrapObserved": True,
+                        "resolvedTargetPackedScriptObserved": False,
+                        "resolvedTargetBase64DecodeObserved": True,
+                        "resolvedTargetMetaRefreshObserved": False,
                         "rawPlayer": "https://SECRET.invalid/PRIVATE",
                     },
                     {
@@ -114,6 +133,14 @@ class SourceContractPromptWitnessTests(unittest.TestCase):
         self.assertEqual(witness["tokenResolverStatus"], 200)
         self.assertEqual(witness["tokenResolverContract"], "same-origin-api-lien-j-l-v1")
         self.assertTrue(witness["tokenResolverHttpsUrlObserved"])
+        self.assertEqual(witness["resolvedTargetShape"], "html_player")
+        self.assertEqual(witness["resolvedTargetPlayerStructureClass"], "mixed")
+        self.assertEqual(witness["resolvedTargetIframeCount"], 1)
+        self.assertEqual(witness["resolvedTargetFormCount"], 1)
+        self.assertEqual(witness["resolvedTargetHiddenInputCount"], 2)
+        self.assertTrue(witness["resolvedTargetPostFormObserved"])
+        self.assertTrue(witness["resolvedTargetRequestBootstrapObserved"])
+        self.assertTrue(witness["resolvedTargetBase64DecodeObserved"])
         self.assertFalse(witness["sourceContractVerifiedOnOfficialTv"])
         payload = build_prompt_payload(
             request, experiences=[], documents=[],
@@ -136,7 +163,7 @@ class SourceContractPromptWitnessTests(unittest.TestCase):
         for variant in (
             "no_parent", "wrong_parent_run", "wrong_parent_digest",
             "false_app", "unselected", "forged_authority", "fake_shape",
-            "wrong_client", "wrong_slug", "wrong_origin",
+            "wrong_client", "wrong_slug", "wrong_origin", "unsafe_player_structure",
         ):
             with self.subTest(variant=variant):
                 req = copy.deepcopy(original)
@@ -162,6 +189,8 @@ class SourceContractPromptWitnessTests(unittest.TestCase):
                     probe["catalogueSlugUnverified"] = "../secret"
                 elif variant == "wrong_origin":
                     probe["sourceObservations"][0]["originHost"] = "https://bad.invalid/"
+                elif variant == "unsafe_player_structure":
+                    probe["sourceObservations"][0]["resolvedTargetIframeCount"] = 99
                 self.assertEqual(_source_contract_prompt_witness(req), {})
                 payload = build_prompt_payload(
                     req, experiences=[], documents=[],
