@@ -1031,6 +1031,7 @@ def _provider_catalogue_source_probe_observations(
         source_sha = str(row.get("latestProbeSourceSha") or "")
         slug = str(row.get("inputCatalogueSlug") or "")
         hint_slug = str(row.get("candidateNextSlug") or "")
+        effective_slug = slug or hint_slug
         count = row.get("probeRequestCount")
         inline_count = row.get("inlineTokenResponseCount")
         if (
@@ -1043,7 +1044,8 @@ def _provider_catalogue_source_probe_observations(
             or not re.fullmatch(r"[0-9]{8,20}", native_run)
             or not re.fullmatch(r"[a-f0-9]{40}", native_sha)
             or not re.fullmatch(r"[a-f0-9]{40}", source_sha)
-            or not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,125}", slug)
+            or not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,125}", effective_slug)
+            or (slug and not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,125}", slug))
             or (hint_slug and not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,125}", hint_slug))
             or type(count) is not int or not 0 <= count <= 18
             or type(inline_count) is not int or not 0 <= inline_count <= count
@@ -1188,7 +1190,8 @@ def _provider_catalogue_source_probe_observations(
             "currentProviderArtifactSha256": digest,
             "probeRunId": run,
             "probeSourceSha": source_sha,
-            "catalogueSlugUnverified": slug,
+            "catalogueSlugUnverified": effective_slug,
+            "inputCatalogueSlugUnverified": slug,
             "candidateNextSlugUnverified": hint_slug,
             "causalHypothesisUnverified": row["leadHypothesis"],
             "probeRequestCount": count,

@@ -45,7 +45,7 @@ class CatalogueSourceProbeAdapterTests(unittest.TestCase):
             "parentNativeProviderArtifactSha256": self.digest,
             "latestProbeRunId": self.probe_run,
             "latestProbeSourceSha": self.probe_sha,
-            "inputCatalogueSlug": "mushoku-tensei",
+            "inputCatalogueSlug": "",
             "candidateNextSlug": "mushoku-tensei",
             "manifestScope": "manifest.json",
             "probeRequestCount": 13,
@@ -124,6 +124,8 @@ class CatalogueSourceProbeAdapterTests(unittest.TestCase):
         self.assertEqual(value["nativeParentRunId"], self.native_run)
         self.assertEqual(value["probeRunId"], self.probe_run)
         self.assertEqual(value["catalogueSlugUnverified"], "mushoku-tensei")
+        self.assertEqual(value["inputCatalogueSlugUnverified"], "")
+        self.assertEqual(value["candidateNextSlugUnverified"], "mushoku-tensei")
         self.assertEqual(value["inlineTokenResponseCount"], 1)
         self.assertTrue(value["sourceObservations"][0]["inlineTokenSeasonObserved"])
         self.assertEqual(value["tokenResolverProbeCount"], 1)
