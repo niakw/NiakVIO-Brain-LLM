@@ -5,7 +5,7 @@ Thanks for helping improve the Brain behind [NiakVIO](https://github.com/niakw/N
 ## Where help matters
 
 - Better **causal diagnosis** of provider failures, from observed request to terminal media.
-- New reusable Brain strategy/Lego types when a family of failures exhausts existing experiments.
+- New reusable Brain strategy/Bloc types when a family of failures exhausts existing experiments.
 - Reliable observation and evidence ingestion (no fabricated selectors or content identities).
 - Deterministic mutation compilation, sandboxed application, exact-byte rematerialization and replay.
 - Learning/memory that retains both successes and failed proposals without looping forever.
