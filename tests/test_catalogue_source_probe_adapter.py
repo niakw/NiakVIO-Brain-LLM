@@ -165,9 +165,29 @@ class CatalogueSourceProbeAdapterTests(unittest.TestCase):
             "resolvedTargetPlayerEmbedObserved": True,
             "resolvedTargetSameOrigin": False,
             "resolvedTargetRedirectObserved": False,
+            "resolvedTargetPlayerStructureClass": "mixed",
+            "resolvedTargetIframeCount": 1,
+            "resolvedTargetVideoTagCount": 0,
+            "resolvedTargetSourceTagCount": 0,
+            "resolvedTargetExternalScriptCount": 1,
+            "resolvedTargetInlineScriptCount": 1,
+            "resolvedTargetFormCount": 1,
+            "resolvedTargetHiddenInputCount": 2,
+            "resolvedTargetPostFormObserved": True,
+            "resolvedTargetRequestBootstrapObserved": True,
+            "resolvedTargetPackedScriptObserved": False,
+            "resolvedTargetBase64DecodeObserved": True,
+            "resolvedTargetMetaRefreshObserved": False,
         })
         projected = self.project(ledger=ledger)
         self.assertEqual(len(projected), 1)
+        player = projected[0]["sourceObservations"][0]
+        self.assertEqual(player["resolvedTargetPlayerStructureClass"], "mixed")
+        self.assertEqual(player["resolvedTargetIframeCount"], 1)
+        self.assertEqual(player["resolvedTargetFormCount"], 1)
+        self.assertEqual(player["resolvedTargetHiddenInputCount"], 2)
+        self.assertTrue(player["resolvedTargetRequestBootstrapObserved"])
+        self.assertTrue(player["resolvedTargetBase64DecodeObserved"])
         self.assertEqual(
             _refine_failure_from_catalogue_source_targets(
                 "chain_terminal_gap", projected
@@ -196,6 +216,18 @@ class CatalogueSourceProbeAdapterTests(unittest.TestCase):
             ),
             "chain_terminal_gap",
         )
+        unsafe = self.ledger()
+        unsafe_row = unsafe["rows"][0]
+        unsafe_row.update({
+            "probeRequestCount": 14,
+            "resolvedTargetProbeCount": 1,
+            "resolvedTargetDirectMediaCount": 0,
+            "resolvedTargetPlayerPageCount": 1,
+            "leadHypothesis": "catalogue_inline_token_player_target_observed_unresolved",
+        })
+        unsafe_row["evidence"][0].update(row["evidence"][0])
+        unsafe_row["evidence"][0]["resolvedTargetIframeCount"] = 99
+        self.assertEqual(self.project(ledger=unsafe), [])
 
     def test_old_and_new_run_both_remain_visible_not_mutation(self):
         ledger = self.ledger()
