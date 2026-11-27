@@ -17,7 +17,7 @@ TECHNICAL_TERMS = {
     "census", "repair", "brain", "route", "routing", "chain", "candidate",
     "harness", "waf", "antibot", "tmdb", "manifest", "sanitizer",
     "materializer", "materialisation", "materialization", "playback",
-    "identity", "core", "lego", "domain", "api", "scraper", "scraping",
+    "identity", "core", "bloc", "domain", "api", "scraper", "scraping",
     "m3u8", "hls", "mp4", "subtitle", "vf", "vostfr", "anime",
     "github", "workflow", "actions", "tailscale", "network", "transport",
     "provider-overrides", "provider_patches", "learn", "learning",
