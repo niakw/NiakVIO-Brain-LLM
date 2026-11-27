@@ -183,6 +183,10 @@ class CatalogueSourceProbeAdapterTests(unittest.TestCase):
             "resolvedTargetRequestTemplateUrlCount": 1,
             "resolvedTargetRequestConcatUrlCount": 0,
             "resolvedTargetRequestIdentifierUrlCount": 1,
+            "resolvedTargetRequestIdentifierStaticResolvableCount": 0,
+            "resolvedTargetRequestIdentifierUnresolvedCount": 1,
+            "resolvedTargetRequestIdentifierMissingDefinitionCount": 1,
+            "resolvedTargetRequestIdentifierDynamicDefinitionCount": 0,
             "resolvedTargetRequestMemberUrlCount": 0,
             "resolvedTargetRequestCallExpressionUrlCount": 0,
             "resolvedTargetRequestOtherDynamicUrlCount": 1,
@@ -204,6 +208,10 @@ class CatalogueSourceProbeAdapterTests(unittest.TestCase):
         self.assertEqual(player["resolvedTargetRequestCallCount"], 4)
         self.assertEqual(player["resolvedTargetRequestDynamicUrlCount"], 2)
         self.assertEqual(player["resolvedTargetRequestIdentifierUrlCount"], 1)
+        self.assertEqual(player["resolvedTargetRequestIdentifierStaticResolvableCount"], 0)
+        self.assertEqual(player["resolvedTargetRequestIdentifierUnresolvedCount"], 1)
+        self.assertEqual(player["resolvedTargetRequestIdentifierMissingDefinitionCount"], 1)
+        self.assertEqual(player["resolvedTargetRequestIdentifierDynamicDefinitionCount"], 0)
         self.assertEqual(player["resolvedTargetRequestCrossOriginLiteralCount"], 1)
         self.assertTrue(player["resolvedTargetRequestBootstrapObserved"])
         self.assertTrue(player["resolvedTargetBase64DecodeObserved"])
