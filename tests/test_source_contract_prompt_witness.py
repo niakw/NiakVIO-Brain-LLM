@@ -104,6 +104,11 @@ class SourceContractPromptWitnessTests(unittest.TestCase):
                         "resolvedTargetRequestOtherDynamicUrlCount": 1,
                         "resolvedTargetRequestSameOriginLiteralCount": 1,
                         "resolvedTargetRequestCrossOriginLiteralCount": 1,
+            "resolvedTargetRequestStaticCandidateCount": 2,
+            "resolvedTargetRequestStaticSameOriginCount": 1,
+            "resolvedTargetRequestStaticCrossOriginCount": 1,
+            "resolvedTargetRequestStaticMediaIntentCount": 1,
+            "resolvedTargetRequestStaticSameOriginMediaIntentCount": 0,
                         "resolvedTargetPostFormObserved": True,
                         "resolvedTargetRequestBootstrapObserved": True,
                         "resolvedTargetPackedScriptObserved": False,
@@ -157,6 +162,8 @@ class SourceContractPromptWitnessTests(unittest.TestCase):
         self.assertEqual(witness["resolvedTargetRequestDynamicUrlCount"], 2)
         self.assertEqual(witness["resolvedTargetRequestIdentifierUrlCount"], 1)
         self.assertEqual(witness["resolvedTargetRequestCrossOriginLiteralCount"], 1)
+        self.assertEqual(witness["resolvedTargetRequestStaticCandidateCount"], 2)
+        self.assertEqual(witness["resolvedTargetRequestStaticSameOriginMediaIntentCount"], 0)
         self.assertTrue(witness["resolvedTargetPostFormObserved"])
         self.assertTrue(witness["resolvedTargetRequestBootstrapObserved"])
         self.assertTrue(witness["resolvedTargetBase64DecodeObserved"])

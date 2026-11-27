@@ -192,6 +192,11 @@ class CatalogueSourceProbeAdapterTests(unittest.TestCase):
             "resolvedTargetRequestOtherDynamicUrlCount": 1,
             "resolvedTargetRequestSameOriginLiteralCount": 1,
             "resolvedTargetRequestCrossOriginLiteralCount": 1,
+            "resolvedTargetRequestStaticCandidateCount": 2,
+            "resolvedTargetRequestStaticSameOriginCount": 1,
+            "resolvedTargetRequestStaticCrossOriginCount": 1,
+            "resolvedTargetRequestStaticMediaIntentCount": 1,
+            "resolvedTargetRequestStaticSameOriginMediaIntentCount": 0,
             "resolvedTargetPostFormObserved": True,
             "resolvedTargetRequestBootstrapObserved": True,
             "resolvedTargetPackedScriptObserved": False,
@@ -213,6 +218,8 @@ class CatalogueSourceProbeAdapterTests(unittest.TestCase):
         self.assertEqual(player["resolvedTargetRequestIdentifierMissingDefinitionCount"], 1)
         self.assertEqual(player["resolvedTargetRequestIdentifierDynamicDefinitionCount"], 0)
         self.assertEqual(player["resolvedTargetRequestCrossOriginLiteralCount"], 1)
+        self.assertEqual(player["resolvedTargetRequestStaticCandidateCount"], 2)
+        self.assertEqual(player["resolvedTargetRequestStaticSameOriginMediaIntentCount"], 0)
         self.assertTrue(player["resolvedTargetRequestBootstrapObserved"])
         self.assertTrue(player["resolvedTargetBase64DecodeObserved"])
         self.assertEqual(

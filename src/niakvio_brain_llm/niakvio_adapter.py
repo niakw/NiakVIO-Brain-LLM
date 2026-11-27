@@ -1018,6 +1018,11 @@ _PLAYER_TARGET_REQUEST_SHAPE_COUNT_LIMITS = {
     "resolvedTargetRequestOtherDynamicUrlCount": 32,
     "resolvedTargetRequestSameOriginLiteralCount": 32,
     "resolvedTargetRequestCrossOriginLiteralCount": 32,
+    "resolvedTargetRequestStaticCandidateCount": 32,
+    "resolvedTargetRequestStaticSameOriginCount": 32,
+    "resolvedTargetRequestStaticCrossOriginCount": 32,
+    "resolvedTargetRequestStaticMediaIntentCount": 32,
+    "resolvedTargetRequestStaticSameOriginMediaIntentCount": 32,
 }
 _PLAYER_TARGET_STRUCTURE_FLAGS = (
     "resolvedTargetPostFormObserved",
