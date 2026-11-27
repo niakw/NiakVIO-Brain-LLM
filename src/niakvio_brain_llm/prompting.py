@@ -6,6 +6,11 @@ import re
 from typing import Any
 
 from .contracts import RepairRequest
+from .niakvio_adapter import (
+    _PLAYER_TARGET_STRUCTURE_CLASSES,
+    _PLAYER_TARGET_STRUCTURE_COUNT_LIMITS,
+    _PLAYER_TARGET_STRUCTURE_FLAGS,
+)
 from .provider_context import _sanitize_reference_source
 from .private_chat_memory import redact_sensitive
 from .source_units import javascript_function_end, javascript_if_block_span
@@ -545,6 +550,23 @@ def _source_contract_prompt_witness(request: RepairRequest) -> dict[str, Any]:
                 })
             target_status = row.get("resolvedTargetStatus")
             target_shape = str(row.get("resolvedTargetShape") or "")
+            structure_class = str(row.get("resolvedTargetPlayerStructureClass") or "")
+            structure_counts = {
+                key: row.get(key)
+                for key in _PLAYER_TARGET_STRUCTURE_COUNT_LIMITS
+            }
+            structure_flags = {
+                key: row.get(key)
+                for key in _PLAYER_TARGET_STRUCTURE_FLAGS
+            }
+            structure_valid = (
+                structure_class in _PLAYER_TARGET_STRUCTURE_CLASSES
+                and all(
+                    type(value) is int and 0 <= value <= _PLAYER_TARGET_STRUCTURE_COUNT_LIMITS[key]
+                    for key, value in structure_counts.items()
+                )
+                and all(type(value) is bool for value in structure_flags.values())
+            )
             if (
                 type(target_status) is int and 0 <= target_status <= 599
                 and target_shape in {
@@ -559,6 +581,7 @@ def _source_contract_prompt_witness(request: RepairRequest) -> dict[str, Any]:
                     "resolvedTargetSameOrigin",
                     "resolvedTargetRedirectObserved",
                 ))
+                and structure_valid
             ):
                 witness.update({
                     "resolvedTargetStatus": target_status,
@@ -567,6 +590,9 @@ def _source_contract_prompt_witness(request: RepairRequest) -> dict[str, Any]:
                     "resolvedTargetPlayerEmbedObserved": row["resolvedTargetPlayerEmbedObserved"],
                     "resolvedTargetSameOrigin": row["resolvedTargetSameOrigin"],
                     "resolvedTargetRedirectObserved": row["resolvedTargetRedirectObserved"],
+                    "resolvedTargetPlayerStructureClass": structure_class,
+                    **structure_counts,
+                    **structure_flags,
                 })
             return witness
     return {}
