@@ -270,7 +270,7 @@ def route_request(
                 "inspect the exact current catalogue family, canonical episode/season identity and source route before editing any provider",
                 "distinguish expected episodes.js resource existence, genuine JavaScript payload, SPA HTML shell and challenge page; never treat 200 as sufficient",
                 "compare announced primary and fallback domains, page referer and discovered content slug with read-only evidence",
-                "propose a reusable Brain source-shape strategy or owned family Lego only after an independent validated representative",
+                "propose a reusable Brain source-shape strategy or owned family Bloc only after an independent validated representative",
                 "compile and rematerialize an isolated candidate; require official NuvioTV returned streams, correct decoded episode, language/audio and non-regression before promotion",
             ],
         )
@@ -295,7 +295,7 @@ def route_request(
             next_actions=[
                 "verify the exact requested title, season, episode and source language against the canonical catalogue route",
                 "compare read-only response shape and status on announced primary and fallback hosts using native client headers without inferring the cause",
-                "distinguish a missing script from a redirect, page template, domain retirement or unimplemented source route before selecting a family Lego",
+                "distinguish a missing script from a redirect, page template, domain retirement or unimplemented source route before selecting a family Bloc",
                 "never authorize a provider patch from a 404/410 alone; require an independently validated family representative",
                 "only promote a generated Core or family candidate after exact-byte NuvioTV episode decode, audio tracks and sibling non-regression",
             ],
@@ -614,7 +614,7 @@ def route_request(
 
     # TV is the primary executable client for Brain repair. A reported
     # macOS-positive/TV-missing provider must first have a source-pinned native
-    # emulator oracle. Existing Lego for Desktop/Mobile/iOS remains intact, but
+    # emulator oracle. Existing Bloc for Desktop/Mobile/iOS remains intact, but
     # no client is presumed to have validated playback merely from build status.
     if _user_client_visibility_differential(request):
         native_tv = _official_android_tv_diagnostic(request)
@@ -669,7 +669,7 @@ def route_request(
                     "compare exact TV getStreams input, available metadata and QuickJS runtime capabilities to Desktop",
                     "observe provider-owned detail and episode API before assigning responsibility",
                     "discriminate TV HTTP/WAF and bridge responses from missing player result",
-                    "only produce owner-specific Brain tooling/Core/Lego fix after source-pinned cause",
+                    "only produce owner-specific Brain tooling/Core/Bloc fix after source-pinned cause",
                     "replay official TV emulator and require correct decoded episode/audio before publication",
                 ],
             )
@@ -710,7 +710,7 @@ def route_request(
                 next_actions=[
                     "inspect official TV QuickJS exception category and metadata/BuildConfig capability",
                     "compare Desktop vs Android TV provider input, manifest scope and fetch bridge",
-                    "propose shared client/Core/Lego correction, not a provider JS override",
+                    "propose shared client/Core/Bloc correction, not a provider JS override",
                     "re-run exact TV emulator after materialization; validate terminal media and audio",
                 ],
             )
