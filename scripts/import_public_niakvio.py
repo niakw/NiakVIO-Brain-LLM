@@ -128,7 +128,7 @@ def collect_local_force(root: Path) -> list[dict[str, Any]]:
 
 
 def provider_lego_mechanism_tags(root: Path, lego_names: list[str]) -> list[str]:
-    """Extract a closed vocabulary of reusable mechanisms from owned Lego.
+    """Extract a closed vocabulary of reusable mechanisms from owned Bloc.
 
     No source snippet, host, route, literal identifier or request body survives
     this projection. The tags describe implementation shape only.
@@ -171,7 +171,7 @@ def provider_lego_mechanism_tags(root: Path, lego_names: list[str]) -> list[str]
 def collect_provider_structured_priors(root: Path) -> list[dict[str, Any]]:
     """Project existing NiakVIO provider knowledge into non-authoritative RAG.
 
-    This deliberately excludes hostnames, routes, request bodies and raw Lego
+    This deliberately excludes hostnames, routes, request bodies and raw Bloc
     source. Those values may be stale and current exact execution must always
     outrank historical construction knowledge.
     """
