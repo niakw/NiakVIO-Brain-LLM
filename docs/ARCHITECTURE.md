@@ -35,7 +35,7 @@ This is diagnosis pipeline preservation, **not** repair or FULL status. Tests sp
 
 ## 2026-11-19 — Android TV primary Brain-driven emulator validation
 
-**Android TV is the primary executable proof client**, and the current official NuvioTV emulator is owned by NiakVIO GitHub Actions. Brain-LLM routes source-pinned sanitized TV run observations into bounded diagnostic next actions through `scripts/route_android_tv_emulator_feedback.py`. Complete design, proof rules, and selective Desktop/Mobile/iOS Lego non-regression: `docs/ANDROID_TV_PRIMARY_REPAIR_LOOP.md`. No automatic model repair is authorized by a diagnostic receipt; decoded content/episode/audio and materialized Brain correction remain necessary for FULL.
+**Android TV is the primary executable proof client**, and the current official NuvioTV emulator is owned by NiakVIO GitHub Actions. Brain-LLM routes source-pinned sanitized TV run observations into bounded diagnostic next actions through `scripts/route_android_tv_emulator_feedback.py`. Complete design, proof rules, and selective Desktop/Mobile/iOS Bloc non-regression: `docs/ANDROID_TV_PRIMARY_REPAIR_LOOP.md`. No automatic model repair is authorized by a diagnostic receipt; decoded content/episode/audio and materialized Brain correction remain necessary for FULL.
 
 ## 2026-11-19 — User-native client differences are diagnosis hints, never current proof
 
@@ -119,9 +119,9 @@ For `route_proven_gap`, the default CPU proposal remains a strict two-function d
 
 ## 2026-11-18 — Structured provider construction memory reuses the existing ExperienceStore
 
-The canonical NiakVIO repair-prior document contains two distinct knowledge layers: explicit historical repair cases and a per-provider structured knowledge map derived from NiakVIO-owned ProviderBase/DATA/Lego state. Brain already imported the first layer. It now imports the second layer into the **same ExperienceStore** rather than creating another memory database.
+The canonical NiakVIO repair-prior document contains two distinct knowledge layers: explicit historical repair cases and a per-provider structured knowledge map derived from NiakVIO-owned ProviderBase/DATA/Bloc state. Brain already imported the first layer. It now imports the second layer into the **same ExperienceStore** rather than creating another memory database.
 
-A `provider-structured-knowledge` row is a historical same-provider construction prior only. Its permitted projection is deliberately narrow: provider ID, strategy class, owned Lego basenames, route-family names, recipe roles/methods/response classes, media types and boolean recipe-capability flags. It excludes domains/hosts, route templates, request URLs/bodies/origins, opaque IDs, credentials and raw JavaScript/Python. This means an old manual reverse can tell FORCE *what kind of mechanism NiakVIO previously built* without telling it that an old endpoint or old implementation is still valid.
+A `provider-structured-knowledge` row is a historical same-provider construction prior only. Its permitted projection is deliberately narrow: provider ID, strategy class, owned Bloc basenames, route-family names, recipe roles/methods/response classes, media types and boolean recipe-capability flags. It excludes domains/hosts, route templates, request URLs/bodies/origins, opaque IDs, credentials and raw JavaScript/Python. This means an old manual reverse can tell FORCE *what kind of mechanism NiakVIO previously built* without telling it that an old endpoint or old implementation is still valid.
 
 Compact FORCE reserves at most one matching row with `ExperienceStore.same_provider_structured_priors()` and projects it as `retrieved_structured_provider_memory`. The row always carries `prior_only=true`, `proof_authority=false`, no current execution/network proof and a same-provider boundary. It cannot authorize mutation, bypass current-source unit selection, override negative execution memory, or satisfy playback/identity gates. Current exact bytes and live provider evidence remain authoritative.
 
