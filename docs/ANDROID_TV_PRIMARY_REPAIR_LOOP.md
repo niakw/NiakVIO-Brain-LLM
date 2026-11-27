@@ -6,7 +6,7 @@ A separate test-owned immediate-vs-awaited synthetic `PluginRuntime` control, ru
 
 # Brain-LLM — Android TV-primary repair and native emulator feedback
 
-**Policy:** Android TV is the **primary functional acceptance target**. Existing Desktop macOS, Android Mobile and iOS runtime/Core/ProviderBase/Lego compatibility remains mandatory for selective non-regression; do not implement separate provider variants for each device.
+**Policy:** Android TV is the **primary functional acceptance target**. Existing Desktop macOS, Android Mobile and iOS runtime/Core/ProviderBase/Bloc compatibility remains mandatory for selective non-regression; do not implement separate provider variants for each device.
 
 The Android emulator is a GitHub Actions **tool** owned by `niakw/NiakVIO`. It is not part of the LLM weights or a second standalone emulator inside this repository. The Brain chooses experiments, classifies the causal owner, builds programs and evaluates the resulting exact executed bytes. NuvioTV's official runtime supplies the device truth.
 
@@ -24,7 +24,7 @@ NiakVIO canonical manifest + exact current JS SHA-256 + failure family
   → niakvio_adapter._provider_android_tv_emulator_observations
   → routing.route_request
   → scripts/route_android_tv_emulator_feedback.py (automatic bounded next-action artifact)
-  → LLM diagnosis when justified → Brain tools/Lego → compilation and application
+  → LLM diagnosis when justified → Brain tools/Bloc → compilation and application
   → rematerialized exact code → emulator replay + decoded correctness
   → targeted Desktop/Mobile/iOS non-regression → memory + main publication
 ```
@@ -46,7 +46,7 @@ The `nativeExtractionZeroObserved` and `nativeExtractionPositiveObserved` fields
 
 ## Brain-first economics and feedback
 
-Avoid running the 3B/9B model for simple catalogue issues or repeating a diagnostic with no changed evidence. Process the easiest/highest-yield provider representative first, then each distinct family, then cohort. Prefer a deterministic tested Lego; use LLM causal reasoning when exact native evidence resolves an uncertainty that prior deterministic plans could not. Learning should persist positive and negative program fingerprints, exact bundle SHA, native run, failure stage, cause/owner, materialization and replay results. Diagnosing an error or emitting a patch is **not** a repair.
+Avoid running the 3B/9B model for simple catalogue issues or repeating a diagnostic with no changed evidence. Process the easiest/highest-yield provider representative first, then each distinct family, then cohort. Prefer a deterministic tested Bloc; use LLM causal reasoning when exact native evidence resolves an uncertainty that prior deterministic plans could not. Learning should persist positive and negative program fingerprints, exact bundle SHA, native run, failure stage, cause/owner, materialization and replay results. Diagnosing an error or emitting a patch is **not** a repair.
 
 The first user oracle is French-Manga: one macOS Desktop stream with FR audio, no Android TV listing. Official [TV run 44520778916](https://github.com/niakw/NiakVIO/actions/runs/44520778916) recorded app selection true, provider result count 0 and no player, while only the QuickJS call phase was captured. [Feedback 44525039332](https://github.com/niakw/NiakVIO/actions/runs/44525039332) committed its exact-JS diagnostic. The user also reported Sadisflix absent from their stream list; its installed manifest was not established, and the VF-only scope must be retained. These are evidence/unknowns, not permission to hand-edit either provider.
 
