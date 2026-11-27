@@ -175,6 +175,13 @@ def main() -> int:
     parser.add_argument("--niakvio-root", required=True)
     parser.add_argument("--experience", required=True)
     parser.add_argument("--extra-experience", action="append", default=[])
+    parser.add_argument(
+        "--advisor-memory",
+        type=Path,
+        action="append",
+        default=[],
+        help="Additional sanitized NiakVIO negative Learning/Repair memory visible to advisor routing.",
+    )
     parser.add_argument("--documents", required=True)
     parser.add_argument("--extra-documents", action="append", default=[])
     parser.add_argument("--mode", choices=("repair", "diagnostic", "brain"), default="repair")
@@ -230,6 +237,12 @@ def main() -> int:
         help="Model override; otherwise use the selected backend's environment setting and default.",
     )
     args = parser.parse_args()
+    advisor_memory_payloads = []
+    for path in args.advisor_memory:
+        value = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(value, dict):
+            raise ValueError(f"advisor memory must be a JSON object: {path}")
+        advisor_memory_payloads.append(value)
     live_evidence = json.loads(args.live_evidence.read_text()) if args.live_evidence else None
     if live_evidence is not None:
         import subprocess
@@ -344,7 +357,11 @@ def main() -> int:
                 )
         for census_row in selected:
             provider_id = str(census_row.get("provider") or "").strip()
-            request = request_from_checkout(args.niakvio_root, provider_id)
+            request = request_from_checkout(
+                args.niakvio_root,
+                provider_id,
+                supplemental_memory=advisor_memory_payloads,
+            )
             request_cache[provider_id] = request
             wave_rows.append({
                 **dict(census_row),
@@ -838,7 +855,11 @@ def main() -> int:
 
     def plan_one(position: int, census_row: dict) -> list[dict]:
         provider = str(census_row["provider"])
-        request = request_cache.get(provider) or request_from_checkout(args.niakvio_root, provider)
+        request = request_cache.get(provider) or request_from_checkout(
+            args.niakvio_root,
+            provider,
+            supplemental_memory=advisor_memory_payloads,
+        )
         if live_evidence is not None and live_evidence.get("provider") == provider:
             from niakvio_brain_llm.live_context_ingest import attach_live_runtime_evidence
             current = attach_live_runtime_evidence(

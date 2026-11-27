@@ -1686,8 +1686,14 @@ def _provider_negative_memory(payload: Any, provider_id: str) -> list[dict[str, 
     if not isinstance(payload, dict):
         return []
     wanted = _canon(provider_id)
-    entries = payload.get("entries")
-    if not isinstance(entries, list):
+    entries: list[Any] = []
+    direct = payload.get("entries")
+    if isinstance(direct, list):
+        entries.extend(direct)
+    experiment = payload.get("experimentMemory")
+    if isinstance(experiment, dict) and isinstance(experiment.get("entries"), list):
+        entries.extend(experiment.get("entries") or [])
+    if not entries:
         return []
     out: list[dict[str, Any]] = []
     for value in entries:
@@ -1710,6 +1716,50 @@ def _provider_negative_memory(payload: Any, provider_id: str) -> list[dict[str, 
             ),
         })
     return out
+
+
+def _merge_provider_negative_memory(
+    payloads: list[Any],
+    provider_id: str,
+) -> list[dict[str, Any]]:
+    """Merge sanitized Repair/Learning ledgers before advisor routing.
+
+    Cross-day Learning can contain the newest executed advisor fingerprint
+    before canonical Repair persistence catches up. This projection grants no
+    proof, mutation, native-playback or publication authority.
+    """
+    merged: dict[tuple[Any, ...], dict[str, Any]] = {}
+    order: list[tuple[Any, ...]] = []
+    for payload in payloads:
+        for row in _provider_negative_memory(payload, provider_id):
+            key = (
+                str(row.get("failureClass") or "").casefold(),
+                str(row.get("profile") or "").casefold(),
+                str(row.get("llmAdvisorExperimentFingerprint") or "").casefold(),
+                row.get("experimentVariant"),
+                row.get("experimentGeneration"),
+            )
+            current = merged.get(key)
+            if current is None:
+                merged[key] = dict(row)
+                order.append(key)
+                continue
+            prior_executed = current.get("executionObserved") is True
+            incoming_executed = row.get("executionObserved") is True
+            combined = {**current, **row}
+            if "executionObserved" in current or "executionObserved" in row:
+                combined["executionObserved"] = prior_executed or incoming_executed
+            for field in ("consecutiveFailures", "failures", "successes"):
+                combined[field] = max(
+                    int(current.get(field) or 0),
+                    int(row.get(field) or 0),
+                )
+            if prior_executed and not incoming_executed:
+                combined["lastOutcome"] = current.get("lastOutcome")
+                combined["lastReason"] = current.get("lastReason")
+            merged[key] = combined
+    return [merged[key] for key in order]
+
 
 def _safe_execution_coverage(value: Any) -> dict[str, int]:
     if not isinstance(value, dict):
@@ -1920,8 +1970,18 @@ def _route_synthesis_policy(
     }
 
 
-def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
-    """Build one bounded LLM request from a read-only NiakVIO checkout."""
+def request_from_checkout(
+    root: str | Path,
+    provider_id: str,
+    *,
+    supplemental_memory: list[Any] | None = None,
+) -> RepairRequest:
+    """Build one bounded LLM request from a read-only NiakVIO checkout.
+
+    supplemental_memory carries sanitized execution/hypothesis history only.
+    It may affect deterministic exclusion and LLM escalation, never proof,
+    mutation, native playback or publication authority.
+    """
     root = Path(root)
     wanted = _canon(provider_id)
 
@@ -1981,7 +2041,10 @@ def request_from_checkout(root: str | Path, provider_id: str) -> RepairRequest:
                 if value:
                     provider_experience.append(value)
 
-    negative_memory = _provider_negative_memory(memory, provider_id)
+    negative_memory = _merge_provider_negative_memory(
+        [memory, *(supplemental_memory or [])],
+        provider_id,
+    )
     force_negative_memory = _provider_force_negative_memory(force_memory, provider_id)
 
     targeted_source_run = str(targeted.get("sourceCensusRunId") or "") if isinstance(targeted, dict) else ""

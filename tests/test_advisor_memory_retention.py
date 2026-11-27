@@ -8,6 +8,7 @@ from niakvio_brain_llm.advisor_experiments import experiment_fingerprint, next_a
 from niakvio_brain_llm.contracts import RepairRequest
 from niakvio_brain_llm.niakvio_adapter import _provider_force_negative_memory, _provider_negative_memory, request_from_checkout
 from niakvio_brain_llm.prompting import build_force_prompt_payload, compact_request
+from niakvio_brain_llm.routing import route_request
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -58,6 +59,46 @@ class AdvisorMemoryRetentionTests(unittest.TestCase):
                 compact = compact_request(request, high_confidence=True, mutation_allowed=False)
                 self.assertLessEqual(len(compact["provider_context"]["advisor_experiment_history"]), 6)
                 self.assertEqual(compact["provider_context"]["advisor_experiment_history"][-1]["lastReason"], "reason-79")
+
+    def test_cross_day_supplemental_memory_reaches_routing_before_qwen_decision(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "automation").mkdir()
+            (root / "automation" / "provider-census-status.json").write_text(json.dumps({
+                "providers": [{"provider": "demo", "status": "ROUTE PROVEN"}],
+            }))
+            (root / "automation" / "brain-repair-memory.json").write_text(json.dumps({"entries": []}))
+            cross_day = {
+                "experimentMemory": {
+                    "entries": [self.memory_row(f"{index:064x}") for index in (1, 2, 3)]
+                }
+            }
+            request = request_from_checkout(root, "demo", supplemental_memory=[cross_day])
+            request.advisor_only = True
+            self.assertEqual(
+                {row["llmAdvisorExperimentFingerprint"] for row in request.provider_context["advisor_experiment_history"]},
+                {f"{index:064x}" for index in (1, 2, 3)},
+            )
+            decision = route_request(request)
+            self.assertEqual(decision.mode, "llm_repair")
+            self.assertTrue(decision.requires_llm)
+
+    def test_supplemental_duplicate_cannot_erase_executed_negative(self):
+        canonical = {"entries": [self.memory_row("a" * 64, lastReason="canonical")]}
+        supplemental = {"experimentMemory": {"entries": [
+            self.memory_row("a" * 64, executionObserved=False, lastReason="stale-copy")
+        ]}}
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "automation").mkdir()
+            (root / "automation" / "provider-census-status.json").write_text(json.dumps({
+                "providers": [{"provider": "demo", "status": "ROUTE PROVEN"}],
+            }))
+            (root / "automation" / "brain-repair-memory.json").write_text(json.dumps(canonical))
+            request = request_from_checkout(root, "demo", supplemental_memory=[supplemental])
+            row = request.provider_context["advisor_experiment_history"][0]
+            self.assertIs(row["executionObserved"], True)
+            self.assertEqual(row["lastReason"], "canonical")
 
     def test_unexecuted_profile_does_not_block_runtime_or_publication(self):
         for changes in (
