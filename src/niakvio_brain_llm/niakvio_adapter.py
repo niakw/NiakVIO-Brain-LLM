@@ -974,6 +974,16 @@ _CATALOGUE_SHAPES = frozenset({
 _CATALOGUE_CAUSAL_HYPOTHESES = frozenset({
     "catalogue_search_slug_mismatch_unverified",
     "catalogue_slug_and_episode_source_contract_drift_candidate_unverified",
+    "catalogue_inline_token_resolver_observed_unverified",
+    "catalogue_inline_token_target_observed_unresolved",
+    "catalogue_inline_token_player_target_observed_unresolved",
+    "catalogue_inline_token_terminal_media_observed_unverified",
+})
+_RESOLVED_TARGET_SHAPES = frozenset({
+    "hls_manifest", "dash_manifest", "media_binary",
+    "html_player", "html_page", "json", "javascript",
+    "text", "empty", "redirect", "http_error", "transport_error",
+    "oversized",
 })
 
 
@@ -1035,7 +1045,7 @@ def _provider_catalogue_source_probe_observations(
             or not re.fullmatch(r"[a-f0-9]{40}", source_sha)
             or not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,125}", slug)
             or (hint_slug and not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,125}", hint_slug))
-            or type(count) is not int or not 0 <= count <= 12
+            or type(count) is not int or not 0 <= count <= 18
             or type(inline_count) is not int or not 0 <= inline_count <= count
             or row.get("leadHypothesis") not in _CATALOGUE_CAUSAL_HYPOTHESES
             or row.get("independentNetworkNotOfficialClient") is not True
@@ -1088,8 +1098,10 @@ def _provider_catalogue_source_probe_observations(
                 continue
             statuses = {}
             invalid_status = False
-            for key in ("catalogueStatus", "seasonPageStatus", "legacyScriptStatus",
-                        "searchStatus"):
+            for key in (
+                "catalogueStatus", "seasonPageStatus", "legacyScriptStatus",
+                "searchStatus", "tokenResolverStatus", "resolvedTargetStatus",
+            ):
                 raw = item.get(key)
                 if raw is None:
                     continue
@@ -1099,7 +1111,40 @@ def _provider_catalogue_source_probe_observations(
                 statuses[key] = raw
             if invalid_status:
                 continue
-            sources.append({
+            resolver_contract = str(item.get("tokenResolverContract") or "")
+            resolver_flags = (
+                item.get("tokenResolverJsonObjectObserved"),
+                item.get("tokenResolverUrlFieldObserved"),
+                item.get("tokenResolverHttpsUrlObserved"),
+            )
+            resolver_present = (
+                "tokenResolverStatus" in statuses
+                or bool(resolver_contract)
+                or any(value is not None for value in resolver_flags)
+            )
+            if resolver_present and (
+                resolver_contract != "same-origin-api-lien-j-l-v1"
+                or any(type(value) is not bool for value in resolver_flags)
+            ):
+                continue
+            target_shape = str(item.get("resolvedTargetShape") or "")
+            target_flags = (
+                item.get("resolvedTargetDirectMediaObserved"),
+                item.get("resolvedTargetPlayerEmbedObserved"),
+                item.get("resolvedTargetSameOrigin"),
+                item.get("resolvedTargetRedirectObserved"),
+            )
+            target_present = (
+                "resolvedTargetStatus" in statuses
+                or bool(target_shape)
+                or any(value is not None for value in target_flags)
+            )
+            if target_present and (
+                target_shape not in _RESOLVED_TARGET_SHAPES
+                or any(type(value) is not bool for value in target_flags)
+            ):
+                continue
+            projected = {
                 "originHost": host,
                 **statuses,
                 "seasonSourceShape": season_shape,
@@ -1112,7 +1157,23 @@ def _provider_catalogue_source_probe_observations(
                     if type(item.get("searchLinkCount")) is int
                     and 0 <= item["searchLinkCount"] <= 32 else 0
                 ),
-            })
+            }
+            if resolver_present:
+                projected.update({
+                    "tokenResolverContract": resolver_contract,
+                    "tokenResolverJsonObjectObserved": resolver_flags[0],
+                    "tokenResolverUrlFieldObserved": resolver_flags[1],
+                    "tokenResolverHttpsUrlObserved": resolver_flags[2],
+                })
+            if target_present:
+                projected.update({
+                    "resolvedTargetShape": target_shape,
+                    "resolvedTargetDirectMediaObserved": target_flags[0],
+                    "resolvedTargetPlayerEmbedObserved": target_flags[1],
+                    "resolvedTargetSameOrigin": target_flags[2],
+                    "resolvedTargetRedirectObserved": target_flags[3],
+                })
+            sources.append(projected)
         if not sources:
             continue
         seen_runs.add(run)
@@ -1132,6 +1193,21 @@ def _provider_catalogue_source_probe_observations(
             "causalHypothesisUnverified": row["leadHypothesis"],
             "probeRequestCount": count,
             "inlineTokenResponseCount": inline_count,
+            "tokenResolverProbeCount": (
+                min(3, row["tokenResolverProbeCount"])
+                if type(row.get("tokenResolverProbeCount")) is int
+                and 0 <= row["tokenResolverProbeCount"] <= 3 else 0
+            ),
+            "tokenResolverJsonUrlCount": (
+                min(3, row["tokenResolverJsonUrlCount"])
+                if type(row.get("tokenResolverJsonUrlCount")) is int
+                and 0 <= row["tokenResolverJsonUrlCount"] <= 3 else 0
+            ),
+            "resolvedTargetProbeCount": (
+                min(3, row["resolvedTargetProbeCount"])
+                if type(row.get("resolvedTargetProbeCount")) is int
+                and 0 <= row["resolvedTargetProbeCount"] <= 3 else 0
+            ),
             "sourceObservations": sources,
             "historicalOnly": True,
             "independentNetworkNotOfficialClient": True,

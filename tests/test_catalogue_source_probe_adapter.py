@@ -48,9 +48,11 @@ class CatalogueSourceProbeAdapterTests(unittest.TestCase):
             "inputCatalogueSlug": "mushoku-tensei",
             "candidateNextSlug": "mushoku-tensei",
             "manifestScope": "manifest.json",
-            "probeRequestCount": 12,
+            "probeRequestCount": 13,
             "inlineTokenResponseCount": 1,
-            "leadHypothesis": "catalogue_slug_and_episode_source_contract_drift_candidate_unverified",
+            "tokenResolverProbeCount": 1,
+            "tokenResolverJsonUrlCount": 1,
+            "leadHypothesis": "catalogue_inline_token_resolver_observed_unverified",
             "independentNetworkNotOfficialClient": True,
             "sourceContractVerifiedOnOfficialTv": False,
             "catalogueIdentityVerified": False,
@@ -73,6 +75,11 @@ class CatalogueSourceProbeAdapterTests(unittest.TestCase):
                     "legacyScriptStatus": 403,
                     "searchStatus": 200,
                     "searchLinkCount": 2,
+                    "tokenResolverStatus": 200,
+                    "tokenResolverContract": "same-origin-api-lien-j-l-v1",
+                    "tokenResolverJsonObjectObserved": True,
+                    "tokenResolverUrlFieldObserved": True,
+                    "tokenResolverHttpsUrlObserved": True,
                     "rawHtml": "PRIVATE token",
                     "videoUrl": "https://secrets.invalid/private?auth=PRIVATE",
                 },
@@ -119,6 +126,13 @@ class CatalogueSourceProbeAdapterTests(unittest.TestCase):
         self.assertEqual(value["catalogueSlugUnverified"], "mushoku-tensei")
         self.assertEqual(value["inlineTokenResponseCount"], 1)
         self.assertTrue(value["sourceObservations"][0]["inlineTokenSeasonObserved"])
+        self.assertEqual(value["tokenResolverProbeCount"], 1)
+        self.assertEqual(value["tokenResolverJsonUrlCount"], 1)
+        self.assertEqual(
+            value["sourceObservations"][0]["tokenResolverContract"],
+            "same-origin-api-lien-j-l-v1",
+        )
+        self.assertTrue(value["sourceObservations"][0]["tokenResolverHttpsUrlObserved"])
         self.assertEqual(value["sourceObservations"][1]["seasonSourceShape"], "script_html_2xx")
         self.assertTrue(value["historicalOnly"])
         self.assertTrue(value["independentNetworkNotOfficialClient"])
@@ -192,8 +206,8 @@ class CatalogueSourceProbeAdapterTests(unittest.TestCase):
             ("row", "modelExecuted", True),
             ("row", "nativePlaybackAuthority", True),
             ("row", "catalogueIdentityVerified", True),
-            ("row", "inlineTokenResponseCount", 13),
-            ("row", "probeRequestCount", 13),
+            ("row", "inlineTokenResponseCount", 19),
+            ("row", "probeRequestCount", 19),
         ]
         for part, key, val in corruptions:
             with self.subTest(field=key):

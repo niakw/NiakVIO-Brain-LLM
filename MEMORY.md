@@ -1,3 +1,9 @@
+## 2026-11-27 — Resolver V2 evidence must survive the NiakVIO → Brain adapter
+
+- NiakVIO's current source probe legitimately emits 13 bounded observations when the opaque resolver is exercised and persists the diagnostic lead `catalogue_inline_token_resolver_observed_unverified`. The Brain adapter still enforced the older V1 ceiling (12) and only two pre-resolver hypotheses, so a valid V2 row was silently discarded before prompt construction.
+- The adapter now accepts the bounded 18-request source envelope needed for resolver/terminal-shape diagnostics, allowlists the resolver and future sanitized terminal-target hypotheses, and projects resolver status/shape booleans without token, id, body or URL. Prompt compaction preserves the same exact-parent witness.
+- This changes context availability only. It grants no mutation, identity, playback or publication authority. A resolver HTTP 200 + HTTPS field is not media proof.
+
 ## 2026-11-20 — ProviderBase current-published-byte and S00 generic-source regressions (not a Brain repair)
 
 - NiakVIO [Core gate 44700294488](https://github.com/niakw/NiakVIO/actions/runs/44700294488) revealed that `anime-sama` was one of 76 active providers still referencing stale immutable shared ProviderBase `ede6ce28...` while 75 referenced `ce4ce348...` yet was marked `clean_reconstruction_verified=true`. Generic provider lifecycle source `fe2ce9b` now rebinds **only verified common reconstructed bases** from canonical owned template with idempotent retain-old semantics. The published source files and manifests were not manually edited to hide the failure; [lifecycle run 44702252035](https://github.com/niakw/NiakVIO/actions/runs/44702252035) SUCCESS.

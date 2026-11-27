@@ -70,6 +70,11 @@ class SourceContractPromptWitnessTests(unittest.TestCase):
                         "seasonPageStatus": 200,
                         "legacyScriptStatus": 403,
                         "inlineTokenSeasonObserved": True,
+                        "tokenResolverStatus": 200,
+                        "tokenResolverContract": "same-origin-api-lien-j-l-v1",
+                        "tokenResolverJsonObjectObserved": True,
+                        "tokenResolverUrlFieldObserved": True,
+                        "tokenResolverHttpsUrlObserved": True,
                         "rawPlayer": "https://SECRET.invalid/PRIVATE",
                     },
                     {
@@ -106,6 +111,9 @@ class SourceContractPromptWitnessTests(unittest.TestCase):
         self.assertEqual(witness["catalogueSlugUnverified"], "mushoku-tensei")
         self.assertEqual(witness["observedOriginHostUnverified"], "anime-sama.to")
         self.assertEqual(witness["legacyJsStatus"], 403)
+        self.assertEqual(witness["tokenResolverStatus"], 200)
+        self.assertEqual(witness["tokenResolverContract"], "same-origin-api-lien-j-l-v1")
+        self.assertTrue(witness["tokenResolverHttpsUrlObserved"])
         self.assertFalse(witness["sourceContractVerifiedOnOfficialTv"])
         payload = build_prompt_payload(
             request, experiences=[], documents=[],

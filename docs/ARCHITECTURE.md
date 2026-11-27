@@ -1,3 +1,7 @@
+## 2026-11-27 — Current source evidence must cross the Brain adapter
+
+The NiakVIO source oracle and Brain-LLM adapter share a versioned trust boundary. When the oracle adds a bounded diagnostic stage, its safe enum/count fields must be admitted explicitly by the adapter and prompt witness; otherwise the system can persist correct evidence while the model reasons on a superseded view. Resolver/terminal observations therefore remain exact-parent, prior-only and authority=false, but are no longer dropped solely because the V1 request ceiling or hypothesis allowlist is stale.
+
 ## 2026-11-19 — Official client identity and test-owned deadline are independent Brain evidence axes
 
 Brain's Android TV historical feedback must separate the active provider's SHA256, NiakVIO commit, tested official NuvioTV Git commit and user's APK (unknown unless independently supplied). Current version of niakvio_adapter._provider_android_tv_emulator_observations exposes whitelisted officialClientSha when NiakVIO's sanitized native diagnosis actually measured it. Older records get empty unknown. A commit string is never a playback, correct episode, mutation or publication authority. Brain test test_android_tv_emulator_memory.py rejects forged client refs, keeps legacy unknown and verifies historical-only scope.

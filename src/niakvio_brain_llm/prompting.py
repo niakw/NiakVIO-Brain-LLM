@@ -506,7 +506,7 @@ def _source_contract_prompt_witness(request: RepairRequest) -> dict[str, Any]:
                     or row["seasonPageStatus"] != 200
                     or row.get("inlineTokenSeasonObserved") is not True):
                 continue
-            return {
+            witness = {
                 "source": "independent-ci-source-contract-read-only",
                 "officialParentRunId": native_run,
                 "independentProbeRunId": probe_run,
@@ -527,6 +527,48 @@ def _source_contract_prompt_witness(request: RepairRequest) -> dict[str, Any]:
                 "nativePlaybackAuthority": False,
                 "providerMutationAuthority": False,
             }
+            resolver_status = row.get("tokenResolverStatus")
+            resolver_contract = str(row.get("tokenResolverContract") or "")
+            if (
+                type(resolver_status) is int and 0 <= resolver_status <= 599
+                and resolver_contract == "same-origin-api-lien-j-l-v1"
+                and type(row.get("tokenResolverJsonObjectObserved")) is bool
+                and type(row.get("tokenResolverUrlFieldObserved")) is bool
+                and type(row.get("tokenResolverHttpsUrlObserved")) is bool
+            ):
+                witness.update({
+                    "tokenResolverStatus": resolver_status,
+                    "tokenResolverContract": resolver_contract,
+                    "tokenResolverJsonObjectObserved": row["tokenResolverJsonObjectObserved"],
+                    "tokenResolverUrlFieldObserved": row["tokenResolverUrlFieldObserved"],
+                    "tokenResolverHttpsUrlObserved": row["tokenResolverHttpsUrlObserved"],
+                })
+            target_status = row.get("resolvedTargetStatus")
+            target_shape = str(row.get("resolvedTargetShape") or "")
+            if (
+                type(target_status) is int and 0 <= target_status <= 599
+                and target_shape in {
+                    "hls_manifest", "dash_manifest", "media_binary",
+                    "html_player", "html_page", "json", "javascript",
+                    "text", "empty", "redirect", "http_error",
+                    "transport_error", "oversized",
+                }
+                and all(type(row.get(key)) is bool for key in (
+                    "resolvedTargetDirectMediaObserved",
+                    "resolvedTargetPlayerEmbedObserved",
+                    "resolvedTargetSameOrigin",
+                    "resolvedTargetRedirectObserved",
+                ))
+            ):
+                witness.update({
+                    "resolvedTargetStatus": target_status,
+                    "resolvedTargetShape": target_shape,
+                    "resolvedTargetDirectMediaObserved": row["resolvedTargetDirectMediaObserved"],
+                    "resolvedTargetPlayerEmbedObserved": row["resolvedTargetPlayerEmbedObserved"],
+                    "resolvedTargetSameOrigin": row["resolvedTargetSameOrigin"],
+                    "resolvedTargetRedirectObserved": row["resolvedTargetRedirectObserved"],
+                })
+            return witness
     return {}
 
 
