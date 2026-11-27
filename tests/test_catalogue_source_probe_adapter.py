@@ -5,6 +5,7 @@ import unittest
 
 from niakvio_brain_llm.niakvio_adapter import (
     _provider_catalogue_source_probe_observations,
+    _refine_failure_from_catalogue_source_targets,
 )
 
 
@@ -147,6 +148,54 @@ class CatalogueSourceProbeAdapterTests(unittest.TestCase):
             self.assertIs(value[key], False)
         for private in ("PRIVATE", "signedUrl", "videoUrl", "https://", "epsJeton"):
             self.assertNotIn(private, json.dumps(output))
+
+
+    def test_html_player_target_refines_only_provider_local_gap(self):
+        ledger = self.ledger()
+        row = ledger["rows"][0]
+        row["probeRequestCount"] = 14
+        row["resolvedTargetProbeCount"] = 1
+        row["resolvedTargetDirectMediaCount"] = 0
+        row["resolvedTargetPlayerPageCount"] = 1
+        row["leadHypothesis"] = "catalogue_inline_token_player_target_observed_unresolved"
+        row["evidence"][0].update({
+            "resolvedTargetStatus": 200,
+            "resolvedTargetShape": "html_player",
+            "resolvedTargetDirectMediaObserved": False,
+            "resolvedTargetPlayerEmbedObserved": True,
+            "resolvedTargetSameOrigin": False,
+            "resolvedTargetRedirectObserved": False,
+        })
+        projected = self.project(ledger=ledger)
+        self.assertEqual(len(projected), 1)
+        self.assertEqual(
+            _refine_failure_from_catalogue_source_targets(
+                "chain_terminal_gap", projected
+            ),
+            "media_extraction_gap",
+        )
+        self.assertEqual(
+            _refine_failure_from_catalogue_source_targets(
+                "provider_zero_before_provider_network", projected
+            ),
+            "media_extraction_gap",
+        )
+        # Independent source shape is never allowed to override a real
+        # transport/environment owner.
+        self.assertEqual(
+            _refine_failure_from_catalogue_source_targets(
+                "transport_environment_gap", projected
+            ),
+            "transport_environment_gap",
+        )
+        forged = copy.deepcopy(projected)
+        forged[0]["providerMutationAuthority"] = True
+        self.assertEqual(
+            _refine_failure_from_catalogue_source_targets(
+                "chain_terminal_gap", forged
+            ),
+            "chain_terminal_gap",
+        )
 
     def test_old_and_new_run_both_remain_visible_not_mutation(self):
         ledger = self.ledger()
