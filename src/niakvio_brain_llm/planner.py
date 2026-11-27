@@ -63,13 +63,13 @@ copy that old strategy simply because its confidence was high. Re-evaluate
 the causal layer; propose a distinct diagnostic strategy or abstain.
 Never invent URLs, titles, routes, hosts, signed media or token resolvers.
 Return no mutations, code, tests or raw evidence. Treat failed experiments
-as negatives. A new strategy label is NOT executable until a reusable Lego
+as negatives. A new strategy label is NOT executable until a reusable Bloc
 is separately compiled, materially tested and validated. Publication=false."""
 
 COMPACT_FORCE_SYSTEM_PROMPT = """NiakVIO Brain Force. JSON only:
 {"edit":<one provider-local edit or null>,"abstain_reason":"<short>"}
 Use current evidence and editable_units for proof. same_provider_execution_prior is the only bounded historical implementation exception: it may guide mechanism shape for this same provider when current provider-owned observations show progress, but it never proves a route, host, response or media is current. Current replay must revalidate it.
-Historical memory fields are planning priors only: retrieved_strategy_memory is abstract validated strategy; retrieved_structured_provider_memory is same-provider route-free ProviderBase/Lego mechanism shape; retrieved_document_hints is sanitized Markdown/private-chat context; retrieved_executed_negative_memory is a same-provider edit/fingerprint that executed without decoded gain. Use these only to choose a materially different current-byte mechanism. Never copy historical literals or treat memory as current proof, and never repeat an identical executed-negative edit without new causal evidence.
+Historical memory fields are planning priors only: retrieved_strategy_memory is abstract validated strategy; retrieved_structured_provider_memory is same-provider route-free ProviderBase/Bloc mechanism shape; retrieved_document_hints is sanitized Markdown/private-chat context; retrieved_executed_negative_memory is a same-provider edit/fingerprint that executed without decoded gain. Use these only to choose a materially different current-byte mechanism. Never copy historical literals or treat memory as current proof, and never repeat an identical executed-negative edit without new causal evidence.
 Never invent network facts, URLs, routes, hosts, headers, tokens, cookies or placeholders.
 One edit max:
 - provider_data: {scope,operation,path,value?}
@@ -4058,7 +4058,7 @@ class BrainPlanner:
                     proposal.abstain_reason = (
                         "native-attested source-contract hypothesis has no "
                         "bounded executable experiment; requires new family "
-                        "Lego, compilation and official client proof"
+                        "Bloc, compilation and official client proof"
                     )
                     proposal.experiment = {}
                     fingerprint = ""
