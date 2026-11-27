@@ -1926,6 +1926,69 @@ def _provider_force_negative_memory(payload: Any, provider_id: str) -> list[dict
         recent.append(row)
     return recent
 
+def _refine_failure_from_catalogue_source_targets(
+    failure: object,
+    observations: list[dict[str, Any]] | None,
+) -> str:
+    """Refine provider-local taxonomy from exact-parent sanitized target shape.
+
+    This is diagnostic routing only. Independent source evidence never grants
+    playback, identity, mutation or publication authority. It may only narrow
+    an already provider-local unresolved failure; transport/environment classes
+    remain authoritative and cannot be overwritten here.
+    """
+    current = str(failure or "").strip() or "unknown_failure"
+    key = _canon(current).replace("-", "_").replace(" ", "_")
+    refinable = {
+        "chain_terminal_gap",
+        "route_proven_gap",
+        "search_gap",
+        "unknown_failure",
+        "provider_zero_before_provider_network",
+        "network_zero_result",
+        "content_lookup_completed_no_streams",
+        "regression_provider",
+        "regression_provider_js",
+    }
+    if key not in refinable:
+        return current
+
+    for observation in observations or []:
+        if not isinstance(observation, dict):
+            continue
+        if observation.get("source") != "independent-ci-source-shape":
+            continue
+        if observation.get("historicalOnly") is not True:
+            continue
+        if observation.get("independentNetworkNotOfficialClient") is not True:
+            continue
+        if any(observation.get(flag) is not False for flag in (
+            "proofAuthority",
+            "publicationAuthority",
+            "nativePlaybackAuthority",
+            "providerMutationAuthority",
+            "catalogueIdentityVerified",
+            "episodeIdentityVerified",
+            "sourceContractVerifiedOnOfficialTv",
+        )):
+            continue
+        for row in observation.get("sourceObservations") or []:
+            if not isinstance(row, dict):
+                continue
+            status = row.get("resolvedTargetStatus")
+            if (
+                type(status) is int
+                and 200 <= status < 300
+                and row.get("resolvedTargetShape") == "html_player"
+                and row.get("resolvedTargetDirectMediaObserved") is False
+                and row.get("resolvedTargetPlayerEmbedObserved") is True
+                and type(row.get("resolvedTargetSameOrigin")) is bool
+                and type(row.get("resolvedTargetRedirectObserved")) is bool
+            ):
+                return "media_extraction_gap"
+    return current
+
+
 def classify_census_failure(row: dict[str, Any]) -> str:
     explicit = str(row.get("failureClass") or "").strip()
     if explicit:
@@ -2318,6 +2381,13 @@ def request_from_checkout(
         # provider-code defect; keep it outside mutation until stronger replay
         # evidence proves a provider-local failure.
         failure = "provider_transport_gap"
+
+    # Exact-parent target shape may narrow a provider-local gap after transport
+    # ownership has been decided. It cannot turn browser/transport evidence into
+    # provider mutation authority and never counts as media/playback proof.
+    failure = _refine_failure_from_catalogue_source_targets(
+        failure, catalogue_source_observations,
+    )
 
     refined_groups = _provider_refined_groups(
         refined,
