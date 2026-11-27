@@ -173,6 +173,17 @@ class CatalogueSourceProbeAdapterTests(unittest.TestCase):
             "resolvedTargetInlineScriptCount": 1,
             "resolvedTargetFormCount": 1,
             "resolvedTargetHiddenInputCount": 2,
+            "resolvedTargetRequestCallCount": 4,
+            "resolvedTargetFetchCallCount": 1,
+            "resolvedTargetXhrCallCount": 1,
+            "resolvedTargetAxiosCallCount": 1,
+            "resolvedTargetAjaxCallCount": 1,
+            "resolvedTargetRequestLiteralUrlCount": 2,
+            "resolvedTargetRequestDynamicUrlCount": 2,
+            "resolvedTargetRequestTemplateUrlCount": 1,
+            "resolvedTargetRequestConcatUrlCount": 0,
+            "resolvedTargetRequestSameOriginLiteralCount": 1,
+            "resolvedTargetRequestCrossOriginLiteralCount": 1,
             "resolvedTargetPostFormObserved": True,
             "resolvedTargetRequestBootstrapObserved": True,
             "resolvedTargetPackedScriptObserved": False,
@@ -186,6 +197,9 @@ class CatalogueSourceProbeAdapterTests(unittest.TestCase):
         self.assertEqual(player["resolvedTargetIframeCount"], 1)
         self.assertEqual(player["resolvedTargetFormCount"], 1)
         self.assertEqual(player["resolvedTargetHiddenInputCount"], 2)
+        self.assertEqual(player["resolvedTargetRequestCallCount"], 4)
+        self.assertEqual(player["resolvedTargetRequestDynamicUrlCount"], 2)
+        self.assertEqual(player["resolvedTargetRequestCrossOriginLiteralCount"], 1)
         self.assertTrue(player["resolvedTargetRequestBootstrapObserved"])
         self.assertTrue(player["resolvedTargetBase64DecodeObserved"])
         self.assertEqual(

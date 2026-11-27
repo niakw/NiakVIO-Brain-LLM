@@ -998,6 +998,19 @@ _PLAYER_TARGET_STRUCTURE_COUNT_LIMITS = {
     "resolvedTargetFormCount": 8,
     "resolvedTargetHiddenInputCount": 32,
 }
+_PLAYER_TARGET_REQUEST_SHAPE_COUNT_LIMITS = {
+    "resolvedTargetRequestCallCount": 32,
+    "resolvedTargetFetchCallCount": 32,
+    "resolvedTargetXhrCallCount": 32,
+    "resolvedTargetAxiosCallCount": 32,
+    "resolvedTargetAjaxCallCount": 32,
+    "resolvedTargetRequestLiteralUrlCount": 32,
+    "resolvedTargetRequestDynamicUrlCount": 32,
+    "resolvedTargetRequestTemplateUrlCount": 32,
+    "resolvedTargetRequestConcatUrlCount": 32,
+    "resolvedTargetRequestSameOriginLiteralCount": 32,
+    "resolvedTargetRequestCrossOriginLiteralCount": 32,
+}
 _PLAYER_TARGET_STRUCTURE_FLAGS = (
     "resolvedTargetPostFormObserved",
     "resolvedTargetRequestBootstrapObserved",
@@ -1163,6 +1176,7 @@ def _provider_catalogue_source_probe_observations(
             )
             structure_class = str(item.get("resolvedTargetPlayerStructureClass") or "")
             structure_counts: dict[str, int] = {}
+            request_shape_counts: dict[str, int] = {}
             structure_flags: dict[str, bool] = {}
             structure_valid = True
             if target_present:
@@ -1174,6 +1188,15 @@ def _provider_catalogue_source_probe_observations(
                         structure_valid = False
                         break
                     structure_counts[key] = raw
+                if structure_valid:
+                    for key, limit in _PLAYER_TARGET_REQUEST_SHAPE_COUNT_LIMITS.items():
+                        if key not in item:
+                            continue
+                        raw = item.get(key)
+                        if type(raw) is not int or not 0 <= raw <= limit:
+                            structure_valid = False
+                            break
+                        request_shape_counts[key] = raw
                 for key in _PLAYER_TARGET_STRUCTURE_FLAGS:
                     raw = item.get(key)
                     if type(raw) is not bool:
@@ -1189,6 +1212,7 @@ def _provider_catalogue_source_probe_observations(
                     and (
                         structure_class != "none"
                         or any(structure_counts.values())
+                        or any(request_shape_counts.values())
                         or any(structure_flags.values())
                     )
                 )
@@ -1224,6 +1248,7 @@ def _provider_catalogue_source_probe_observations(
                     "resolvedTargetRedirectObserved": target_flags[3],
                     "resolvedTargetPlayerStructureClass": structure_class,
                     **structure_counts,
+                    **request_shape_counts,
                     **structure_flags,
                 })
             sources.append(projected)

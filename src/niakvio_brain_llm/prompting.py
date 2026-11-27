@@ -9,6 +9,7 @@ from .contracts import RepairRequest
 from .niakvio_adapter import (
     _PLAYER_TARGET_STRUCTURE_CLASSES,
     _PLAYER_TARGET_STRUCTURE_COUNT_LIMITS,
+    _PLAYER_TARGET_REQUEST_SHAPE_COUNT_LIMITS,
     _PLAYER_TARGET_STRUCTURE_FLAGS,
 )
 from .provider_context import _sanitize_reference_source
@@ -555,6 +556,11 @@ def _source_contract_prompt_witness(request: RepairRequest) -> dict[str, Any]:
                 key: row.get(key)
                 for key in _PLAYER_TARGET_STRUCTURE_COUNT_LIMITS
             }
+            request_shape_counts = {
+                key: row.get(key)
+                for key in _PLAYER_TARGET_REQUEST_SHAPE_COUNT_LIMITS
+                if key in row
+            }
             structure_flags = {
                 key: row.get(key)
                 for key in _PLAYER_TARGET_STRUCTURE_FLAGS
@@ -564,6 +570,10 @@ def _source_contract_prompt_witness(request: RepairRequest) -> dict[str, Any]:
                 and all(
                     type(value) is int and 0 <= value <= _PLAYER_TARGET_STRUCTURE_COUNT_LIMITS[key]
                     for key, value in structure_counts.items()
+                )
+                and all(
+                    type(value) is int and 0 <= value <= _PLAYER_TARGET_REQUEST_SHAPE_COUNT_LIMITS[key]
+                    for key, value in request_shape_counts.items()
                 )
                 and all(type(value) is bool for value in structure_flags.values())
             )
@@ -592,6 +602,7 @@ def _source_contract_prompt_witness(request: RepairRequest) -> dict[str, Any]:
                     "resolvedTargetRedirectObserved": row["resolvedTargetRedirectObserved"],
                     "resolvedTargetPlayerStructureClass": structure_class,
                     **structure_counts,
+                    **request_shape_counts,
                     **structure_flags,
                 })
             return witness
