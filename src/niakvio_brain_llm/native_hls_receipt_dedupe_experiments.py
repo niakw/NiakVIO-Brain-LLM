@@ -1,6 +1,6 @@
 """Source-pinned V31 Core candidate after a *failed and restored* native V30.
 
-This is a deterministic Brain-owned causal Lego choice, not an LLM execution,
+This is a deterministic Brain-owned causal Bloc choice, not an LLM execution,
 accepted repair, or permission to change published providers. It is applicable
 to an HLS first-wins dedupe family, never merely to "zero streams" alone.
 """
