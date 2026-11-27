@@ -227,7 +227,18 @@ class CatalogueSourceProbeAdapterTests(unittest.TestCase):
         })
         unsafe_row["evidence"][0].update(row["evidence"][0])
         unsafe_row["evidence"][0]["resolvedTargetIframeCount"] = 99
-        self.assertEqual(self.project(ledger=unsafe), [])
+        unsafe_projected = self.project(ledger=unsafe)
+        self.assertEqual(len(unsafe_projected), 1)
+        self.assertFalse(any(
+            source.get("resolvedTargetShape") == "html_player"
+            for source in unsafe_projected[0]["sourceObservations"]
+        ))
+        self.assertEqual(
+            _refine_failure_from_catalogue_source_targets(
+                "chain_terminal_gap", unsafe_projected
+            ),
+            "chain_terminal_gap",
+        )
 
     def test_old_and_new_run_both_remain_visible_not_mutation(self):
         ledger = self.ledger()
