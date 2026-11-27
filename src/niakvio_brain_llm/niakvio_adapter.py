@@ -985,6 +985,26 @@ _RESOLVED_TARGET_SHAPES = frozenset({
     "text", "empty", "redirect", "http_error", "transport_error",
     "oversized",
 })
+_PLAYER_TARGET_STRUCTURE_CLASSES = frozenset({
+    "none", "iframe_shell", "video_tag", "scripted_player",
+    "form_handoff", "packed_script", "request_bootstrap", "mixed",
+})
+_PLAYER_TARGET_STRUCTURE_COUNT_LIMITS = {
+    "resolvedTargetIframeCount": 8,
+    "resolvedTargetVideoTagCount": 8,
+    "resolvedTargetSourceTagCount": 16,
+    "resolvedTargetExternalScriptCount": 16,
+    "resolvedTargetInlineScriptCount": 16,
+    "resolvedTargetFormCount": 8,
+    "resolvedTargetHiddenInputCount": 32,
+}
+_PLAYER_TARGET_STRUCTURE_FLAGS = (
+    "resolvedTargetPostFormObserved",
+    "resolvedTargetRequestBootstrapObserved",
+    "resolvedTargetPackedScriptObserved",
+    "resolvedTargetBase64DecodeObserved",
+    "resolvedTargetMetaRefreshObserved",
+)
 
 
 def _provider_catalogue_source_probe_observations(
@@ -1141,9 +1161,37 @@ def _provider_catalogue_source_probe_observations(
                 or bool(target_shape)
                 or any(value is not None for value in target_flags)
             )
+            structure_class = str(item.get("resolvedTargetPlayerStructureClass") or "")
+            structure_counts: dict[str, int] = {}
+            structure_flags: dict[str, bool] = {}
+            structure_valid = True
+            if target_present:
+                if structure_class not in _PLAYER_TARGET_STRUCTURE_CLASSES:
+                    structure_valid = False
+                for key, limit in _PLAYER_TARGET_STRUCTURE_COUNT_LIMITS.items():
+                    raw = item.get(key)
+                    if type(raw) is not int or not 0 <= raw <= limit:
+                        structure_valid = False
+                        break
+                    structure_counts[key] = raw
+                for key in _PLAYER_TARGET_STRUCTURE_FLAGS:
+                    raw = item.get(key)
+                    if type(raw) is not bool:
+                        structure_valid = False
+                        break
+                    structure_flags[key] = raw
             if target_present and (
                 target_shape not in _RESOLVED_TARGET_SHAPES
                 or any(type(value) is not bool for value in target_flags)
+                or not structure_valid
+                or (
+                    target_shape not in {"html_player", "html_page"}
+                    and (
+                        structure_class != "none"
+                        or any(structure_counts.values())
+                        or any(structure_flags.values())
+                    )
+                )
             ):
                 continue
             projected = {
@@ -1174,6 +1222,9 @@ def _provider_catalogue_source_probe_observations(
                     "resolvedTargetPlayerEmbedObserved": target_flags[1],
                     "resolvedTargetSameOrigin": target_flags[2],
                     "resolvedTargetRedirectObserved": target_flags[3],
+                    "resolvedTargetPlayerStructureClass": structure_class,
+                    **structure_counts,
+                    **structure_flags,
                 })
             sources.append(projected)
         if not sources:
