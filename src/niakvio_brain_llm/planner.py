@@ -4099,18 +4099,29 @@ class BrainPlanner:
         # In real Learning runs the model can repeat a previously executed
         # and rejected experiment despite receiving the negative memory in its
         # prompt. A late publisher rejection wastes the entire bounded slot.
-        # Enforce novelty at the actual advisor decision boundary; keep the
-        # causal layer/strategy fixed and never turn a rotation into proof.
+        # Enforce novelty at the actual advisor decision boundary. Keep the
+        # causal layer fixed; a causally exhausted executor may rotate strategy,
+        # but no rotation ever becomes proof or mutation authority.
         if request.advisor_only and proposal.target_layer == "provider" and not proposal.abstain:
             exhausted_profiles = exhausted_advisor_profiles(request)
             selected_profile = profile_for_strategy(proposal.strategy)
             if prior_strategy_exhausted and (
                 not selected_profile or selected_profile in exhausted_profiles
             ):
-                raise ValueError(
+                proposal.abstain = True
+                proposal.abstain_reason = (
                     "advisor repeated or failed to replace a causally exhausted executor"
                 )
+                proposal.experiment = {}
+                print(
+                    "FIELD_BRAIN_ADVISOR_EXHAUSTED_EXECUTOR "
+                    f"provider={request.provider_id} replacement=false "
+                    "abstain=true mutation=false publication=false",
+                    flush=True,
+                )
             blocked = failed_advisor_fingerprints(request)
+            if proposal.abstain:
+                blocked = set()
             if blocked:
                 try:
                     fingerprint = experiment_fingerprint(proposal.experiment)
