@@ -640,7 +640,18 @@ def build_prompt_payload(
         model_policy["allowed_scopes"] = []
         model_policy["advisor_only"] = True
 
-    if mutation_allowed:
+    if advisor_only:
+        # Fleet-scale targeted guidance runs on CPU. Current causal evidence and
+        # one nearest execution prior are enough to choose the next abstract
+        # experiment; generic documents are useful for research but add prefill
+        # latency without mutation authority. Keep one prior so RAG still
+        # participates, then fall back to the essential-current-evidence shape
+        # below when the serialized request remains too large.
+        experience_limit = 1
+        document_limit = 0
+        experience_text_limit = 280
+        document_text_limit = 0
+    elif mutation_allowed:
         # Force is a code/data synthesis phase, not a research pass. Current
         # provider bytes + current failure evidence + one nearest experience are
         # enough; broad docs/private history only increase prefill latency and
@@ -735,8 +746,9 @@ def build_prompt_payload(
                 request_payload["provider_context"]["advisor_experiment_history"] = history[-2:]
         payload["causal_prior"] = _compact(payload["causal_prior"], string_limit=220)
         payload["mutation_policy"] = _compact(payload["mutation_policy"], string_limit=220)
-    if encoded_size() > 7600 and advisor_only:
-        # Guidance-only requests may still exceed the first-pass bound when the
+    advisor_cpu_target_chars = 5200
+    if encoded_size() > advisor_cpu_target_chars and advisor_only:
+        # Guidance-only requests may still exceed the fleet CPU target when the
         # current census/structure evidence is itself rich. Do not discard the
         # provider case or silently fall back to generic deterministic repair.
         # Rebuild the payload from essential *current* evidence only, preserving
@@ -817,7 +829,7 @@ def build_prompt_payload(
         payload["context_budget"]["document_limit"] = 0
         payload["context_budget"]["essential_current_evidence"] = True
 
-    if encoded_size() > 7600 and advisor_only:
+    if encoded_size() > advisor_cpu_target_chars and advisor_only:
         # Last deterministic reduction: retain the two strongest current
         # observations and the three causal provider-context contracts, but
         # cap both width and depth. Real provider evidence can contain nested
@@ -870,6 +882,9 @@ def build_prompt_payload(
         # Refuse to create an oversized request rather than let llama.cpp reject it.
         raise ValueError("advisor prompt payload exceeded bounded context budget")
     payload["context_budget"]["serialized_user_chars"] = encoded_size()
+    payload["context_budget"]["target_serialized_user_chars"] = (
+        advisor_cpu_target_chars if advisor_only else 7600
+    )
     payload["context_budget"]["max_serialized_user_chars"] = 7600
     return payload
 
