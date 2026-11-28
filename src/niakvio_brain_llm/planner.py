@@ -3889,19 +3889,30 @@ class BrainPlanner:
                     if constrained
                     else REPAIR_PROPOSAL_SCHEMA
                 )
+        system_prompt = (
+            COMPACT_FORCE_SYSTEM_PROMPT
+            if compact_force
+            else (
+                ADVISOR_SOURCE_CONTRACT_SYSTEM_PROMPT
+                if source_contract_challenge
+                else ADVISOR_SYSTEM_PROMPT if request.advisor_only
+                else SYSTEM_PROMPT
+            )
+        )
+        if request.advisor_only and not compact_force:
+            print(
+                "FIELD_BRAIN_ADVISOR_MODEL "
+                f"provider={request.provider_id} user_chars={len(user)} "
+                f"system_chars={len(system_prompt)} total_chars={len(user) + len(system_prompt)} "
+                f"experiences={len(experiences)} documents={len(documents)} "
+                f"max_tokens={getattr(self.backend, 'max_tokens', 'unknown')} "
+                "outcome=starting raw_content_logged=false",
+                flush=True,
+            )
         started = time.monotonic()
         try:
             raw = self.backend.complete(
-                system=(
-                    COMPACT_FORCE_SYSTEM_PROMPT
-                    if compact_force
-                    else (
-                        ADVISOR_SOURCE_CONTRACT_SYSTEM_PROMPT
-                        if source_contract_challenge
-                        else ADVISOR_SYSTEM_PROMPT if request.advisor_only
-                        else SYSTEM_PROMPT
-                    )
-                ),
+                system=system_prompt,
                 user=user,
                 response_schema=schema,
             )
@@ -3915,6 +3926,17 @@ class BrainPlanner:
                     f"error={type(exc).__name__} "
                     f"max_tokens={getattr(self.backend, 'max_tokens', 'unknown')}"
                 )
+            elif request.advisor_only:
+                print(
+                    "FIELD_BRAIN_ADVISOR_MODEL "
+                    f"provider={request.provider_id} user_chars={len(user)} "
+                    f"system_chars={len(system_prompt)} total_chars={len(user) + len(system_prompt)} "
+                    f"seconds={time.monotonic() - started:.2f} outcome=error "
+                    f"error={type(exc).__name__} "
+                    f"max_tokens={getattr(self.backend, 'max_tokens', 'unknown')} "
+                    "raw_content_logged=false",
+                    flush=True,
+                )
             raise
         if compact_force:
             print(
@@ -3923,6 +3945,16 @@ class BrainPlanner:
                 f"system_chars={len(COMPACT_FORCE_SYSTEM_PROMPT)} total_chars={len(user) + len(COMPACT_FORCE_SYSTEM_PROMPT)} "
                 f"seconds={time.monotonic() - started:.2f} outcome=success "
                 f"max_tokens={getattr(self.backend, 'max_tokens', 'unknown')}"
+            )
+        elif request.advisor_only:
+            print(
+                "FIELD_BRAIN_ADVISOR_MODEL "
+                f"provider={request.provider_id} user_chars={len(user)} "
+                f"system_chars={len(system_prompt)} total_chars={len(user) + len(system_prompt)} "
+                f"seconds={time.monotonic() - started:.2f} outcome=success "
+                f"max_tokens={getattr(self.backend, 'max_tokens', 'unknown')} "
+                "raw_content_logged=false",
+                flush=True,
             )
         parsed = _extract_json(raw)
         if compact_force:
