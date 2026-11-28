@@ -4112,7 +4112,9 @@ class BrainPlanner:
                 proposal.abstain_reason = (
                     "advisor repeated or failed to replace a causally exhausted executor"
                 )
-                proposal.experiment = {}
+                # Retain the rejected experiment only as diagnostic memory. The
+                # abstention prevents execution/publication; preserving the
+                # payload lets later reasoning see what the model tried.
                 print(
                     "FIELD_BRAIN_ADVISOR_EXHAUSTED_EXECUTOR "
                     f"provider={request.provider_id} replacement=false "
