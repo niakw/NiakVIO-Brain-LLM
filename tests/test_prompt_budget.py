@@ -164,6 +164,33 @@ assert advisor_payload["mutation_policy"]["allowed_scopes"] == []
 advisor_ctx = advisor_payload["request"]["provider_context"]
 assert advisor_ctx.get("runtime_variant_coverage", {}).get("riskKind") == "variant-coverage-truncation"
 assert advisor_payload["request"]["advisor_only"] is True
+# Executor exhaustion is a tiny current-decision contract and must survive
+# advisor CPU compaction even when broad history is truncated.
+exhaustion_request = AdvisorOnlyVariantRequest()
+exhaustion_data = exhaustion_request.to_dict()
+exhaustion_data["provider_context"]["advisor_experiment_history"] = [
+    {
+        "profile": "chain_terminal_extractor_v1",
+        "executionObserved": True,
+        "consecutiveFailures": 1,
+        "lastOutcome": "rejected",
+        "llmAdvisorExperimentFingerprint": ("%064x" % ordinal),
+    }
+    for ordinal in (1, 2, 3)
+]
+class ExhaustedAdvisorRequest(AdvisorOnlyVariantRequest):
+    def to_dict(self):
+        return exhaustion_data
+exhausted_payload = build_prompt_payload(
+    ExhaustedAdvisorRequest(), experiences, documents,
+    {"confidence": 0.96, "target_layer": "provider",
+     "strategy_prior": "terminal-media-extractor-with-playback-validation"},
+    {"allow_mutations": False, "allowed_scopes": []},
+)
+assert exhausted_payload["request"]["provider_context"]["exhausted_advisor_profiles"] == [
+    "chain_terminal_extractor_v1"
+]
+
 
 
 class ExtremeAdvisorVariantRequest(AdvisorOnlyVariantRequest):

@@ -6,6 +6,7 @@ import re
 from typing import Any
 
 from .contracts import RepairRequest
+from .advisor_experiments import exhausted_advisor_profiles
 from .niakvio_adapter import (
     _PLAYER_TARGET_STRUCTURE_CLASSES,
     _PLAYER_TARGET_STRUCTURE_COUNT_LIMITS,
@@ -695,6 +696,11 @@ def build_prompt_payload(
             "document_limit": document_limit,
         },
     }
+    if advisor_only:
+        exhausted = sorted(exhausted_advisor_profiles(request))
+        if exhausted:
+            provider_context = payload["request"].setdefault("provider_context", {})
+            provider_context["exhausted_advisor_profiles"] = exhausted
 
     # Leave room inside a 4096-token llama.cpp context for the system prompt,
     # schema grammar and completion. Optional retrieval prose is dropped before
@@ -739,6 +745,7 @@ def build_prompt_payload(
                     "same_provider_execution_prior",
                     "current_structure_evidence", "runtime_variant_coverage",
                     "runtime_template_prior", "advisor_experiment_history",
+                    "exhausted_advisor_profiles",
                 }
             }
             history = request_payload["provider_context"].get("advisor_experiment_history")
@@ -775,6 +782,11 @@ def build_prompt_payload(
         if isinstance(history, list) and history:
             essential_context["advisor_experiment_history"] = [
                 _compact(history[-1], string_limit=100)
+            ]
+        exhausted = current_context.get("exhausted_advisor_profiles")
+        if isinstance(exhausted, list) and exhausted:
+            essential_context["exhausted_advisor_profiles"] = [
+                _clip(value, 80) for value in exhausted[:8]
             ]
 
         priority = {
@@ -872,6 +884,7 @@ def build_prompt_payload(
                 "current_structure_evidence",
                 "route_contract",
                 "same_provider_execution_prior",
+                "exhausted_advisor_profiles",
             }
         }
         payload["causal_prior"] = tiny(payload.get("causal_prior") or {})

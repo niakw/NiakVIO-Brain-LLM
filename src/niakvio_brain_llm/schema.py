@@ -208,6 +208,8 @@ def advisor_schema_for(
     causal_prior: dict[str, Any] | None = None,
     *,
     source_contract_challenge: bool = False,
+    strategy_exhausted: bool = False,
+    strategy_alternatives: list[str] | None = None,
 ) -> dict[str, Any]:
     """Minimal guidance-only schema.
 
@@ -242,8 +244,16 @@ def advisor_schema_for(
     if confidence >= 0.90 and not source_contract_challenge:
         if layer in {"provider", "core", "harness", "network"}:
             properties["target_layer"]["enum"] = [layer]
-        if strategy:
+        if strategy and not strategy_exhausted:
             properties["strategy"] = {"type": "string", "const": strategy}
+        elif strategy_exhausted:
+            alternatives = [
+                str(value).strip()
+                for value in (strategy_alternatives or [])
+                if str(value).strip() and str(value).strip() != strategy
+            ]
+            if alternatives:
+                properties["strategy"] = {"type": "string", "enum": alternatives}
         if layer == "provider":
             properties["experiment"]["required"] = list(
                 EXPERIMENT_SPEC_SCHEMA["properties"]

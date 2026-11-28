@@ -11,7 +11,15 @@ import time
 from typing import Any
 
 from .backend import ModelBackend
-from .advisor_experiments import experiment_fingerprint, failed_advisor_fingerprints, next_advisor_experiment
+from .advisor_experiments import (
+    available_advisor_strategies,
+    exhausted_advisor_profiles,
+    experiment_fingerprint,
+    failed_advisor_fingerprints,
+    next_advisor_experiment,
+    profile_for_strategy,
+    strategy_profile_exhausted,
+)
 from .source_units import javascript_function_end as _deterministic_function_end, javascript_if_block_span
 from .contracts import RepairProposal, RepairRequest
 from .document_memory import DocumentStore
@@ -49,7 +57,8 @@ evidence, mutations, experiment, tests, abstain and abstain_reason.
 ADVISOR_SYSTEM_PROMPT = """NiakVIO Brain advisor. JSON only.
 Return exactly: provider_id, strategy, confidence, target_layer, experiment, abstain, abstain_reason.
 Never return mutations, source text, evidence, tests, URLs, routes, headers, tokens, cookies or private-memory text.
-Keep the high-confidence causal strategy/layer exactly when constrained by schema.
+Keep the high-confidence causal layer exactly when constrained by schema. Keep strategy too unless provider_context.exhausted_advisor_profiles proves its executor exhausted.
+When exhausted_advisor_profiles is non-empty, NEVER propose a strategy whose installed executor is in that list. Choose a different strategy allowed by the schema, or abstain if current evidence cannot justify one.
 experiment is the only provider guidance payload: use only the abstract deterministic sandbox knobs allowed by the schema.
 Abstain only if current evidence cannot justify a distinct bounded experiment."""
 
@@ -3748,6 +3757,11 @@ class BrainPlanner:
         source_contract_challenge = bool(
             request.advisor_only and _source_contract_prompt_witness(request)
         )
+        prior_strategy_exhausted = bool(
+            request.advisor_only
+            and prior_strategy
+            and strategy_profile_exhausted(request, prior_strategy)
+        )
         if compact_force:
             try:
                 # The production default retains deterministic-first FORCE.
@@ -3873,10 +3887,19 @@ class BrainPlanner:
             )
         else:
             if request.advisor_only:
+                prior_strategy = str(causal_prior.get("strategy_prior") or "")
+                prior_strategy_exhausted = strategy_profile_exhausted(
+                    request, prior_strategy
+                )
                 schema = advisor_schema_for(
                     request.provider_id,
                     causal_prior,
                     source_contract_challenge=source_contract_challenge,
+                    strategy_exhausted=prior_strategy_exhausted,
+                    strategy_alternatives=(
+                        available_advisor_strategies(request)
+                        if prior_strategy_exhausted else None
+                    ),
                 )
             else:
                 schema = (
@@ -4062,6 +4085,7 @@ class BrainPlanner:
             prior_confidence >= 0.90
             and not source_contract_challenge
             and prior_strategy
+            and not prior_strategy_exhausted
             and proposal.strategy != prior_strategy
         ):
             raise ValueError(
@@ -4074,6 +4098,14 @@ class BrainPlanner:
         # Enforce novelty at the actual advisor decision boundary; keep the
         # causal layer/strategy fixed and never turn a rotation into proof.
         if request.advisor_only and proposal.target_layer == "provider" and not proposal.abstain:
+            exhausted_profiles = exhausted_advisor_profiles(request)
+            selected_profile = profile_for_strategy(proposal.strategy)
+            if prior_strategy_exhausted and (
+                not selected_profile or selected_profile in exhausted_profiles
+            ):
+                raise ValueError(
+                    "advisor repeated or failed to replace a causally exhausted executor"
+                )
             blocked = failed_advisor_fingerprints(request)
             if blocked:
                 try:

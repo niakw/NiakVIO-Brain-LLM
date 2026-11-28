@@ -10,6 +10,16 @@ ROLES = ("search", "detail", "episode", "player", "source", "api", "other")
 ROUTE_POLICIES = ("owned_only", "owned_plus_peer", "owned_plus_peer_generic")
 RECIPE_POLICIES = ("current_only", "current_plus_provider", "current_plus_provider_peer")
 
+STRATEGY_TO_PROFILE: dict[str, str] = {
+    "provider-owned-origin-header-and-domain-replay": "provider_origin_failover_v1",
+    "search-detail-player-terminal-traversal": "proven_route_terminal_traversal_v1",
+    "terminal-media-extractor-with-playback-validation": "chain_terminal_extractor_v1",
+    "same-provider-candidate-program-replay": "retained_candidate_replay_v1",
+    "proven-request-program-and-terminal-extraction": "player_media_extractor_v1",
+    "discover-api-from-current-page-and-bundles": "search_contract_inference_v1",
+    "bind-catalogue-result-to-requested-identity": "identity_alias_search_traversal_v1",
+}
+
 DEFAULTS: dict[str, dict[str, Any]] = {
     "provider-owned-origin-header-and-domain-replay": {
         "route_policy": "owned_plus_peer",
@@ -132,6 +142,52 @@ def failed_advisor_fingerprints(request: RepairRequest) -> set[str]:
             continue
         out.add(fp)
     return out
+
+
+def profile_for_strategy(strategy: object) -> str:
+    return STRATEGY_TO_PROFILE.get(canon(strategy), "")
+
+
+def exhausted_advisor_profiles(
+    request: RepairRequest,
+    *,
+    threshold: int = 3,
+) -> set[str]:
+    """Profiles with enough distinct executed advisor failures to require rotation."""
+    history = (request.provider_context or {}).get("advisor_experiment_history")
+    if not isinstance(history, list):
+        return set()
+    required = max(1, int(threshold))
+    by_profile: dict[str, set[str]] = {}
+    for row in history:
+        if not isinstance(row, dict) or not blocks_advisor_experiment(row):
+            continue
+        profile = str(row.get("profile") or "").strip().casefold()
+        if profile not in STRATEGY_TO_PROFILE.values():
+            continue
+        fp = str(row.get("llmAdvisorExperimentFingerprint") or "").strip().casefold()
+        if len(fp) != 64 or any(not (ch.isdigit() or ch in "abcdef") for ch in fp):
+            continue
+        by_profile.setdefault(profile, set()).add(fp)
+    return {
+        profile
+        for profile, fingerprints in by_profile.items()
+        if len(fingerprints) >= required
+    }
+
+
+def strategy_profile_exhausted(request: RepairRequest, strategy: object) -> bool:
+    profile = profile_for_strategy(strategy)
+    return bool(profile and profile in exhausted_advisor_profiles(request))
+
+
+def available_advisor_strategies(request: RepairRequest) -> list[str]:
+    exhausted = exhausted_advisor_profiles(request)
+    return [
+        strategy
+        for strategy, profile in STRATEGY_TO_PROFILE.items()
+        if profile not in exhausted
+    ]
 
 
 # Keep the original private selector entry point for existing integrations.

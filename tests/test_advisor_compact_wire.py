@@ -21,7 +21,8 @@ class CaptureAdvisorBackend:
         strategy_prop = response_schema["properties"]["strategy"]
         challenger = system == ADVISOR_SOURCE_CONTRACT_SYSTEM_PROMPT
         strategy = ("catalogue-inline-source-contract-discriminator" if challenger
-                    else strategy_prop.get("const") or "provider_local_repair")
+                    else strategy_prop.get("const")
+                    or (strategy_prop.get("enum") or ["provider_local_repair"])[0])
         layer = ("unknown" if challenger
                  else response_schema["properties"]["target_layer"]["enum"][0])
         return json.dumps({
@@ -155,6 +156,42 @@ class AdvisorCompactWireTests(unittest.TestCase):
                 self.assertEqual(backend.schema["properties"]["strategy"]["const"],
                                  "failed_old_traversal")
                 self.assertEqual(proposal.strategy, "failed_old_traversal")
+
+    def test_exhausted_executor_unlocks_strategy_but_keeps_provider_layer(self):
+        prior = {
+            "confidence": 0.96,
+            "target_layer": "provider",
+            "strategy_prior": "terminal-media-extractor-with-playback-validation",
+        }
+        history = [
+            {
+                "profile": "chain_terminal_extractor_v1",
+                "executionObserved": True,
+                "consecutiveFailures": 1,
+                "lastOutcome": "rejected",
+                "llmAdvisorExperimentFingerprint": ("%064x" % ordinal),
+            }
+            for ordinal in (1, 2, 3)
+        ]
+        request = RepairRequest(
+            provider_id="generic-terminal-provider",
+            failure_class="chain_terminal_gap",
+            status="CHAIN REACHED",
+            advisor_only=True,
+            allowed_mutations=[],
+            provider_context={"advisor_experiment_history": history},
+        )
+        with patch("niakvio_brain_llm.planner.build_causal_prior", return_value=prior):
+            backend = CaptureAdvisorBackend()
+            proposal = BrainPlanner(backend).plan(request)
+        strategy_schema = backend.schema["properties"]["strategy"]
+        self.assertNotIn("const", strategy_schema)
+        self.assertNotIn(prior["strategy_prior"], strategy_schema.get("enum") or [])
+        self.assertEqual(backend.schema["properties"]["target_layer"]["enum"], ["provider"])
+        self.assertNotEqual(proposal.strategy, prior["strategy_prior"])
+        self.assertEqual(proposal.target_layer, "provider")
+        self.assertFalse(proposal.abstain)
+        self.assertEqual(proposal.mutations, [])
 
     def test_planner_reconstructs_full_proposal_locally(self):
         backend = CaptureAdvisorBackend()
