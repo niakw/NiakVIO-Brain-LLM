@@ -128,7 +128,14 @@ def blocks_advisor_experiment(row: dict[str, Any]) -> bool:
 
 
 def failed_advisor_fingerprints(request: RepairRequest) -> set[str]:
-    history = (request.provider_context or {}).get("advisor_experiment_history")
+    context = getattr(request, "provider_context", None)
+    if not isinstance(context, dict):
+        try:
+            request_dict = request.to_dict()
+        except (AttributeError, TypeError):
+            request_dict = {}
+        context = request_dict.get("provider_context") if isinstance(request_dict, dict) else {}
+    history = (context or {}).get("advisor_experiment_history")
     if not isinstance(history, list):
         return set()
     out: set[str] = set()

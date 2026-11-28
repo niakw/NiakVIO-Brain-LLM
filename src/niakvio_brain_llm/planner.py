@@ -3757,10 +3757,11 @@ class BrainPlanner:
         source_contract_challenge = bool(
             request.advisor_only and _source_contract_prompt_witness(request)
         )
-        prior_strategy_exhausted = bool(
+        generated_prior_strategy = str(causal_prior.get("strategy_prior") or "")
+        generated_prior_strategy_exhausted = bool(
             request.advisor_only
-            and prior_strategy
-            and strategy_profile_exhausted(request, prior_strategy)
+            and generated_prior_strategy
+            and strategy_profile_exhausted(request, generated_prior_strategy)
         )
         if compact_force:
             try:
@@ -3888,9 +3889,7 @@ class BrainPlanner:
         else:
             if request.advisor_only:
                 prior_strategy = str(causal_prior.get("strategy_prior") or "")
-                prior_strategy_exhausted = strategy_profile_exhausted(
-                    request, prior_strategy
-                )
+                prior_strategy_exhausted = generated_prior_strategy_exhausted
                 schema = advisor_schema_for(
                     request.provider_id,
                     causal_prior,
@@ -4064,6 +4063,11 @@ class BrainPlanner:
         prior_strategy = str(causal_prior.get("strategy_prior") or "")
         source_contract_challenge = bool(
             request.advisor_only and _source_contract_prompt_witness(request)
+        )
+        prior_strategy_exhausted = bool(
+            request.advisor_only
+            and prior_strategy
+            and strategy_profile_exhausted(request, prior_strategy)
         )
         if source_contract_challenge:
             print(
