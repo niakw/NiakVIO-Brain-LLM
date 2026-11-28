@@ -1844,6 +1844,39 @@ def _provider_current_repair_execution(
     }
 
 
+def _safe_network_execution_delta(value: Any) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        return {}
+    out: dict[str, Any] = {
+        key: max(-100000, min(100000, int(value.get(key) or 0)))
+        for key in (
+            "providerRequestDelta",
+            "successfulProviderRequestDelta",
+            "networkFailureDelta",
+            "stageRankDelta",
+        )
+    }
+    out["stageAdvanced"] = value.get("stageAdvanced") is True
+    for key in ("newMethods", "newStages", "newResponseKinds"):
+        raw = value.get(key)
+        out[key] = [
+            str(item)[:48].casefold()
+            for item in raw[:16]
+            if str(item).strip()
+        ] if isinstance(raw, list) else []
+    buckets = value.get("statusBucketDelta")
+    if isinstance(buckets, dict):
+        out["statusBucketDelta"] = {
+            str(key)[:16]: max(-100000, min(100000, int(raw or 0)))
+            for key, raw in buckets.items()
+            if isinstance(raw, int) and not isinstance(raw, bool)
+        }
+    for key in ("parentDeepestStage", "candidateDeepestStage"):
+        if str(value.get(key) or "").strip():
+            out[key] = str(value.get(key))[:48].casefold()
+    return out
+
+
 def _provider_negative_memory(payload: Any, provider_id: str) -> list[dict[str, Any]]:
     """Keep the provider's sanitized ledger intact for deterministic exclusions.
 
@@ -1881,6 +1914,14 @@ def _provider_negative_memory(payload: Any, provider_id: str) -> list[dict[str, 
             **(
                 {"executionObserved": value.get("executionObserved") is True}
                 if "executionObserved" in value else {}
+            ),
+            **(
+                {"causalExerciseObserved": value.get("causalExerciseObserved") is True}
+                if "causalExerciseObserved" in value else {}
+            ),
+            **(
+                {"networkExecutionDelta": _safe_network_execution_delta(value.get("networkExecutionDelta"))}
+                if _safe_network_execution_delta(value.get("networkExecutionDelta")) else {}
             ),
         })
     return out

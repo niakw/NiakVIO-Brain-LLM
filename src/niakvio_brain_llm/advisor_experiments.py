@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from typing import Any
 
 from .contracts import RepairRequest
@@ -151,6 +152,45 @@ def failed_advisor_fingerprints(request: RepairRequest) -> set[str]:
     return out
 
 
+_GENERATION_SUFFIX = re.compile(r"_g[0-9]+$")
+
+
+def executor_profile(value: object) -> str:
+    profile = str(value or "").strip().casefold()
+    if profile in STRATEGY_TO_PROFILE.values():
+        return profile
+    base = _GENERATION_SUFFIX.sub("", profile)
+    return base if base in STRATEGY_TO_PROFILE.values() else ""
+
+
+def _strong_causal_stall(row: dict[str, Any]) -> bool:
+    if row.get("executionObserved") is not True or row.get("causalExerciseObserved") is not True:
+        return False
+    if not blocks_advisor_experiment(row):
+        return False
+    delta = row.get("networkExecutionDelta")
+    if not isinstance(delta, dict):
+        return False
+    numeric_zero = (
+        int(delta.get("providerRequestDelta") or 0) == 0
+        and int(delta.get("successfulProviderRequestDelta") or 0) == 0
+        and int(delta.get("networkFailureDelta") or 0) == 0
+        and int(delta.get("stageRankDelta") or 0) == 0
+    )
+    no_frontier = (
+        not delta.get("newMethods")
+        and not delta.get("newStages")
+        and not delta.get("newResponseKinds")
+        and delta.get("stageAdvanced") is not True
+    )
+    buckets = delta.get("statusBucketDelta")
+    buckets_zero = (
+        not isinstance(buckets, dict)
+        or all(int(value or 0) == 0 for value in buckets.values())
+    )
+    return numeric_zero and no_frontier and buckets_zero
+
+
 def profile_for_strategy(strategy: object) -> str:
     return STRATEGY_TO_PROFILE.get(canon(strategy), "")
 
@@ -173,20 +213,35 @@ def exhausted_advisor_profiles(
         return set()
     required = max(1, int(threshold))
     by_profile: dict[str, set[str]] = {}
+    strong_stalls: set[str] = set()
     for row in history:
         if not isinstance(row, dict) or not blocks_advisor_experiment(row):
             continue
-        profile = str(row.get("profile") or "").strip().casefold()
-        if profile not in STRATEGY_TO_PROFILE.values():
+        profile = executor_profile(row.get("profile"))
+        if not profile:
             continue
+        if _strong_causal_stall(row):
+            strong_stalls.add(profile)
         fp = str(row.get("llmAdvisorExperimentFingerprint") or "").strip().casefold()
-        if len(fp) != 64 or any(not (ch.isdigit() or ch in "abcdef") for ch in fp):
+        if len(fp) == 64 and all(ch.isdigit() or ch in "abcdef" for ch in fp):
+            token = f"llm:{fp}"
+        elif row.get("executionObserved") is True:
+            # Deterministic executor generations are real causal evidence too.
+            # Keep the raw profile so g2/g3/g4/g5 remain distinct executions
+            # while all normalize to the same executor family.
+            token = (
+                "runtime:"
+                f"{str(row.get('profile') or '').strip().casefold()}:"
+                f"{int(row.get('experimentGeneration') or 0)}:"
+                f"{int(row.get('experimentVariant') or 0)}"
+            )
+        else:
             continue
-        by_profile.setdefault(profile, set()).add(fp)
-    return {
+        by_profile.setdefault(profile, set()).add(token)
+    return strong_stalls | {
         profile
-        for profile, fingerprints in by_profile.items()
-        if len(fingerprints) >= required
+        for profile, executions in by_profile.items()
+        if len(executions) >= required
     }
 
 

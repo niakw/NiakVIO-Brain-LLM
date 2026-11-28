@@ -4,7 +4,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from niakvio_brain_llm.advisor_experiments import experiment_fingerprint, next_advisor_experiment
+from niakvio_brain_llm.advisor_experiments import (
+    exhausted_advisor_profiles, experiment_fingerprint, next_advisor_experiment,
+)
 from niakvio_brain_llm.contracts import RepairRequest
 from niakvio_brain_llm.niakvio_adapter import _provider_force_negative_memory, _provider_negative_memory, request_from_checkout
 from niakvio_brain_llm.prompting import build_force_prompt_payload, compact_request
@@ -129,6 +131,49 @@ class AdvisorMemoryRetentionTests(unittest.TestCase):
         rows = _provider_negative_memory({"entries": [row]}, "demo")
         request = RepairRequest(provider_id="demo", failure_class="route_proven_gap", provider_context={"advisor_experiment_history": rows})
         self.assertEqual(experiment_fingerprint(next_advisor_experiment(request, self.strategy)), self.base_fingerprint)
+
+    def test_runtime_generations_and_strong_stall_exhaust_executor_without_llm_fingerprint(self):
+        rows = [
+            {
+                **self.memory_row("", profile=f"player_media_extractor_v1_g{generation}"),
+                "experimentGeneration": generation,
+                "experimentVariant": 4,
+                "causalExerciseObserved": True,
+                "networkExecutionDelta": {
+                    "providerRequestDelta": 0,
+                    "successfulProviderRequestDelta": 0,
+                    "networkFailureDelta": 0,
+                    "stageRankDelta": 0,
+                    "stageAdvanced": False,
+                    "newMethods": [],
+                    "newStages": [],
+                    "newResponseKinds": [],
+                    "statusBucketDelta": {"2xx": 0, "3xx": 0, "4xx": 0, "5xx": 0, "network": 0},
+                    "parentDeepestStage": "player",
+                    "candidateDeepestStage": "player",
+                },
+            }
+            for generation in (2, 3, 4)
+        ]
+        projected = _provider_negative_memory({"entries": rows}, "demo")
+        self.assertTrue(projected[0]["causalExerciseObserved"])
+        self.assertEqual(projected[0]["networkExecutionDelta"]["providerRequestDelta"], 0)
+        request = RepairRequest(
+            provider_id="demo", failure_class="variant_coverage_gap",
+            advisor_only=True, provider_context={"advisor_experiment_history": projected},
+        )
+        self.assertIn("player_media_extractor_v1", exhausted_advisor_profiles(request))
+
+        search = _provider_negative_memory({"entries": [{
+            **self.memory_row("b" * 64, profile="search_contract_inference_v1"),
+            "causalExerciseObserved": True,
+            "networkExecutionDelta": rows[0]["networkExecutionDelta"],
+        }]}, "demo")
+        search_request = RepairRequest(
+            provider_id="demo", failure_class="variant_coverage_gap",
+            advisor_only=True, provider_context={"advisor_experiment_history": search},
+        )
+        self.assertIn("search_contract_inference_v1", exhausted_advisor_profiles(search_request))
 
     def test_batch_reservation_still_prevents_duplicate_candidate(self):
         row = self.memory_row(self.base_fingerprint, lastOutcome="candidate_reserved")

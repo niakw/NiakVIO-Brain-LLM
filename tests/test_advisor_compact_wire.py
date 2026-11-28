@@ -193,6 +193,47 @@ class AdvisorCompactWireTests(unittest.TestCase):
         self.assertFalse(proposal.abstain)
         self.assertEqual(proposal.mutations, [])
 
+    def test_strong_runtime_stall_excludes_executor_after_one_real_causal_no_gain(self):
+        prior = {
+            "confidence": 0.96,
+            "target_layer": "provider",
+            "strategy_prior": "discover-api-from-current-page-and-bundles",
+        }
+        history = [{
+            "profile": "search_contract_inference_v1",
+            "executionObserved": True,
+            "causalExerciseObserved": True,
+            "consecutiveFailures": 1,
+            "lastOutcome": "rejected",
+            "llmAdvisorExperimentFingerprint": "c" * 64,
+            "networkExecutionDelta": {
+                "providerRequestDelta": 0,
+                "successfulProviderRequestDelta": 0,
+                "networkFailureDelta": 0,
+                "stageRankDelta": 0,
+                "stageAdvanced": False,
+                "newMethods": [],
+                "newStages": [],
+                "newResponseKinds": [],
+                "statusBucketDelta": {"2xx": 0, "3xx": 0, "4xx": 0, "5xx": 0, "network": 0},
+            },
+        }]
+        request = RepairRequest(
+            provider_id="generic-terminal-provider",
+            failure_class="variant_coverage_gap",
+            status="CHAIN REACHED",
+            advisor_only=True,
+            allowed_mutations=[],
+            provider_context={"advisor_experiment_history": history},
+        )
+        with patch("niakvio_brain_llm.planner.build_causal_prior", return_value=prior):
+            backend = CaptureAdvisorBackend()
+            proposal = BrainPlanner(backend).plan(request)
+        strategy_schema = backend.schema["properties"]["strategy"]
+        self.assertNotIn(prior["strategy_prior"], strategy_schema.get("enum") or [])
+        self.assertNotEqual(proposal.strategy, prior["strategy_prior"])
+        self.assertEqual(proposal.target_layer, "provider")
+
     def test_planner_reconstructs_full_proposal_locally(self):
         backend = CaptureAdvisorBackend()
         proposal = BrainPlanner(backend).plan(

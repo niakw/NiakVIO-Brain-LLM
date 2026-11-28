@@ -191,6 +191,38 @@ assert exhausted_payload["request"]["provider_context"]["exhausted_advisor_profi
     "chain_terminal_extractor_v1"
 ]
 
+# A single real causal stall also survives compaction as executor debt.
+stall_data = AdvisorOnlyVariantRequest().to_dict()
+stall_data["provider_context"]["advisor_experiment_history"] = [{
+    "profile": "search_contract_inference_v1",
+    "executionObserved": True,
+    "causalExerciseObserved": True,
+    "consecutiveFailures": 1,
+    "lastOutcome": "rejected",
+    "llmAdvisorExperimentFingerprint": "c" * 64,
+    "networkExecutionDelta": {
+        "providerRequestDelta": 0,
+        "successfulProviderRequestDelta": 0,
+        "networkFailureDelta": 0,
+        "stageRankDelta": 0,
+        "stageAdvanced": False,
+        "newMethods": [], "newStages": [], "newResponseKinds": [],
+        "statusBucketDelta": {"2xx": 0, "3xx": 0, "4xx": 0, "5xx": 0, "network": 0},
+    },
+}]
+class StalledAdvisorRequest(AdvisorOnlyVariantRequest):
+    def to_dict(self):
+        return stall_data
+stall_payload = build_prompt_payload(
+    StalledAdvisorRequest(), experiences, documents,
+    {"confidence": 0.96, "target_layer": "provider",
+     "strategy_prior": "discover-api-from-current-page-and-bundles"},
+    {"allow_mutations": False, "allowed_scopes": []},
+)
+assert stall_payload["request"]["provider_context"]["exhausted_advisor_profiles"] == [
+    "search_contract_inference_v1"
+]
+
 
 
 class ExtremeAdvisorVariantRequest(AdvisorOnlyVariantRequest):
